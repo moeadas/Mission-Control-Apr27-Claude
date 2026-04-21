@@ -198,6 +198,9 @@ export async function generateText(input: {
   ollamaContextWindow?: number
   geminiApiKey?: string
 }) {
+  const timeoutMs = input.provider === 'gemini' ? 45000 : 90000
+  const createAbortSignal = () => AbortSignal.timeout(timeoutMs)
+
   if (input.provider === 'gemini') {
     if (!input.geminiApiKey) throw new Error('Gemini API key missing.')
 
@@ -230,6 +233,7 @@ export async function generateText(input: {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
+        signal: createAbortSignal(),
       }
     )
 
@@ -277,19 +281,36 @@ export async function generateText(input: {
     },
   }
 
-  let response = await fetch(`${baseUrl}/api/chat`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(ollamaPayload),
-  })
-
-  if (response.status === 500 && isCloudModel) {
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+  let response: Response
+  try {
     response = await fetch(`${baseUrl}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(ollamaPayload),
+      signal: createAbortSignal(),
     })
+  } catch (error) {
+    if (error instanceof Error && error.name === 'TimeoutError') {
+      throw normalizeProviderError('ollama', 504, `Ollama request timed out after ${Math.round(timeoutMs / 1000)} seconds.`)
+    }
+    throw error
+  }
+
+  if (response.status === 500 && isCloudModel) {
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      response = await fetch(`${baseUrl}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(ollamaPayload),
+        signal: createAbortSignal(),
+      })
+    } catch (error) {
+      if (error instanceof Error && error.name === 'TimeoutError') {
+        throw normalizeProviderError('ollama', 504, `Ollama retry timed out after ${Math.round(timeoutMs / 1000)} seconds.`)
+      }
+      throw error
+    }
   }
 
   if (!response.ok) {

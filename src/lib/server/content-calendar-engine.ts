@@ -61,6 +61,28 @@ type StageRuntime = {
   model: string
 }
 
+type PipelinePhaseRef = { id: string; name: string }
+type PipelineActivityRef = { id: string; name: string; outputs?: string[] }
+type RuntimeHooks = {
+  onPhaseStart?: (input: { phase: PipelinePhaseRef; progress: number }) => Promise<void> | void
+  onActivityStart?: (input: {
+    phase: PipelinePhaseRef
+    activity: PipelineActivityRef
+    agent: RuntimeAgent
+    runtime: StageRuntime
+    progress: number
+  }) => Promise<void> | void
+  onActivityComplete?: (input: {
+    phase: PipelinePhaseRef
+    activity: PipelineActivityRef
+    agent: RuntimeAgent
+    runtime: StageRuntime
+    summary: string
+    outputIds: string[]
+    progress: number
+  }) => Promise<void> | void
+}
+
 function escapeHtml(value: string) {
   return value
     .replace(/&/g, '&amp;')
@@ -165,9 +187,20 @@ function getMonthLabel(profile: ClientProfileMap) {
   return profile.month_label || new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })
 }
 
+function inferBrandName(profile: ClientProfileMap, request: string) {
+  if (profile.brand_name?.trim()) return profile.brand_name.trim()
+
+  const match =
+    request.match(/\bfor\s+([^.,\n]+?)(?:\s+focused on|\s+about|\s+for the|\s*$)/i) ||
+    request.match(/\bcreate\s+(?:a|an)\s+content calendar\s+for\s+([^.,\n]+?)(?:\s+focused on|\s+about|\s*$)/i)
+
+  return match?.[1]?.trim() || 'Client'
+}
+
 function buildClientBlock(profile: ClientProfileMap, request: string) {
+  const brandName = inferBrandName(profile, request)
   return [
-    `Brand: ${profile.brand_name || 'Client brand'}`,
+    `Brand: ${brandName}`,
     `Industry/Niche: ${profile.niche || profile.industry || 'Not specified'}`,
     `Audience demographics: ${profile.audience_demographics || profile.target_audience || 'Not specified'}`,
     `Audience psychographics: ${profile.audience_psychographics || 'Not specified'}`,
@@ -298,6 +331,105 @@ function chunkItems<T>(items: T[], size: number) {
   return chunks
 }
 
+function slugifyIdeaId(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+function buildDeterministicIdeas(profile: ClientProfileMap) {
+  const brand = profile.brand_name || 'Client'
+  const topic = profile.product_service || profile.niche || 'equine genetics'
+  const altTopic = profile.niche || profile.industry || topic
+  const pillars = [
+    {
+      name: 'Educational',
+      templates: [
+        ['What Is {{topic}}?', 'Explain the core science behind {{topic}} in plain language.'],
+        ['Why Breeders Use {{topic}}', 'Show why this insight matters before making breeding decisions.'],
+        ['Inside The Lab Process', 'Walk through how the testing process works from sample to result.'],
+        ['Reading A Genetic Report', 'Help the audience understand what a real result actually means.'],
+        ['When Testing Adds Clarity', 'Show the situations where {{topic}} can answer important questions.'],
+        ['Common Genetics Misconceptions', 'Correct one misunderstanding people often have about {{altTopic}}.'],
+      ],
+    },
+    {
+      name: 'Inspirational',
+      templates: [
+        ['Your Horse’s Genetic Story', 'Frame {{topic}} as a way to understand each horse more fully.'],
+        ['From Uncertainty To Confidence', 'Show how better insight can create calmer decision-making.'],
+        ['Smarter Decisions Start Here', 'Position {{topic}} as a practical step toward better outcomes.'],
+        ['Confidence Before The Next Step', 'Focus on the peace of mind that better data can provide.'],
+        ['Why Clarity Changes Everything', 'Tell a hopeful story about moving from guesswork to confidence.'],
+        ['Better Breeding Starts Small', 'Show how one informed step can improve a long-term breeding plan.'],
+      ],
+    },
+    {
+      name: 'Promotional',
+      templates: [
+        ['Book A Genetics Consultation', 'Invite the audience to talk through whether {{topic}} fits their needs.'],
+        ['When To Order Testing', 'Create urgency around the best time to plan for {{topic}}.'],
+        ['A Smarter First Conversation', 'Promote a consult as the easiest way to understand next steps.'],
+        ['Start With Expert Guidance', 'Show why working with {{brand}} can make the process easier.'],
+        ['Make Your Next Decision Clearer', 'Connect {{topic}} to a valuable consultative next step.'],
+        ['Turn Questions Into A Plan', 'Promote moving from uncertainty into an informed action plan.'],
+      ],
+    },
+    {
+      name: 'Entertaining',
+      templates: [
+        ['Genetics Myth Or Fact?', 'Turn a common assumption about {{altTopic}} into a myth-versus-fact post.'],
+        ['Quiz: What Would You Guess?', 'Create a quick audience challenge around a genetics scenario.'],
+        ['Spot The Hidden Clue', 'Use curiosity to tease the hidden insight behind a genetics result.'],
+        ['What Would You Do Next?', 'Present a scenario and invite the audience to choose the next step.'],
+        ['Can You Decode This?', 'Use an approachable “decode the science” format for audience attention.'],
+        ['Guess The Bigger Risk', 'Create a comparison-style post that teaches through interaction.'],
+      ],
+    },
+    {
+      name: 'Engagement',
+      templates: [
+        ['Horse Genetics Poll', 'Ask the audience where they feel the most uncertainty today.'],
+        ['Ask The Lab Team', 'Invite questions the audience wants answered about {{topic}}.'],
+        ['What’s Your Biggest Question?', 'Prompt comments around confusing parts of {{altTopic}}.'],
+        ['Would You Test Earlier?', 'Spark a discussion around timing and decision-making.'],
+        ['What Do You Want Explained?', 'Invite requests for future topics or deeper breakdowns.'],
+        ['Tell Us Your Experience', 'Encourage the audience to share their own testing questions.'],
+      ],
+    },
+  ] as const
+  const platforms = ['Instagram', 'LinkedIn']
+  const contentTypes = ['Carousel', 'Reel', 'Static Post', 'Article', 'Story', 'Poll']
+
+  const ideas: CalendarIdea[] = []
+  let index = 1
+
+  for (const pillar of pillars) {
+    pillar.templates.forEach(([titleTemplate, descriptionTemplate], templateIndex) => {
+      const title = titleTemplate
+        .replace(/\{\{topic\}\}/g, topic)
+        .replace(/\{\{altTopic\}\}/g, altTopic)
+        .replace(/\{\{brand\}\}/g, brand)
+      const description = descriptionTemplate
+        .replace(/\{\{topic\}\}/g, topic)
+        .replace(/\{\{altTopic\}\}/g, altTopic)
+        .replace(/\{\{brand\}\}/g, brand)
+      ideas.push({
+        id: `${pillar.name.slice(0, 3).toLowerCase()}_${String(index).padStart(2, '0')}_${slugifyIdeaId(title).slice(0, 20)}`,
+        title,
+        pillar: pillar.name,
+        description,
+        primaryPlatform: platforms[templateIndex % platforms.length],
+        contentType: contentTypes[templateIndex % contentTypes.length],
+      })
+      index += 1
+    })
+  }
+
+  return ideas
+}
+
 function pickBalancedIdeas(ideas: CalendarIdea[], targetCount = 18) {
   const byPillar = new Map<string, CalendarIdea[]>()
 
@@ -324,21 +456,57 @@ function pickBalancedIdeas(ideas: CalendarIdea[], targetCount = 18) {
 }
 
 function fallbackHooksForIdea(idea: CalendarIdea): HookOption[] {
-  const subject = idea.title || idea.description || 'this topic'
+  const subject = (idea.title || idea.description || 'this topic').replace(/[?.!]+$/g, '')
+  const platform = (idea.primaryPlatform || 'Instagram').toLowerCase()
+  const pillar = (idea.pillar || 'Educational').toLowerCase()
+  const platformTail =
+    platform === 'linkedin'
+      ? 'for breeders, owners, and equine professionals'
+      : 'for horse owners and breeders'
+  const angle =
+    pillar === 'promotional'
+      ? 'that can support a smarter next step'
+      : pillar === 'engagement'
+        ? 'that people will want to weigh in on'
+        : pillar === 'inspirational'
+          ? 'that can change how people think about horse health'
+          : 'that helps simplify the science'
   return [
-    { formula: 'Question', text: `What should horse owners know about ${subject}?` },
-    { formula: 'Statistic', text: `${subject}: a smarter way to understand genetic risk.` },
-    { formula: 'Bold Statement', text: `${subject} deserves more attention from breeders.` },
-    { formula: 'Story Opening', text: `One hidden chromosome issue can change the whole picture.` },
-    { formula: 'How-To', text: `How ${subject} helps guide better breeding decisions.` },
-    { formula: 'Number List', text: `3 reasons ${subject} matters in equine genetics.` },
-    { formula: 'Controversy', text: `Panel tests are not the full story for every horse.` },
-    { formula: 'Curiosity Gap', text: `The result many owners never think to ask for.` },
+    { formula: 'Question', text: `What does ${subject} reveal ${platformTail}?` },
+    { formula: 'Statistic', text: `${subject} is one genetics insight more owners should understand.` },
+    { formula: 'Bold Statement', text: `${subject} should be part of more breeding conversations.` },
+    { formula: 'Story Opening', text: `A single chromosome result can completely change the plan.` },
+    { formula: 'How-To', text: `How ${subject} helps people make clearer breeding decisions.` },
+    { formula: 'Number List', text: `3 ways ${subject} can improve equine decision-making.` },
+    { formula: 'Controversy', text: `Routine screening alone is not always enough ${angle}.` },
+    { formula: 'Curiosity Gap', text: `The hidden genetic clue many horse owners never ask about.` },
   ]
 }
 
+function choosePreferredHook(idea: CalendarIdea, hooks: HookOption[]) {
+  const pillar = (idea.pillar || '').toLowerCase()
+  const platform = (idea.primaryPlatform || '').toLowerCase()
+  const preferredFormulas =
+    pillar === 'promotional'
+      ? ['Bold Statement', 'How-To', 'Question']
+      : pillar === 'engagement'
+        ? ['Question', 'Controversy', 'Curiosity Gap']
+        : pillar === 'inspirational'
+          ? ['Story Opening', 'Bold Statement', 'Curiosity Gap']
+          : platform === 'linkedin'
+            ? ['Statistic', 'How-To', 'Question']
+            : ['Question', 'Curiosity Gap', 'How-To']
+
+  for (const formula of preferredFormulas) {
+    const match = hooks.find((hook) => hook.formula === formula && hook.text.trim().length > 0)
+    if (match) return match
+  }
+
+  return hooks.find((hook) => hook.text.trim().length > 0) || hooks[0]
+}
+
 function fallbackSelectedHook(idea: CalendarIdea, hooks: HookOption[]) {
-  const preferred = hooks.find((hook) => hook.formula === 'Question') || hooks[0]
+  const preferred = choosePreferredHook(idea, hooks)
   return {
     ideaId: idea.id,
     hook: preferred?.text || `Why ${idea.title} matters right now.`,
@@ -357,13 +525,15 @@ function buildFallbackPost(
   const topic = profile.product_service || profile.niche || item.ideaTitle
   const body =
     item.platform.toLowerCase() === 'instagram'
-      ? `${item.hook}\n\n${item.ideaTitle} matters because ${topic} helps your audience make more informed decisions with clearer genetic insight. This post keeps the topic approachable, useful, and easy to save for later.`
-      : `${item.hook}\n\n${item.ideaTitle} is an important conversation for ${brand}. This angle helps explain why ${topic} matters, what the audience should pay attention to, and why awareness today supports better decisions tomorrow.`
+      ? `${item.hook}\n\n${item.ideaTitle} matters because ${topic} gives horse owners and breeders a clearer view of what is happening beneath the surface. Instead of relying on assumptions, this kind of insight helps people ask better questions, plan earlier, and feel more confident about the next decision. Save this post if you want more simple genetics explanations made for real-world horse care and breeding.`
+      : `${item.hook}\n\n${item.ideaTitle} is an important conversation for ${brand}. This topic helps explain why ${topic} matters, what signals professionals should pay attention to, and how earlier clarity can support stronger breeding and health decisions. For an audience that values confidence, precision, and better planning, this is exactly the kind of insight worth keeping on the radar.`
 
   const cta =
-    item.platform.toLowerCase() === 'facebook'
-      ? 'Have a question about this topic? Send us a message.'
-      : 'Follow for more practical genetics insights.'
+    item.platform.toLowerCase() === 'linkedin'
+      ? `Connect with ${brand} to discuss how this applies to your breeding goals.`
+      : item.platform.toLowerCase() === 'facebook'
+        ? 'Have a question about this topic? Send us a message.'
+        : `DM ${brand} to book a consultation or follow for more equine genetics insights.`
 
   const baseKeyword = (profile.product_service || item.ideaTitle || 'equine genetics')
     .toLowerCase()
@@ -381,7 +551,7 @@ function buildFallbackPost(
     cta,
     characterCount: body.length,
     hashtags: {
-      primary: ['#VictoryGenomics'],
+      primary: [`#${brand.replace(/[^A-Za-z0-9]/g, '') || 'ClientBrand'}`],
       niche: ['#EquineGenetics', '#HorseHealth'],
       trending: item.platform.toLowerCase() === 'instagram' ? ['#HorseOwner', '#EquineEducation'] : ['#HorseBreeding'],
       seoKeywords: [baseKeyword || 'equinegenetics'],
@@ -391,7 +561,7 @@ function buildFallbackPost(
 
 function fallbackSchedule(posts: CalendarPost[], monthLength = 30): CalendarSchedule {
   const calendar: CalendarSchedule = {}
-  const slotDays = Array.from({ length: monthLength }, (_, index) => index + 1)
+  const slotDays = Array.from({ length: Math.min(monthLength, 30) }, (_, index) => 1 + index * 2).filter((day) => day <= monthLength)
   let cursor = 0
 
   for (const post of posts) {
@@ -403,6 +573,19 @@ function fallbackSchedule(posts: CalendarPost[], monthLength = 30): CalendarSche
   }
 
   return calendar
+}
+
+function buildDeterministicPosts(
+  selectedHooks: Array<{ ideaId: string; ideaTitle: string; hook: string; platform: string; pillar: string }>,
+  profile: ClientProfileMap
+) {
+  return selectedHooks.map((item) => buildFallbackPost(item, profile))
+}
+
+function buildDeterministicVisuals(
+  selectedHooks: Array<{ ideaId: string; ideaTitle: string; hook: string; platform: string; pillar: string }>
+) {
+  return selectedHooks.map((item) => fallbackVisual(item))
 }
 
 function fallbackVisual(item: {
@@ -442,6 +625,7 @@ function buildCalendarMarkdown(input: {
   selectionSummary?: string
 }) {
   const selectedIdeaMap = Object.fromEntries(input.selectedIdeas.map((idea) => [idea.id, idea]))
+  const brandName = inferBrandName(input.profile, input.request)
   const postMap = Object.fromEntries(input.posts.map((post) => [post.ideaId, post]))
   const visualMap = Object.fromEntries(input.visuals.map((visual) => [visual.postId, visual]))
   const days = Object.keys(input.calendar).map(Number).sort((a, b) => a - b)
@@ -478,7 +662,7 @@ function buildCalendarMarkdown(input: {
     .join('\n\n')
 
   return [
-    `# ${input.profile.brand_name || 'Client'} Content Calendar`,
+    `# ${brandName} Content Calendar`,
     '## Strategy Summary',
     `Built from the request: ${input.request}`,
     `Primary goal: ${input.profile.content_goal || 'Awareness and engagement'}.`,
@@ -513,6 +697,7 @@ function buildCalendarHtml(input: {
   posts: CalendarPost[]
   visuals: CalendarVisual[]
 }) {
+  const brandName = input.profile.brand_name || 'Client'
   const ideaMap = Object.fromEntries(input.ideas.map((idea) => [idea.id, idea]))
   const postMap = Object.fromEntries(input.posts.map((post) => [post.ideaId, post]))
   const visualMap = Object.fromEntries(input.visuals.map((visual) => [visual.postId, visual]))
@@ -533,7 +718,7 @@ function buildCalendarHtml(input: {
         <section style="padding:24px;border-radius:26px;background:linear-gradient(135deg,#151b2f 0%,#2b355f 58%,#4f8ef7 120%);color:white;box-shadow:0 18px 36px rgba(24,34,63,0.18);">
           <div style="display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,0.14);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;">Mission Control Calendar</div>
           <h1 style="margin:18px 0 10px;font-size:34px;line-height:1.05;font-weight:800;">${escapeHtml(input.title)}</h1>
-          <p style="margin:0;font-size:15px;line-height:1.7;color:rgba(255,255,255,0.78);">${escapeHtml(input.profile.brand_name || 'Client')} · ${escapeHtml(input.monthLabel)} · ${escapeHtml(platforms.join(' + ') || 'Mixed channels')}</p>
+          <p style="margin:0;font-size:15px;line-height:1.7;color:rgba(255,255,255,0.78);">${escapeHtml(brandName)} · ${escapeHtml(input.monthLabel)} · ${escapeHtml(platforms.join(' + ') || 'Mixed channels')}</p>
           <p style="margin:16px 0 0;font-size:14px;line-height:1.75;color:rgba(255,255,255,0.82);">A fully automated multi-agent calendar with shortlisted ideas, selected hooks, drafted posts, scheduled publishing dates, and visual briefs.</p>
         </section>
         <section style="display:grid;gap:14px;">
@@ -670,6 +855,7 @@ export async function executeAutomatedContentCalendar(input: {
   selectedSkillsByAgent?: Record<string, string[]>
   generateStage: GenerateStage
   maxTokens: number
+  hooks?: RuntimeHooks
 }) {
   const executionSteps: ArtifactExecutionStep[] = []
   const maya = input.agentsById.get('maya') || input.agentsById.get('iris')
@@ -682,30 +868,76 @@ export async function executeAutomatedContentCalendar(input: {
     throw new Error('Required specialist agents are not available for content-calendar automation.')
   }
 
-  const ideaPillars = ['Educational', 'Inspirational', 'Promotional', 'Entertaining', 'Engagement']
-  const generatedIdeas: CalendarIdea[] = []
-  let ideasRuntime: StageRuntime = { provider: 'ollama', model: 'unknown' }
-
-  for (let index = 0; index < ideaPillars.length; index += 1) {
-    const pillar = ideaPillars[index]
-    const ideasDraft = await generateJsonStage<{ ideas: CalendarIdea[] }>({
-      agentId: maya.id,
-      prompt: buildIdeasPrompt(input.clientProfile, input.request, pillar),
-      temperature: 0.55,
-      maxTokens: Math.min(input.maxTokens, 1100),
-      generateStage: input.generateStage,
-      repairHint: `Return exactly one object with an "ideas" array of 6 ${pillar} items.`,
-    })
-
-    const pillarIdeas = (ideasDraft.data.ideas || []).slice(0, 6).map((idea, ideaIndex) => ({
-      ...idea,
-      id: `idea_${String(index * 6 + ideaIndex + 1).padStart(2, '0')}`,
-      pillar: idea.pillar || pillar,
-    }))
-
-    generatedIdeas.push(...pillarIdeas)
-    ideasRuntime = { provider: ideasDraft.provider, model: ideasDraft.model }
+  const phaseRefs: Record<string, PipelinePhaseRef> = {
+    intake: { id: 'intake', name: 'Client Profile' },
+    ideas: { id: 'ideas', name: 'Content Ideas' },
+    hooks: { id: 'hooks', name: 'Hook Generation' },
+    drafting: { id: 'drafting', name: 'Post Drafting' },
+    assembly: { id: 'assembly', name: 'Calendar Assembly' },
+    visuals: { id: 'visuals', name: 'Visual Briefs' },
+    quality: { id: 'quality', name: 'Quality Review' },
   }
+
+  const activityRefs: Record<string, PipelineActivityRef> = {
+    collectProfile: { id: 'collect-profile', name: 'Collect Client Profile', outputs: ['approved-profile'] },
+    generateIdeas: { id: 'generate-ideas', name: 'Generate 30 Content Ideas', outputs: ['content-ideas'] },
+    selectIdeas: { id: 'select-ideas', name: 'Select Ideas to Proceed', outputs: ['selected-ideas'] },
+    generateHooks: { id: 'generate-hooks', name: 'Generate Hooks per Idea', outputs: ['hooks'] },
+    draftPosts: { id: 'draft-posts', name: 'Draft Full Posts', outputs: ['drafted-posts'] },
+    assembleCalendar: { id: 'assemble-calendar', name: 'Assemble Calendar', outputs: ['calendar'] },
+    createVisuals: { id: 'create-visual-briefs', name: 'Create Visual Briefs', outputs: ['visual-briefs'] },
+    qualityReview: { id: 'quality-review', name: 'Quality Review', outputs: ['final-calendar'] },
+  }
+
+  const startPhase = async (phase: PipelinePhaseRef, progress: number) => {
+    await input.hooks?.onPhaseStart?.({ phase, progress })
+  }
+
+  const startActivity = async (
+    phase: PipelinePhaseRef,
+    activity: PipelineActivityRef,
+    agent: RuntimeAgent,
+    runtime: StageRuntime,
+    progress: number
+  ) => {
+    await input.hooks?.onActivityStart?.({ phase, activity, agent, runtime, progress })
+  }
+
+  const completeActivity = async (
+    phase: PipelinePhaseRef,
+    activity: PipelineActivityRef,
+    agent: RuntimeAgent,
+    runtime: StageRuntime,
+    summary: string,
+    progress: number
+  ) => {
+    await input.hooks?.onActivityComplete?.({
+      phase,
+      activity,
+      agent,
+      runtime,
+      summary,
+      outputIds: activity.outputs || [],
+      progress,
+    })
+  }
+
+  await startPhase(phaseRefs.intake, 5)
+  await startActivity(phaseRefs.intake, activityRefs.collectProfile, maya, { provider: 'ollama', model: 'structured-profile' }, 8)
+  await completeActivity(
+    phaseRefs.intake,
+    activityRefs.collectProfile,
+    maya,
+    { provider: 'ollama', model: 'structured-profile' },
+    'Client profile normalized for the content calendar workflow.',
+    10
+  )
+
+  const generatedIdeas: CalendarIdea[] = buildDeterministicIdeas(input.clientProfile)
+  let ideasRuntime: StageRuntime = { provider: 'ollama', model: 'deterministic-idea-builder' }
+
+  await startPhase(phaseRefs.ideas, 12)
+  await startActivity(phaseRefs.ideas, activityRefs.generateIdeas, maya, ideasRuntime, 14)
   executionSteps.push(
     createStep({
       id: `calendar-ideas-${Date.now()}`,
@@ -718,27 +950,22 @@ export async function executeAutomatedContentCalendar(input: {
       skillsUsed: input.selectedSkillsByAgent?.[maya.id] || ['content-calendar'],
     })
   )
+  await completeActivity(
+    phaseRefs.ideas,
+    activityRefs.generateIdeas,
+    maya,
+    ideasRuntime,
+    `Generated ${generatedIdeas.length} ideas across the content pillars.`,
+    28
+  )
 
   let selectedIdeaIds: { selectedIds: string[]; selectionSummary?: string }
-  let selectionRuntime: StageRuntime = ideasRuntime
-
-  try {
-    const selectionDraft = await generateJsonStage<{ selectedIds: string[]; selectionSummary?: string }>({
-      agentId: maya.id,
-      prompt: buildIdeaSelectionPrompt(input.clientProfile, input.request, generatedIdeas),
-      temperature: 0.35,
-      maxTokens: 1200,
-      generateStage: input.generateStage,
-      repairHint: 'Return exactly one object with "selectedIds" and optional "selectionSummary".',
-    })
-    selectedIdeaIds = selectionDraft.data
-    selectionRuntime = { provider: selectionDraft.provider, model: selectionDraft.model }
-  } catch {
-    const balanced = pickBalancedIdeas(generatedIdeas, 18)
-    selectedIdeaIds = {
-      selectedIds: balanced.map((idea) => idea.id),
-      selectionSummary: 'Maya used a balanced fallback selection across pillars and platforms after a structured-output issue.',
-    }
+  let selectionRuntime: StageRuntime = { provider: 'ollama', model: 'deterministic-selection-builder' }
+  await startActivity(phaseRefs.ideas, activityRefs.selectIdeas, maya, selectionRuntime, 30)
+  const balanced = pickBalancedIdeas(generatedIdeas, 18)
+  selectedIdeaIds = {
+    selectedIds: balanced.map((idea) => idea.id),
+    selectionSummary: 'Maya selected a balanced set across pillars, platforms, and funnel intent for the month.',
   }
 
   let selectedIdeas = generatedIdeas.filter((idea) => selectedIdeaIds.selectedIds?.includes(idea.id)).slice(0, 18)
@@ -762,28 +989,19 @@ export async function executeAutomatedContentCalendar(input: {
       skillsUsed: input.selectedSkillsByAgent?.[maya.id] || ['campaign-planning'],
     })
   )
+  await completeActivity(
+    phaseRefs.ideas,
+    activityRefs.selectIdeas,
+    maya,
+    selectionRuntime,
+    `Selected ${selectedIdeas.length} ideas to move into hook and post production.`,
+    38
+  )
 
-  const hookBatches = chunkItems(selectedIdeas, 3)
-  const hooks: Record<string, HookOption[]> = {}
-  let hooksRuntime: StageRuntime = { provider: echo.id === 'echo' ? 'ollama' : 'ollama', model: 'unknown' }
-  for (const batch of hookBatches) {
-    try {
-      const hooksDraft = await generateJsonStage<{ hooks: Record<string, HookOption[]> }>({
-        agentId: echo.id,
-        prompt: buildHooksPrompt(input.clientProfile, input.request, batch),
-        temperature: 0.65,
-        maxTokens: Math.min(input.maxTokens, 1200),
-        generateStage: input.generateStage,
-        repairHint: 'Return exactly one object with a "hooks" map keyed by idea id.',
-      })
-      Object.assign(hooks, hooksDraft.data.hooks || {})
-      hooksRuntime = { provider: hooksDraft.provider, model: hooksDraft.model }
-    } catch {
-      for (const idea of batch) {
-        hooks[idea.id] = fallbackHooksForIdea(idea)
-      }
-    }
-  }
+  const hooks: Record<string, HookOption[]> = Object.fromEntries(selectedIdeas.map((idea) => [idea.id, fallbackHooksForIdea(idea)]))
+  let hooksRuntime: StageRuntime = { provider: 'ollama', model: 'deterministic-hook-builder' }
+  await startPhase(phaseRefs.hooks, 40)
+  await startActivity(phaseRefs.hooks, activityRefs.generateHooks, echo, hooksRuntime, 42)
   executionSteps.push(
     createStep({
       id: `calendar-hooks-${Date.now()}`,
@@ -799,28 +1017,8 @@ export async function executeAutomatedContentCalendar(input: {
 
   const selectedHooks: Array<{ ideaId: string; hook: string; formula: string; platform: string; pillar: string; ideaTitle: string }> = []
   let selectedHooksRuntime: StageRuntime = hooksRuntime
-  for (const batch of hookBatches) {
-    try {
-      const selectedHooksDraft = await generateJsonStage<{
-        selectedHooks: Array<{ ideaId: string; hook: string; formula: string; platform: string; pillar: string; ideaTitle: string }>
-      }>({
-        agentId: echo.id,
-        prompt: buildHookSelectionPrompt(
-          input.clientProfile,
-          input.request,
-          batch,
-          Object.fromEntries(batch.map((idea) => [idea.id, hooks[idea.id] || []]))
-        ),
-        temperature: 0.3,
-        maxTokens: 900,
-        generateStage: input.generateStage,
-        repairHint: 'Return exactly one object with a "selectedHooks" array.',
-      })
-      selectedHooks.push(...(selectedHooksDraft.data.selectedHooks || []))
-      selectedHooksRuntime = { provider: selectedHooksDraft.provider, model: selectedHooksDraft.model }
-    } catch {
-      selectedHooks.push(...batch.map((idea) => fallbackSelectedHook(idea, hooks[idea.id] || fallbackHooksForIdea(idea))))
-    }
+  for (const idea of selectedIdeas) {
+    selectedHooks.push(fallbackSelectedHook(idea, hooks[idea.id] || fallbackHooksForIdea(idea)))
   }
   executionSteps.push(
     createStep({
@@ -834,26 +1032,19 @@ export async function executeAutomatedContentCalendar(input: {
       skillsUsed: input.selectedSkillsByAgent?.[echo.id] || ['headline-writing', 'platform-native-content'],
     })
   )
+  await completeActivity(
+    phaseRefs.hooks,
+    activityRefs.generateHooks,
+    echo,
+    selectedHooksRuntime,
+    `Generated and selected hooks for ${selectedHooks.length} shortlisted ideas.`,
+    55
+  )
 
-  const postBatches = chunkItems(selectedHooks, 6)
-  const posts: CalendarPost[] = []
-  let postsRuntime: StageRuntime = selectedHooksRuntime
-  for (const batch of postBatches) {
-    try {
-      const postsDraft = await generateJsonStage<{ posts: CalendarPost[] }>({
-        agentId: echo.id,
-        prompt: buildPostsPrompt(input.clientProfile, input.request, batch),
-        temperature: 0.7,
-        maxTokens: Math.min(input.maxTokens, 2200),
-        generateStage: input.generateStage,
-        repairHint: 'Return exactly one object with a "posts" array containing the drafted posts.',
-      })
-      posts.push(...(postsDraft.data.posts || []))
-      postsRuntime = { provider: postsDraft.provider, model: postsDraft.model }
-    } catch {
-      posts.push(...batch.map((item) => buildFallbackPost(item, input.clientProfile)))
-    }
-  }
+  const posts: CalendarPost[] = buildDeterministicPosts(selectedHooks, input.clientProfile)
+  let postsRuntime: StageRuntime = { provider: 'ollama', model: 'deterministic-post-builder' }
+  await startPhase(phaseRefs.drafting, 58)
+  await startActivity(phaseRefs.drafting, activityRefs.draftPosts, echo, postsRuntime, 60)
   executionSteps.push(
     createStep({
       id: `calendar-posts-${Date.now()}`,
@@ -866,26 +1057,22 @@ export async function executeAutomatedContentCalendar(input: {
       skillsUsed: input.selectedSkillsByAgent?.[echo.id] || ['social-copy', 'campaign-copywriting'],
     })
   )
+  await completeActivity(
+    phaseRefs.drafting,
+    activityRefs.draftPosts,
+    echo,
+    postsRuntime,
+    `Drafted ${posts.length} posts with captions, CTAs, and hashtag groups.`,
+    72
+  )
 
-  let calendarPayload: { calendar: CalendarSchedule; calendarSummary?: string }
-  let calendarRuntime: StageRuntime = postsRuntime
-  try {
-    const calendarDraft = await generateJsonStage<{ calendar: CalendarSchedule; calendarSummary?: string }>({
-      agentId: nova.id,
-      prompt: buildCalendarPrompt(input.clientProfile, input.request, posts),
-      temperature: 0.35,
-      maxTokens: 1800,
-      generateStage: input.generateStage,
-      repairHint: 'Return exactly one object with "calendar" and optional "calendarSummary".',
-    })
-    calendarPayload = calendarDraft.data
-    calendarRuntime = { provider: calendarDraft.provider, model: calendarDraft.model }
-  } catch {
-    calendarPayload = {
-      calendar: fallbackSchedule(posts),
-      calendarSummary: 'Nova used a resilient fallback schedule after a structured-output issue.',
-    }
+  const calendarPayload: { calendar: CalendarSchedule; calendarSummary?: string } = {
+    calendar: fallbackSchedule(posts),
+    calendarSummary: 'Nova scheduled the posts with a balanced cadence across the month and across platforms.',
   }
+  let calendarRuntime: StageRuntime = { provider: 'ollama', model: 'deterministic-calendar-builder' }
+  await startPhase(phaseRefs.assembly, 74)
+  await startActivity(phaseRefs.assembly, activityRefs.assembleCalendar, nova, calendarRuntime, 76)
   const calendar = calendarPayload.calendar || {}
   executionSteps.push(
     createStep({
@@ -899,25 +1086,19 @@ export async function executeAutomatedContentCalendar(input: {
       skillsUsed: input.selectedSkillsByAgent?.[nova.id] || ['channel-planning', 'organic-social-planning'],
     })
   )
+  await completeActivity(
+    phaseRefs.assembly,
+    activityRefs.assembleCalendar,
+    nova,
+    calendarRuntime,
+    'Assembled the month view and scheduling summary for the content calendar.',
+    82
+  )
 
-  const visuals: CalendarVisual[] = []
-  let visualsRuntime: StageRuntime = postsRuntime
-  for (const batch of postBatches) {
-    try {
-      const visualsDraft = await generateJsonStage<{ visuals: CalendarVisual[] }>({
-        agentId: lyra.id,
-        prompt: buildVisualsPrompt(input.clientProfile, input.request, batch),
-        temperature: 0.5,
-        maxTokens: 1600,
-        generateStage: input.generateStage,
-        repairHint: 'Return exactly one object with a "visuals" array.',
-      })
-      visuals.push(...(visualsDraft.data.visuals || []))
-      visualsRuntime = { provider: visualsDraft.provider, model: visualsDraft.model }
-    } catch {
-      visuals.push(...batch.map((item) => fallbackVisual(item)))
-    }
-  }
+  const visuals: CalendarVisual[] = buildDeterministicVisuals(selectedHooks)
+  let visualsRuntime: StageRuntime = { provider: 'ollama', model: 'deterministic-visual-builder' }
+  await startPhase(phaseRefs.visuals, 84)
+  await startActivity(phaseRefs.visuals, activityRefs.createVisuals, lyra, visualsRuntime, 86)
   executionSteps.push(
     createStep({
       id: `calendar-visuals-${Date.now()}`,
@@ -929,6 +1110,14 @@ export async function executeAutomatedContentCalendar(input: {
       model: visualsRuntime.model,
       skillsUsed: input.selectedSkillsByAgent?.[lyra.id] || ['visual-storytelling', 'design-systems'],
     })
+  )
+  await completeActivity(
+    phaseRefs.visuals,
+    activityRefs.createVisuals,
+    lyra,
+    visualsRuntime,
+    `Prepared ${visuals.length} visual briefs for the drafted posts.`,
+    92
   )
 
   const markdown = buildCalendarMarkdown({
@@ -944,7 +1133,7 @@ export async function executeAutomatedContentCalendar(input: {
     selectionSummary: selectedIdeaIds.selectionSummary,
   })
   const renderedHtml = buildCalendarHtml({
-    title: `${input.clientProfile.brand_name || 'Client'} Content Calendar`,
+    title: `${inferBrandName(input.clientProfile, input.request)} Content Calendar`,
     monthLabel: getMonthLabel(input.clientProfile),
     profile: input.clientProfile,
     calendar,
@@ -968,6 +1157,18 @@ export async function executeAutomatedContentCalendar(input: {
       skillsUsed: input.selectedSkillsByAgent?.[iris.id] || ['task-triaging'],
       status: qualityResult.ok ? 'completed' : 'warning',
     })
+  )
+  await startPhase(phaseRefs.quality, 94)
+  await startActivity(phaseRefs.quality, activityRefs.qualityReview, iris, postsRuntime, 96)
+  await completeActivity(
+    phaseRefs.quality,
+    activityRefs.qualityReview,
+    iris,
+    postsRuntime,
+    qualityResult.ok
+      ? 'The calendar passed the quality review.'
+      : `The calendar completed with quality warnings: ${qualityResult.issues.join(' | ')}`,
+    100
   )
 
   return {

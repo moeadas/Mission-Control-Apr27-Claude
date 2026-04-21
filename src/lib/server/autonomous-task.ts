@@ -4,6 +4,7 @@ import { pickAgentForRole } from '@/lib/agent-roles'
 import { sanitizePromptProfile, sanitizePromptValue } from '@/lib/server/prompt-safety'
 import { validateDeliverableQuality } from '@/lib/output-quality'
 import { executeCreativeAssetTask } from '@/lib/server/creative-asset-engine'
+import { executeAutomatedContentCalendar } from '@/lib/server/content-calendar-engine'
 
 interface RuntimeAgent {
   id: string
@@ -611,6 +612,50 @@ export async function executeAutonomousTask(input: {
       executionSteps: creativeResult.executionSteps,
       qualityResult: creativeResult.qualityResult,
       creative: creativeResult.creative,
+    }
+  }
+
+  if (input.deliverableType === 'content-calendar') {
+    const calendarResult = await executeAutomatedContentCalendar({
+      request: input.request,
+      clientProfile,
+      agentsById: agentMap,
+      selectedSkillsByAgent: input.selectedSkillsByAgent,
+      maxTokens: input.maxTokens,
+      hooks: input.hooks,
+      generateStage: async ({ agentId, prompt, temperature, maxTokens }) => {
+        const agent = agentMap.get(agentId) || agentMap.get('iris')
+        if (!agent) throw new Error(`Agent ${agentId} is unavailable.`)
+        const runtime = resolveAgentRuntime(agent, input)
+        const text = await generateText({
+          provider: runtime.provider,
+          model: runtime.model,
+          temperature,
+          maxTokens,
+          messages: [
+            {
+              role: 'system',
+              content: agent.systemPrompt || `You are ${agent.name}, ${agent.role}.`,
+            },
+            {
+              role: 'user',
+              content: prompt,
+            },
+          ],
+          ollamaBaseUrl: input.ollamaBaseUrl,
+          ollamaContextWindow: input.ollamaContextWindow,
+          geminiApiKey: input.geminiApiKey,
+        })
+        return { text, provider: runtime.provider, model: runtime.model }
+      },
+    })
+
+    return {
+      response: calendarResult.response,
+      renderedHtml: calendarResult.renderedHtml,
+      executionSteps: calendarResult.executionSteps,
+      qualityResult: calendarResult.qualityResult,
+      creative: undefined,
     }
   }
 

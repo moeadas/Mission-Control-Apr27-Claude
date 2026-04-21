@@ -478,7 +478,7 @@ function extractBriefFields(text: string) {
   else if (/\b(report|document|white-?paper)\b/.test(lower)) fields.format = 'report'
 
   const timeframeMatch = text.match(/(?:month of\s+[A-Za-z]+|[A-Za-z]+\s+calendar|30-day calendar|14-day calendar|7-day calendar|this month|this week|this quarter|next quarter|next month|next week|\d+\s*-?\s*day calendar)/i)
-  if (timeframeMatch) fields.timeframe = timeframeMatch[0]
+  if (timeframeMatch && !/^[A-Za-z]+\s+calendar$/i.test(timeframeMatch[0])) fields.timeframe = timeframeMatch[0]
 
   const cadenceMatch = text.match(/(\d+\s+posts?\s+(?:per\s+(?:channel|platform)|for each platform|per platform)|daily posting cadence|daily|\d+x?\s*(?:per|times?\s+per)\s*week)/i)
   if (cadenceMatch) fields.cadence = cadenceMatch[0]

@@ -247,6 +247,13 @@ function buildClientProfile(client: any) {
   })
 }
 
+function sanitizeExecutionRequestText(value: string) {
+  return value
+    .replace(/^- Timeframe:\s*content calendar\s*$/gim, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 export async function runTaskExecution(
   taskId: string,
   auth: AuthContext,
@@ -325,9 +332,7 @@ export async function runTaskExecution(
       ...(options?.runtimeMode ? { runtimeMode: options.runtimeMode } : {}),
     },
   })
-  const effectiveRequest = options?.comment?.trim()
-    ? `${task.summary || task.title}\n\nReviewer requested these changes:\n${options.comment.trim()}`
-    : task.summary || task.title
+  const effectiveRequest = sanitizeExecutionRequestText(task.summary || task.title)
   const selectedRuntime = resolveTaskRuntime({
     settings: providerSettings,
     deliverableType: task.deliverable_type,
@@ -492,37 +497,44 @@ export async function runTaskExecution(
     const now = new Date().toISOString()
     const renderedHtml = result.renderedHtml || buildArtifactHtml(result.response)
 
-    await supabase.from('outputs').upsert(
-      {
-        id: artifactId,
-        agency_id: agencyId,
-        task_id: taskId,
-        client_id: task.client_id || null,
-        agent_id: channelingPlan.leadAgentId || task.lead_agent_id || null,
-        title: task.title,
-        deliverable_type: task.deliverable_type,
-        status: result.qualityResult?.ok ? 'draft' : 'draft',
-        owner_user_id: task.owner_user_id || null,
-        format: result.creative?.assetUrl || result.creative?.assetPath ? 'image' : 'html',
-        content: result.response,
-        rendered_html: renderedHtml,
-        public_url: result.creative?.assetUrl || null,
-        storage_path: result.creative?.assetPath || null,
-        creative: result.creative || null,
-        source_prompt: task.summary || task.title,
-        notes: result.qualityResult?.ok ? 'Generated via task execution runner.' : `Quality issues: ${(result.qualityResult?.issues || []).join(' | ')}`,
-        execution_steps: result.executionSteps,
-        created_at: outputs?.[0]?.created_at || now,
-        updated_at: now,
-      },
-      { onConflict: 'id' }
-    )
+    const outputPayload = {
+      id: artifactId,
+      agency_id: agencyId,
+      task_id: taskId,
+      client_id: task.client_id || null,
+      agent_id: channelingPlan.leadAgentId || task.lead_agent_id || null,
+      title: task.title,
+      deliverable_type: task.deliverable_type,
+      status: 'draft',
+      owner_user_id: task.owner_user_id || null,
+      format: result.creative?.assetUrl || result.creative?.assetPath ? 'image' : 'html',
+      content: result.response,
+      rendered_html: renderedHtml,
+      public_url: result.creative?.assetUrl || null,
+      storage_path: result.creative?.assetPath || null,
+      creative: result.creative || {},
+      exports: {},
+      metadata: {},
+      source_prompt: task.summary || task.title,
+      notes: result.qualityResult?.ok ? 'Generated via task execution runner.' : `Quality issues: ${(result.qualityResult?.issues || []).join(' | ')}`,
+      execution_steps: result.executionSteps,
+      created_at: outputs?.[0]?.created_at || now,
+      updated_at: now,
+    }
+
+    const { error: outputUpsertError } = await supabase.from('outputs').upsert(outputPayload, { onConflict: 'id' })
+    if (outputUpsertError) {
+      const { error: outputInsertError } = await supabase.from('outputs').insert(outputPayload)
+      if (outputInsertError) {
+        throw new Error(`Failed to persist output artifact: ${outputUpsertError.message} / ${outputInsertError.message}`)
+      }
+    }
 
     await supabase
       .from('tasks')
       .update({
-        status: result.qualityResult?.ok ? 'review' : 'blocked',
-        progress: result.qualityResult?.ok ? 80 : 20,
+        status: result.qualityResult?.ok ? 'completed' : 'blocked',
+        progress: result.qualityResult?.ok ? 100 : 20,
         execution_plan: {
           ...(task.execution_plan || {}),
           assignedAgentIds: channelingPlan.assignedAgentIds,
@@ -535,7 +547,7 @@ export async function runTaskExecution(
                 entry.status === 'open' ? { ...entry, status: 'addressed' } : entry
               )
             : [],
-          reviewStatus: result.qualityResult?.ok ? 'pending' : 'changes_requested',
+          reviewStatus: result.qualityResult?.ok ? 'approved' : 'changes_requested',
           runtimeMode: providerSettings.routing.runtimeMode,
           compareSummary: compareSummary || null,
           handoffNotes: result.qualityResult?.ok
@@ -565,9 +577,9 @@ export async function runTaskExecution(
     await upsertWorkflowExecutionState({
       taskId,
       pipelineId: pipeline?.id || task.pipeline_id,
-      status: result.qualityResult?.ok ? 'paused' : 'paused',
-      currentPhase: result.qualityResult?.ok ? 'Review' : (pipeline?.phases?.at(-1)?.name || 'Quality Control'),
-      progress: result.qualityResult?.ok ? 88 : 82,
+      status: result.qualityResult?.ok ? 'completed' : 'paused',
+      currentPhase: result.qualityResult?.ok ? 'Completed' : (pipeline?.phases?.at(-1)?.name || 'Quality Control'),
+      progress: result.qualityResult?.ok ? 100 : 82,
       context: {
         action,
         quality: result.qualityResult,
