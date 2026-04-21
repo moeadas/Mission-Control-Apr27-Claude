@@ -1,0 +1,145 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "concept-testing",
+  "name": "Concept Testing",
+  "description": "Tests creative concepts with target audiences before full production to validate ideas, identify strengths and weaknesses, and reduce the risk of launching creative that doesn't resonate.",
+  "category": "research",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time testing creative concepts with target audiences before full production — to validate ideas, identify which concepts resonate most strongly, and gather feedback to strengthen the concept.",
+      "context": "You are a research strategist who designs and executes concept tests to validate creative directions with real target audience members before committing production resources.",
+      "instructions": "## Concept Testing\n\n1. **Objective Definition** — Define what decisions the test will inform\n   - ✓ Done when: Objectives are clear and actionable\n\n2. **Concept Selection** — Select 2-4 concepts to test\n   - ✓ Done when: Concepts are distinct enough to compare\n\n3. **Instrument Design** — Design survey or discussion guide\n   - ✓ Done when: Instrument captures decision-relevant data\n\n4. **Execution** — Conduct testing with target audience\n   - ✓ Done when: Participants are representative\n\n5. **Analysis** — Score concepts and synthesize feedback\n   - ✓ Done when: Analysis is objective and evidenced\n\n6. **Recommendation** — Recommend which concept(s) to proceed with\n   - ✓ Done when: Recommendation is clear and evidenced\n\n## Key Inputs\n- concepts: Concepts to be tested\n- target_audience: Target audience for testing\n- test_method: Testing method (survey, focus group, interview)\n- sample_size: Number of participants",
+      "output_template": "## Concept Test Report\n\n### Test Overview\n| Field | Value |\n|-------|-------|\n| Test objective | |\n| Date conducted | |\n| Method | |\n| Sample size | |\n| Target audience | |\n\n### Concepts Tested\n| Concept | Description |\n|---------|------------|\n| A | |\n| B | |\n| C | |\n\n### Results Summary\n| Metric | Concept A | Concept B | Concept C |\n|--------|-----------|-----------|-----------|\n| Comprehension | | | |\n| Appeal | | | |\n| Relevance | | | |\n| Uniqueness | | | |\n| Purchase intent | | | |\n| Overall score | | | |\n\n### Key Feedback Themes\n\n**Concept A — Strengths:**\n**Concept A — Weaknesses:**\n\n**Concept B — Strengths:**\n**Concept B — Weaknesses:**\n\n**Concept C — Strengths:**\n**Concept C — Weaknesses:**\n\n### Concept Comparison Matrix\n| Criterion | A | B | C | Weight |\n|-----------|---|---|---|--------|\n| | | | | |\n\n### Recommendation\n**Proceed with:**\n**Rationale:**\n**Modifications recommended:**\n\n### Next Steps\n| Action | Owner | By when |\n|--------|-------|---------|\n| | | |"
+    }
+  },
+  "variables": [
+    {
+      "name": "concepts",
+      "type": "string",
+      "required": true,
+      "description": "Concepts to be tested"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience for testing"
+    },
+    {
+      "name": "test_method",
+      "type": "string",
+      "required": false,
+      "description": "Testing method (survey, focus group, interview)"
+    },
+    {
+      "name": "sample_size",
+      "type": "string",
+      "required": false,
+      "description": "Number of participants"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "concepts",
+      "type": "string",
+      "required": true,
+      "description": "Concepts to be tested"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience for testing"
+    },
+    {
+      "name": "test_method",
+      "type": "string",
+      "required": false,
+      "description": "Testing method (survey, focus group, interview)"
+    },
+    {
+      "name": "sample_size",
+      "type": "string",
+      "required": false,
+      "description": "Number of participants"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Objective Definition",
+        "action": "Define what decisions the test will inform",
+        "verify": "Objectives are clear and actionable"
+      },
+      {
+        "step": 2,
+        "name": "Concept Selection",
+        "action": "Select 2-4 concepts to test",
+        "verify": "Concepts are distinct enough to compare"
+      },
+      {
+        "step": 3,
+        "name": "Instrument Design",
+        "action": "Design survey or discussion guide",
+        "verify": "Instrument captures decision-relevant data"
+      },
+      {
+        "step": 4,
+        "name": "Execution",
+        "action": "Conduct testing with target audience",
+        "verify": "Participants are representative"
+      },
+      {
+        "step": 5,
+        "name": "Analysis",
+        "action": "Score concepts and synthesize feedback",
+        "verify": "Analysis is objective and evidenced"
+      },
+      {
+        "step": 6,
+        "name": "Recommendation",
+        "action": "Recommend which concept(s) to proceed with",
+        "verify": "Recommendation is clear and evidenced"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Test three creative concepts for TechStart's Q2 campaign: (A) product-features led, (B) customer-story led, (C) problem-aware led. Target: CFOs at mid-market companies. Method: 60-minute focus groups, 3 groups.",
+      "output": "Concept test report with scoring, qualitative feedback synthesis, and clear recommendation"
+    }
+  ],
+  "checklist": [
+    "Objectives are clear and actionable",
+    "Concepts are distinct enough to compare",
+    "Instrument captures decision-relevant data",
+    "Participants are representative",
+    "Analysis is objective and evidenced",
+    "Recommendation is clear and evidenced"
+  ],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "finn"
+  ],
+  "pipelines": [
+    "research"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "research",
+      "concept-testing",
+      "creative",
+      "validation"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

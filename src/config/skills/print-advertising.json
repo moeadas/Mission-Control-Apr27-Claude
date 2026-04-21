@@ -1,0 +1,138 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "print-advertising",
+  "name": "Print Advertising",
+  "description": "Plans print advertising campaigns across newspapers, magazines, and trade publications including publication selection, format sizing, and placement strategy.",
+  "category": "media",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time planning print advertising across newspapers, magazines, trade journals, or any print media as part of a broader media strategy.",
+      "context": "You are a print media specialist who selects publications, negotiates placements, and maximizes impact from print advertising. You understand circulation data, readership profiles, and how print supports brand credibility and awareness.",
+      "instructions": "## Print Advertising\n\n1. **Publication Research** — Identify relevant publications\n   - ✓ Done when: Publications reach target audience\n\n2. **Circulation Analysis** — Compare readership and CPT\n   - ✓ Done when: Data is current and verified\n\n3. **Format Selection** — Choose ad sizes and formats\n   - ✓ Done when: Formats match budget and impact goals\n\n4. **Placement Strategy** — Recommend positions and sections\n   - ✓ Done when: Placements maximize visibility\n\n5. **Scheduling** — Plan insertion dates\n   - ✓ Done when: Schedule aligns with campaign timing\n\n## Key Inputs\n- client_name: Client or brand name\n- target_audience: Target audience\n- budget: Print advertising budget\n- markets: Geographic markets",
+      "output_template": "## Print Plan: {{client_name}}\n\n### Publication Selection\n| Publication | Readership | Circulation | CPT | Audience Fit | Priority |\n|------------|-----------|-------------|-----|-------------|----------|\n| | | | | High / Med | Primary |\n\n### Ad Specifications\n| Publication | Size | Position | Cost/Insert | Insertions | Total |\n|------------|------|----------|-------------|------------|-------|\n| | Full Page | RHP | | | |\n\n### Schedule\n| Month | Publication | Issue Date | Booking Deadline | Materials Due |\n|-------|-----------|------------|-----------------|---------------|\n| | | | | |\n\n### Budget Summary\n| Publication | Insertions | Rate Card | Negotiated | Savings |\n|------------|-----------|-----------|------------|--------|\n| | | | | |"
+    }
+  },
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Print advertising budget"
+    },
+    {
+      "name": "markets",
+      "type": "string",
+      "required": true,
+      "description": "Geographic markets"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Print advertising budget"
+    },
+    {
+      "name": "markets",
+      "type": "string",
+      "required": true,
+      "description": "Geographic markets"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Publication Research",
+        "action": "Identify relevant publications",
+        "verify": "Publications reach target audience"
+      },
+      {
+        "step": 2,
+        "name": "Circulation Analysis",
+        "action": "Compare readership and CPT",
+        "verify": "Data is current and verified"
+      },
+      {
+        "step": 3,
+        "name": "Format Selection",
+        "action": "Choose ad sizes and formats",
+        "verify": "Formats match budget and impact goals"
+      },
+      {
+        "step": 4,
+        "name": "Placement Strategy",
+        "action": "Recommend positions and sections",
+        "verify": "Placements maximize visibility"
+      },
+      {
+        "step": 5,
+        "name": "Scheduling",
+        "action": "Plan insertion dates",
+        "verify": "Schedule aligns with campaign timing"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Plan print advertising for a luxury watch brand in GCC targeting affluent professionals, AED 80K budget.",
+      "output": "Gulf News Weekend (full page RHP), Esquire ME (DPS), Time Out Dubai (half page). 3 insertions each over 2 months. Total reach: 450K readers, avg. CPT AED 35."
+    }
+  ],
+  "checklist": [
+    "Publications reach target audience",
+    "Data is current and verified",
+    "Formats match budget and impact goals",
+    "Placements maximize visibility",
+    "Schedule aligns with campaign timing"
+  ],
+  "tools": [
+    "analytics",
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "nova"
+  ],
+  "pipelines": [
+    "media-plan"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "media",
+      "planning",
+      "print-advertising"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

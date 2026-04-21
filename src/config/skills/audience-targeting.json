@@ -1,0 +1,163 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "audience-targeting",
+  "name": "Audience Targeting",
+  "description": "Defines audience targeting strategies for paid media including demographics, lookalike modeling, exclusions, and optimization plans.",
+  "category": "media",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time defining audience targeting strategies for paid media campaigns, selecting audience segments, or optimizing targeting parameters.",
+      "context": "You are a media planning specialist with expertise in audience targeting, segmentation strategies, and paid media optimization.",
+      "instructions": "## Audience Targeting\n\n1. **Objective Alignment** — Match targeting to campaign goals\n   - ✓ Done when: Targeting serves the stated objective\n\n2. **Audience Definition** — Define primary and secondary targets\n   - ✓ Done when: Audiences are specific and reachable\n\n3. **Platform Selection** — Choose platforms that match audience\n   - ✓ Done when: Platform selection is data-informed\n\n4. **Parameter Setup** — Configure targeting parameters\n   - ✓ Done when: Parameters are specific but not restrictive\n\n5. **Exclusion Strategy** — Define exclusions to improve efficiency\n   - ✓ Done when: Exclusions do not harm reach\n\n## Key Inputs\n- client_name: Client brand name\n- campaign_name: Campaign name\n- campaign_objective: Campaign objective (awareness, consideration, conversion)\n- target_audience: Primary target audience\n- budget: Campaign budget\n- exclusion_criteria: Exclusion parameters",
+      "output_template": "## Audience Targeting Strategy: {{client_name}}\n\n### Campaign Overview\n| Parameter | Value |\n|-----------|-------|\n| Client | {{client_name}} |\n| Campaign | {{campaign_name}} |\n| Objective | {{campaign_objective}} |\n| Budget | {{budget}} |\n\n### Primary Audience\n| Attribute | Targeting Parameter |\n|-----------|---------------------|\n| Age | |\n| Gender | |\n| Location | |\n| Language | |\n| Interests | |\n| Behaviors | |\n\n### Secondary Audience\n| Attribute | Targeting Parameter |\n|-----------|---------------------|\n| | |\n\n### Platform Targeting Matrix\n| Platform | Audience Size | Estimated CPM | Fit Score |\n|----------|---------------|--------------|----------|\n| Meta | | | |\n| Google | | | |\n| LinkedIn | | | |\n| TikTok | | | |\n\n### Lookalike and Expansion\n| Source Audience | Platform | Lookalike % | Expected reach |\n|----------------|----------|-------------|----------------|\n| | | | |\n\n### Exclusions\n| Category | Criteria | Rationale |\n|----------|----------|------------|\n| Past purchasers | {{exclude_past}} | |\n| Competitor users | {{exclude_competitors}} | |\n\n### Optimization Plan\n| Phase | Targeting Adjustment | Trigger |\n|-------|----------------------|---------|\n| Week 1-2 | | |\n| Week 3-4 | | |"
+    }
+  },
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client brand name"
+    },
+    {
+      "name": "campaign_name",
+      "type": "string",
+      "required": true,
+      "description": "Campaign name"
+    },
+    {
+      "name": "campaign_objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objective (awareness, consideration, conversion)"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Primary target audience"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Campaign budget"
+    },
+    {
+      "name": "exclusion_criteria",
+      "type": "string",
+      "required": false,
+      "description": "Exclusion parameters"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client brand name"
+    },
+    {
+      "name": "campaign_name",
+      "type": "string",
+      "required": true,
+      "description": "Campaign name"
+    },
+    {
+      "name": "campaign_objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objective (awareness, consideration, conversion)"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Primary target audience"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Campaign budget"
+    },
+    {
+      "name": "exclusion_criteria",
+      "type": "string",
+      "required": false,
+      "description": "Exclusion parameters"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Objective Alignment",
+        "action": "Match targeting to campaign goals",
+        "verify": "Targeting serves the stated objective"
+      },
+      {
+        "step": 2,
+        "name": "Audience Definition",
+        "action": "Define primary and secondary targets",
+        "verify": "Audiences are specific and reachable"
+      },
+      {
+        "step": 3,
+        "name": "Platform Selection",
+        "action": "Choose platforms that match audience",
+        "verify": "Platform selection is data-informed"
+      },
+      {
+        "step": 4,
+        "name": "Parameter Setup",
+        "action": "Configure targeting parameters",
+        "verify": "Parameters are specific but not restrictive"
+      },
+      {
+        "step": 5,
+        "name": "Exclusion Strategy",
+        "action": "Define exclusions to improve efficiency",
+        "verify": "Exclusions do not harm reach"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Create output for TechStart - a B2B SaaS company in fintech, targeting CFOs and Finance Directors in UAE",
+      "output": "Full deliverable with all sections filled with B2B fintech context, data-driven insights, and actionable recommendations"
+    }
+  ],
+  "checklist": [
+    "Targeting serves the stated objective",
+    "Audiences are specific and reachable",
+    "Platform selection is data-informed",
+    "Parameters are specific but not restrictive",
+    "Exclusions do not harm reach"
+  ],
+  "tools": [
+    "analytics",
+    "spreadsheet"
+  ],
+  "agents": [
+    "dex",
+    "nova"
+  ],
+  "pipelines": [
+    "media-plan"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "targeting",
+      "media",
+      "audience",
+      "paid-ads"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

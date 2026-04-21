@@ -1,0 +1,250 @@
+{
+  "id": "ad-creative",
+  "name": "Ad Creative Production",
+  "description": "End-to-end workflow for producing high-performance ad creatives with A/B testing",
+  "version": "1.0",
+  "isDefault": true,
+  "estimatedDuration": "7 days",
+  "clientProfileFields": [
+    {
+      "id": "brand_name",
+      "label": "Brand Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "product_service",
+      "label": "Product/Service",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "campaign_objective",
+      "label": "Campaign Objective",
+      "type": "select",
+      "options": [
+        "awareness",
+        "consideration",
+        "conversion"
+      ],
+      "required": true
+    },
+    {
+      "id": "target_audience",
+      "label": "Target Audience",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "primary_platform",
+      "label": "Primary Platform",
+      "type": "select",
+      "options": [
+        "Instagram",
+        "Facebook",
+        "Google",
+        "LinkedIn",
+        "TikTok"
+      ],
+      "required": true
+    },
+    {
+      "id": "ad_formats",
+      "label": "Required Ad Formats",
+      "type": "multiselect",
+      "options": [
+        "Image",
+        "Video",
+        "Carousel",
+        "Story",
+        "Reel"
+      ],
+      "required": true
+    },
+    {
+      "id": "budget",
+      "label": "Ad Budget",
+      "type": "text",
+      "required": true
+    }
+  ],
+  "phases": [
+    {
+      "id": "briefing",
+      "name": "Creative Briefing",
+      "color": "#4f8ef7",
+      "activities": [
+        {
+          "id": "briefing-1",
+          "name": "Audience & Objective Definition",
+          "description": "Define target audience and campaign objectives",
+          "assignedRole": "media-planner",
+          "inputs": [
+            "campaign-brief",
+            "previous-ad-data"
+          ],
+          "outputs": [
+            "ad-brief",
+            "targeting-spec"
+          ],
+          "checklist": [
+            "Campaign objective selected",
+            "Target audience detailed",
+            "Geographic targeting set",
+            "Age/gender parameters defined",
+            "Custom audience specified"
+          ],
+          "prompts": {
+            "en": "Define ad campaign brief. Inject {{campaign_objective}}, {{target_audience}}, {{primary_platform}}. Include targeting specs.",
+            "ar": "تحديد موجز حملة الإعلانات. حقن {{campaign_objective}}، {{target_audience}}."
+          }
+        }
+      ]
+    },
+    {
+      "id": "concepting",
+      "name": "Creative Concepting",
+      "color": "#9b6dff",
+      "activities": [
+        {
+          "id": "concepting-1",
+          "name": "Creative Concepts",
+          "description": "Develop multiple creative concepts for testing",
+          "assignedRole": "creative-director",
+          "inputs": [
+            "ad-brief"
+          ],
+          "outputs": [
+            "creative-concepts",
+            "copy-angles"
+          ],
+          "checklist": [
+            "3+ distinct concepts created",
+            "Each concept has unique hook",
+            "Value proposition clear",
+            "CTA defined per concept",
+            "Visual approach specified"
+          ],
+          "prompts": {
+            "en": "Develop 3+ creative concepts. Inject {{product_service}}, {{campaign_objective}}, {{target_audience}}. Each concept needs unique hook, value prop, CTA, visual approach.",
+            "ar": "تطوير 3+ مفاهيم إبداعية. حقن {{product_service}}، {{campaign_objective}}."
+          }
+        }
+      ]
+    },
+    {
+      "id": "production",
+      "name": "Asset Production",
+      "color": "#00d4aa",
+      "activities": [
+        {
+          "id": "production-1",
+          "name": "Copy & Visual Pairing",
+          "description": "Create all copy variants and pair with visuals",
+          "assignedRole": "copy",
+          "inputs": [
+            "creative-concepts",
+            "visual-specs"
+          ],
+          "outputs": [
+            "ad-variants"
+          ],
+          "checklist": [
+            "Headline variants written",
+            "Body copy optimized",
+            "CTA buttons varied",
+            "Visual pairings created",
+            "Format specs met per platform"
+          ],
+          "prompts": {
+            "en": "Create ad copy variants. Inject {{creative_concepts}}, {{primary_platform}}. Apply platform ad specs. Include headline, body, CTA.",
+            "ar": "إنشاء متغيرات نسخ الإعلانات. تطبيق مواصفات المنصة."
+          },
+          "batching": {
+            "batchSize": 5,
+            "parallel": false
+          }
+        },
+        {
+          "id": "production-2",
+          "name": "Visual Production",
+          "description": "Create all visual assets",
+          "assignedRole": "visual-producer",
+          "inputs": [
+            "ad-variants",
+            "visual-specs"
+          ],
+          "outputs": [
+            "ad-assets"
+          ],
+          "checklist": [
+            "All visuals created",
+            "A/B variants prepared",
+            "Platform specs met",
+            "Accessibility checked",
+            "Files organized"
+          ],
+          "prompts": {
+            "en": "Create all visual assets per specs. Inject {{ad_formats}}, {{visual_specs}}. Ensure platform specs met.",
+            "ar": "إنشاء جميع الأصول البصرية. ضمان استيفاء مواصفات المنصة."
+          }
+        }
+      ]
+    },
+    {
+      "id": "testing",
+      "name": "Testing & Optimization",
+      "color": "#ff5fa0",
+      "activities": [
+        {
+          "id": "testing-1",
+          "name": "A/B Test Setup",
+          "description": "Configure and launch A/B tests",
+          "assignedRole": "media-planner",
+          "inputs": [
+            "ad-assets"
+          ],
+          "outputs": [
+            "test-configured",
+            "initial-results"
+          ],
+          "checklist": [
+            "Test split configured",
+            "Statistical significance target set",
+            "Test duration defined",
+            "Success metrics established",
+            "Monitoring dashboard ready"
+          ],
+          "prompts": {
+            "en": "Configure A/B tests. Define test split, significance target, duration, success metrics. Inject {{budget}}.",
+            "ar": "تكوين اختبارات A/B. تحديد انقسام الاختبار، هدف الأهمية، المدة."
+          }
+        },
+        {
+          "id": "testing-2",
+          "name": "Performance Analysis",
+          "description": "Analyze test results and scale winners",
+          "assignedRole": "performance",
+          "inputs": [
+            "test-results"
+          ],
+          "outputs": [
+            "winning-ads",
+            "optimization-report"
+          ],
+          "checklist": [
+            "Statistical winners identified",
+            "Budget reallocated to winners",
+            "Underperformers paused",
+            "Scaling recommendations ready",
+            "Learnings documented"
+          ],
+          "prompts": {
+            "en": "Analyze A/B test results. Identify winners, reallocate budget, document learnings. Inject {{test_results}}.",
+            "ar": "تحليل نتائج اختبار A/B. تحديد الفائزين، إعادة تخصيص الميزانية."
+          }
+        }
+      ]
+    }
+  ]
+}

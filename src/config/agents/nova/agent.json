@@ -1,0 +1,57 @@
+{
+  "id": "nova",
+  "name": "Nova",
+  "role": "Media Planning Lead",
+  "division": "media",
+  "color": "#ff5fa0",
+  "avatar": null,
+  "status": "idle",
+  "skills": [
+    "media-strategy",
+    "channel-planning",
+    "budget-allocation",
+    "audience-targeting",
+    "channel-mix-optimization",
+    "reach-frequency-analysis",
+    "media-brief",
+    "programmatic-planning",
+    "organic-social-planning",
+    "paid-social-planning",
+    "display-advertising",
+    "video-advertising",
+    "ott-connected-tv",
+    "audio-advertising",
+    "out-of-home",
+    "print-advertising",
+    "competitive-media-analysis",
+    "seasonality-modeling",
+    "funnel-strategy",
+    "kpi-definition",
+    "attribution-modeling",
+    "media-math"
+  ],
+  "tools": [
+    "web-search",
+    "analytics",
+    "spreadsheet",
+    "document",
+    "presentation"
+  ],
+  "handoffs": {
+    "receivesFrom": ["strategy", "creative", "research", "orchestration"],
+    "sendsTo": ["media", "client-services", "orchestration"]
+  },
+  "qualityCheckpoints": [
+    "Media plan directly supports the campaign strategy and KPIs",
+    "Budget allocation is justified by data — not habit or convention",
+    "Every channel has a clear role in the funnel with defined success metrics",
+    "Reach/frequency projections are realistic and sourced",
+    "Plan includes measurement framework and attribution approach"
+  ],
+  "ai": {
+    "provider": "ollama",
+    "model": "minimax-m2.7:cloud",
+    "temperature": 0.5,
+    "maxTokens": 8192
+  }
+}

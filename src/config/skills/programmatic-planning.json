@@ -1,0 +1,183 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "programmatic-planning",
+  "name": "Programmatic Planning",
+  "description": "Plans and structures programmatic advertising campaigns including DSP selection, audience segments, bidding strategies, deal types, and inventory sources for maximum efficiency and brand safety.",
+  "category": "media",
+  "difficulty": "advanced",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time planning programmatic display, video, or audio campaigns including dsp setup, audience strategy, deal structures, and bid optimization.",
+      "context": "You are a programmatic media specialist who plans data-driven automated media buys. You understand DSP platforms, audience segments, bidding algorithms, deal types (open exchange, PMP, PG), brand safety, and viewability standards.",
+      "instructions": "## Programmatic Planning\n\n1. **Campaign Structure** — Design campaign hierarchy in DSP\n   - ✓ Done when: Structure supports optimization granularity\n\n2. **DSP Selection** — Select DSP based on requirements\n   - ✓ Done when: DSP access matches inventory and data needs\n\n3. **Audience Strategy** — Build layered targeting approach\n   - ✓ Done when: Audience layers avoid over-narrowing\n\n4. **Inventory Strategy** — Select deal types and exchanges\n   - ✓ Done when: Inventory quality matches brand requirements\n\n5. **Bidding Strategy** — Set bid types and targets per line item\n   - ✓ Done when: Bid strategy aligns with objectives\n\n6. **Brand Safety** — Configure safety and viewability measures\n   - ✓ Done when: Brand safety is comprehensive\n\n7. **Creative Mapping** — Map creatives to segments and placements\n   - ✓ Done when: Creative relevance maximized\n\n8. **Optimization Plan** — Define pacing, triggers, and rules\n   - ✓ Done when: Optimization triggers are automated where possible\n\n## Key Inputs\n- client_name: Client or brand name\n- campaign_objective: Campaign objective (awareness, traffic, conversions)\n- budget: Programmatic budget\n- target_audience: Target audience segments\n- ad_formats: Ad formats (display, video, native, audio)\n- dsp_platform: Preferred DSP platform (DV360, TTD, Amazon DSP)",
+      "output_template": "## Programmatic Plan: {{client_name}}\n\n### Campaign Structure\n| Level | Name | Objective | Budget | Dates |\n|-------|------|-----------|--------|-------|\n| Campaign | | | | |\n| Line Item 1 | | | | |\n| Line Item 2 | | | | |\n\n### DSP Selection\n| DSP | Rationale | Unique Inventory | Data Access |\n|-----|-----------|-----------------|-------------|\n| | | | |\n\n### Audience Strategy\n| Layer | Source | Segment | Est. Size | Priority |\n|-------|--------|---------|-----------|----------|\n| 1st Party | CRM / Pixel | | | High |\n| 2nd Party | Publisher | | | Medium |\n| 3rd Party | Data Provider | | | Low |\n| Contextual | Keywords / Topics | | | |\n\n### Inventory Strategy\n| Deal Type | Publishers / Exchanges | Format | CPM Range |\n|-----------|----------------------|--------|----------|\n| PG | | | |\n| PMP | | | |\n| Open Exchange | | | |\n\n### Bidding Strategy\n| Line Item | Bid Type | Target | Cap |\n|-----------|----------|--------|-----|\n| | Target CPA / vCPM / Max Conv | | |\n\n### Brand Safety Configuration\n| Measure | Setting | Tool |\n|---------|---------|------|\n| Pre-bid | | IAS / DV |\n| Viewability | | |\n| Exclusion lists | | |\n\n### Optimization Triggers\n| Trigger | Threshold | Action |\n|---------|-----------|--------|\n| Low viewability | < 60% | Pause placement |\n| High CPA | > {{target_cpa}} | Reduce bid |"
+    }
+  },
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "campaign_objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objective (awareness, traffic, conversions)"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Programmatic budget"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience segments"
+    },
+    {
+      "name": "ad_formats",
+      "type": "string",
+      "required": true,
+      "description": "Ad formats (display, video, native, audio)"
+    },
+    {
+      "name": "dsp_platform",
+      "type": "string",
+      "required": false,
+      "description": "Preferred DSP platform (DV360, TTD, Amazon DSP)"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "campaign_objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objective (awareness, traffic, conversions)"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Programmatic budget"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience segments"
+    },
+    {
+      "name": "ad_formats",
+      "type": "string",
+      "required": true,
+      "description": "Ad formats (display, video, native, audio)"
+    },
+    {
+      "name": "dsp_platform",
+      "type": "string",
+      "required": false,
+      "description": "Preferred DSP platform (DV360, TTD, Amazon DSP)"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Campaign Structure",
+        "action": "Design campaign hierarchy in DSP",
+        "verify": "Structure supports optimization granularity"
+      },
+      {
+        "step": 2,
+        "name": "DSP Selection",
+        "action": "Select DSP based on requirements",
+        "verify": "DSP access matches inventory and data needs"
+      },
+      {
+        "step": 3,
+        "name": "Audience Strategy",
+        "action": "Build layered targeting approach",
+        "verify": "Audience layers avoid over-narrowing"
+      },
+      {
+        "step": 4,
+        "name": "Inventory Strategy",
+        "action": "Select deal types and exchanges",
+        "verify": "Inventory quality matches brand requirements"
+      },
+      {
+        "step": 5,
+        "name": "Bidding Strategy",
+        "action": "Set bid types and targets per line item",
+        "verify": "Bid strategy aligns with objectives"
+      },
+      {
+        "step": 6,
+        "name": "Brand Safety",
+        "action": "Configure safety and viewability measures",
+        "verify": "Brand safety is comprehensive"
+      },
+      {
+        "step": 7,
+        "name": "Creative Mapping",
+        "action": "Map creatives to segments and placements",
+        "verify": "Creative relevance maximized"
+      },
+      {
+        "step": 8,
+        "name": "Optimization Plan",
+        "action": "Define pacing, triggers, and rules",
+        "verify": "Optimization triggers are automated where possible"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Plan a programmatic campaign for a luxury automotive brand targeting affluent professionals 30-55 in UAE with AED 300K budget, display and video formats.",
+      "output": "DV360-based plan with PMP deals from premium publishers (The National, Arabian Business), CRM retargeting, in-market auto audiences, viewable CPM bidding, and IAS brand safety filtering."
+    }
+  ],
+  "checklist": [
+    "Structure supports optimization granularity",
+    "DSP access matches inventory and data needs",
+    "Audience layers avoid over-narrowing",
+    "Inventory quality matches brand requirements",
+    "Bid strategy aligns with objectives",
+    "Brand safety is comprehensive",
+    "Creative relevance maximized",
+    "Optimization triggers are automated where possible"
+  ],
+  "tools": [
+    "analytics",
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "nova"
+  ],
+  "pipelines": [
+    "media-plan"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "media",
+      "planning",
+      "programmatic-planning"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

@@ -1,0 +1,158 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "project-scheduling",
+  "name": "Project Scheduling",
+  "description": "Creates and manages project schedules, including task breakdown, dependencies, timelines, resource allocation, and critical path identification.",
+  "category": "operations",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time creating a project schedule — breaking down work into tasks, establishing dependencies, setting timelines, and identifying the critical path.",
+      "context": "You are a project manager who builds realistic, achievable schedules that account for dependencies, resources, and constraints while meeting project deadlines.",
+      "instructions": "## Project Scheduling\n\n1. **Work Breakdown** — Decompose project into tasks\n   - ✓ Done when: Tasks are discrete and estimable\n\n2. **Dependency Mapping** — Identify task dependencies\n   - ✓ Done when: Dependencies are logical\n\n3. **Duration Estimation** — Estimate task durations with team\n   - ✓ Done when: Estimates are realistic\n\n4. **Timeline Construction** — Build schedule with dates\n   - ✓ Done when: Schedule is achievable\n\n5. **Critical Path Analysis** — Identify critical path and float\n   - ✓ Done when: Critical path is clear\n\n6. **Validation** — Review with team and stakeholders\n   - ✓ Done when: Schedule is committed\n\n## Key Inputs\n- project_name: Project name\n- start_date: Project start date\n- end_date: Project end date or deadline\n- milestones: Key milestones to include\n- team_members: Team members available",
+      "output_template": "## Project Schedule: {{project_name}}\n\n### Project Overview\n| Field | Details |\n|-------|---------|\n| Start date | {{start_date}} |\n| End date | {{end_date}} |\n| Duration | |\n| Project manager | |\n\n### Key Milestones\n| Milestone | Date | Status |\n|-----------|------|--------|\n| | | |\n\n### Work Breakdown Structure\n\n**Phase 1: [Name]**\n| Task | Owner | Duration | Dependencies | Start | End |\n|------|-------|---------|-------------|-------|-----|\n| | | | | | |\n\n**Phase 2: [Name]**\n[Same structure]\n\n### Gantt Chart\n```\nTask                  | W1 | W2 | W3 | W4 | W5 | W6 |\n----------------------|----|----|----|----|----|----|\n[Task 1]              |████|    |    |    |    |    |\n[Task 2]              |████|████|    |    |    |    |\n[Task 3]              |    |████|████|    |    |    |\n[Task 4]              |    |    |████|████|    |    |    |\n[Task 5]              |    |    |    |████|████|    |\n[Task 6]              |    |    |    |    |████|████|\n```\n\n### Dependency Map\n| Task | Depends on | Blocks |\n|------|-----------|-------|\n| | | |\n\n### Critical Path\n| Task | Duration | Float |\n|------|---------|-------|\n| | | 0 days |\n\n**Total float in project:**\n\n### Resource Allocation\n| Team member | Tasks assigned | Capacity |\n|------------|----------------|----------|\n| | | |\n\n### Buffer Plan\n| Task | Risk | Buffer |\n|------|------|--------|\n| | | |\n\n### Schedule Contingencies\n| Risk | Impact | Contingency |\n|------|--------|-------------|\n| | | |\n\n### Validation\n- [ ] Team has reviewed and committed to schedule\n- [ ] Dependencies are realistic\n- [ ] Resources have capacity\n- [ ] Milestones are achievable\n- [ ] Buffer time is appropriate"
+    }
+  },
+  "variables": [
+    {
+      "name": "project_name",
+      "type": "string",
+      "required": true,
+      "description": "Project name"
+    },
+    {
+      "name": "start_date",
+      "type": "string",
+      "required": true,
+      "description": "Project start date"
+    },
+    {
+      "name": "end_date",
+      "type": "string",
+      "required": true,
+      "description": "Project end date or deadline"
+    },
+    {
+      "name": "milestones",
+      "type": "string",
+      "required": false,
+      "description": "Key milestones to include"
+    },
+    {
+      "name": "team_members",
+      "type": "string",
+      "required": false,
+      "description": "Team members available"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "project_name",
+      "type": "string",
+      "required": true,
+      "description": "Project name"
+    },
+    {
+      "name": "start_date",
+      "type": "string",
+      "required": true,
+      "description": "Project start date"
+    },
+    {
+      "name": "end_date",
+      "type": "string",
+      "required": true,
+      "description": "Project end date or deadline"
+    },
+    {
+      "name": "milestones",
+      "type": "string",
+      "required": false,
+      "description": "Key milestones to include"
+    },
+    {
+      "name": "team_members",
+      "type": "string",
+      "required": false,
+      "description": "Team members available"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Work Breakdown",
+        "action": "Decompose project into tasks",
+        "verify": "Tasks are discrete and estimable"
+      },
+      {
+        "step": 2,
+        "name": "Dependency Mapping",
+        "action": "Identify task dependencies",
+        "verify": "Dependencies are logical"
+      },
+      {
+        "step": 3,
+        "name": "Duration Estimation",
+        "action": "Estimate task durations with team",
+        "verify": "Estimates are realistic"
+      },
+      {
+        "step": 4,
+        "name": "Timeline Construction",
+        "action": "Build schedule with dates",
+        "verify": "Schedule is achievable"
+      },
+      {
+        "step": 5,
+        "name": "Critical Path Analysis",
+        "action": "Identify critical path and float",
+        "verify": "Critical path is clear"
+      },
+      {
+        "step": 6,
+        "name": "Validation",
+        "action": "Review with team and stakeholders",
+        "verify": "Schedule is committed"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Create project schedule for TechStart Q2 campaign launch. Deadline: June 30. Team: strategist, 2 designers, copywriter, media buyer. Key milestone: May 15 for creative review.",
+      "output": "Full project schedule with WBS, Gantt chart, dependencies, critical path, and resource allocation"
+    }
+  ],
+  "checklist": [
+    "Tasks are discrete and estimable",
+    "Dependencies are logical",
+    "Estimates are realistic",
+    "Schedule is achievable",
+    "Critical path is clear",
+    "Schedule is committed"
+  ],
+  "tools": [
+    "spreadsheet",
+    "document",
+    "project-management-tool"
+  ],
+  "agents": [
+    "piper"
+  ],
+  "pipelines": [
+    "project-management"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "operations",
+      "project-management",
+      "scheduling",
+      "planning"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

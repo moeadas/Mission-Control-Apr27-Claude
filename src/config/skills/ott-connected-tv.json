@@ -1,0 +1,157 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "ott-connected-tv",
+  "name": "OTT & Connected TV Planning",
+  "description": "Plans advertising campaigns across OTT (Over-The-Top) and Connected TV platforms, including inventory selection, targeting, measurement, and integration with broader media plans.",
+  "category": "media",
+  "difficulty": "advanced",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time planning ctv/ott campaigns, selecting streaming platforms for ad placement, or integrating connected tv into a broader media strategy.",
+      "context": "You are a CTV/OTT specialist who understands the streaming advertising landscape, including platform capabilities, targeting options, measurement approaches, and how CTV complements other digital channels.",
+      "instructions": "## OTT & Connected TV Planning\n\n1. **Landscape Assessment** — Map available CTV inventory in market\n   - ✓ Done when: Major platforms are covered\n\n2. **Platform Selection** — Select platforms by audience fit\n   - ✓ Done when: Selection is evidence-based\n\n3. **Targeting Strategy** — Define targeting layers\n   - ✓ Done when: Targeting is precise but scalable\n\n4. **Creative Specs** — Specify formats and lengths\n   - ✓ Done when: Specs match platform requirements\n\n5. **Frequency Management** — Set cross-platform caps\n   - ✓ Done when: Caps prevent over-exposure\n\n6. **Measurement Plan** — Define CTV metrics and tools\n   - ✓ Done when: Measurement covers reach and impact\n\n## Key Inputs\n- client_name: Client or brand name\n- market: Geographic market\n- target_audience: Target audience\n- budget: CTV/OTT budget\n- campaign_objective: Campaign objective",
+      "output_template": "## CTV/OTT Plan: {{client_name}}\n\n### Platform Selection\n| Platform | Type | Audience Reach | CPM Range | Brand Safety |\n|----------|------|---------------|-----------|-------------|\n| | AVOD / FAST / Publisher | | | |\n\n### Targeting Strategy\n| Method | Source | Coverage | Priority |\n|--------|--------|----------|----------|\n| Household | IP / Device Graph | | |\n| Behavioral | 1P / 3P Data | | |\n| Contextual | Content/Genre | | |\n\n### Ad Specifications\n| Format | Length | Skippable | Platform |\n|--------|--------|-----------|----------|\n| Pre-roll | 15s / 30s | No | |\n| Mid-roll | 30s | No | |\n\n### Budget & Reach Estimates\n| Platform | Budget | Est. Impressions | Est. Reach | Completion Rate |\n|----------|--------|-----------------|------------|----------------|\n| | | | | 95%+ |\n\n### Measurement Framework\n| Metric | Method | Tool |\n|--------|--------|------|\n| Video Completion | Platform reporting | |\n| Incremental Reach | Cross-screen dedup | |\n| Brand Lift | Exposed vs. control | |"
+    }
+  },
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "market",
+      "type": "string",
+      "required": true,
+      "description": "Geographic market"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "CTV/OTT budget"
+    },
+    {
+      "name": "campaign_objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objective"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "market",
+      "type": "string",
+      "required": true,
+      "description": "Geographic market"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "CTV/OTT budget"
+    },
+    {
+      "name": "campaign_objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objective"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Landscape Assessment",
+        "action": "Map available CTV inventory in market",
+        "verify": "Major platforms are covered"
+      },
+      {
+        "step": 2,
+        "name": "Platform Selection",
+        "action": "Select platforms by audience fit",
+        "verify": "Selection is evidence-based"
+      },
+      {
+        "step": 3,
+        "name": "Targeting Strategy",
+        "action": "Define targeting layers",
+        "verify": "Targeting is precise but scalable"
+      },
+      {
+        "step": 4,
+        "name": "Creative Specs",
+        "action": "Specify formats and lengths",
+        "verify": "Specs match platform requirements"
+      },
+      {
+        "step": 5,
+        "name": "Frequency Management",
+        "action": "Set cross-platform caps",
+        "verify": "Caps prevent over-exposure"
+      },
+      {
+        "step": 6,
+        "name": "Measurement Plan",
+        "action": "Define CTV metrics and tools",
+        "verify": "Measurement covers reach and impact"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Plan a CTV campaign for a telco brand in UAE targeting families 25-50 with AED 200K budget.",
+      "output": "Shahid (MBC) and YouTube CTV as primary, with StarzPlay secondary. Household targeting via IP matching, contextual by entertainment/family genres. 30s non-skip pre-roll. Est. 2M completed views, 65% HH reach."
+    }
+  ],
+  "checklist": [
+    "Major platforms are covered",
+    "Selection is evidence-based",
+    "Targeting is precise but scalable",
+    "Specs match platform requirements",
+    "Caps prevent over-exposure",
+    "Measurement covers reach and impact"
+  ],
+  "tools": [
+    "analytics",
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "nova"
+  ],
+  "pipelines": [
+    "media-plan"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "media",
+      "planning",
+      "ott-connected-tv"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

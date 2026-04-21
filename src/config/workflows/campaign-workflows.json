@@ -1,0 +1,510 @@
+{
+  "workflows": [
+    {
+      "id": "campaign-brief",
+      "name": "Campaign Brief",
+      "description": "Standard workflow for creating a complete campaign brief from client intake to approved strategy",
+      "version": "1.0",
+      "phases": [
+        {
+          "id": "intake",
+          "name": "Intake & Discovery",
+          "order": 1,
+          "activities": [
+            {
+              "id": "intake-1",
+              "name": "Client Brief Collection",
+              "description": "Gather all client information, goals, and requirements",
+              "assignedRole": "client-services",
+              "inputs": ["client-questionnaire", "initial-brief"],
+              "outputs": ["collected-brief"],
+              "checklist": [
+                "Business objectives confirmed",
+                "Target audience defined",
+                "Budget range established",
+                "Timeline communicated",
+                "Key stakeholders identified"
+              ]
+            },
+            {
+              "id": "intake-2",
+              "name": "Client Research",
+              "description": "Deep dive into client's business, market position, and competitive landscape",
+              "assignedRole": "research",
+              "inputs": ["collected-brief"],
+              "outputs": ["client-research-doc"],
+              "checklist": [
+                "Company history and evolution reviewed",
+                "Product/service offerings catalogued",
+                "Market position identified",
+                "Competitor analysis completed",
+                "SWOT analysis drafted"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "strategy",
+          "name": "Strategy Development",
+          "order": 2,
+          "activities": [
+            {
+              "id": "strategy-1",
+              "name": "Target Audience Deep Dive",
+              "description": "Create detailed audience personas and journey maps",
+              "assignedRole": "brand-strategist",
+              "inputs": ["collected-brief", "client-research-doc"],
+              "outputs": ["audience-personas", "journey-maps"],
+              "checklist": [
+                "Primary persona created with demographics",
+                "Secondary personas identified",
+                "Pain points mapped",
+                "Decision journey outlined",
+                "Touchpoint inventory completed"
+              ]
+            },
+            {
+              "id": "strategy-2",
+              "name": "Competitive Positioning",
+              "description": "Define unique positioning and differentiation strategy",
+              "assignedRole": "brand-strategist",
+              "inputs": ["client-research-doc", "audience-personas"],
+              "outputs": ["positioning-statement", "differentiation-strategy"],
+              "checklist": [
+                "Competitive landscape mapped",
+                "White space opportunities identified",
+                "Unique value proposition drafted",
+                "Messaging hierarchy created",
+                "Brand voice guidelines defined"
+              ]
+            },
+            {
+              "id": "strategy-3",
+              "name": "Campaign Strategy",
+              "description": "Develop campaign concept, themes, and strategic framework",
+              "assignedRole": "brand-strategist",
+              "inputs": ["positioning-statement", "audience-personas"],
+              "outputs": ["campaign-strategy-doc", "kpis"],
+              "checklist": [
+                "Campaign theme/concept approved",
+                "Strategic framework documented",
+                "Channel strategy defined",
+                "KPIs and success metrics set",
+                "Budget allocation proposed"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "creative",
+          "name": "Creative Development",
+          "order": 3,
+          "activities": [
+            {
+              "id": "creative-1",
+              "name": "Creative Direction",
+              "description": "Define visual and copy direction for the campaign",
+              "assignedRole": "creative-director",
+              "inputs": ["campaign-strategy-doc", "brand-voice-guidelines"],
+              "outputs": ["creative-brief", "visual-direction"],
+              "checklist": [
+                "Visual style guides created",
+                "Copy tone defined",
+                "Key messages approved",
+                "Platform requirements documented",
+                "Asset specifications outlined"
+              ]
+            },
+            {
+              "id": "creative-2",
+              "name": "Content Creation",
+              "description": "Produce all campaign copy and creative assets",
+              "assignedRole": "copy",
+              "inputs": ["creative-brief"],
+              "outputs": ["campaign-copy", "content-calendar"],
+              "checklist": [
+                "All copy variants written",
+                "CTAs optimized",
+                "Hashtag strategy created",
+                "Content calendar approved",
+                "Legal/compliance review passed"
+              ]
+            },
+            {
+              "id": "creative-3",
+              "name": "Visual Production",
+              "description": "Create all visual assets per specifications",
+              "assignedRole": "visual-producer",
+              "inputs": ["visual-direction", "asset-specs"],
+              "outputs": ["creative-assets", "production-files"],
+              "checklist": [
+                "All visuals created per specs",
+                "A/B variants prepared",
+                "Accessibility compliance checked",
+                "File formats verified",
+                "Asset library organized"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "review",
+          "name": "Review & Approval",
+          "order": 4,
+          "activities": [
+            {
+              "id": "review-1",
+              "name": "Internal QA",
+              "description": "Cross-functional review before client presentation",
+              "assignedRole": "traffic-manager",
+              "inputs": ["campaign-strategy-doc", "campaign-copy", "creative-assets"],
+              "outputs": ["qa-report", "revision-list"],
+              "checklist": [
+                "All deliverables complete",
+                "Brand compliance verified",
+                "Proofreading done",
+                "Technical specifications met",
+                "Revision notes addressed"
+              ]
+            },
+            {
+              "id": "review-2",
+              "name": "Client Presentation",
+              "description": "Present strategy and creative to client for approval",
+              "assignedRole": "client-services",
+              "inputs": ["approved-strategy", "creative-assets"],
+              "outputs": ["client-feedback", "approved-creative"],
+              "checklist": [
+                "Presentation deck prepared",
+                "Key talking points ready",
+                "Alternative concepts备好",
+                "Feedback mechanism established",
+                "Approval timeline confirmed"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "delivery",
+          "name": "Production & Delivery",
+          "order": 5,
+          "activities": [
+            {
+              "id": "delivery-1",
+              "name": "Media Planning",
+              "description": "Finalize media plan and channel strategy",
+              "assignedRole": "media-planner",
+              "inputs": ["approved-creative", "media-budget"],
+              "outputs": ["media-plan", "channel-schedule"],
+              "checklist": [
+                "Channel allocation finalized",
+                "Campaign timeline confirmed",
+                "Bidding strategy defined",
+                "Tracking implemented",
+                "Success metrics configured"
+              ]
+            },
+            {
+              "id": "delivery-2",
+              "name": "Campaign Launch",
+              "description": "Execute campaign launch across all channels",
+              "assignedRole": "media-planner",
+              "inputs": ["media-plan", "approved-creative"],
+              "outputs": ["launch-confirmation", "monitoring-dashboard"],
+              "checklist": [
+                "All assets uploaded",
+                "Campaigns live",
+                "Tracking verified",
+                "Stakeholders notified",
+                "Monitoring active"
+              ]
+            }
+          ]
+        }
+      ],
+      "defaultTimeline": {
+        "totalDays": 14,
+        "phases": {
+          "intake": 2,
+          "strategy": 3,
+          "creative": 4,
+          "review": 2,
+          "delivery": 3
+        }
+      },
+      "requiredRoles": ["brand-strategist", "research", "copy", "visual-producer", "traffic-manager", "media-planner"]
+    },
+    {
+      "id": "social-content",
+      "name": "Social Content Pipeline",
+      "description": "End-to-end workflow for creating and publishing social media content",
+      "version": "1.0",
+      "phases": [
+        {
+          "id": "research",
+          "name": "Research & Planning",
+          "order": 1,
+          "activities": [
+            {
+              "id": "research-1",
+              "name": "Content Intelligence",
+              "description": "Research trending topics, competitor content, and audience interests",
+              "assignedRole": "research",
+              "inputs": ["content-calendar-template", "brand-guidelines"],
+              "outputs": ["trending-topics", "content-insights"],
+              "checklist": [
+                "Industry trends identified",
+                "Competitor content analyzed",
+                "Audience engagement patterns reviewed",
+                "Best performing content noted",
+                "Content gaps identified"
+              ]
+            },
+            {
+              "id": "research-2",
+              "name": "Content Calendar Build",
+              "description": "Create monthly content calendar with themes and posting schedule",
+              "assignedRole": "content-strategist",
+              "inputs": ["trending-topics", "campaign-dates"],
+              "outputs": ["content-calendar"],
+              "checklist": [
+                "Posting frequency defined",
+                "Content themes assigned per day",
+                "Campaign tie-ins scheduled",
+                "Platform-specific timing optimized",
+                "Resource requirements documented"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "creation",
+          "name": "Content Creation",
+          "order": 2,
+          "activities": [
+            {
+              "id": "creation-1",
+              "name": "Copy Development",
+              "description": "Write platform-optimized copy for each post",
+              "assignedRole": "copywriter",
+              "inputs": ["content-calendar"],
+              "outputs": ["post-copies"],
+              "checklist": [
+                "Each post has engaging hook",
+                "CTA clear and compelling",
+                "Hashtags strategic",
+                "Emoji usage optimized",
+                "Character limits met"
+              ]
+            },
+            {
+              "id": "creation-2",
+              "name": "Visual Asset Creation",
+              "description": "Create or source visuals for each post",
+              "assignedRole": "visual-producer",
+              "inputs": ["content-calendar", "visual-specs"],
+              "outputs": ["post-visuals"],
+              "checklist": [
+                "Visual branding consistent",
+                "Aspect ratios correct per platform",
+                "Text overlay optimized",
+                "Accessibility alt-text added",
+                "Quality verified"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "approval",
+          "name": "Review & Schedule",
+          "order": 3,
+          "activities": [
+            {
+              "id": "approval-1",
+              "name": "Content Review",
+              "description": "Review all content before scheduling",
+              "assignedRole": "content-strategist",
+              "inputs": ["post-copies", "post-visuals"],
+              "outputs": ["approved-content"],
+              "checklist": [
+                "Brand voice compliance",
+                "Fact-checking complete",
+                "Legal review passed",
+                "A/B variants prepared",
+                "Caption optimized"
+              ]
+            },
+            {
+              "id": "approval-2",
+              "name": "Scheduling",
+              "description": "Schedule all posts in publishing tool",
+              "assignedRole": "social-media-manager",
+              "inputs": ["approved-content"],
+              "outputs": ["scheduled-posts"],
+              "checklist": [
+                "All posts scheduled",
+                "Time zones correct",
+                "First comment ready",
+                "Stories linked",
+                "UTM parameters added"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "analytics",
+          "name": "Analysis & Optimization",
+          "order": 4,
+          "activities": [
+            {
+              "id": "analytics-1",
+              "name": "Performance Review",
+              "description": "Analyze post performance and generate insights",
+              "assignedRole": "analytics",
+              "inputs": ["scheduled-posts", "platform-analytics"],
+              "outputs": ["performance-report", "optimization-recs"],
+              "checklist": [
+                "Engagement metrics compiled",
+                "Top performing content identified",
+                "Audience insights extracted",
+                "Optimization recommendations ready",
+                "Report shared with team"
+              ]
+            }
+          ]
+        }
+      ],
+      "defaultTimeline": {
+        "totalDays": 30,
+        "phases": {
+          "research": 5,
+          "creation": 10,
+          "approval": 5,
+          "analytics": 10
+        }
+      },
+      "requiredRoles": ["research", "content-strategist", "copywriter", "visual-producer", "social-media-manager", "analytics"]
+    },
+    {
+      "id": "ad-creative",
+      "name": "Ad Creative Production",
+      "description": "Workflow for producing high-performance ad creatives with A/B testing",
+      "version": "1.0",
+      "phases": [
+        {
+          "id": "briefing",
+          "name": "Creative Briefing",
+          "order": 1,
+          "activities": [
+            {
+              "id": "briefing-1",
+              "name": "Audience & Objective Definition",
+              "description": "Define target audience and campaign objectives",
+              "assignedRole": "media-planner",
+              "inputs": ["campaign-brief", "previous-ad-data"],
+              "outputs": ["ad-brief", "targeting-spec"],
+              "checklist": [
+                "Campaign objective selected",
+                "Target audience detailed",
+                "Geographic targeting set",
+                "Age/gender parameters defined",
+                "Custom audience specified"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "concepting",
+          "name": "Creative Concepting",
+          "order": 2,
+          "activities": [
+            {
+              "id": "concepting-1",
+              "name": "Creative Concepts",
+              "description": "Develop multiple creative concepts for testing",
+              "assignedRole": "creative-director",
+              "inputs": ["ad-brief"],
+              "outputs": ["creative-concepts", "copy-angles"],
+              "checklist": [
+                "3+ distinct concepts created",
+                "Each concept has unique hook",
+                "Value proposition clear",
+                "CTA defined per concept",
+                "Visual approach specified"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "production",
+          "name": "Asset Production",
+          "order": 3,
+          "activities": [
+            {
+              "id": "production-1",
+              "name": "Copy & Visual Pairing",
+              "description": "Create all copy variants and pair with visuals",
+              "assignedRole": "copywriter",
+              "inputs": ["creative-concepts", "visual-specs"],
+              "outputs": ["ad-variants"],
+              "checklist": [
+                "Headline variants written",
+                "Body copy optimized",
+                "CTA buttons varied",
+                "Visual pairings created",
+                "Format specs met per platform"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "testing",
+          "name": "Testing & Optimization",
+          "order": 4,
+          "activities": [
+            {
+              "id": "testing-1",
+              "name": "A/B Test Setup",
+              "description": "Configure and launch A/B tests",
+              "assignedRole": "media-planner",
+              "inputs": ["ad-variants"],
+              "outputs": ["test-configured", "initial-results"],
+              "checklist": [
+                "Test split configured",
+                "Statistical significance target set",
+                "Test duration defined",
+                "Success metrics established",
+                "Monitoring dashboard ready"
+              ]
+            },
+            {
+              "id": "testing-2",
+              "name": "Performance Analysis",
+              "description": "Analyze test results and scale winners",
+              "assignedRole": "performance-manager",
+              "inputs": ["test-results"],
+              "outputs": ["winning-ads", "optimization-report"],
+              "checklist": [
+                "Statistical winners identified",
+                "Budget reallocated to winners",
+                "Underperformers paused",
+                "Scaling recommendations ready",
+                "Learnings documented"
+              ]
+            }
+          ]
+        }
+      ],
+      "defaultTimeline": {
+        "totalDays": 7,
+        "phases": {
+          "briefing": 1,
+          "concepting": 1,
+          "production": 2,
+          "testing": 3
+        }
+      },
+      "requiredRoles": ["media-planner", "creative-director", "copywriter", "performance-manager"]
+    }
+  ]
+}

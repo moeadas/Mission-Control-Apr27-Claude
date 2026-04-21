@@ -1,0 +1,13 @@
+{
+  "test-agent": "/api/agent-photos/file/test-agent-sample.png",
+  "iris": "/api/agent-photos/file/iris-1774467675844-8c12c534.png",
+  "lyra": "/api/agent-photos/file/lyra-1774468113031-4c2ed3d0.png",
+  "piper": "/api/agent-photos/file/piper-1774468126105-f2ba9064.png",
+  "sage": "/api/agent-photos/file/sage-1774468304159-3c918dcc.png",
+  "maya": "/api/agent-photos/file/maya-1774542872117-959424a7.png",
+  "finn": "/api/agent-photos/file/finn-1774468393444-b5103927.png",
+  "echo": "/api/agent-photos/file/echo-1774469505588-ef9cfa2e.png",
+  "nova": "/api/agent-photos/file/nova-1774470037628-a454a109.png",
+  "dex": "/api/agent-photos/file/dex-1774542886112-216f3afc.png",
+  "atlas": "/api/agent-photos/file/atlas-1774528944055-8a7845d3.png"
+}

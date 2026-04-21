@@ -1,0 +1,126 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "swot-analysis",
+  "name": "SWOT Analysis",
+  "description": "Conducts structured SWOT (Strengths, Weaknesses, Opportunities, Threats) analysis to inform strategic planning, brand reviews, and business decisions.",
+  "category": "strategy",
+  "difficulty": "beginner",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time conducting a swot analysis for a brand, product, business unit, or strategic decision — to inform planning, positioning, or competitive response.",
+      "context": "You are a strategic analyst who conducts rigorous, evidence-based SWOT analyses that go beyond surface-level observations to surface actionable strategic insights.",
+      "instructions": "## SWOT Analysis\n\n1. **Scope Definition** — Define what the SWOT covers and from what viewpoint\n   - ✓ Done when: Scope is clear and bounded\n\n2. **Internal Analysis** — Identify strengths and weaknesses honestly\n   - ✓ Done when: Analysis is evidence-based, not assumed\n\n3. **External Analysis** — Identify opportunities and threats from market signals\n   - ✓ Done when: External factors are current and relevant\n\n4. **Cross-Analysis** — Map S-O, S-T, W-O, W-T combinations\n   - ✓ Done when: Insights go beyond the quadrant labels\n\n5. **Strategic Synthesis** — Distill findings into clear priorities\n   - ✓ Done when: Priorities are specific and actionable\n\n## Key Inputs\n- subject_name: Brand, product, or business being analyzed\n- analysis_scope: Scope and time horizon of the analysis\n- perspective: Whose viewpoint this represents",
+      "output_template": "## SWOT Analysis: {{subject_name}}\n\n### Scope & Context\n| Field | Details |\n|-------|---------|\n| Subject | {{subject_name}} |\n| Scope | {{analysis_scope}} |\n| Perspective | {{perspective}} |\n| Date | {{date}} |\n\n### Strengths (Internal, Positive)\n\n**Ownable advantages:**\n| Strength | Evidence | Competitive advantage level |\n|----------|----------|---------------------------|\n| | | High/Med/Low |\n\n**Brand strengths:**\n- \n\n**Operational strengths:**\n- \n\n**Market position strengths:**\n- \n\n### Weaknesses (Internal, Negative)\n\n**Vulnerabilities:**\n| Weakness | Impact | Fixable? |\n|----------|--------|----------|\n| | | Yes/No/Partial |\n\n**Brand weaknesses:**\n- \n\n**Operational weaknesses:**\n- \n\n**Market position weaknesses:**\n- \n\n### Opportunities (External, Positive)\n\n**Market opportunities:**\n| Opportunity | Size | Timing | Resource needed |\n|-------------|------|--------|----------------|\n| | | | |\n\n**Emerging trends to exploit:**\n- \n\n**Underserved segments:**\n- \n\n### Threats (External, Negative)\n\n**Threat landscape:**\n| Threat | Likelihood | Impact | Prepared? |\n|--------|-----------|--------|-----------|\n| | High/Med/Low | High/Med/Low | Yes/Partial/No |\n\n**Competitive threats:**\n- \n\n**Market threats:**\n- \n\n**Regulatory/technological threats:**\n- \n\n### Cross-Analysis (SO/ST/WO/WT)\n\n#### S-O Strategies (Use strengths to capture opportunities)\n1. \n\n#### S-T Strategies (Use strengths to counter threats)\n1. \n\n#### W-O Strategies (Address weaknesses to capture opportunities)\n1. \n\n#### W-T Strategies (Minimize weaknesses to avoid threats)\n1. \n\n### Strategic Priority Matrix\n\n| Priority | Initiative | Type |\n|----------|------------|------|\n| 1 | | |\n| 2 | | |\n| 3 | | |\n\n### Key Findings\n1. \n2. \n3. \n\n### Recommended Actions\n| Action | SWOT Basis | Priority |\n|--------|-----------|----------|\n| | | |"
+    }
+  },
+  "variables": [
+    {
+      "name": "subject_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand, product, or business being analyzed"
+    },
+    {
+      "name": "analysis_scope",
+      "type": "string",
+      "required": true,
+      "description": "Scope and time horizon of the analysis"
+    },
+    {
+      "name": "perspective",
+      "type": "string",
+      "required": false,
+      "description": "Whose viewpoint this represents"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "subject_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand, product, or business being analyzed"
+    },
+    {
+      "name": "analysis_scope",
+      "type": "string",
+      "required": true,
+      "description": "Scope and time horizon of the analysis"
+    },
+    {
+      "name": "perspective",
+      "type": "string",
+      "required": false,
+      "description": "Whose viewpoint this represents"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Scope Definition",
+        "action": "Define what the SWOT covers and from what viewpoint",
+        "verify": "Scope is clear and bounded"
+      },
+      {
+        "step": 2,
+        "name": "Internal Analysis",
+        "action": "Identify strengths and weaknesses honestly",
+        "verify": "Analysis is evidence-based, not assumed"
+      },
+      {
+        "step": 3,
+        "name": "External Analysis",
+        "action": "Identify opportunities and threats from market signals",
+        "verify": "External factors are current and relevant"
+      },
+      {
+        "step": 4,
+        "name": "Cross-Analysis",
+        "action": "Map S-O, S-T, W-O, W-T combinations",
+        "verify": "Insights go beyond the quadrant labels"
+      },
+      {
+        "step": 5,
+        "name": "Strategic Synthesis",
+        "action": "Distill findings into clear priorities",
+        "verify": "Priorities are specific and actionable"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Conduct SWOT analysis for TechStart's entry into the Saudi Arabian market. B2B fintech, expense management. 12-month horizon.",
+      "output": "Full SWOT analysis with cross-analysis, priority matrix, and recommended actions"
+    }
+  ],
+  "checklist": [
+    "Scope is clear and bounded",
+    "Analysis is evidence-based, not assumed",
+    "External factors are current and relevant",
+    "Insights go beyond the quadrant labels",
+    "Priorities are specific and actionable"
+  ],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "maya"
+  ],
+  "pipelines": [
+    "strategy"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "strategy",
+      "swot",
+      "planning",
+      "analysis"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

@@ -1,0 +1,161 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "audience-research",
+  "name": "Audience Research",
+  "description": "Conducts comprehensive audience research with key findings, segment profiles, behavioral patterns, and actionable recommendations.",
+  "category": "research",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time conducting audience research, gathering consumer insights, or validating assumptions about target audiences.",
+      "context": "You are a market research specialist with expertise in qualitative and quantitative research methodologies, survey design, and consumer insight generation.",
+      "instructions": "## Audience Research\n\n1. **Research Design** — Define methodology and sampling approach\n   - ✓ Done when: Design will yield actionable insights\n\n2. **Data Collection** — Gather primary and secondary data\n   - ✓ Done when: Data is representative and current\n\n3. **Segmentation** — Identify distinct audience segments\n   - ✓ Done when: Segments are meaningful and differentiable\n\n4. **Insight Synthesis** — Extract themes and patterns from data\n   - ✓ Done when: Insights are surprising and actionable\n\n5. **Validation** — Cross-check against existing knowledge\n   - ✓ Done when: Findings are credible\n\n## Key Inputs\n- client_name: Client or brand name\n- research_objective: Primary research question\n- methodology: Research methodology (survey, focus groups, etc.)\n- sample_size: Sample size and demographics\n- sources: Primary and secondary data sources\n- existing_data: Existing data to validate against",
+      "output_template": "## Audience Research Report: {{client_name}}\n\n### Research Overview\n| Element | Details |\n|---------|---------|\n| Client | {{client_name}} |\n| Objective | {{research_objective}} |\n| Methodology | {{methodology}} |\n| Sample size | {{sample_size}} |\n\n### Key Findings\n\n#### Finding 1: [Title]\n**Insight:** [2-3 sentences]\n**Implication:** [What this means for marketing]\n\n#### Finding 2: [Title]\n**Insight:** [2-3 sentences]\n**Implication:** [What this means for marketing]\n\n### Audience Segments\n| Segment | Size (%) | Key Characteristics | Marketing Approach |\n|---------|----------|---------------------|--------------------|\n| | | | |\n\n### Behavioral Patterns\n| Behavior | % Reporting | Segment |\n|----------|-------------|---------|\n| | | |\n\n### Media Consumption\n| Channel | Primary | Secondary | Rare |\n|---------|---------|-----------|------|\n| | | | |\n\n### Recommendations\n1. [Priority recommendation with rationale]\n2. [Secondary recommendation]\n3. [Tactical next steps]\n\n### Methodology Notes\n[Research limitations and confidence levels]"
+    }
+  },
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "research_objective",
+      "type": "string",
+      "required": true,
+      "description": "Primary research question"
+    },
+    {
+      "name": "methodology",
+      "type": "string",
+      "required": true,
+      "description": "Research methodology (survey, focus groups, etc.)"
+    },
+    {
+      "name": "sample_size",
+      "type": "string",
+      "required": true,
+      "description": "Sample size and demographics"
+    },
+    {
+      "name": "sources",
+      "type": "string",
+      "required": true,
+      "description": "Primary and secondary data sources"
+    },
+    {
+      "name": "existing_data",
+      "type": "string",
+      "required": false,
+      "description": "Existing data to validate against"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "research_objective",
+      "type": "string",
+      "required": true,
+      "description": "Primary research question"
+    },
+    {
+      "name": "methodology",
+      "type": "string",
+      "required": true,
+      "description": "Research methodology (survey, focus groups, etc.)"
+    },
+    {
+      "name": "sample_size",
+      "type": "string",
+      "required": true,
+      "description": "Sample size and demographics"
+    },
+    {
+      "name": "sources",
+      "type": "string",
+      "required": true,
+      "description": "Primary and secondary data sources"
+    },
+    {
+      "name": "existing_data",
+      "type": "string",
+      "required": false,
+      "description": "Existing data to validate against"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Research Design",
+        "action": "Define methodology and sampling approach",
+        "verify": "Design will yield actionable insights"
+      },
+      {
+        "step": 2,
+        "name": "Data Collection",
+        "action": "Gather primary and secondary data",
+        "verify": "Data is representative and current"
+      },
+      {
+        "step": 3,
+        "name": "Segmentation",
+        "action": "Identify distinct audience segments",
+        "verify": "Segments are meaningful and differentiable"
+      },
+      {
+        "step": 4,
+        "name": "Insight Synthesis",
+        "action": "Extract themes and patterns from data",
+        "verify": "Insights are surprising and actionable"
+      },
+      {
+        "step": 5,
+        "name": "Validation",
+        "action": "Cross-check against existing knowledge",
+        "verify": "Findings are credible"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Create output for TechStart - a B2B SaaS company in fintech, targeting CFOs and Finance Directors in UAE",
+      "output": "Full deliverable with all sections filled with B2B fintech context, data-driven insights, and actionable recommendations"
+    }
+  ],
+  "checklist": [
+    "Design will yield actionable insights",
+    "Data is representative and current",
+    "Segments are meaningful and differentiable",
+    "Insights are surprising and actionable",
+    "Findings are credible"
+  ],
+  "tools": [
+    "spreadsheet",
+    "analytics",
+    "web-search"
+  ],
+  "agents": [
+    "atlas"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "research",
+      "audience",
+      "insights",
+      "market-research"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

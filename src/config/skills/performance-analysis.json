@@ -1,0 +1,146 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "performance-analysis",
+  "name": "Performance Analysis",
+  "description": "Analyzes campaign and account performance data across platforms, identifying insights, trends, anomalies, and optimization opportunities.",
+  "category": "analytics",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time analyzing campaign or account performance data — reviewing metrics, identifying trends, surfacing anomalies, and recommending optimizations.",
+      "context": "You are a performance analyst who turns data into actionable insights, identifying what's working, what's not, and what to do about it.",
+      "instructions": "## Performance Analysis\n\n1. **Data Collection** — Gather data from all platforms and sources\n   - ✓ Done when: Data is complete and accurate\n\n2. **Baseline & Comparison** — Compare against prior period and targets\n   - ✓ Done when: Context is established\n\n3. **Trend Analysis** — Identify patterns and trends in the data\n   - ✓ Done when: Trends are statistically meaningful\n\n4. **Anomaly Detection** — Surface unexpected performance deviations\n   - ✓ Done when: Anomalies are investigated, not assumed\n\n5. **Segment Deep-Dive** — Break down performance by key dimensions\n   - ✓ Done when: Actionable segments identified\n\n6. **Insight Synthesis** — Connect findings into clear recommendations\n   - ✓ Done when: Recommendations are specific and prioritized\n\n## Key Inputs\n- account_name: Account or campaign name\n- date_range: Analysis date range\n- platforms: Platforms included in analysis\n- benchmarks: Benchmark or target metrics",
+      "output_template": "## Performance Analysis: {{account_name}}\n\n### Overview\n| Metric | This Period | Prior Period | Change |\n|--------|-------------|--------------|--------|\n| Spend | | | |\n| Impressions | | | |\n| Clicks | | | |\n| CTR | | | |\n| Conversions | | | |\n| CPA | | | |\n| ROAS | | | |\n\n### Platform Breakdown\n| Platform | Spend | Results | CPA | ROAS | vs Target |\n|----------|-------|---------|-----|------|----------|\n| | | | | | |\n\n### Trend Analysis\n\n**Impression trend:** 📈/📉/➡️\n**Conversion trend:** 📈/📉/➡️\n**CPA trend:** 📈/📉/➡️ (improving/worsening)\n\n### Anomalies Identified\n\n| Metric | Expected | Actual | Deviation | Likely Cause |\n|--------|----------|--------|-----------|-------------|\n| | | | | |\n\n### Segment Analysis\n\n**By Audience:**\n| Segment | Spend | Conversions | CPA | Efficiency |\n|---------|-------|-------------|-----|------------|\n| | | | | |\n\n**By Creative:**\n| Creative | Impressions | CTR | Conv Rate | ROAS |\n|----------|-------------|-----|----------|------|\n| | | | | |\n\n**By Placement/Device:**\n| Segment | Performance |\n|---------|------------|\n| | |\n\n### Top Performing\n| Element | Details | Performance |\n|---------|---------|------------|\n| Audience | | |\n| Creative | | |\n| Ad group | | |\n\n### Underperformers\n| Element | Details | Issue | Recommended Action |\n|---------|---------|-------|-------------------|\n| | | | |\n\n### Key Insights\n1. \n2. \n3. \n\n### Recommended Actions\n| Action | Priority | Expected Impact | Effort |\n|--------|----------|-----------------|--------|\n| | | | |"
+    }
+  },
+  "variables": [
+    {
+      "name": "account_name",
+      "type": "string",
+      "required": true,
+      "description": "Account or campaign name"
+    },
+    {
+      "name": "date_range",
+      "type": "string",
+      "required": true,
+      "description": "Analysis date range"
+    },
+    {
+      "name": "platforms",
+      "type": "string",
+      "required": false,
+      "description": "Platforms included in analysis"
+    },
+    {
+      "name": "benchmarks",
+      "type": "string",
+      "required": false,
+      "description": "Benchmark or target metrics"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "account_name",
+      "type": "string",
+      "required": true,
+      "description": "Account or campaign name"
+    },
+    {
+      "name": "date_range",
+      "type": "string",
+      "required": true,
+      "description": "Analysis date range"
+    },
+    {
+      "name": "platforms",
+      "type": "string",
+      "required": false,
+      "description": "Platforms included in analysis"
+    },
+    {
+      "name": "benchmarks",
+      "type": "string",
+      "required": false,
+      "description": "Benchmark or target metrics"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Data Collection",
+        "action": "Gather data from all platforms and sources",
+        "verify": "Data is complete and accurate"
+      },
+      {
+        "step": 2,
+        "name": "Baseline & Comparison",
+        "action": "Compare against prior period and targets",
+        "verify": "Context is established"
+      },
+      {
+        "step": 3,
+        "name": "Trend Analysis",
+        "action": "Identify patterns and trends in the data",
+        "verify": "Trends are statistically meaningful"
+      },
+      {
+        "step": 4,
+        "name": "Anomaly Detection",
+        "action": "Surface unexpected performance deviations",
+        "verify": "Anomalies are investigated, not assumed"
+      },
+      {
+        "step": 5,
+        "name": "Segment Deep-Dive",
+        "action": "Break down performance by key dimensions",
+        "verify": "Actionable segments identified"
+      },
+      {
+        "step": 6,
+        "name": "Insight Synthesis",
+        "action": "Connect findings into clear recommendations",
+        "verify": "Recommendations are specific and prioritized"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Analyze TechStart Q1 performance across Meta and LinkedIn. Compare to Q4 and to targets of CPA AED 150 and ROAS 4x.",
+      "output": "Full performance analysis with trend analysis, segment breakdown, anomalies, insights, and prioritized recommendations"
+    }
+  ],
+  "checklist": [
+    "Data is complete and accurate",
+    "Context is established",
+    "Trends are statistically meaningful",
+    "Anomalies are investigated, not assumed",
+    "Actionable segments identified",
+    "Recommendations are specific and prioritized"
+  ],
+  "tools": [
+    "spreadsheet",
+    "analytics",
+    "document"
+  ],
+  "agents": [
+    "dex"
+  ],
+  "pipelines": [
+    "reporting"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "analytics",
+      "performance",
+      "reporting",
+      "optimization"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

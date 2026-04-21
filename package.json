@@ -1,0 +1,43 @@
+{
+  "name": "agency-mission-control",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=20 <23"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.57.4",
+    "@types/jszip": "^3.4.0",
+    "clsx": "^2.1.1",
+    "docx": "^9.6.1",
+    "exceljs": "^4.4.0",
+    "facebook-nodejs-business-sdk": "^24.0.1",
+    "framer-motion": "^11.3.8",
+    "googleapis": "^171.4.0",
+    "jszip": "^3.10.1",
+    "lucide-react": "^0.417.0",
+    "next": "^16.2.1",
+    "pdf-lib": "^1.17.1",
+    "pptxgenjs": "^4.0.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "uuid": "^10.0.0",
+    "zustand": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.11",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@types/uuid": "^10.0.0",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.40",
+    "tailwindcss": "^3.4.6",
+    "typescript": "^5.5.3"
+  }
+}

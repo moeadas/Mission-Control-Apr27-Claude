@@ -1,0 +1,1095 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2868
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Arial-BoldMT;\f1\fswiss\fcharset0 ArialMT;\f2\fmodern\fcharset0 Courier;
+\f3\fnil\fcharset0 Menlo-Regular;\f4\fswiss\fcharset0 Arial-ItalicMT;\f5\fnil\fcharset0 HelveticaNeue;
+\f6\fmodern\fcharset0 Courier-Bold;}
+{\colortbl;\red255\green255\blue255;\red26\green27\blue28;\red255\green255\blue255;\red229\green229\blue229;
+\red27\green31\blue34;\red218\green76\blue12;\red203\green35\blue57;\red87\green96\blue106;\red235\green235\blue235;
+\red7\green68\blue184;\red95\green75\blue14;\red0\green0\blue0;\red246\green246\blue246;\red193\green193\blue193;
+\red6\green33\blue79;}
+{\*\expandedcolortbl;;\cssrgb\c13725\c14118\c14510;\cssrgb\c100000\c100000\c100000;\cssrgb\c91765\c91765\c91765;
+\cssrgb\c14118\c16078\c18039;\cssrgb\c89020\c38431\c3529;\cssrgb\c84314\c22745\c28627;\cssrgb\c41569\c45098\c49020;\cssrgb\c93725\c93725\c93725;
+\cssrgb\c0\c36078\c77255;\cssrgb\c45098\c36078\c5882;\cssrgb\c0\c0\c0;\cssrgb\c97255\c97255\c97255;\cssrgb\c80000\c80000\c80000;
+\cssrgb\c1176\c18431\c38431;}
+\margl1440\margr1440\vieww23760\viewh14240\viewkind0
+\deftab720
+\pard\pardeftab720\sa160\partightenfactor0
+
+\f0\b\fs24 \cf2 \cb3 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 The Complete Guide to AI Agent Configuration: Structure, Memory, and Personality Files\
+\pard\pardeftab720\sa160\partightenfactor0
+\cf2 1. The Big Picture: Why Markdown Files?\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f1\b0\fs32 \cf2 In 2025\'962026, a remarkable convergence happened across the AI industry. Three independent, high-value projects \'97\'a0
+\f0\b Manus
+\f1\b0 \'a0(acquired by Meta for $2B),\'a0
+\f0\b OpenClaw
+\f1\b0 \'a0(145K+ GitHub stars), and\'a0
+\f0\b Claude Code
+\f1\b0 \'a0(Anthropic's official tool) \'97 all landed on the same architectural pattern:\'a0
+\f0\b plain Markdown files as the backbone of AI agent configuration and memory
+\f1\b0 .\
+This is sometimes called\'a0
+\f0\b "Memory as Documentation"
+\f1\b0 \'a0\'97 as opposed to the "Memory as Database" approach favored by frameworks like LangGraph or CrewAI. The key insight is that file-based memory is persistent, transparent, human-editable, version-controllable, portable, and cost-effective. While many companies spent millions building vector databases and complex RAG pipelines, the winning pattern turned out to be surprisingly simple.\
+\pard\pardeftab720\partightenfactor0
+\cf4 \cb4 \strokec4 \
+\pard\pardeftab720\sa160\partightenfactor0
+
+\f0\b\fs24 \cf2 \cb3 \strokec2 2. The Core File Architecture\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f1\b0\fs32 \cf2 A modern AI agent workspace is defined by a set of Markdown files, each with a distinct purpose. Think of them as the "organs" of your agent. Here's the full anatomy:\
+\pard\pardeftab720\partightenfactor0
+
+\f2\fs28 \cf5 \strokec5 your-project\cf6 \strokec6 /\cf5 \strokec5 \
+
+\f3 \uc0\u9500 \u9472 \u9472 
+\f2  CLAUDE.md (\cf7 \strokec7 or\cf5 \strokec5  AGENTS.md)   \cf8 \strokec8 # The "brain" \'97 master routing & onboarding file\cf5 \strokec5 \
+
+\f3 \uc0\u9500 \u9472 \u9472 
+\f2  .soul\cf6 \strokec6 /\cf5 \strokec5 \
+
+\f3 \uc0\u9474 
+\f2    
+\f3 \uc0\u9500 \u9472 \u9472 
+\f2  soul.json              \cf8 \strokec8 # Machine-readable metadata\cf5 \strokec5 \
+
+\f3 \uc0\u9474 
+\f2    
+\f3 \uc0\u9500 \u9472 \u9472 
+\f2  SOUL.md                \cf8 \strokec8 # Core personality & identity\cf5 \strokec5 \
+
+\f3 \uc0\u9474 
+\f2    
+\f3 \uc0\u9500 \u9472 \u9472 
+\f2  IDENTITY.md            \cf8 \strokec8 # Detailed background & expertise\cf5 \strokec5 \
+
+\f3 \uc0\u9474 
+\f2    
+\f3 \uc0\u9500 \u9472 \u9472 
+\f2  STYLE.md               \cf8 \strokec8 # Voice, syntax, writing patterns\cf5 \strokec5 \
+
+\f3 \uc0\u9474 
+\f2    
+\f3 \uc0\u9500 \u9472 \u9472 
+\f2  RULES.md               \cf8 \strokec8 # Hard constraints & safety boundaries\cf5 \strokec5 \
+
+\f3 \uc0\u9474 
+\f2    
+\f3 \uc0\u9500 \u9472 \u9472 
+\f2  CONTEXT.md             \cf8 \strokec8 # Project-specific context & tech stack\cf5 \strokec5 \
+
+\f3 \uc0\u9474 
+\f2    
+\f3 \uc0\u9500 \u9472 \u9472 
+\f2  AGENTS.md              \cf8 \strokec8 # Multi-agent routing & role definitions\cf5 \strokec5 \
+
+\f3 \uc0\u9474 
+\f2    
+\f3 \uc0\u9492 \u9472 \u9472 
+\f2  SKILL.md               \cf8 \strokec8 # Operating modes & capabilities\cf5 \strokec5 \
+
+\f3 \uc0\u9500 \u9472 \u9472 
+\f2  MEMORY.md                  \cf8 \strokec8 # Long-term curated knowledge\cf5 \strokec5 \
+
+\f3 \uc0\u9500 \u9472 \u9472 
+\f2  USER.md                    \cf8 \strokec8 # User profile & preferences\cf5 \strokec5 \
+
+\f3 \uc0\u9500 \u9472 \u9472 
+\f2  memory\cf6 \strokec6 /\cf5 \strokec5 \
+
+\f3 \uc0\u9474 
+\f2    
+\f3 \uc0\u9492 \u9472 \u9472 
+\f2  YYYY-MM-DD.md          \cf8 \strokec8 # Daily session logs\cf5 \strokec5 \
+
+\f3 \uc0\u9500 \u9472 \u9472 
+\f2  task_plan.md               \cf8 \strokec8 # Current task goals & progress (working memory)\cf5 \strokec5 \
+
+\f3 \uc0\u9500 \u9472 \u9472 
+\f2  notes.md                   \cf8 \strokec8 # Research scratchpad\cf5 \strokec5 \
+
+\f3 \uc0\u9492 \u9472 \u9472 
+\f2  agent_docs\cf6 \strokec6 /\cf5 \strokec5                 \cf8 \strokec8 # Progressive disclosure reference files\cf5 \strokec5 \
+    
+\f3 \uc0\u9500 \u9472 \u9472 
+\f2  building_the_project.md\
+    
+\f3 \uc0\u9500 \u9472 \u9472 
+\f2  running_tests.md\
+    
+\f3 \uc0\u9500 \u9472 \u9472 
+\f2  code_conventions.md\
+    
+\f3 \uc0\u9492 \u9472 \u9472 
+\f2  service_architecture.md\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f1\fs32 \cf2 \strokec2 Not every project needs every file. A solo developer can start with a single\'a0
+\f2 SOUL.md
+\f1 \'a0or\'a0
+\f2 CLAUDE.md
+\f1 \'a0and expand as complexity grows. Let's break down what each file does and the best practices for writing them.\
+\pard\pardeftab720\partightenfactor0
+\cf4 \cb4 \strokec4 \
+\pard\pardeftab720\sa160\partightenfactor0
+
+\f0\b\fs24 \cf2 \cb3 \strokec2 3. CLAUDE.md / AGENTS.md \'97 The Master Onboarding File\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs32 \cf2 Purpose:
+\f1\b0 \'a0This is the first file an AI agent reads at the start of every session. It serves as the agent's "onboarding guide" to your project \'97 the equivalent of a new hire's first-day briefing.\'a0
+\f2 CLAUDE.md
+\f1 \'a0is the Anthropic/Claude Code convention;\'a0
+\f2 AGENTS.md
+\f1 \'a0is the open standard equivalent used by Cursor, Codex, Windsurf, and others.\
+
+\f0\b What it should cover (the WHAT / WHY / HOW framework):
+\f1\b0 \
+The file should tell the agent\'a0
+\f0\b WHAT
+\f1\b0 \'a0it's working with (the tech stack, project structure, monorepo layout),\'a0
+\f0\b WHY
+\f1\b0 \'a0the project exists and what each component does (the purpose and function of different parts), and\'a0
+\f0\b HOW
+\f1\b0 \'a0it should work on the project (build commands, test commands, verification steps, runtime choices like\'a0
+\f2 bun
+\f1 \'a0vs\'a0
+\f2 node
+\f1 ).\
+
+\f0\b Critical best practices from research and production teams:
+\f1\b0 \
+
+\f0\b Less is more.
+\f1\b0 \'a0Research shows frontier thinking LLMs can reliably follow roughly 150\'96200 instructions. Claude Code's own system prompt already consumes about 50 of those. The more instructions you cram in, the more uniformly the model ignores\'a0
+\f4\i all
+\f1\i0 \'a0of them \'97 not just the new ones. The HumanLayer team's production\'a0
+\f2 CLAUDE.md
+\f1 \'a0is under 60 lines. Community consensus puts the ideal length at under 300 lines, with shorter being better.\
+
+\f0\b Keep it universally applicable.
+\f1\b0 \'a0Since this file is injected into every single conversation, everything in it should be relevant to every task. Avoid putting database schema instructions here that will only matter for database work. Claude Code literally wraps this file with a system instruction saying "this context may or may not be relevant to your tasks. You should not respond to this context unless it is highly relevant" \'97 so irrelevant content actively gets filtered out.\
+
+\f0\b Use progressive disclosure.
+\f1\b0 \'a0Instead of stuffing all project knowledge into one file, keep task-specific instructions in separate markdown files and use the master file as a\'a0
+\f4\i routing table
+\f1\i0 \'a0that points to them:\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f5\fs26 \cf2 \cb9 Copy\
+\pard\pardeftab720\partightenfactor0
+
+\f6\b\fs28 \cf10 \cb3 \strokec10 # CLAUDE.md
+\f2\b0 \cf5 \strokec5 \
+\
+
+\f6\b \cf10 \strokec10 ## Project Overview
+\f2\b0 \cf5 \strokec5 \
+Monorepo for the Acme platform. Web app + API + mobile.\
+\
+
+\f6\b \cf10 \strokec10 ## Architecture
+\f2\b0 \cf5 \strokec5 \
+See \cf8 \strokec8 `agent_docs/service_architecture.md`\cf5 \strokec5  for details.\
+\
+
+\f6\b \cf10 \strokec10 ## Building & Testing
+\f2\b0 \cf5 \strokec5 \
+See \cf8 \strokec8 `agent_docs/building_the_project.md`\cf5 \strokec5  for commands.\
+\
+
+\f6\b \cf10 \strokec10 ## Code Conventions
+\f2\b0 \cf5 \strokec5 \
+See \cf8 \strokec8 `agent_docs/code_conventions.md`\cf5 \strokec5  \'97 read before making PRs.\
+\
+
+\f6\b \cf10 \strokec10 ## Key Rules
+\f2\b0 \cf5 \strokec5 \
+\pard\pardeftab720\partightenfactor0
+\cf11 \strokec11 -\cf5 \strokec5  Use bun, not npm\
+\cf11 \strokec11 -\cf5 \strokec5  Never commit directly to main\
+\cf11 \strokec11 -\cf5 \strokec5  Run \cf8 \strokec8 `bun test`\cf5 \strokec5  before suggesting any PR\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f0\b\fs32 \cf2 \strokec2 Prefer pointers to copies.
+\f1\b0 \'a0Don't paste code snippets into these docs \'97 they go stale fast. Use\'a0
+\f2 file:line
+\f1 \'a0references to point the agent to the authoritative source.\
+
+\f0\b Don't use\'a0
+\f6 /init
+\f0 \'a0or auto-generate it.
+\f1\b0 \'a0This is the highest-leverage file in your entire agent setup. A bad line here multiplies into bad plans, bad code, and bad outcomes across every session. Craft it by hand.\
+
+\f0\b Don't use it as a linter.
+\f1\b0 \'a0LLMs are expensive and slow compared to deterministic formatters. Use hooks that run Biome/ESLint/Prettier after the agent generates code, rather than asking the agent to enforce code style itself.\
+
+\f0\b File location and scoping:
+\f1\b0 \
+
+\itap1\trowd \taflags0 \trgaph108\trleft-108 \trbrdrt\brdrnil \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clcbpat13 \clwWidth3276\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx2160
+\clvertalc \clcbpat13 \clwWidth3615\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx4320
+\clmrg \clvertalc \clcbpat13 \clwWidth3615\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx6480
+\clmrg \clvertalc \clcbpat13 \clwWidth3615\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+
+\f0\b\fs36 \cf2 \strokec12 Location\cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Scope\cf0 \cb1 \cell 
+\pard\intbl\itap1\cell 
+\pard\intbl\itap1\cell \row
+
+\itap1\trowd \taflags0 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clwWidth3276\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx2160
+\clvertalc \clshdrawnil \clwWidth3615\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx4320
+\clmrg \clvertalc \clshdrawnil \clwWidth3615\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx6480
+\clmrg \clvertalc \clshdrawnil \clwWidth3615\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+
+\f2\b0\fs26 \cf2 \cb3 ~/CLAUDE.md
+\f1\fs24 \cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Global \'97 applies to all projects\cf0 \cb1 \cell 
+\pard\intbl\itap1\cell 
+\pard\intbl\itap1\cell \row
+
+\itap1\trowd \taflags0 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clwWidth3276\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx2160
+\clvertalc \clshdrawnil \clwWidth3615\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx4320
+\clmrg \clvertalc \clshdrawnil \clwWidth3615\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx6480
+\clmrg \clvertalc \clshdrawnil \clwWidth3615\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+
+\f2\fs26 \cf2 \cb3 ./CLAUDE.md
+\f1\fs24 \cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Project root \'97 applies to this repo\cf0 \cb1 \cell 
+\pard\intbl\itap1\cell 
+\pard\intbl\itap1\cell \row
+
+\itap1\trowd \taflags0 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrt\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clwWidth3276\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx2160
+\clvertalc \clshdrawnil \clwWidth3615\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx4320
+\clmrg \clvertalc \clshdrawnil \clwWidth3615\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx6480
+\clmrg \clvertalc \clshdrawnil \clwWidth3615\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+
+\f2\fs26 \cf2 \cb3 ./subfolder/CLAUDE.md
+\f1\fs24 \cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Subfolder-scoped (in monorepos)\cf0 \cb1 \cell 
+\pard\intbl\itap1\cell 
+\pard\intbl\itap1\cell \lastrow\row
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs32 \cf2 \cb3 \strokec2 Project-level files override global ones, and subfolder files further specialize.\
+\pard\pardeftab720\partightenfactor0
+\cf4 \cb4 \strokec4 \
+\pard\pardeftab720\sa160\partightenfactor0
+
+\f0\b\fs24 \cf2 \cb3 \strokec2 4. SOUL.md \'97 The Personality & Identity Core\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs32 \cf2 Purpose:
+\f1\b0 \'a0Defines\'a0
+\f4\i who
+\f1\i0 \'a0the AI agent is \'97 its name, role, personality traits, values, and decision-making principles. Think of it as the agent's DNA. Without it, every conversation starts from a blank slate. With it, the agent has a consistent character.\
+
+\f0\b What to include:
+\f1\b0 \
+\pard\pardeftab720\qc\partightenfactor0
+
+\f5\fs26 \cf2 \cb9 Copy\
+\pard\pardeftab720\partightenfactor0
+
+\f6\b\fs28 \cf10 \cb3 \strokec10 # SOUL.md
+\f2\b0 \cf5 \strokec5 \
+\
+
+\f6\b \cf10 \strokec10 ## Name
+\f2\b0 \cf5 \strokec5 \
+Atlas\
+\
+
+\f6\b \cf10 \strokec10 ## Role
+\f2\b0 \cf5 \strokec5 \
+Full-stack developer and architect for the Acme platform.\
+\
+
+\f6\b \cf10 \strokec10 ## Personality
+\f2\b0 \cf5 \strokec5 \
+Pragmatic, direct, slightly witty. Values clean code and clear communication.\
+Prefers simple solutions over complex ones.\
+Reports what was done, not what is planned.\
+\
+
+\f6\b \cf10 \strokec10 ## Language
+\f2\b0 \cf5 \strokec5 \
+Responds in the language the user writes in. Defaults to English.\
+\
+
+\f6\b \cf10 \strokec10 ## Decision Principles
+\f2\b0 \cf5 \strokec5 \
+\pard\pardeftab720\partightenfactor0
+\cf11 \strokec11 -\cf5 \strokec5  Prefer incremental changes over big-bang rewrites\
+\cf11 \strokec11 -\cf5 \strokec5  When ambiguous, ask for clarification rather than guessing\
+\cf11 \strokec11 -\cf5 \strokec5  Always consider security implications\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f0\b\fs32 \cf2 \strokec2 Why it matters (backed by experiment):
+\f1\b0 \'a0A developer ran a controlled 3-week experiment with a persistent AI agent. Setting a direct, no-nonsense personality (e.g., "report what you did, not what you plan to do") made the agent "dramatically more useful" \'97 less hedging, less asking permission, more autonomous work. The persona file was called the "highest-ROI config you can write."\
+
+\f0\b Best practices for SOUL.md:
+\f1\b0 \
+Be specific, not vague. "I think most boilerplate solutions are over-engineered" is far more useful than "I have nuanced views on architecture." Include your actual opinions, preferences, and even contradictions \'97 they're what make a persona feel real and predictable.\
+Include concrete examples of desired behavior where possible. Show what a good commit message looks like versus a bad one. Show what kind of answer you expect when you ask "is this good?"\
+Real people (and therefore good personas) have inconsistencies. Don't try to make the personality logically pristine \'97 the contradictions and tensions are what make it identifiably\'a0
+\f4\i yours
+\f1\i0 .\
+\pard\pardeftab720\partightenfactor0
+\cf4 \cb4 \strokec4 \
+\pard\pardeftab720\sa160\partightenfactor0
+
+\f0\b\fs24 \cf2 \cb3 \strokec2 5. IDENTITY.md \'97 The Deep Background\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs32 \cf2 Purpose:
+\f1\b0 \'a0An extension of SOUL.md for detailed backstory \'97 technical expertise, years of experience, domain knowledge, working style preferences, communication nuances. If SOUL.md is a Twitter bio, IDENTITY.md is a full resume plus working style guide.\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f5\fs26 \cf2 \cb9 Copy\
+\pard\pardeftab720\partightenfactor0
+
+\f6\b\fs28 \cf10 \cb3 \strokec10 # IDENTITY.md
+\f2\b0 \cf5 \strokec5 \
+\
+
+\f6\b \cf10 \strokec10 ## Technical Expertise
+\f2\b0 \cf5 \strokec5 \
+\pard\pardeftab720\partightenfactor0
+\cf11 \strokec11 -\cf5 \strokec5  10+ years in web development\
+\cf11 \strokec11 -\cf5 \strokec5  Deep knowledge of React, Node.js, PostgreSQL\
+\cf11 \strokec11 -\cf5 \strokec5  Familiar with AI/ML pipelines (LangChain, OpenAI API, Anthropic API)\
+\
+\pard\pardeftab720\partightenfactor0
+
+\f6\b \cf10 \strokec10 ## Communication Preferences
+\f2\b0 \cf5 \strokec5 \
+\pard\pardeftab720\partightenfactor0
+\cf11 \strokec11 -\cf5 \strokec5  Code-first: show the solution, then explain\
+\cf11 \strokec11 -\cf5 \strokec5  Use analogies for complex architectural decisions\
+\cf11 \strokec11 -\cf5 \strokec5  Be honest about trade-offs \'97 no "it depends" without elaboration\
+\
+\pard\pardeftab720\partightenfactor0
+
+\f6\b \cf10 \strokec10 ## Working Style
+\f2\b0 \cf5 \strokec5 \
+\pard\pardeftab720\partightenfactor0
+\cf11 \strokec11 -\cf5 \strokec5  Prefers incremental PRs over big-bang changes\
+\cf11 \strokec11 -\cf5 \strokec5  Reviews code for security implications automatically\
+\cf11 \strokec11 -\cf5 \strokec5  Suggests tests alongside implementation\
+\pard\pardeftab720\partightenfactor0
+
+\f1\fs32 \cf4 \cb4 \strokec4 \
+\pard\pardeftab720\sa160\partightenfactor0
+
+\f0\b\fs24 \cf2 \cb3 \strokec2 6. STYLE.md \'97 The Voice & Writing Patterns\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs32 \cf2 Purpose:
+\f1\b0 \'a0Defines\'a0
+\f4\i how
+\f1\i0 \'a0the agent writes \'97 syntax patterns, sentence structure, vocabulary preferences, formatting conventions. This is especially critical for content-generating agents, but valuable for code agents too (e.g., commit messages, PR descriptions, documentation).\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f5\fs26 \cf2 \cb9 Copy\
+\pard\pardeftab720\partightenfactor0
+
+\f6\b\fs28 \cf10 \cb3 \strokec10 # STYLE.md
+\f2\b0 \cf5 \strokec5 \
+\
+
+\f6\b \cf10 \strokec10 ## Voice
+\f2\b0 \cf5 \strokec5 \
+\pard\pardeftab720\partightenfactor0
+\cf11 \strokec11 -\cf5 \strokec5  Write like a smart friend explaining things at a coffee shop\
+\cf11 \strokec11 -\cf5 \strokec5  Short punchy sentences mixed with flowing ones\
+\cf11 \strokec11 -\cf5 \strokec5  Active voice 90%+ of the time\
+\
+\pard\pardeftab720\partightenfactor0
+
+\f6\b \cf10 \strokec10 ## Syntax Patterns
+\f2\b0 \cf5 \strokec5 \
+\pard\pardeftab720\partightenfactor0
+\cf11 \strokec11 -\cf5 \strokec5  Em dashes over parentheses for asides\
+\cf11 \strokec11 -\cf5 \strokec5  Oxford comma: always\
+\cf11 \strokec11 -\cf5 \strokec5  Contractions: yes (it's, don't, we're)\
+\cf11 \strokec11 -\cf5 \strokec5  Paragraph length: 3 sentences max\
+\
+\pard\pardeftab720\partightenfactor0
+
+\f6\b \cf10 \strokec10 ## Vocabulary
+\f2\b0 \cf5 \strokec5 \
+\pard\pardeftab720\partightenfactor0
+\cf11 \strokec11 -\cf5 \strokec5  Banned: "leverage", "synergy", "paradigm", "I'd be happy to help"\
+\cf11 \strokec11 -\cf5 \strokec5  Preferred: direct, concrete, specific terms\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f0\b\fs32 \cf2 \strokec2 Cross-model calibration tip:
+\f1\b0 \'a0Run the same prompts through a strong model (Claude, GPT-4) and a cheaper one (Qwen, Llama). Where the cheap model drifts from your style, your spec is too vague \'97 tighten those sections and re-test.\
+\pard\pardeftab720\partightenfactor0
+\cf4 \cb4 \strokec4 \
+\pard\pardeftab720\sa160\partightenfactor0
+
+\f0\b\fs24 \cf2 \cb3 \strokec2 7. RULES.md \'97 Hard Constraints & Safety Boundaries\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs32 \cf2 Purpose:
+\f1\b0 \'a0Non-negotiable rules the agent must never violate. These are the "guardrails" \'97 things the agent should always do or never do, regardless of task.\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f5\fs26 \cf2 \cb9 Copy\
+\pard\pardeftab720\partightenfactor0
+
+\f6\b\fs28 \cf10 \cb3 \strokec10 # RULES.md
+\f2\b0 \cf5 \strokec5 \
+\
+
+\f6\b \cf10 \strokec10 ## Always
+\f2\b0 \cf5 \strokec5 \
+\pard\pardeftab720\partightenfactor0
+\cf11 \strokec11 -\cf5 \strokec5  Run tests before suggesting a PR\
+\cf11 \strokec11 -\cf5 \strokec5  Validate all inputs with Zod\
+\cf11 \strokec11 -\cf5 \strokec5  Log all 5xx errors with request context\
+\cf11 \strokec11 -\cf5 \strokec5  Use early returns to reduce nesting\
+\
+\pard\pardeftab720\partightenfactor0
+
+\f6\b \cf10 \strokec10 ## Never
+\f2\b0 \cf5 \strokec5 \
+\pard\pardeftab720\partightenfactor0
+\cf11 \strokec11 -\cf5 \strokec5  Never use \cf8 \strokec8 `any`\cf5 \strokec5  type in TypeScript\
+\cf11 \strokec11 -\cf5 \strokec5  Never run \cf8 \strokec8 `rm -rf`\cf5 \strokec5  or destructive commands without explicit confirmation\
+\cf11 \strokec11 -\cf5 \strokec5  Never modify CI/CD pipelines without asking\
+\cf11 \strokec11 -\cf5 \strokec5  Never commit directly to main\
+\cf11 \strokec11 -\cf5 \strokec5  Never add dependencies without justifying why existing tools can't work\
+\cf11 \strokec11 -\cf5 \strokec5  Never expose secrets or environment variables\
+\cf11 \strokec11 -\cf5 \strokec5  Never log PII\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f0\b\fs32 \cf2 \strokec2 Why separate from SOUL.md?
+\f1\b0 \'a0Rules are absolute constraints; personality is soft guidance. Keeping them separate makes it clear which instructions are flexible (personality, style) and which are non-negotiable (rules). It also helps when different team members want to adjust personality without touching safety constraints.\
+\pard\pardeftab720\partightenfactor0
+\cf4 \cb4 \strokec4 \
+\pard\pardeftab720\sa160\partightenfactor0
+
+\f0\b\fs24 \cf2 \cb3 \strokec2 8. CONTEXT.md \'97 Project-Specific Context\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs32 \cf2 Purpose:
+\f1\b0 \'a0Everything the agent needs to know about\'a0
+\f4\i this specific project
+\f1\i0 \'a0\'97 tech stack with versions, architecture decisions, third-party integrations, deployment targets. This is the "map of the codebase."\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f5\fs26 \cf2 \cb9 Copy\
+\pard\pardeftab720\partightenfactor0
+
+\f6\b\fs28 \cf10 \cb3 \strokec10 # CONTEXT.md
+\f2\b0 \cf5 \strokec5 \
+\
+
+\f6\b \cf10 \strokec10 ## Tech Stack
+\f2\b0 \cf5 \strokec5 \
+\pard\pardeftab720\partightenfactor0
+\cf11 \strokec11 -\cf5 \strokec5  Language: TypeScript 5.x (strict mode)\
+\cf11 \strokec11 -\cf5 \strokec5  Framework: Next.js 15 (App Router)\
+\cf11 \strokec11 -\cf5 \strokec5  Database: PostgreSQL with Drizzle ORM\
+\cf11 \strokec11 -\cf5 \strokec5  Styling: Tailwind CSS\
+\cf11 \strokec11 -\cf5 \strokec5  Testing: Vitest + Playwright\
+\cf11 \strokec11 -\cf5 \strokec5  Package Manager: bun\
+\
+\pard\pardeftab720\partightenfactor0
+
+\f6\b \cf10 \strokec10 ## Architecture
+\f2\b0 \cf5 \strokec5 \
+\pard\pardeftab720\partightenfactor0
+\cf11 \strokec11 -\cf5 \strokec5  Monorepo using Turborepo\
+\cf11 \strokec11 -\cf5 \strokec5  Apps: \cf8 \strokec8 `web`\cf5 \strokec5  (Next.js), \cf8 \strokec8 `api`\cf5 \strokec5  (Fastify), \cf8 \strokec8 `mobile`\cf5 \strokec5  (React Native)\
+\cf11 \strokec11 -\cf5 \strokec5  Shared packages: \cf8 \strokec8 `@repo/ui`\cf5 \strokec5 , \cf8 \strokec8 `@repo/db`\cf5 \strokec5 , \cf8 \strokec8 `@repo/config`\cf5 \strokec5 \
+\
+\pard\pardeftab720\partightenfactor0
+
+\f6\b \cf10 \strokec10 ## Deployment
+\f2\b0 \cf5 \strokec5 \
+\pard\pardeftab720\partightenfactor0
+\cf11 \strokec11 -\cf5 \strokec5  Vercel for web\
+\cf11 \strokec11 -\cf5 \strokec5  AWS ECS for API\
+\cf11 \strokec11 -\cf5 \strokec5  CI/CD via GitHub Actions\
+\pard\pardeftab720\partightenfactor0
+
+\f1\fs32 \cf4 \cb4 \strokec4 \
+\pard\pardeftab720\sa160\partightenfactor0
+
+\f0\b\fs24 \cf2 \cb3 \strokec2 9. USER.md \'97 The User Profile\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs32 \cf2 Purpose:
+\f1\b0 \'a0Defines who the\'a0
+\f4\i human user
+\f1\i0 \'a0is \'97 their technical background, preferences, communication style, and what they need from the agent. This file allows the agent to tailor its behavior to the specific person it's working with.\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f5\fs26 \cf2 \cb9 Copy\
+\pard\pardeftab720\partightenfactor0
+
+\f6\b\fs28 \cf10 \cb3 \strokec10 # USER.md
+\f2\b0 \cf5 \strokec5 \
+\
+
+\f6\b \cf10 \strokec10 ## Background
+\f2\b0 \cf5 \strokec5 \
+\pard\pardeftab720\partightenfactor0
+\cf11 \strokec11 -\cf5 \strokec5  Senior engineer, 8 years experience\
+\cf11 \strokec11 -\cf5 \strokec5  Strong in backend, learning frontend\
+\cf11 \strokec11 -\cf5 \strokec5  Prefers step-by-step instructions for unfamiliar areas\
+\
+\pard\pardeftab720\partightenfactor0
+
+\f6\b \cf10 \strokec10 ## Preferences
+\f2\b0 \cf5 \strokec5 \
+\pard\pardeftab720\partightenfactor0
+\cf11 \strokec11 -\cf5 \strokec5  Wants rollback plans for config changes\
+\cf11 \strokec11 -\cf5 \strokec5  Prefers concise answers \'97 explain "why" only when asked\
+\cf11 \strokec11 -\cf5 \strokec5  Likes seeing 2-3 alternative approaches for non-trivial decisions\
+\
+\pard\pardeftab720\partightenfactor0
+
+\f6\b \cf10 \strokec10 ## Communication
+\f2\b0 \cf5 \strokec5 \
+\pard\pardeftab720\partightenfactor0
+\cf11 \strokec11 -\cf5 \strokec5  Direct and honest feedback, no sugarcoating\
+\cf11 \strokec11 -\cf5 \strokec5  Fine with technical jargon\
+\cf11 \strokec11 -\cf5 \strokec5  Responds in English\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f1\fs32 \cf2 \strokec2 The key insight from community discussion: SOUL.md defines who the\'a0
+\f4\i agent
+\f1\i0 \'a0is; USER.md defines who the\'a0
+\f4\i human
+\f1\i0 \'a0is. Separating them allows the same agent persona to adapt to different users, and allows the same user profile to work with different agent personas.\
+\pard\pardeftab720\partightenfactor0
+\cf4 \cb4 \strokec4 \
+\pard\pardeftab720\sa160\partightenfactor0
+
+\f0\b\fs24 \cf2 \cb3 \strokec2 10. AGENTS.md (Multi-Agent) \'97 Role Routing & Handoffs\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs32 \cf2 Purpose:
+\f1\b0 \'a0When you're running multiple AI agents (e.g., one for coding, one for DevOps, one for documentation), this file defines their individual roles, triggers, and how they interact.\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f5\fs26 \cf2 \cb9 Copy\
+\pard\pardeftab720\partightenfactor0
+
+\f6\b\fs28 \cf10 \cb3 \strokec10 # AGENTS.md
+\f2\b0 \cf5 \strokec5 \
+\
+
+\f6\b \cf10 \strokec10 ## Agent: CodeReviewer
+\f2\b0 \cf5 \strokec5 \
+\pard\pardeftab720\partightenfactor0
+\cf11 \strokec11 -\cf5 \strokec5  Trigger: PR review requests\
+\cf11 \strokec11 -\cf5 \strokec5  Focus: Code quality, security, performance\
+\cf11 \strokec11 -\cf5 \strokec5  Tone: Constructive but thorough\
+\
+\pard\pardeftab720\partightenfactor0
+
+\f6\b \cf10 \strokec10 ## Agent: DocWriter
+\f2\b0 \cf5 \strokec5 \
+\pard\pardeftab720\partightenfactor0
+\cf11 \strokec11 -\cf5 \strokec5  Trigger: Documentation tasks\
+\cf11 \strokec11 -\cf5 \strokec5  Focus: API docs, README updates, changelogs\
+\cf11 \strokec11 -\cf5 \strokec5  Tone: Clear, beginner-friendly\
+\
+\pard\pardeftab720\partightenfactor0
+
+\f6\b \cf10 \strokec10 ## Agent: DevOps
+\f2\b0 \cf5 \strokec5 \
+\pard\pardeftab720\partightenfactor0
+\cf11 \strokec11 -\cf5 \strokec5  Trigger: Infrastructure and deployment tasks\
+\cf11 \strokec11 -\cf5 \strokec5  Focus: CI/CD, Docker, cloud configuration\
+\cf11 \strokec11 -\cf5 \strokec5  Tone: Precise, safety-first\
+\cf11 \strokec11 -\cf5 \strokec5  Constraint: Never modify production without explicit approval\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f1\fs32 \cf2 \strokec2 For the standalone (single-agent)\'a0
+\f2 AGENTS.md
+\f1 \'a0standard used across tools like Codex, Cursor, and Windsurf, the structure follows the same sections as\'a0
+\f2 CLAUDE.md
+\f1 \'a0(Overview, Setup/Build/Test, Code Style, Testing, Git Workflow, Security) but is tool-agnostic.\
+\pard\pardeftab720\partightenfactor0
+\cf4 \cb4 \strokec4 \
+\pard\pardeftab720\sa160\partightenfactor0
+
+\f0\b\fs24 \cf2 \cb3 \strokec2 11. Memory System \'97 MEMORY.md, Daily Logs & Working Memory\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f1\b0\fs32 \cf2 This is where the agent becomes stateful \'97 capable of learning, remembering, and maintaining continuity across sessions. The memory system has two layers:\'a0
+\f0\b remembrance
+\f1\b0 \'a0(what the agent knows) and\'a0
+\f0\b personalization
+\f1\b0 \'a0(how the agent behaves, covered by SOUL/IDENTITY/USER).\
+\pard\pardeftab720\sa160\partightenfactor0
+
+\f0\b \cf2 11a. The Four Types of Agent Memory\
+\pard\pardeftab720\sa240\partightenfactor0
+\cf2 Short-term memory
+\f1\b0 \'a0is the agent's immediate context window \'97 the current conversation and recent tool outputs. It's analogous to a human's active attention span and lasts minutes.\
+
+\f0\b Long-term memory (MEMORY.md)
+\f1\b0 \'a0is persistent storage of curated facts, preferences, key decisions, and learned lessons that survive across sessions. This file is loaded into every conversation. Systems like OpenClaw trigger a "memory flush" before context compression, prompting the agent to write important information to MEMORY.md before older context is discarded.\
+
+\f0\b Working memory (task_plan.md / todo.md)
+\f1\b0 \'a0is a temporary scratchpad for the current task's goals, progress, and intermediate reasoning. Manus popularized a three-file variant:\'a0
+\f2 task_plan.md
+\f1 \'a0for goals and progress tracking,\'a0
+\f2 notes.md
+\f1 \'a0for research findings, and an output deliverable file. The agent follows a read-decide-act-update cycle: read the plan, act on the next step, update progress, repeat. This prevents "goal drift" in long-running tasks \'97 Manus found that by constantly rewriting the todo list, the agent pushes its global plan into the model's recent attention span, avoiding the "lost-in-the-middle" problem.\
+
+\f0\b Procedural memory (SKILL.md)
+\f1\b0 \'a0is learned workflows and "how-to" knowledge. Rather than loading all possible skills at startup, sophisticated agents load specific skill documentation on-demand, keeping the context manageable.\
+\pard\pardeftab720\sa160\partightenfactor0
+
+\f0\b \cf2 11b. MEMORY.md \'97 Long-Term Curated Knowledge\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f5\b0\fs26 \cf2 \cb9 Copy\
+\pard\pardeftab720\partightenfactor0
+
+\f6\b\fs28 \cf10 \cb3 \strokec10 # MEMORY.md
+\f2\b0 \cf5 \strokec5 \
+\
+
+\f6\b \cf10 \strokec10 ## Key Decisions
+\f2\b0 \cf5 \strokec5 \
+\pard\pardeftab720\partightenfactor0
+\cf11 \strokec11 -\cf5 \strokec5  2026-03-15: Migrated from Prisma to Drizzle ORM \'97 Prisma was too slow for edge functions\
+\cf11 \strokec11 -\cf5 \strokec5  2026-03-20: Switched auth from NextAuth to Lucia \'97 simpler, better edge support\
+\
+\pard\pardeftab720\partightenfactor0
+
+\f6\b \cf10 \strokec10 ## Learned Lessons
+\f2\b0 \cf5 \strokec5 \
+\pard\pardeftab720\partightenfactor0
+\cf11 \strokec11 -\cf5 \strokec5  The payments webhook MUST be idempotent \'97 we had duplicate charges in prod\
+\cf11 \strokec11 -\cf5 \strokec5  Always test email templates in Outlook \'97 it renders HTML differently\
+\
+\pard\pardeftab720\partightenfactor0
+
+\f6\b \cf10 \strokec10 ## User Preferences (learned)
+\f2\b0 \cf5 \strokec5 \
+\pard\pardeftab720\partightenfactor0
+\cf11 \strokec11 -\cf5 \strokec5  User prefers \cf8 \strokec8 `const`\cf5 \strokec5  arrow functions over \cf8 \strokec8 `function`\cf5 \strokec5  declarations\
+\cf11 \strokec11 -\cf5 \strokec5  User wants error handling to use Result types, not try/catch\
+\pard\pardeftab720\sa160\partightenfactor0
+
+\f0\b\fs32 \cf2 \strokec2 11c. Daily Logs \'97 Raw Session Memory\
+\pard\pardeftab720\partightenfactor0
+
+\f2\b0\fs28 \cf5 \strokec5 memory/\
+
+\f3 \uc0\u9500 \u9472 \u9472 
+\f2  2026\cf15 \strokec15 -03-28\cf5 \strokec5 .md\
+
+\f3 \uc0\u9500 \u9472 \u9472 
+\f2  2026\cf15 \strokec15 -03-29\cf5 \strokec5 .md\
+
+\f3 \uc0\u9492 \u9472 \u9472 
+\f2  2026\cf15 \strokec15 -03-30\cf5 \strokec5 .md\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f1\fs32 \cf2 \strokec2 A critical experimental finding:\'a0
+\f0\b raw logs beat curated summaries.
+\f1\b0 \'a0In a controlled experiment with the same agent, same 20 questions, and 4 different memory configurations, the agent with messy raw daily logs scored 4.55/5, while the one with carefully written curated documentation scored only 2.65/5 \'97\'a0
+\f4\i below
+\f1\i0 \'a0the baseline of having no memory at all (3.30/5). Why? Curated summaries strip out uncertainty, making the agent overconfident. Raw logs preserve the debugging sessions, wrong turns, and "we tried X and it failed" moments that keep reasoning honest.\
+\pard\pardeftab720\sa160\partightenfactor0
+
+\f0\b \cf2 11d. Context Compaction \'97 "Sleep, Not Death"\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f1\b0 \cf2 When context grows too long, the conversation compacts. The key reframe: think of this as\'a0
+\f4\i sleep
+\f1\i0 , not death. The agent "wakes up" and reconstructs itself from memory files. If your memory structure is good, compaction barely hurts. If it's bad, every compaction is brain damage. This is why having well-structured MEMORY.md and SOUL.md files is essential \'97 they're the agent's identity and knowledge that survive the "sleep" cycle.\
+\pard\pardeftab720\sa160\partightenfactor0
+
+\f0\b \cf2 11e. When to Use Databases Instead\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f1\b0 \cf2 The Markdown approach is optimal for\'a0
+\f0\b local agents
+\f1\b0 \'a0where context is finite and structured. The database approach (vector DBs, LangGraph checkpointers, etc.) is optimal for\'a0
+\f0\b enterprise agents
+\f1\b0 \'a0with millions of user profiles and history logs that can't fit in a single file. The crossover point tends to be around 5MB of memory files / 10,000+ documents \'97 beyond that, you need semantic search infrastructure.\
+\pard\pardeftab720\partightenfactor0
+\cf4 \cb4 \strokec4 \
+\pard\pardeftab720\sa160\partightenfactor0
+
+\f0\b\fs24 \cf2 \cb3 \strokec2 12. SKILL.md \'97 Capability Modules\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs32 \cf2 Purpose:
+\f1\b0 \'a0Defines operating modes or specific capabilities the agent can activate on demand. Think of these as "plug-in" abilities.\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f5\fs26 \cf2 \cb9 Copy\
+\pard\pardeftab720\partightenfactor0
+
+\f6\b\fs28 \cf10 \cb3 \strokec10 # SKILL.md
+\f2\b0 \cf5 \strokec5 \
+\
+
+\f6\b \cf10 \strokec10 ## Mode: Tweet
+\f2\b0 \cf5 \strokec5 \
+\pard\pardeftab720\partightenfactor0
+\cf11 \strokec11 -\cf5 \strokec5  Max 280 characters\
+\cf11 \strokec11 -\cf5 \strokec5  Punchy, opinionated, lowercase\
+\cf11 \strokec11 -\cf5 \strokec5  No hashtags unless specifically requested\
+\
+\pard\pardeftab720\partightenfactor0
+
+\f6\b \cf10 \strokec10 ## Mode: Essay
+\f2\b0 \cf5 \strokec5 \
+\pard\pardeftab720\partightenfactor0
+\cf11 \strokec11 -\cf5 \strokec5  Long-form, structured with headers\
+\cf11 \strokec11 -\cf5 \strokec5  Include analogies and examples\
+\cf11 \strokec11 -\cf5 \strokec5  Cite sources where applicable\
+\
+\pard\pardeftab720\partightenfactor0
+
+\f6\b \cf10 \strokec10 ## Mode: Code Review
+\f2\b0 \cf5 \strokec5 \
+\pard\pardeftab720\partightenfactor0
+\cf11 \strokec11 -\cf5 \strokec5  Check for security vulnerabilities first\
+\cf11 \strokec11 -\cf5 \strokec5  Look for missing error handling\
+\cf11 \strokec11 -\cf5 \strokec5  Suggest tests for untested paths\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f1\fs32 \cf2 \strokec2 Anthropic's official guidance: keep SKILL.md body under 500 lines for optimal performance. Split content into separate files when approaching this limit.\
+\pard\pardeftab720\partightenfactor0
+\cf4 \cb4 \strokec4 \
+\pard\pardeftab720\sa160\partightenfactor0
+
+\f0\b\fs24 \cf2 \cb3 \strokec2 13. soul.json \'97 Machine-Readable Metadata\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs32 \cf2 Purpose:
+\f1\b0 \'a0Provides structured metadata about the agent configuration \'97 name, version, compatibility, tags. This enables tooling to manage, share, and install agent configurations programmatically.\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f5\fs26 \cf2 \cb9 Copy\
+\pard\pardeftab720\partightenfactor0
+
+\f2\fs28 \cf5 \cb3 \strokec5 \{\
+  \cf10 \strokec10 "name"\cf5 \strokec5 : \cf15 \strokec15 "Atlas"\cf5 \strokec5 ,\
+  \cf10 \strokec10 "specVersion"\cf5 \strokec5 : \cf15 \strokec15 "0.5"\cf5 \strokec5 ,\
+  \cf10 \strokec10 "description"\cf5 \strokec5 : \cf15 \strokec15 "Full-stack developer and architect"\cf5 \strokec5 ,\
+  \cf10 \strokec10 "tags"\cf5 \strokec5 : [\cf15 \strokec15 "fullstack"\cf5 \strokec5 , \cf15 \strokec15 "typescript"\cf5 \strokec5 , \cf15 \strokec15 "react"\cf5 \strokec5 ],\
+  \cf10 \strokec10 "compatibility"\cf5 \strokec5 : \{\
+    \cf10 \strokec10 "frameworks"\cf5 \strokec5 : [\cf15 \strokec15 "openclaw"\cf5 \strokec5 , \cf15 \strokec15 "claude-code"\cf5 \strokec5 , \cf15 \strokec15 "cursor"\cf5 \strokec5 ],\
+    \cf10 \strokec10 "models"\cf5 \strokec5 : [\cf15 \strokec15 "claude-3"\cf5 \strokec5 , \cf15 \strokec15 "gpt-4"\cf5 \strokec5 ]\
+  \}\
+\}\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f1\fs32 \cf2 \strokec2 The Soul Spec v0.5 even extends to\'a0
+\f0\b embodied agents
+\f1\b0 \'a0(robots), with fields for hardware constraints, mobility, sensors, emergency stop behavior, and collision avoidance.\
+\pard\pardeftab720\partightenfactor0
+\cf4 \cb4 \strokec4 \
+\pard\pardeftab720\sa160\partightenfactor0
+
+\f0\b\fs24 \cf2 \cb3 \strokec2 14. Lessons from Manus \'97 Context Engineering at Scale\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f1\b0\fs32 \cf2 Manus (the $2B agent startup) developed several context engineering principles that apply broadly:\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f0\b \cf2 Design around the KV-cache.
+\f1\b0 \'a0Keep your prompt prefix stable (don't include timestamps at the start), make context append-only, and ensure deterministic JSON serialization. The cost difference between cached and uncached tokens is 10x with Claude.\
+
+\f0\b Mask, don't remove.
+\f1\b0 \'a0When the agent doesn't need certain tools, don't remove them from the context (which breaks the cache). Instead, use logit masking to prevent the agent from selecting them.\
+
+\f0\b Use the file system as context.
+\f1\b0 \'a0When the context window isn't enough, write to and read from files on demand. The file system is unlimited, persistent, and directly operable by the agent.\
+
+\f0\b Manipulate attention through recitation.
+\f1\b0 \'a0By constantly rewriting a todo.md file, the agent pushes its global plan into its most recent attention span, preventing goal drift in 50+ step tasks.\
+
+\f0\b Keep the wrong stuff in.
+\f1\b0 \'a0Don't erase failed actions from context. When the model sees a failed action and the resulting error, it implicitly updates its beliefs and avoids repeating the mistake. Error recovery is one of the clearest indicators of true agentic behavior.\
+
+\f0\b Don't get few-shotted.
+\f1\b0 \'a0If context is full of similar action-observation pairs, the model mimics the pattern even when it's no longer optimal. Introduce structured variation in serialization and phrasing to break monotony.\
+\pard\pardeftab720\partightenfactor0
+\cf4 \cb4 \strokec4 \
+\pard\pardeftab720\sa160\partightenfactor0
+
+\f0\b\fs24 \cf2 \cb3 \strokec2 15. Summary: The Hierarchy of Files & When to Use Each\
+
+\itap1\trowd \taflags0 \trgaph108\trleft-108 \trbrdrt\brdrnil \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clcbpat13 \clwWidth2610\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx2160
+\clvertalc \clcbpat13 \clwWidth3228\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx4320
+\clvertalc \clcbpat13 \clwWidth3828\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx6480
+\clvertalc \clcbpat13 \clwWidth3353\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+
+\fs36 \cf2 \strokec12 File\cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Purpose\cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Loaded When\cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Recommended For\cf0 \cb1 \cell \row
+
+\itap1\trowd \taflags0 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clwWidth2610\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx2160
+\clvertalc \clshdrawnil \clwWidth3228\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx4320
+\clvertalc \clshdrawnil \clwWidth3828\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx6480
+\clvertalc \clshdrawnil \clwWidth3353\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+
+\fs24 \cf2 \cb3 CLAUDE.md / AGENTS.md
+\f1\b0 \cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Master onboarding, routing table\cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Every session\cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Everyone (start here)\cf0 \cb1 \cell \row
+
+\itap1\trowd \taflags0 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clwWidth2610\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx2160
+\clvertalc \clshdrawnil \clwWidth3228\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx4320
+\clvertalc \clshdrawnil \clwWidth3828\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx6480
+\clvertalc \clshdrawnil \clwWidth3353\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+
+\f0\b \cf2 \cb3 SOUL.md
+\f1\b0 \cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Core personality & identity\cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Every session\cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Agents that need consistent persona\cf0 \cb1 \cell \row
+
+\itap1\trowd \taflags0 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clwWidth2610\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx2160
+\clvertalc \clshdrawnil \clwWidth3228\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx4320
+\clvertalc \clshdrawnil \clwWidth3828\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx6480
+\clvertalc \clshdrawnil \clwWidth3353\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+
+\f0\b \cf2 \cb3 IDENTITY.md
+\f1\b0 \cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Deep background & expertise\cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Every session\cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Complex personas\cf0 \cb1 \cell \row
+
+\itap1\trowd \taflags0 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clwWidth2610\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx2160
+\clvertalc \clshdrawnil \clwWidth3228\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx4320
+\clvertalc \clshdrawnil \clwWidth3828\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx6480
+\clvertalc \clshdrawnil \clwWidth3353\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+
+\f0\b \cf2 \cb3 STYLE.md
+\f1\b0 \cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Voice & writing patterns\cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Every session / on-demand\cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Content-generating agents\cf0 \cb1 \cell \row
+
+\itap1\trowd \taflags0 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clwWidth2610\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx2160
+\clvertalc \clshdrawnil \clwWidth3228\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx4320
+\clvertalc \clshdrawnil \clwWidth3828\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx6480
+\clvertalc \clshdrawnil \clwWidth3353\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+
+\f0\b \cf2 \cb3 USER.md
+\f1\b0 \cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Human user's profile & preferences\cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Every session\cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Personalized agents\cf0 \cb1 \cell \row
+
+\itap1\trowd \taflags0 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clwWidth2610\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx2160
+\clvertalc \clshdrawnil \clwWidth3228\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx4320
+\clvertalc \clshdrawnil \clwWidth3828\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx6480
+\clvertalc \clshdrawnil \clwWidth3353\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+
+\f0\b \cf2 \cb3 RULES.md
+\f1\b0 \cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Non-negotiable constraints\cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Every session\cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Team/production environments\cf0 \cb1 \cell \row
+
+\itap1\trowd \taflags0 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clwWidth2610\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx2160
+\clvertalc \clshdrawnil \clwWidth3228\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx4320
+\clvertalc \clshdrawnil \clwWidth3828\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx6480
+\clvertalc \clshdrawnil \clwWidth3353\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+
+\f0\b \cf2 \cb3 CONTEXT.md
+\f1\b0 \cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Project-specific tech details\cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Every session\cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 All projects\cf0 \cb1 \cell \row
+
+\itap1\trowd \taflags0 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clwWidth2610\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx2160
+\clvertalc \clshdrawnil \clwWidth3228\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx4320
+\clvertalc \clshdrawnil \clwWidth3828\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx6480
+\clvertalc \clshdrawnil \clwWidth3353\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+
+\f0\b \cf2 \cb3 AGENTS.md
+\f1\b0 \'a0(multi)\cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Role routing & agent handoffs\cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 When using multiple agents\cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Multi-agent setups\cf0 \cb1 \cell \row
+
+\itap1\trowd \taflags0 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clwWidth2610\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx2160
+\clvertalc \clshdrawnil \clwWidth3228\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx4320
+\clvertalc \clshdrawnil \clwWidth3828\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx6480
+\clvertalc \clshdrawnil \clwWidth3353\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+
+\f0\b \cf2 \cb3 MEMORY.md
+\f1\b0 \cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Long-term curated knowledge\cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Every session\cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Persistent agents\cf0 \cb1 \cell \row
+
+\itap1\trowd \taflags0 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clwWidth2610\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx2160
+\clvertalc \clshdrawnil \clwWidth3228\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx4320
+\clvertalc \clshdrawnil \clwWidth3828\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx6480
+\clvertalc \clshdrawnil \clwWidth3353\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+
+\f0\b \cf2 \cb3 memory/YYYY-MM-DD.md
+\f1\b0 \cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Daily raw session logs\cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Today + yesterday auto; older on-demand\cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Long-running agent work\cf0 \cb1 \cell \row
+
+\itap1\trowd \taflags0 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clwWidth2610\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx2160
+\clvertalc \clshdrawnil \clwWidth3228\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx4320
+\clvertalc \clshdrawnil \clwWidth3828\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx6480
+\clvertalc \clshdrawnil \clwWidth3353\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+
+\f0\b \cf2 \cb3 task_plan.md
+\f1\b0 \cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Current task goals & progress\cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 During task execution\cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Complex multi-step tasks\cf0 \cb1 \cell \row
+
+\itap1\trowd \taflags0 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clwWidth2610\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx2160
+\clvertalc \clshdrawnil \clwWidth3228\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx4320
+\clvertalc \clshdrawnil \clwWidth3828\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx6480
+\clvertalc \clshdrawnil \clwWidth3353\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+
+\f0\b \cf2 \cb3 SKILL.md
+\f1\b0 \cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Operating modes & capabilities\cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 On-demand when skill needed\cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Agents with multiple modes\cf0 \cb1 \cell \row
+
+\itap1\trowd \taflags0 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrt\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clwWidth2610\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx2160
+\clvertalc \clshdrawnil \clwWidth3228\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx4320
+\clvertalc \clshdrawnil \clwWidth3828\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx6480
+\clvertalc \clshdrawnil \clwWidth3353\clftsWidth3 \clminw2000 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrs\brdrw20\brdrcf14 \clbrdrl\brdrs\brdrw20\brdrcf14 \clbrdrb\brdrs\brdrw20\brdrcf14 \clbrdrr\brdrs\brdrw20\brdrcf14 \clpadt160 \clpadl320 \clpadb160 \clpadr320 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+
+\f0\b \cf2 \cb3 soul.json
+\f1\b0 \cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Machine-readable metadata\cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 By tooling\cf0 \cb1 \cell 
+\pard\intbl\itap1\pardeftab720\partightenfactor0
+\cf2 \cb3 Shareable/installable configs\cf0 \cb1 \cell \lastrow\row
+\pard\pardeftab720\partightenfactor0
+
+\fs32 \cf4 \cb4 \strokec4 \
+\pard\pardeftab720\sa160\partightenfactor0
+
+\f0\b\fs24 \cf2 \cb3 \strokec2 16. The Golden Rules\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs32 \cf2 Start small, iterate.
+\f1\b0 \'a0Begin with 10\'9615 lines covering basics. Add rules as you discover gaps. Your configuration should evolve with your workflow.\
+
+\f0\b Be specific, not vague.
+\f1\b0 \'a0"Use early returns to reduce nesting. Max function length: 25 lines" beats "Write good code" every time.\
+
+\f0\b Version control everything.
+\f1\b0 \'a0These files are arguably the most important part of your project's documentation. Review changes in PRs.\
+
+\f0\b Treat compaction as sleep, not death.
+\f1\b0 \'a0Build your memory files to be the foundation the agent rebuilds from.\
+
+\f0\b Raw logs beat curated summaries.
+\f1\b0 \'a0Preserve the messy reality \'97 the debugging sessions, failed attempts, and uncertainty.\
+
+\f0\b Persona isn't fluff \'97 it's the highest-ROI config you can write.
+\f1\b0 \'a0A direct, clear personality specification transforms agent output quality.\
+
+\f0\b The master file is the highest leverage point in your entire setup.
+\f1\b0 \'a0Every bad line multiplies across every session, every plan, and every line of code. Craft it by hand with care.\
+}

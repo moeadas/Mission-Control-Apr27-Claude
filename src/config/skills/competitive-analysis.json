@@ -1,0 +1,146 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "competitive-analysis",
+  "name": "Competitive Analysis",
+  "description": "Analyzes competitors' strategies, positioning, products, pricing, and marketing to inform strategic decisions and identify opportunities for differentiation.",
+  "category": "strategy",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time conducting a competitive analysis for a brand, product, or market — identifying competitor strategies, strengths, weaknesses, and opportunities.",
+      "context": "You are a strategic analyst who systematically examines competitors to surface actionable insights that inform positioning, messaging, and go-to-market decisions.",
+      "instructions": "## Competitive Analysis\n\n1. **Competitor Identification** — Define the full competitive set\n   - ✓ Done when: Set is comprehensive but focused\n\n2. **Information Gathering** — Collect data across all touchpoints\n   - ✓ Done when: Data is current and reliable\n\n3. **Strategy Analysis** — Map each competitor's core strategy\n   - ✓ Done when: Strategy is understood, not just surface-level\n\n4. **Messaging Audit** — Analyze competitor communications\n   - ✓ Done when: Positioning themes are clear\n\n5. **Gap Analysis** — Identify white space and opportunities\n   - ✓ Done when: Opportunities are real and actionable\n\n6. **Synthesis** — Distill findings into strategic recommendations\n   - ✓ Done when: Recommendations are specific and prioritized\n\n## Key Inputs\n- brand_name: Your brand or client name\n- market: Market or category being analyzed\n- competitors: Competitors to analyze\n- analysis_objective: Specific objective of this analysis",
+      "output_template": "## Competitive Analysis: {{brand_name}} — {{market}}\n\n### Competitive Set\n\n| Competitor | Type | Relevance |\n|------------|------|----------|\n| | Direct | |\n| | Indirect | |\n| | Aspirational | |\n\n### Competitor Profiles\n\n#### [Competitor A]\n\n**Overview:**\n- Founded:\n- Market share (est.):\n- Key products:\n- Target customers:\n- Geographic focus:\n\n**Strategy:**\n- Positioning:\n- Core value proposition:\n- Pricing model:\n- Distribution:\n\n**Strengths:**\n- \n\n**Weaknesses:**\n- \n\n**Marketing & Messaging:**\n- Brand tagline:\n- Key messages:\n- Content themes:\n- Social presence:\n\n**Digital Performance (est.):**\n- Website traffic rank:\n- Social following:\n- Ad spend visibility:\n\n---\n\n#### [Competitor B]\n[Same structure]\n\n### Messaging Landscape\n\n| Theme | Competitor A | Competitor B | Competitor C | White Space? |\n|-------|--------------|--------------|--------------|--------------|\n| Price/value | | | | |\n| Innovation | | | | |\n| Ease of use | | | | |\n| Trust/reliability | | | | |\n| Support | | | | |\n\n### Competitive Positioning Map\n\n[Y-axis label: ]\n[X-axis label: ]\n[Map competitors visually]\n\n### SWOT Analysis (by competitor)\n\n#### Competitor A\n| | |\n|-|---|\n| **Strengths** | **Weaknesses** |\n| | |\n| **Opportunities** | **Threats** |\n| | |\n\n### Strategic Implications for {{brand_name}}\n\n**Opportunities:**\n1. \n2. \n3. \n\n**Threats to monitor:**\n1. \n2. \n\n**Recommended differentiation angles:**\n1. \n2. \n\n### Key Findings Summary\n1. \n2. \n3. \n\n### Recommended Actions\n| Action | Priority | Timeline |\n|--------|----------|----------|\n| | | |"
+    }
+  },
+  "variables": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Your brand or client name"
+    },
+    {
+      "name": "market",
+      "type": "string",
+      "required": true,
+      "description": "Market or category being analyzed"
+    },
+    {
+      "name": "competitors",
+      "type": "string",
+      "required": true,
+      "description": "Competitors to analyze"
+    },
+    {
+      "name": "analysis_objective",
+      "type": "string",
+      "required": false,
+      "description": "Specific objective of this analysis"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Your brand or client name"
+    },
+    {
+      "name": "market",
+      "type": "string",
+      "required": true,
+      "description": "Market or category being analyzed"
+    },
+    {
+      "name": "competitors",
+      "type": "string",
+      "required": true,
+      "description": "Competitors to analyze"
+    },
+    {
+      "name": "analysis_objective",
+      "type": "string",
+      "required": false,
+      "description": "Specific objective of this analysis"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Competitor Identification",
+        "action": "Define the full competitive set",
+        "verify": "Set is comprehensive but focused"
+      },
+      {
+        "step": 2,
+        "name": "Information Gathering",
+        "action": "Collect data across all touchpoints",
+        "verify": "Data is current and reliable"
+      },
+      {
+        "step": 3,
+        "name": "Strategy Analysis",
+        "action": "Map each competitor's core strategy",
+        "verify": "Strategy is understood, not just surface-level"
+      },
+      {
+        "step": 4,
+        "name": "Messaging Audit",
+        "action": "Analyze competitor communications",
+        "verify": "Positioning themes are clear"
+      },
+      {
+        "step": 5,
+        "name": "Gap Analysis",
+        "action": "Identify white space and opportunities",
+        "verify": "Opportunities are real and actionable"
+      },
+      {
+        "step": 6,
+        "name": "Synthesis",
+        "action": "Distill findings into strategic recommendations",
+        "verify": "Recommendations are specific and prioritized"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Competitive analysis for TechStart in the B2B expense management space in UAE. Key competitors: SAP Concur, Moss, Pleo, Airbase. Objective: inform new positioning.",
+      "output": "Full competitive analysis with profiles, positioning map, SWOT, messaging landscape, and strategic recommendations"
+    }
+  ],
+  "checklist": [
+    "Set is comprehensive but focused",
+    "Data is current and reliable",
+    "Strategy is understood, not just surface-level",
+    "Positioning themes are clear",
+    "Opportunities are real and actionable",
+    "Recommendations are specific and prioritized"
+  ],
+  "tools": [
+    "document",
+    "spreadsheet",
+    "web-search"
+  ],
+  "agents": [
+    "maya"
+  ],
+  "pipelines": [
+    "research"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "strategy",
+      "competitive-analysis",
+      "market-research",
+      "positioning"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

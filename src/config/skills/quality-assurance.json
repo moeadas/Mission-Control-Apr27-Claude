@@ -1,0 +1,142 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "quality-assurance",
+  "name": "Quality Assurance",
+  "description": "Creates QA systems that detect defects early, define clear quality standards, and reduce avoidable errors before work reaches clients or end users.",
+  "category": "operations",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time building qa checklists, review processes, defect-prevention systems, or delivery quality controls for campaigns, content, or operations.",
+      "context": "You are a quality assurance strategist. You define what good looks like, where errors happen, and how to catch them with the least friction possible.",
+      "instructions": "## Quality Assurance\n\n1. **Define quality standard** — Define quality standard\n   - ✓ Done when: Define quality standard is completed to a high standard\n\n2. **Identify defect entry points** — Identify defect entry points\n   - ✓ Done when: Identify defect entry points is completed to a high standard\n\n3. **Design checkpoints and ownership** — Design checkpoints and ownership\n   - ✓ Done when: Design checkpoints and ownership is completed to a high standard\n\n4. **Separate blocker severity** — Separate blocker severity\n   - ✓ Done when: Separate blocker severity is completed to a high standard\n\n5. **Build feedback loops** — Build feedback loops\n   - ✓ Done when: Build feedback loops is completed to a high standard\n\n6. **Keep QA practical** — Keep QA practical\n   - ✓ Done when: Keep QA practical is completed to a high standard\n\n## Key Inputs\n- deliverable: Deliverable being reviewed: type, format, client\n- quality_standards: Quality standards to apply: brand guidelines, client specs\n- reviewers: Who will review the deliverable\n- deadline: Delivery deadline",
+      "output_template": "## Quality Assurance Plan\n\n### 1. Quality Standard\n| Element | Definition |\n|---|---|\n| Work type | |\n| Critical quality bar | |\n| Main failure types | |\n\n### 2. QA Checkpoints\n| Stage | Review Focus | Owner | Severity Threshold |\n|---|---|---|---|\n| | | | |\n\n### 3. Checklist\n- Critical blockers:\n- Important quality checks:\n- Nice-to-have improvements:\n\n### 4. Feedback Loop\n- Repeated issue pattern:\n- Root-cause action:\n- Review cadence:\n\n### 5. QA Governance\n- Who approves final work:\n- Escalation trigger:\n- Release rule:\n\n### 6. Severity Rules\n- Critical:\n- Major:\n- Minor:"
+    }
+  },
+  "variables": [
+    {
+      "name": "deliverable",
+      "type": "string",
+      "required": true,
+      "description": "Deliverable being reviewed: type, format, client"
+    },
+    {
+      "name": "quality_standards",
+      "type": "string",
+      "required": false,
+      "description": "Quality standards to apply: brand guidelines, client specs"
+    },
+    {
+      "name": "reviewers",
+      "type": "string",
+      "required": false,
+      "description": "Who will review the deliverable"
+    },
+    {
+      "name": "deadline",
+      "type": "string",
+      "required": false,
+      "description": "Delivery deadline"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "deliverable",
+      "type": "string",
+      "required": true,
+      "description": "Deliverable being reviewed: type, format, client"
+    },
+    {
+      "name": "quality_standards",
+      "type": "string",
+      "required": false,
+      "description": "Quality standards to apply: brand guidelines, client specs"
+    },
+    {
+      "name": "reviewers",
+      "type": "string",
+      "required": false,
+      "description": "Who will review the deliverable"
+    },
+    {
+      "name": "deadline",
+      "type": "string",
+      "required": false,
+      "description": "Delivery deadline"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Define quality standard",
+        "action": "Define quality standard",
+        "verify": "Define quality standard is completed to a high standard"
+      },
+      {
+        "step": 2,
+        "name": "Identify defect entry points",
+        "action": "Identify defect entry points",
+        "verify": "Identify defect entry points is completed to a high standard"
+      },
+      {
+        "step": 3,
+        "name": "Design checkpoints and ownership",
+        "action": "Design checkpoints and ownership",
+        "verify": "Design checkpoints and ownership is completed to a high standard"
+      },
+      {
+        "step": 4,
+        "name": "Separate blocker severity",
+        "action": "Separate blocker severity",
+        "verify": "Separate blocker severity is completed to a high standard"
+      },
+      {
+        "step": 5,
+        "name": "Build feedback loops",
+        "action": "Build feedback loops",
+        "verify": "Build feedback loops is completed to a high standard"
+      },
+      {
+        "step": 6,
+        "name": "Keep QA practical",
+        "action": "Keep QA practical",
+        "verify": "Keep QA practical is completed to a high standard"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Deliverable: Client email campaign (4 emails). Standards: brand voice, link accuracy, subject line A/B test, GDPR compliance. Reviewers: copywriter (self), senior copywriter (peer), account manager (final).",
+      "output": "Self-review: 3 broken links found and fixed. Peer review: subject line #3 was below brand tone bar — rewritten. Account manager sign-off: approved. QA complete and delivered on time."
+    }
+  ],
+  "checklist": [
+    "Define quality standard is completed to a high standard",
+    "Identify defect entry points is completed to a high standard",
+    "Design checkpoints and ownership is completed to a high standard",
+    "Separate blocker severity is completed to a high standard",
+    "Build feedback loops is completed to a high standard",
+    "Keep QA practical is completed to a high standard"
+  ],
+  "tools": [
+    "document"
+  ],
+  "agents": [],
+  "pipelines": [
+    "operations-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "quality-assurance",
+      "qa",
+      "creative-quality",
+      "process"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

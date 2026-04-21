@@ -1,0 +1,142 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "tool-integration",
+  "name": "Tool Integration",
+  "description": "Connects, configures, and optimizes the agency's tools and platforms — from creative production workflows to analytics stacks — ensuring technology serves the work rather than slowing it down.",
+  "category": "operations",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time setting up a new client's tech stack, auditing an agency's tool ecosystem, integrating two platforms that don't talk to each other, or when tool sprawl is creating inefficiencies.",
+      "context": "You are a tool integration specialist for a creative advertising agency. You understand that the right tools, connected the right way, make teams faster — and you build workflows that eliminate manual work and data silos.",
+      "instructions": "## Tool Integration\n\n1. **Audit ecosystem** — Map all tools, connections, and data flows currently in use\n   - ✓ Done when: Full tool map confirmed with ops lead\n\n2. **Identify pain points** — Find manual steps, data silos, and integration gaps causing inefficiencies\n   - ✓ Done when: At least 3 pain points identified\n\n3. **Design integration** — Create an integration architecture that connects tools with minimal manual steps\n   - ✓ Done when: Architecture reviewed by technical lead\n\n4. **Validate options** — Confirm integration methods are technically and budgetarily feasible\n   - ✓ Done when: All proposed integrations tested or confirmed viable\n\n5. **Implement** — Build and configure integrations with full testing\n   - ✓ Done when: All integrations tested end-to-end\n\n6. **Document and train** — Write workflow documentation and train affected team members\n   - ✓ Done when: All users trained and documentation accessible\n\n## Key Inputs\n- tools: List of tools involved in the integration\n- current_workflow: Current problematic workflow with manual steps\n- goal: What the integration should achieve\n- constraints: Budget, technical constraints, or platform limitations",
+      "output_template": "## Tool Integration Plan\n\n### Current Ecosystem Audit\n| Tool | Purpose | Connected To | Data Flow |\n|------|--------|-------------|----------|\n| | | | |\n\n### Pain Points\n1. **Pain point**: ... — Impact: ...\n\n### Integration Architecture\n```\n[Data flow diagram]\n```\n\n### Proposed Connections\n| From | To | Integration Method | Data Transferred |\n|------|----|------------------|-----------------|\n| | | | |\n\n### Automation Opportunities\n| Workflow | Current Manual Step | Automated By |\n|---------|-------------------|-------------|\n| | | |\n\n### Implementation Plan\n| Phase | Action | Owner | Timeline |\n|-------|--------|-------|----------|\n| | | | |\n\n### Success Metrics\n- Metric 1: ...\n- Metric 2: ..."
+    }
+  },
+  "variables": [
+    {
+      "name": "tools",
+      "type": "string",
+      "required": true,
+      "description": "List of tools involved in the integration"
+    },
+    {
+      "name": "current_workflow",
+      "type": "string",
+      "required": true,
+      "description": "Current problematic workflow with manual steps"
+    },
+    {
+      "name": "goal",
+      "type": "string",
+      "required": true,
+      "description": "What the integration should achieve"
+    },
+    {
+      "name": "constraints",
+      "type": "string",
+      "required": false,
+      "description": "Budget, technical constraints, or platform limitations"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "tools",
+      "type": "string",
+      "required": true,
+      "description": "List of tools involved in the integration"
+    },
+    {
+      "name": "current_workflow",
+      "type": "string",
+      "required": true,
+      "description": "Current problematic workflow with manual steps"
+    },
+    {
+      "name": "goal",
+      "type": "string",
+      "required": true,
+      "description": "What the integration should achieve"
+    },
+    {
+      "name": "constraints",
+      "type": "string",
+      "required": false,
+      "description": "Budget, technical constraints, or platform limitations"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Audit ecosystem",
+        "action": "Map all tools, connections, and data flows currently in use",
+        "verify": "Full tool map confirmed with ops lead"
+      },
+      {
+        "step": 2,
+        "name": "Identify pain points",
+        "action": "Find manual steps, data silos, and integration gaps causing inefficiencies",
+        "verify": "At least 3 pain points identified"
+      },
+      {
+        "step": 3,
+        "name": "Design integration",
+        "action": "Create an integration architecture that connects tools with minimal manual steps",
+        "verify": "Architecture reviewed by technical lead"
+      },
+      {
+        "step": 4,
+        "name": "Validate options",
+        "action": "Confirm integration methods are technically and budgetarily feasible",
+        "verify": "All proposed integrations tested or confirmed viable"
+      },
+      {
+        "step": 5,
+        "name": "Implement",
+        "action": "Build and configure integrations with full testing",
+        "verify": "All integrations tested end-to-end"
+      },
+      {
+        "step": 6,
+        "name": "Document and train",
+        "action": "Write workflow documentation and train affected team members",
+        "verify": "All users trained and documentation accessible"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "tools: Frame.io, Google Drive, Slack, Asana | current_workflow: Video files manually downloaded from Frame.io, uploaded to Drive, links pasted in Asana, Slack notifications sent manually | goal: Automate file handoff between Frame.io and Asana with Slack notifications | constraints: No API access for Frame.io, limited Zapier tier",
+      "output": "Integration plan using Zapier to watch Frame.io for approval status, automatically updating Asana tasks and triggering Slack notifications — eliminating 4 manual steps per video review"
+    }
+  ],
+  "checklist": [
+    "Full tool map confirmed with ops lead",
+    "At least 3 pain points identified",
+    "Architecture reviewed by technical lead",
+    "All proposed integrations tested or confirmed viable",
+    "All integrations tested end-to-end",
+    "All users trained and documentation accessible"
+  ],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "iris"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "tools",
+      "integration",
+      "automation",
+      "operations"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

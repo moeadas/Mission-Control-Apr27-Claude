@@ -1,0 +1,160 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "cross-channel",
+  "name": "Cross-Channel Planning",
+  "description": "Coordinates messaging, creative strategy, and media tactics across multiple marketing channels to create a unified, synergistic campaign that reinforces the brand message at every touchpoint.",
+  "category": "strategy",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time planning or reviewing a cross-channel campaign — to ensure messaging, timing, and creative are coordinated across all channels and create a unified customer experience.",
+      "context": "You are an integrated media strategist who ensures all channels work together harmoniously to reinforce the campaign message and maximize cumulative impact across the customer journey.",
+      "instructions": "## Cross-Channel Planning\n\n1. **Objective Definition** — Define the single most important campaign outcome\n   - ✓ Done when: Objective is clear and measurable\n\n2. **Channel Role Mapping** — Assign a clear role to each channel\n   - ✓ Done when: Each channel has a defined job\n\n3. **Message Coordination** — Ensure the strategic idea is consistent across all channels\n   - ✓ Done when: Core message is unified\n\n4. **Timing and Sequencing** — Plan campaign phasing and channel sequencing\n   - ✓ Done when: Channels reinforce each other over time\n\n5. **Attribution Planning** — Plan how cross-channel contribution is measured\n   - ✓ Done when: Attribution approach is agreed\n\n## Key Inputs\n- campaign_name: Campaign name\n- campaign_objective: Primary campaign objective\n- channels: Channels involved in the campaign\n- target_audience: Target audience\n- timeline: Campaign timeline\n- budget: Campaign budget",
+      "output_template": "## Cross-Channel Plan: {{campaign_name}}\n\n### Campaign Overview\n| Field | Value |\n|-------|-------|\n| Objective | {{campaign_objective}} |\n| Audience | {{target_audience}} |\n| Timeline | {{timeline}} |\n| Budget | {{budget}} |\n| Date | {{date}} |\n\n### Channel Roles\n| Channel | Role | Objective | KPIs |\n|---------|------|----------|-----|\n| | Awareness | | |\n| | Consideration | | |\n| | Conversion | | |\n| | Retention | | |\n\n### Channel Coordination Matrix\n| Touchpoint | Channel | Message | CTA | Customer action |\n|-----------|---------|--------|-----|---------------|\n| 1 | | | | |\n| 2 | | | | |\n| 3 | | | | |\n\n### Message Consistency Plan\n**Core strategic idea:**\n\n| Channel | How the idea is expressed |\n|---------|--------------------------|\n| | |\n\n### Timing and Sequencing\n| Phase | Date range | Channels active | Objective |\n|-------|-----------|----------------|----------|\n| Launch | | | |\n| Sustain | | | |\n| Intensify | | | |\n\n### Cross-Channel Attribution\n**How cross-channel contribution is measured:**\n**Attribution model:**\n\n### Cross-Channel KPIs\n| KPI | Target | Owner |\n|-----|--------|-------|\n| | | |\n\n### Risks\n| Risk | Channels affected | Mitigation |\n|------|-----------------|------------|\n| | | |"
+    }
+  },
+  "variables": [
+    {
+      "name": "campaign_name",
+      "type": "string",
+      "required": true,
+      "description": "Campaign name"
+    },
+    {
+      "name": "campaign_objective",
+      "type": "string",
+      "required": true,
+      "description": "Primary campaign objective"
+    },
+    {
+      "name": "channels",
+      "type": "string",
+      "required": true,
+      "description": "Channels involved in the campaign"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": false,
+      "description": "Target audience"
+    },
+    {
+      "name": "timeline",
+      "type": "string",
+      "required": false,
+      "description": "Campaign timeline"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": false,
+      "description": "Campaign budget"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "campaign_name",
+      "type": "string",
+      "required": true,
+      "description": "Campaign name"
+    },
+    {
+      "name": "campaign_objective",
+      "type": "string",
+      "required": true,
+      "description": "Primary campaign objective"
+    },
+    {
+      "name": "channels",
+      "type": "string",
+      "required": true,
+      "description": "Channels involved in the campaign"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": false,
+      "description": "Target audience"
+    },
+    {
+      "name": "timeline",
+      "type": "string",
+      "required": false,
+      "description": "Campaign timeline"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": false,
+      "description": "Campaign budget"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Objective Definition",
+        "action": "Define the single most important campaign outcome",
+        "verify": "Objective is clear and measurable"
+      },
+      {
+        "step": 2,
+        "name": "Channel Role Mapping",
+        "action": "Assign a clear role to each channel",
+        "verify": "Each channel has a defined job"
+      },
+      {
+        "step": 3,
+        "name": "Message Coordination",
+        "action": "Ensure the strategic idea is consistent across all channels",
+        "verify": "Core message is unified"
+      },
+      {
+        "step": 4,
+        "name": "Timing and Sequencing",
+        "action": "Plan campaign phasing and channel sequencing",
+        "verify": "Channels reinforce each other over time"
+      },
+      {
+        "step": 5,
+        "name": "Attribution Planning",
+        "action": "Plan how cross-channel contribution is measured",
+        "verify": "Attribution approach is agreed"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Plan a cross-channel campaign for TechStart. Channels: LinkedIn, Google Ads, programmatic display, email. Objective: lead generation. Timeline: 8 weeks. Budget: $100,000.",
+      "output": "Full cross-channel plan with channel roles, sequencing, message coordination, and attribution approach"
+    }
+  ],
+  "checklist": [
+    "Objective is clear and measurable",
+    "Each channel has a defined job",
+    "Core message is unified",
+    "Channels reinforce each other over time",
+    "Attribution approach is agreed"
+  ],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [],
+  "pipelines": [
+    "media-strategy"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "strategy",
+      "cross-channel",
+      "integrated-marketing",
+      "planning"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

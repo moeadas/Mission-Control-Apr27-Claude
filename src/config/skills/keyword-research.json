@@ -1,0 +1,161 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "keyword-research",
+  "name": "Keyword Research",
+  "description": "Builds keyword strategy around intent, topic clusters, competition, and conversion value rather than just listing terms.",
+  "category": "research",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time planning seo content, mapping keyword clusters, identifying intent opportunities, or prioritizing terms for landing pages and editorial content.",
+      "context": "You are an SEO strategist doing keyword research for business outcomes. You map search intent to page types, content opportunities, and realistic prioritization.",
+      "instructions": "## Keyword Research\n\n1. **Define research goal** — Define research goal\n   - ✓ Done when: Define research goal is completed to a high standard\n\n2. **Identify seed topics** — Identify seed topics\n   - ✓ Done when: Identify seed topics is completed to a high standard\n\n3. **Expand by intent** — Expand by intent\n   - ✓ Done when: Expand by intent is completed to a high standard\n\n4. **Evaluate opportunity** — Evaluate opportunity\n   - ✓ Done when: Evaluate opportunity is completed to a high standard\n\n5. **Cluster into page targets** — Cluster into page targets\n   - ✓ Done when: Cluster into page targets is completed to a high standard\n\n6. **Prioritize actions** — Prioritize actions\n   - ✓ Done when: Prioritize actions is completed to a high standard\n\n## Key Inputs\n- seed_keywords: Starting keywords or topics\n- audience: Target audience description\n- geo: Geographic focus for search\n- content_type: Type of content being planned\n- objective: Business objective (awareness, leads, sales)",
+      "output_template": "## Keyword Research Plan\n\n### 1. Research Goal\n- Objective:\n- Site / page type:\n- Audience intent focus:\n\n### 2. Keyword Clusters\n| Cluster | Primary Keyword | Supporting Terms | Intent | Recommended Page Type | Priority |\n|---|---|---|---|---|---|\n| | | | | | High / Med / Low |\n\n### 3. Opportunity Notes\n- Quick wins:\n- Competitive terms to approach later:\n- Content gaps revealed by search behavior:\n\n### 4. Build / Optimization Recommendations\n1. \n2. \n3. \n\n### 5. Tracking Notes\n- KPIs:\n- Pages to monitor:\n- Internal link opportunities:"
+    }
+  },
+  "variables": [
+    {
+      "name": "seed_keywords",
+      "type": "string",
+      "required": true,
+      "description": "Starting keywords or topics"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience description"
+    },
+    {
+      "name": "geo",
+      "type": "string",
+      "required": false,
+      "description": "Geographic focus for search"
+    },
+    {
+      "name": "content_type",
+      "type": "string",
+      "required": false,
+      "description": "Type of content being planned"
+    },
+    {
+      "name": "objective",
+      "type": "string",
+      "required": false,
+      "description": "Business objective (awareness, leads, sales)"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "seed_keywords",
+      "type": "string",
+      "required": true,
+      "description": "Starting keywords or topics"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience description"
+    },
+    {
+      "name": "geo",
+      "type": "string",
+      "required": false,
+      "description": "Geographic focus for search"
+    },
+    {
+      "name": "content_type",
+      "type": "string",
+      "required": false,
+      "description": "Type of content being planned"
+    },
+    {
+      "name": "objective",
+      "type": "string",
+      "required": false,
+      "description": "Business objective (awareness, leads, sales)"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Define research goal",
+        "action": "Define research goal",
+        "verify": "Define research goal is completed to a high standard"
+      },
+      {
+        "step": 2,
+        "name": "Identify seed topics",
+        "action": "Identify seed topics",
+        "verify": "Identify seed topics is completed to a high standard"
+      },
+      {
+        "step": 3,
+        "name": "Expand by intent",
+        "action": "Expand by intent",
+        "verify": "Expand by intent is completed to a high standard"
+      },
+      {
+        "step": 4,
+        "name": "Evaluate opportunity",
+        "action": "Evaluate opportunity",
+        "verify": "Evaluate opportunity is completed to a high standard"
+      },
+      {
+        "step": 5,
+        "name": "Cluster into page targets",
+        "action": "Cluster into page targets",
+        "verify": "Cluster into page targets is completed to a high standard"
+      },
+      {
+        "step": 6,
+        "name": "Prioritize actions",
+        "action": "Prioritize actions",
+        "verify": "Prioritize actions is completed to a high standard"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Research keywords for a B2B SaaS project management tool targeting enterprise teams.",
+      "output": "Keyword research with clusters, intent analysis, and content opportunities."
+    },
+    {
+      "input": "Find long-tail keyword opportunities for a D2C sustainable fashion brand.",
+      "output": "Comprehensive keyword list with volume, difficulty, and content recommendations."
+    }
+  ],
+  "checklist": [
+    "Define research goal is completed to a high standard",
+    "Identify seed topics is completed to a high standard",
+    "Expand by intent is completed to a high standard",
+    "Evaluate opportunity is completed to a high standard",
+    "Cluster into page targets is completed to a high standard",
+    "Prioritize actions is completed to a high standard"
+  ],
+  "tools": [
+    "document",
+    "spreadsheet",
+    "seo-tools"
+  ],
+  "agents": [
+    "atlas"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "keyword-research",
+      "seo",
+      "content-strategy",
+      "search",
+      "sem"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

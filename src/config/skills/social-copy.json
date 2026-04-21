@@ -1,0 +1,157 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "social-copy",
+  "name": "Social Media Copy",
+  "description": "Creates social-first copy that balances hook strength, platform behavior, clarity, and conversion or engagement goals.",
+  "category": "content",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time drafting social captions, post copy, organic campaign copy, social hooks, or engagement-led short content.",
+      "context": "You are a social copy strategist writing for fast attention environments. You know how to open strongly, sustain attention, and end with an appropriate CTA or interaction prompt.",
+      "instructions": "## Social Media Copy\n\n1. **Define post role** — Define post role\n   - ✓ Done when: Define post role is completed to a high standard\n\n2. **Choose hook style** — Choose hook style\n   - ✓ Done when: Choose hook style is completed to a high standard\n\n3. **Build caption progression** — Build caption progression\n   - ✓ Done when: Build caption progression is completed to a high standard\n\n4. **Adjust for platform pacing** — Adjust for platform pacing\n   - ✓ Done when: Adjust for platform pacing is completed to a high standard\n\n5. **Add interaction design** — Add interaction design\n   - ✓ Done when: Add interaction design is completed to a high standard\n\n6. **Remove filler** — Remove filler\n   - ✓ Done when: Remove filler is completed to a high standard\n\n## Key Inputs\n- platform: Target platform: LinkedIn, Instagram, X, TikTok, Facebook, Pinterest\n- goal: Goal: brand awareness, engagement, website traffic, lead generation\n- message: Core message or content to communicate\n- audience: Target audience on this platform\n- hashtags: Hashtags to include (or note: no hashtags for X/TikTok)",
+      "output_template": "## Social Copy Draft\n\n### Post Strategy\n| Element | Decision |\n|---|---|\n| Platform | |\n| Objective | |\n| Hook Angle | |\n| CTA Goal | |\n\n### Primary Caption\n\n### Alternate Hook Options\n- \n- \n- \n\n### CTA Options\n- \n- \n\n### Publishing Notes\n- Suggested visual pairing:\n- Comment prompt / interaction cue:\n- Hashtag / keyword guidance:"
+    }
+  },
+  "variables": [
+    {
+      "name": "platform",
+      "type": "string",
+      "required": true,
+      "description": "Target platform: LinkedIn, Instagram, X, TikTok, Facebook, Pinterest"
+    },
+    {
+      "name": "goal",
+      "type": "string",
+      "required": true,
+      "description": "Goal: brand awareness, engagement, website traffic, lead generation"
+    },
+    {
+      "name": "message",
+      "type": "string",
+      "required": true,
+      "description": "Core message or content to communicate"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": false,
+      "description": "Target audience on this platform"
+    },
+    {
+      "name": "hashtags",
+      "type": "string",
+      "required": false,
+      "description": "Hashtags to include (or note: no hashtags for X/TikTok)"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "platform",
+      "type": "string",
+      "required": true,
+      "description": "Target platform: LinkedIn, Instagram, X, TikTok, Facebook, Pinterest"
+    },
+    {
+      "name": "goal",
+      "type": "string",
+      "required": true,
+      "description": "Goal: brand awareness, engagement, website traffic, lead generation"
+    },
+    {
+      "name": "message",
+      "type": "string",
+      "required": true,
+      "description": "Core message or content to communicate"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": false,
+      "description": "Target audience on this platform"
+    },
+    {
+      "name": "hashtags",
+      "type": "string",
+      "required": false,
+      "description": "Hashtags to include (or note: no hashtags for X/TikTok)"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Define post role",
+        "action": "Define post role",
+        "verify": "Define post role is completed to a high standard"
+      },
+      {
+        "step": 2,
+        "name": "Choose hook style",
+        "action": "Choose hook style",
+        "verify": "Choose hook style is completed to a high standard"
+      },
+      {
+        "step": 3,
+        "name": "Build caption progression",
+        "action": "Build caption progression",
+        "verify": "Build caption progression is completed to a high standard"
+      },
+      {
+        "step": 4,
+        "name": "Adjust for platform pacing",
+        "action": "Adjust for platform pacing",
+        "verify": "Adjust for platform pacing is completed to a high standard"
+      },
+      {
+        "step": 5,
+        "name": "Add interaction design",
+        "action": "Add interaction design",
+        "verify": "Add interaction design is completed to a high standard"
+      },
+      {
+        "step": 6,
+        "name": "Remove filler",
+        "action": "Remove filler",
+        "verify": "Remove filler is completed to a high standard"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Platform: LinkedIn. Goal: Engagement and thought leadership. Message: We just launched a new campaign for a client. Audience: Agency peers and potential clients.",
+      "output": "Post: 'Launch week feelings 🎯 We just went live with our biggest campaign of the year for [Client]. 6 months of strategy, creative, and testing — all leading to this moment. Swipe to see how we got here.' (Carousel format) Hashtags: #Advertising #CampaignLaunch #AgencyLife. Best time to post: Tuesday 8-10am for B2B."
+    }
+  ],
+  "checklist": [
+    "Define post role is completed to a high standard",
+    "Choose hook style is completed to a high standard",
+    "Build caption progression is completed to a high standard",
+    "Adjust for platform pacing is completed to a high standard",
+    "Add interaction design is completed to a high standard",
+    "Remove filler is completed to a high standard"
+  ],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "echo"
+  ],
+  "pipelines": [
+    "content-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "social-copy",
+      "social-media",
+      "linkedin",
+      "instagram",
+      "copywriting"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

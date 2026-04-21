@@ -1,0 +1,175 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "campaign-copywriting",
+  "name": "Campaign Copywriting",
+  "description": "Creates all written components for advertising campaigns across formats and platforms, including headlines, body copy, CTAs, display ads, and platform-native variations.",
+  "category": "creative",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time writing copy for an advertising campaign — headlines, ad copy, display text, social ads, ctas, or any written ad components across platforms.",
+      "context": "You are a creative copywriter who crafts compelling, platform-appropriate advertising copy that drives action while maintaining brand consistency and compliance.",
+      "instructions": "## Campaign Copywriting\n\n1. **Brief Alignment** — Review brief and confirm understanding of objectives\n   - ✓ Done when: Copy direction is clear\n\n2. **Audience Research** — Research audience language, pain points, and desires\n   - ✓ Done when: Copy will resonate with target\n\n3. **Platform Copywriting** — Write copy for each required platform\n   - ✓ Done when: Each version is optimized for its format\n\n4. **Variant Development** — Create A/B variants with meaningful differences\n   - ✓ Done when: Variants test real hypotheses\n\n5. **Compliance Review** — Check all copy against platform policies\n   - ✓ Done when: Copy is compliant and approved\n\n6. **Final Delivery** — Polish and deliver in organized format\n   - ✓ Done when: All copy is proofed and ready for trafficking\n\n## Key Inputs\n- campaign_name: Name of the campaign\n- client_name: Client or brand name\n- platforms: Platforms requiring copy\n- target_audience: Target audience description\n- primary_message: Core message or offer to communicate\n- cta_text: Call-to-action text or button label\n- tone: Tone of voice for the copy\n\n## When Not to Use\nThis skill overlaps with: ad-copy, headline-writing, social-copy. Use those instead when: you are writing for a single specific platform or format\n\n`creative` `copywriting` `advertising` `campaign` `digital-ads`",
+      "output_template": "## Campaign Copy: {{campaign_name}}\n\n### Brief Alignment\n| Element | Copy |\n|---------|------|\n| Campaign | {{campaign_name}} |\n| Client | {{client_name}} |\n| Primary message | {{primary_message}} |\n| Tone | |\n| Audience | {{target_audience}} |\n\n### Platform Copy\n\n#### {{platform_1}}\n**Headline 1** (max {{headline_limit}} chars):\n[Headline]\n\n**Headline 2** (max {{headline_limit}} chars):\n[Headline]\n\n**Description/Body** (max {{desc_limit}} chars):\n[Body copy]\n\n**CTA:** {{cta_text}}\n\n**Display URL/Path:**\n\n#### {{platform_2}}\n[Same structure]\n\n### Variant Set\n| Platform | Variant | Headline | Body | CTA |\n|----------|---------|----------|------|-----|\n| | A | | | |\n| | B | | | |\n| | C | | | |\n\n### Compliance Notes\n- [ ] No misleading claims\n- [ ] Pricing accurate and current\n- [ ] Required disclaimers included\n- [ ] Platform policies met\n\n### Production Notes\n**CTA buttons used:**\n**Offer/promo code (if any):**\n**Landing page alignment:**"
+    }
+  },
+  "variables": [
+    {
+      "name": "campaign_name",
+      "type": "string",
+      "required": true,
+      "description": "Name of the campaign"
+    },
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "platforms",
+      "type": "string",
+      "required": true,
+      "description": "Platforms requiring copy"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience description"
+    },
+    {
+      "name": "primary_message",
+      "type": "string",
+      "required": true,
+      "description": "Core message or offer to communicate"
+    },
+    {
+      "name": "cta_text",
+      "type": "string",
+      "required": true,
+      "description": "Call-to-action text or button label"
+    },
+    {
+      "name": "tone",
+      "type": "string",
+      "required": false,
+      "description": "Tone of voice for the copy"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "campaign_name",
+      "type": "string",
+      "required": true,
+      "description": "Name of the campaign"
+    },
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "platforms",
+      "type": "string",
+      "required": true,
+      "description": "Platforms requiring copy"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience description"
+    },
+    {
+      "name": "primary_message",
+      "type": "string",
+      "required": true,
+      "description": "Core message or offer to communicate"
+    },
+    {
+      "name": "cta_text",
+      "type": "string",
+      "required": true,
+      "description": "Call-to-action text or button label"
+    },
+    {
+      "name": "tone",
+      "type": "string",
+      "required": false,
+      "description": "Tone of voice for the copy"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Brief Alignment",
+        "action": "Review brief and confirm understanding of objectives",
+        "verify": "Copy direction is clear"
+      },
+      {
+        "step": 2,
+        "name": "Audience Research",
+        "action": "Research audience language, pain points, and desires",
+        "verify": "Copy will resonate with target"
+      },
+      {
+        "step": 3,
+        "name": "Platform Copywriting",
+        "action": "Write copy for each required platform",
+        "verify": "Each version is optimized for its format"
+      },
+      {
+        "step": 4,
+        "name": "Variant Development",
+        "action": "Create A/B variants with meaningful differences",
+        "verify": "Variants test real hypotheses"
+      },
+      {
+        "step": 5,
+        "name": "Compliance Review",
+        "action": "Check all copy against platform policies",
+        "verify": "Copy is compliant and approved"
+      },
+      {
+        "step": 6,
+        "name": "Final Delivery",
+        "action": "Polish and deliver in organized format",
+        "verify": "All copy is proofed and ready for trafficking"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Write campaign copy for TechStart — B2B fintech SaaS, targeting CFOs in UAE. Platforms: Meta (feed + stories) + LinkedIn. Primary message: cut finance ops costs by 40%. CTA: Book a demo.",
+      "output": "Full copy package with headlines, body text, CTAs, and A/B variants for Meta and LinkedIn"
+    }
+  ],
+  "checklist": [
+    "Copy direction is clear",
+    "Copy will resonate with target",
+    "Each version is optimized for its format",
+    "Variants test real hypotheses",
+    "Copy is compliant and approved",
+    "All copy is proofed and ready for trafficking"
+  ],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "echo"
+  ],
+  "pipelines": [
+    "ad-creative"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [],
+    "lastUpdated": "2026-03-30"
+  }
+}

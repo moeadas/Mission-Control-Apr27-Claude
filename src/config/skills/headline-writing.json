@@ -1,0 +1,144 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "headline-writing",
+  "name": "Headline Writing",
+  "description": "Creates sharp headlines, hooks, and title systems that increase attention, clarity, and click-through without becoming vague or gimmicky.",
+  "category": "content",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time generating headlines, hooks, titles, subject lines, hero statements, ad headlines, video openers, or angle variations.",
+      "context": "You are a direct-response and brand headline specialist. You know how to create strong options across emotional, curiosity, authority, benefit-led, and proof-led angles while keeping the message clear.",
+      "instructions": "## Headline Writing\n\n1. **Define headline job** — Define headline job\n   - ✓ Done when: Define headline job is completed to a high standard\n\n2. **Clarify offer and audience tension** — Clarify offer and audience tension\n   - ✓ Done when: Clarify offer and audience tension is completed to a high standard\n\n3. **Generate angle families** — Generate angle families\n   - ✓ Done when: Generate angle families is completed to a high standard\n\n4. **Filter weak options** — Filter weak options\n   - ✓ Done when: Filter weak options is completed to a high standard\n\n5. **Tune for channel** — Tune for channel\n   - ✓ Done when: Tune for channel is completed to a high standard\n\n6. **Rank with rationale** — Rank with rationale\n   - ✓ Done when: Rank with rationale is completed to a high standard\n\n## Key Inputs\n- content_type: Type of content: paid ad, organic article, landing page, email subject, social post\n- core_benefit: The core benefit or insight the headline should communicate\n- audience: Target audience\n- platform: Platform or placement constraints (character limits, etc.)",
+      "output_template": "## Headline Pack\n\n### Strategic Direction\n- Goal:\n- Audience tension:\n- Core promise:\n- Recommended tone:\n\n### Ranked Headlines\n| Rank | Headline | Angle | Best Use | Why It Works |\n|---|---|---|---|---|\n| 1 | | | | |\n| 2 | | | | |\n| 3 | | | | |\n| 4 | | | | |\n| 5 | | | | |\n\n### Short Hook Variations\n- \n- \n- \n\n### Testing Notes\n- Strongest safe option:\n- Boldest option:\n- Best option for paid media:\n- Best option for organic/social:"
+    }
+  },
+  "variables": [
+    {
+      "name": "content_type",
+      "type": "string",
+      "required": true,
+      "description": "Type of content: paid ad, organic article, landing page, email subject, social post"
+    },
+    {
+      "name": "core_benefit",
+      "type": "string",
+      "required": true,
+      "description": "The core benefit or insight the headline should communicate"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": false,
+      "description": "Target audience"
+    },
+    {
+      "name": "platform",
+      "type": "string",
+      "required": false,
+      "description": "Platform or placement constraints (character limits, etc.)"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "content_type",
+      "type": "string",
+      "required": true,
+      "description": "Type of content: paid ad, organic article, landing page, email subject, social post"
+    },
+    {
+      "name": "core_benefit",
+      "type": "string",
+      "required": true,
+      "description": "The core benefit or insight the headline should communicate"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": false,
+      "description": "Target audience"
+    },
+    {
+      "name": "platform",
+      "type": "string",
+      "required": false,
+      "description": "Platform or placement constraints (character limits, etc.)"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Define headline job",
+        "action": "Define headline job",
+        "verify": "Define headline job is completed to a high standard"
+      },
+      {
+        "step": 2,
+        "name": "Clarify offer and audience tension",
+        "action": "Clarify offer and audience tension",
+        "verify": "Clarify offer and audience tension is completed to a high standard"
+      },
+      {
+        "step": 3,
+        "name": "Generate angle families",
+        "action": "Generate angle families",
+        "verify": "Generate angle families is completed to a high standard"
+      },
+      {
+        "step": 4,
+        "name": "Filter weak options",
+        "action": "Filter weak options",
+        "verify": "Filter weak options is completed to a high standard"
+      },
+      {
+        "step": 5,
+        "name": "Tune for channel",
+        "action": "Tune for channel",
+        "verify": "Tune for channel is completed to a high standard"
+      },
+      {
+        "step": 6,
+        "name": "Rank with rationale",
+        "action": "Rank with rationale",
+        "verify": "Rank with rationale is completed to a high standard"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Type: Google Ads headline. Benefit: Project management tool saves 5 hours/week. Audience: Project managers.",
+      "output": "Options: (1) 'Save 5 Hours a Week' — benefit-led. (2) 'What 87% of PMs Wish They'd Known Sooner' — curiosity. (3) 'The Only PM Tool Your Team Will Actually Use' — differentiation. (4) 'Stop Wasting 5 Hours Every Week on Project Chaos' — problem-amplification. (5) '5 Hours Back: Here's How' — benefit + curiosity. Recommended: Option 1 — most direct and test-winning historically in Google Ads."
+    }
+  ],
+  "checklist": [
+    "Define headline job is completed to a high standard",
+    "Clarify offer and audience tension is completed to a high standard",
+    "Generate angle families is completed to a high standard",
+    "Filter weak options is completed to a high standard",
+    "Tune for channel is completed to a high standard",
+    "Rank with rationale is completed to a high standard"
+  ],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "echo"
+  ],
+  "pipelines": [
+    "content-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "headline-writing",
+      "copywriting",
+      "titles",
+      "advertising"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

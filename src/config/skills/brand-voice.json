@@ -1,0 +1,139 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "brand-voice",
+  "name": "Brand Voice",
+  "description": "Develops and maintains a consistent brand tone and writing style that differentiates the brand and resonates with its target audience across all channels and content types.",
+  "category": "creative",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time developing, defining, or auditing brand voice and tone — to ensure copy across all channels sounds consistently like the brand.",
+      "context": "You are a brand copy strategist who defines how a brand sounds — its personality, tone, vocabulary, and style — and ensures all written content reflects it consistently.",
+      "instructions": "## Brand Voice\n\n1. **Personality Definition** — Define the human personality traits of the brand\n   - ✓ Done when: Personality is distinctive and authentic\n\n2. **Voice Dimensions** — Define core voice dimensions with clear boundaries\n   - ✓ Done when: Voice is ownable and differentiable from competitors\n\n3. **Tone Mapping** — Define how tone shifts by context\n   - ✓ Done when: Tone variations are clear and practical\n\n4. **Vocabulary Rules** — Define approved and prohibited terminology\n   - ✓ Done when: Rules are specific enough to be useful\n\n5. **Examples** — Write before/after examples\n   - ✓ Done when: Examples show voice in real copy situations\n\n6. **Audit** — Audit existing content against the guide\n   - ✓ Done when: Audit identifies gaps and inconsistencies\n\n## Key Inputs\n- brand_name: Brand being defined\n- target_audience: Primary target audience\n- competitor_voices: Competitor brand voices for differentiation context\n- existing_copy_samples: Samples of existing copy to audit\n\n## When Not to Use\nThis skill overlaps with: tone-adaptation, ux-writing. Use those instead when: you are adapting existing copy to a different tone rather than defining voice from scratch\n\n`creative` `brand` `copywriting` `voice`",
+      "output_template": "## Brand Voice Guide: {{brand_name}}\n\n### Brand Personality\n**Personality traits:**\n- \n\n**How the brand talks (like a person who...):**\n\n### Voice Dimensions\n| Dimension | This brand | Not this brand |\n|-----------|------------|----------------|\n| | | |\n\n### Tone by Context\n| Situation | Tone | Example |\n|-----------|------|---------|\n| Website (hero) | | |\n| Social (general) | | |\n| Customer comms | | |\n| Crisis/issue | | |\n| Sales enablement | | |\n\n### Vocabulary\n**Approved terms:**\n- \n\n**Avoid these terms:**\n- \n\n**Signature phrases:**\n- \n\n### Writing Rules\n- \n\n### Before / After Examples\n| Original copy | Brand voice version |\n|--------------|-------------------|\n| | |\n\n### Voice Audit\n| Content piece | Adheres to voice? | Notes |\n|--------------|------------------|-------|\n| | | |"
+    }
+  },
+  "variables": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand being defined"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Primary target audience"
+    },
+    {
+      "name": "competitor_voices",
+      "type": "string",
+      "required": false,
+      "description": "Competitor brand voices for differentiation context"
+    },
+    {
+      "name": "existing_copy_samples",
+      "type": "string",
+      "required": false,
+      "description": "Samples of existing copy to audit"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand being defined"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Primary target audience"
+    },
+    {
+      "name": "competitor_voices",
+      "type": "string",
+      "required": false,
+      "description": "Competitor brand voices for differentiation context"
+    },
+    {
+      "name": "existing_copy_samples",
+      "type": "string",
+      "required": false,
+      "description": "Samples of existing copy to audit"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Personality Definition",
+        "action": "Define the human personality traits of the brand",
+        "verify": "Personality is distinctive and authentic"
+      },
+      {
+        "step": 2,
+        "name": "Voice Dimensions",
+        "action": "Define core voice dimensions with clear boundaries",
+        "verify": "Voice is ownable and differentiable from competitors"
+      },
+      {
+        "step": 3,
+        "name": "Tone Mapping",
+        "action": "Define how tone shifts by context",
+        "verify": "Tone variations are clear and practical"
+      },
+      {
+        "step": 4,
+        "name": "Vocabulary Rules",
+        "action": "Define approved and prohibited terminology",
+        "verify": "Rules are specific enough to be useful"
+      },
+      {
+        "step": 5,
+        "name": "Examples",
+        "action": "Write before/after examples",
+        "verify": "Examples show voice in real copy situations"
+      },
+      {
+        "step": 6,
+        "name": "Audit",
+        "action": "Audit existing content against the guide",
+        "verify": "Audit identifies gaps and inconsistencies"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Define brand voice for TechStart — a B2B fintech platform targeting finance leaders. Voice should feel confident, approachable, and technically credible without being cold or corporate.",
+      "output": "Complete brand voice guide with voice dimensions, tone map, vocabulary rules, and before/after examples"
+    }
+  ],
+  "checklist": [
+    "Personality is distinctive and authentic",
+    "Voice is ownable and differentiable from competitors",
+    "Tone variations are clear and practical",
+    "Rules are specific enough to be useful",
+    "Examples show voice in real copy situations",
+    "Audit identifies gaps and inconsistencies"
+  ],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "echo"
+  ],
+  "pipelines": [
+    "brand-strategy"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [],
+    "lastUpdated": "2026-03-30"
+  }
+}

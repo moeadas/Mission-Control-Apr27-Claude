@@ -1,0 +1,80 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "seo-audit",
+  "name": "seo-audit",
+  "description": "Runs a structured SEO audit covering technical issues, on-page quality, content gaps, internal linking, authority signals, and prioritized next actions.",
+  "category": "general",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time auditing a site or page for seo performance, diagnosing ranking issues, reviewing content/indexation problems, or building an seo action plan.",
+      "context": "You are an SEO strategist performing a practical audit. You identify issues by impact, separate critical blockers from secondary improvements, and produce an action plan a marketer or developer can execute.",
+      "instructions": "## seo-audit\n\n1. **Define audit scope** — Define audit scope\n   - ✓ Done when: Define audit scope is completed to a high standard\n\n2. **Review technical health** — Review technical health\n   - ✓ Done when: Review technical health is completed to a high standard\n\n3. **Review on-page optimization** — Review on-page optimization\n   - ✓ Done when: Review on-page optimization is completed to a high standard\n\n4. **Review content quality** — Review content quality\n   - ✓ Done when: Review content quality is completed to a high standard\n\n5. **Review authority/discoverability** — Review authority/discoverability\n   - ✓ Done when: Review authority/discoverability is completed to a high standard\n\n6. **Prioritize action plan** — Prioritize action plan\n   - ✓ Done when: Prioritize action plan is completed to a high standard\n\n## When Not to Use\nThis skill overlaps with: keyword-research, seo-research. Use those instead when: you need to diagnose technical SEO issues on a specific page or site",
+      "output_template": "## SEO Audit Report\n\n### 1. Audit Scope\n| Element | Details |\n|---|---|\n| Site / Page | |\n| Goal | |\n| Main Search Intent | |\n\n### 2. Executive Summary\n- Overall health:\n- Largest ranking blocker:\n- Quickest win:\n- Highest-value strategic opportunity:\n\n### 3. Findings\n| Area | Issue | Impact | Priority | Recommended Fix | Owner |\n|---|---|---|---|---|---|\n| Technical | | | High / Med / Low | | Dev / SEO / Content |\n| On-page | | | | | |\n| Content | | | | | |\n| Internal Linking | | | | | |\n| Authority | | | | | |\n\n### 4. Priority Action Plan\n| Timeline | Action | Expected Outcome |\n|---|---|---|\n| Now | | |\n| Next | | |\n| Later | | |\n\n### 5. Measurement Notes\n- KPIs to watch:\n- Pages / templates to recheck:\n- Risks / dependencies:"
+    }
+  },
+  "variables": [],
+  "inputs": [],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Define audit scope",
+        "action": "Define audit scope",
+        "verify": "Define audit scope is completed to a high standard"
+      },
+      {
+        "step": 2,
+        "name": "Review technical health",
+        "action": "Review technical health",
+        "verify": "Review technical health is completed to a high standard"
+      },
+      {
+        "step": 3,
+        "name": "Review on-page optimization",
+        "action": "Review on-page optimization",
+        "verify": "Review on-page optimization is completed to a high standard"
+      },
+      {
+        "step": 4,
+        "name": "Review content quality",
+        "action": "Review content quality",
+        "verify": "Review content quality is completed to a high standard"
+      },
+      {
+        "step": 5,
+        "name": "Review authority/discoverability",
+        "action": "Review authority/discoverability",
+        "verify": "Review authority/discoverability is completed to a high standard"
+      },
+      {
+        "step": 6,
+        "name": "Prioritize action plan",
+        "action": "Prioritize action plan",
+        "verify": "Prioritize action plan is completed to a high standard"
+      }
+    ]
+  },
+  "examples": [],
+  "checklist": [
+    "Define audit scope is completed to a high standard",
+    "Review technical health is completed to a high standard",
+    "Review on-page optimization is completed to a high standard",
+    "Review content quality is completed to a high standard",
+    "Review authority/discoverability is completed to a high standard",
+    "Prioritize action plan is completed to a high standard"
+  ],
+  "tools": [],
+  "agents": [
+    "atlas"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "lastUpdated": "2026-03-30",
+    "author": "agency",
+    "tags": []
+  }
+}

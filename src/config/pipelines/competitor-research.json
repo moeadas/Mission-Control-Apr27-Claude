@@ -1,0 +1,168 @@
+{
+  "id": "competitor-research",
+  "name": "Competitor Research Report",
+  "description": "Comprehensive competitive intelligence report",
+  "version": "1.0",
+  "isDefault": true,
+  "estimatedDuration": "5 days",
+  "clientProfileFields": [
+    {
+      "id": "brand_name",
+      "label": "Your Brand Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "industry",
+      "label": "Industry",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "product_service",
+      "label": "Product/Service",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "competitor_names",
+      "label": "Known Competitors",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "id": "research_focus",
+      "label": "Research Focus Areas",
+      "type": "multiselect",
+      "options": [
+        "marketing",
+        "products",
+        "pricing",
+        "positioning",
+        "digital-presence"
+      ],
+      "required": true
+    }
+  ],
+  "phases": [
+    {
+      "id": "identification",
+      "name": "Competitor Identification",
+      "color": "#4f8ef7",
+      "activities": [
+        {
+          "id": "id-1",
+          "name": "Competitor Mapping",
+          "description": "Identify all relevant competitors",
+          "assignedRole": "research",
+          "inputs": [
+            "client-website",
+            "industry"
+          ],
+          "outputs": [
+            "competitor-list",
+            "market-map"
+          ],
+          "checklist": [
+            "Direct competitors identified",
+            "Indirect competitors found",
+            "Market map created",
+            "Competitive set validated",
+            "Market share estimated"
+          ],
+          "prompts": {
+            "en": "Map all relevant competitors. Inject {{industry}}, {{product_service}}. Identify direct, indirect, map market share.",
+            "ar": "رسم خريطة جميع المنافسين المعنيين. تحديد المنافسين المباشرين وغير المباشرين."
+          }
+        }
+      ]
+    },
+    {
+      "id": "analysis",
+      "name": "Deep Analysis",
+      "color": "#9b6dff",
+      "activities": [
+        {
+          "id": "analysis-1",
+          "name": "Digital Presence Analysis",
+          "description": "Analyze competitor websites and digital presence",
+          "assignedRole": "research",
+          "inputs": [
+            "competitor-list"
+          ],
+          "outputs": [
+            "digital-presence-report",
+            "website-analysis"
+          ],
+          "checklist": [
+            "Website UX reviewed",
+            "Content strategy analyzed",
+            "SEO performance compared",
+            "Social media presence mapped",
+            "Paid advertising identified"
+          ],
+          "prompts": {
+            "en": "Analyze competitor digital presence. Inject {{competitor_list}}. Review website UX, content, SEO, social, paid ads.",
+            "ar": "تحليل التواجد الرقمي للمنافسين. فحص موقع الويب، المحتوى، SEO، الاجتماعي."
+          }
+        },
+        {
+          "id": "analysis-2",
+          "name": "Marketing Strategy Analysis",
+          "description": "Deep dive into competitor marketing approaches",
+          "assignedRole": "research",
+          "inputs": [
+            "digital-presence-report"
+          ],
+          "outputs": [
+            "marketing-analysis",
+            "swot-competitors"
+          ],
+          "checklist": [
+            "Positioning strategies compared",
+            "Messaging analyzed",
+            "Campaign approaches reviewed",
+            "Pricing strategies documented",
+            "SWOT analysis completed"
+          ],
+          "prompts": {
+            "en": "Analyze competitor marketing strategies. Inject {{research_focus}}. Compare positioning, messaging, campaigns, pricing. Complete SWOT.",
+            "ar": "تحليل استراتيجيات تسويق المنافسين. مقارنة المواقع، الرسائل، الحملات، التسعير. إكمال SWOT."
+          }
+        }
+      ]
+    },
+    {
+      "id": "delivery",
+      "name": "Reporting",
+      "color": "#00d4aa",
+      "activities": [
+        {
+          "id": "delivery-1",
+          "name": "Competitor Report",
+          "description": "Compile comprehensive competitor report",
+          "assignedRole": "brand-strategist",
+          "inputs": [
+            "marketing-analysis",
+            "swot-competitors"
+          ],
+          "outputs": [
+            "competitor-report",
+            "action-recommendations"
+          ],
+          "checklist": [
+            "Executive summary written",
+            "Detailed findings documented",
+            "Opportunities identified",
+            "Recommendations prioritized",
+            "Action plan created"
+          ],
+          "prompts": {
+            "en": "Compile comprehensive competitor report. Include executive summary, detailed findings, opportunities, prioritized recommendations, action plan. Inject {{brand_name}}.",
+            "ar": "تجميع تقرير شامل عن المنافسين. تشمل الملخص التنفيذي، النتائج التفصيلية، الفرص، التوصيات."
+          }
+        }
+      ]
+    }
+  ]
+}

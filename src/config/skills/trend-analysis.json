@@ -1,0 +1,139 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "trend-analysis",
+  "name": "Trend Analysis",
+  "description": "Identifies, monitors, and interprets emerging and declining patterns in advertising performance, consumer behavior, and market dynamics to inform strategic decisions.",
+  "category": "research",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time tracking campaign performance over time, identifying seasonal patterns, spotting early signals of market shifts, or needing to explain performance changes to stakeholders.",
+      "context": "You are a trend analysis specialist with expertise in time-series data interpretation for advertising and marketing. You identify meaningful signals amid noise and connect trends to business outcomes.",
+      "instructions": "## Trend Analysis\n\n1. **Collect data** — Gather time-series data for relevant metrics\n   - ✓ Done when: Data is complete with no unexplained gaps\n\n2. **Visualize** — Plot the data to see overall shape and patterns\n   - ✓ Done when: Visualization reveals clear trend direction\n\n3. **Decompose** — Separate trend, seasonality, and residual noise\n   - ✓ Done when: Components are statistically meaningful\n\n4. **Correlate events** — Match inflection points to known events and campaigns\n   - ✓ Done when: Causal links are plausible\n\n5. **Conclude** — Synthesize findings into business recommendations\n   - ✓ Done when: Recommendations are supported by the data\n\n## Key Inputs\n- metrics: Key performance metrics to analyze (ROAS, CTR, CPA, impressions, etc.)\n- time_range: Time period for analysis: last 3 months, past year, 2-year trend\n- granularity: Data frequency: daily, weekly, monthly (default: monthly)\n- industry_context: Any known market events, seasonality, or competitive activity during the period",
+      "output_template": "## Trend Analysis Report\n\n### Overview\n[2-3 sentence summary of the overall trend story]\n\n### Trend Decomposition\n| Component | Description | Significance |\n|-----------|-------------|---------------|\n| Long-term Trend | [Upward/downward/stable] | [Growth rate or decline %] |\n| Seasonality | [Pattern type] | [Repeating cycle] |\n| Noise/Volatility | [Short-term fluctuations] | [Variance measure] |\n\n### Key Inflection Points\n| Date | Event | Impact on Metric |\n|------|-------|-----------------|\n| | | |\n\n### Industry Context\n[How market events correlate with trend changes]\n\n### Forecast\n[Extrapolation of trend into near-term future]\n\n### Recommendations\n- [ ] Strategic recommendation based on trend direction"
+    }
+  },
+  "variables": [
+    {
+      "name": "metrics",
+      "type": "string",
+      "required": true,
+      "description": "Key performance metrics to analyze (ROAS, CTR, CPA, impressions, etc.)"
+    },
+    {
+      "name": "time_range",
+      "type": "string",
+      "required": true,
+      "description": "Time period for analysis: last 3 months, past year, 2-year trend"
+    },
+    {
+      "name": "granularity",
+      "type": "string",
+      "required": false,
+      "description": "Data frequency: daily, weekly, monthly (default: monthly)"
+    },
+    {
+      "name": "industry_context",
+      "type": "string",
+      "required": false,
+      "description": "Any known market events, seasonality, or competitive activity during the period"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "metrics",
+      "type": "string",
+      "required": true,
+      "description": "Key performance metrics to analyze (ROAS, CTR, CPA, impressions, etc.)"
+    },
+    {
+      "name": "time_range",
+      "type": "string",
+      "required": true,
+      "description": "Time period for analysis: last 3 months, past year, 2-year trend"
+    },
+    {
+      "name": "granularity",
+      "type": "string",
+      "required": false,
+      "description": "Data frequency: daily, weekly, monthly (default: monthly)"
+    },
+    {
+      "name": "industry_context",
+      "type": "string",
+      "required": false,
+      "description": "Any known market events, seasonality, or competitive activity during the period"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Collect data",
+        "action": "Gather time-series data for relevant metrics",
+        "verify": "Data is complete with no unexplained gaps"
+      },
+      {
+        "step": 2,
+        "name": "Visualize",
+        "action": "Plot the data to see overall shape and patterns",
+        "verify": "Visualization reveals clear trend direction"
+      },
+      {
+        "step": 3,
+        "name": "Decompose",
+        "action": "Separate trend, seasonality, and residual noise",
+        "verify": "Components are statistically meaningful"
+      },
+      {
+        "step": 4,
+        "name": "Correlate events",
+        "action": "Match inflection points to known events and campaigns",
+        "verify": "Causal links are plausible"
+      },
+      {
+        "step": 5,
+        "name": "Conclude",
+        "action": "Synthesize findings into business recommendations",
+        "verify": "Recommendations are supported by the data"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Metrics: Monthly ROAS for Google Ads campaigns. Time range: Last 18 months. Industry context: Q4 holiday season, iOS 14.5 impact in Q2 2021.",
+      "output": "Overall trend: ROAS declined 12% from Jan-Jun 2021 (post-iOS 14.5), then recovered with a 23% improvement from Jul-Dec 2021 driven by audience signal rebuild. Seasonal Q4 uplift of +31% observed. Recommendation: Increase Q4 budget allocation by 20% given proven seasonal multiplier."
+    }
+  ],
+  "checklist": [
+    "Data is complete with no unexplained gaps",
+    "Visualization reveals clear trend direction",
+    "Components are statistically meaningful",
+    "Causal links are plausible",
+    "Recommendations are supported by the data"
+  ],
+  "tools": [
+    "spreadsheet",
+    "document",
+    "## Strategy"
+  ],
+  "agents": [
+    "maya"
+  ],
+  "pipelines": [
+    "analytics-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "trends",
+      "time-series",
+      "analytics",
+      "performance"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

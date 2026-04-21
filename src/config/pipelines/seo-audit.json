@@ -1,0 +1,227 @@
+{
+  "id": "seo-audit",
+  "name": "SEO Audit & Strategy",
+  "description": "Comprehensive SEO audit with actionable recommendations",
+  "version": "1.0",
+  "isDefault": true,
+  "estimatedDuration": "10 days",
+  "clientProfileFields": [
+    {
+      "id": "website_url",
+      "label": "Website URL",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "industry",
+      "label": "Industry",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "business_objectives",
+      "label": "Business Objectives",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "target_keywords",
+      "label": "Target Keywords (if any)",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "id": "competitor_urls",
+      "label": "Competitor URLs (optional)",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "id": "search_console_access",
+      "label": "Search Console Access",
+      "type": "checkbox",
+      "required": false
+    }
+  ],
+  "phases": [
+    {
+      "id": "discovery",
+      "name": "Discovery & Crawling",
+      "color": "#38bdf8",
+      "activities": [
+        {
+          "id": "discovery-1",
+          "name": "Technical SEO Audit",
+          "description": "Comprehensive technical crawl of the website",
+          "assignedRole": "research",
+          "inputs": [
+            "website-url",
+            "search-console-access"
+          ],
+          "outputs": [
+            "technical-audit-report",
+            "crawl-issues"
+          ],
+          "checklist": [
+            "Site crawl completed",
+            "Technical issues identified",
+            "Indexation status reviewed",
+            "Core Web Vitals checked",
+            "Mobile usability verified"
+          ],
+          "prompts": {
+            "en": "Conduct comprehensive technical SEO audit. Inject {{website_url}}. Check site crawl, technical issues, indexation, Core Web Vitals, mobile usability.",
+            "ar": "إجراء تدقيق SEO تقني شامل. فحص الزحف، المشاكل التقنية، مؤشرات Core Web."
+          }
+        },
+        {
+          "id": "discovery-2",
+          "name": "Keyword Research",
+          "description": "Identify valuable keyword opportunities",
+          "assignedRole": "research",
+          "inputs": [
+            "technical-audit-report",
+            "business-objectives"
+          ],
+          "outputs": [
+            "keyword-map",
+            "opportunity-report"
+          ],
+          "checklist": [
+            "Current rankings analyzed",
+            "Competitor keywords identified",
+            "Long-tail opportunities found",
+            "Search volume data compiled",
+            "Keyword difficulty assessed"
+          ],
+          "prompts": {
+            "en": "Conduct keyword research. Inject {{industry}}, {{target_keywords}}. Identify opportunities, analyze competition, assess difficulty.",
+            "ar": "إجراء بحث عن الكلمات المفتاحية. تحديد الفرص، تحليل المنافسة."
+          }
+        }
+      ]
+    },
+    {
+      "id": "analysis",
+      "name": "Content & Competitive Analysis",
+      "color": "#9b6dff",
+      "activities": [
+        {
+          "id": "analysis-1",
+          "name": "Content Audit",
+          "description": "Analyze existing content performance",
+          "assignedRole": "research",
+          "inputs": [
+            "keyword-map",
+            "content-list"
+          ],
+          "outputs": [
+            "content-gaps",
+            "content-performance"
+          ],
+          "checklist": [
+            "Top performing pages identified",
+            "Content gaps documented",
+            "Thin content flagged",
+            "Duplicate content checked",
+            "Content cannibalization found"
+          ],
+          "prompts": {
+            "en": "Audit existing content. Identify top pages, content gaps, thin content, duplicates, cannibalization. Inject {{website_url}}.",
+            "ar": "تدقيق المحتوى الموجود. تحديد أفضل الصفحات، فجوات المحتوى، المحتوى الرقيق."
+          }
+        },
+        {
+          "id": "analysis-2",
+          "name": "Competitive Analysis",
+          "description": "Deep dive into competitor strategies",
+          "assignedRole": "research",
+          "inputs": [
+            "keyword-map",
+            "competitor-list"
+          ],
+          "outputs": [
+            "competitor-analysis",
+            "backlink-profile"
+          ],
+          "checklist": [
+            "Top competitors identified",
+            "Competitor backlink profiles analyzed",
+            "Content strategies compared",
+            "Gap analysis completed",
+            "Opportunities mapped"
+          ],
+          "prompts": {
+            "en": "Analyze competitor SEO strategies. Inject {{competitor_urls}}. Compare backlinks, content strategies, identify gaps.",
+            "ar": "تحليل استراتيجيات SEO للمنافسين. مقارنة الملفات التقنية، استراتيجيات المحتوى."
+          }
+        }
+      ]
+    },
+    {
+      "id": "strategy",
+      "name": "Strategy Development",
+      "color": "#ffd166",
+      "activities": [
+        {
+          "id": "strategy-1",
+          "name": "SEO Strategy Document",
+          "description": "Create comprehensive SEO strategy",
+          "assignedRole": "brand-strategist",
+          "inputs": [
+            "technical-audit-report",
+            "keyword-map",
+            "competitor-analysis"
+          ],
+          "outputs": [
+            "seo-strategy-doc",
+            "priority-matrix"
+          ],
+          "checklist": [
+            "Technical priorities ranked",
+            "Content recommendations ready",
+            "Link building strategy defined",
+            "Timeline proposed",
+            "Success metrics set"
+          ],
+          "prompts": {
+            "en": "Create comprehensive SEO strategy. Inject {{business_objectives}}, {{industry}}. Include technical priorities, content recommendations, link building, timeline.",
+            "ar": "إنشاء استراتيجية SEO شاملة. تشمل الأولويات التقنية، توصيات المحتوى، بناء الروابط."
+          }
+        }
+      ]
+    },
+    {
+      "id": "delivery",
+      "name": "Reporting & Handoff",
+      "color": "#ff5fa0",
+      "activities": [
+        {
+          "id": "delivery-1",
+          "name": "Final Report & Presentation",
+          "description": "Present findings and strategy to stakeholders",
+          "assignedRole": "client-services",
+          "inputs": [
+            "seo-strategy-doc",
+            "technical-audit-report"
+          ],
+          "outputs": [
+            "executive-summary",
+            "presentation-deck"
+          ],
+          "checklist": [
+            "Executive summary prepared",
+            "Full audit report compiled",
+            "Prioritized action items ready",
+            "Quick wins identified",
+            "Client training completed"
+          ],
+          "prompts": {
+            "en": "Prepare final SEO report and presentation. Include executive summary, full audit, prioritized actions, quick wins.",
+            "ar": "تحضير تقرير SEO النهائي والعروض. تشمل الملخص التنفيذي، التدقيق الكامل، الإجراءات ذات الأولوية."
+          }
+        }
+      ]
+    }
+  ]
+}

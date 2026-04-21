@@ -1,0 +1,460 @@
+{
+  "id": "content-calendar",
+  "name": "Content Calendar",
+  "description": "Generate a complete 30-day content calendar with posts, hooks, repurposed versions, hashtags, and visual briefs",
+  "version": "1.0",
+  "isDefault": true,
+  "estimatedDuration": "7-10 days",
+  "clientProfileFields": [
+    {
+      "id": "brand_name",
+      "label": "Brand Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "niche",
+      "label": "Industry/Niche",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "audience_demographics",
+      "label": "Audience Demographics",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "audience_psychographics",
+      "label": "Audience Psychographics",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "pain_points",
+      "label": "Top 3 Pain Points",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "tone",
+      "label": "Brand Voice/Tone",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "platforms",
+      "label": "Target Platforms",
+      "type": "multiselect",
+      "options": [
+        "Instagram",
+        "LinkedIn",
+        "X",
+        "TikTok",
+        "Facebook"
+      ],
+      "required": true
+    },
+    {
+      "id": "content_goal",
+      "label": "Primary Goal",
+      "type": "select",
+      "options": [
+        "awareness",
+        "engagement",
+        "lead-generation",
+        "conversion"
+      ],
+      "required": true
+    },
+    {
+      "id": "posting_frequency",
+      "label": "Posts Per Platform Per Week",
+      "type": "json",
+      "required": true
+    },
+    {
+      "id": "product_service",
+      "label": "Product/Service",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "id": "content_examples",
+      "label": "Sample Posts for Voice Matching",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "id": "topics_to_avoid",
+      "label": "Topics to Avoid",
+      "type": "textarea",
+      "required": false
+    }
+  ],
+  "weeklyArc": "Week 1: Awareness & Pain Points → Week 2: Education & Trust → Week 3: Story & Authority → Week 4: Conversion Push",
+  "phases": [
+    {
+      "id": "intake",
+      "name": "Client Profile",
+      "color": "#4f8ef7",
+      "activities": [
+        {
+          "id": "collect-profile",
+          "name": "Collect Client Profile",
+          "description": "Gather all client information: brand, audience, tone, platforms, goals",
+          "assignedRole": "client-services",
+          "inputs": [
+            "client-name",
+            "brief"
+          ],
+          "outputs": [
+            "client-profile"
+          ],
+          "checklist": [
+            "Brand name and niche confirmed",
+            "Audience demographics documented",
+            "Audience psychographics documented",
+            "Pain points identified (top 3)",
+            "Brand tone/voice defined",
+            "Target platforms selected",
+            "Content goal aligned"
+          ],
+          "prompts": {
+            "en": "Collect client profile following the schema. Ensure all required fields are completed before proceeding to Stage 1.",
+            "ar": "جمع ملف العميل وفقاً للمخطط. التأكد من إكمال جميع الحقول المطلوبة قبل الانتقال للمرحلة 1."
+          }
+        },
+        {
+          "id": "profile-review",
+          "name": "Profile Review & Approval",
+          "description": "Present profile to client for verification before generating content",
+          "assignedRole": "client-services",
+          "inputs": [
+            "client-profile"
+          ],
+          "outputs": [
+            "approved-profile"
+          ],
+          "checklist": [
+            "Client reviewed profile",
+            "Corrections noted",
+            "Profile approved"
+          ],
+          "prompts": {
+            "en": "Present the collected client profile for review. Confirm accuracy before proceeding.",
+            "ar": "عرض ملف العميل للمراجعة. تأكيد الدقة قبل المتابعة."
+          }
+        }
+      ]
+    },
+    {
+      "id": "ideas",
+      "name": "Content Ideas",
+      "color": "#9b6dff",
+      "activities": [
+        {
+          "id": "generate-ideas",
+          "name": "Generate 30 Content Ideas",
+          "description": "Create 30 strategic ideas across 5 pillars: Educational(8), Storytelling(6), Engagement(6), Authority(5), Promotional(5)",
+          "assignedRole": "content-strategist",
+          "inputs": [
+            "approved-profile"
+          ],
+          "outputs": [
+            "content-ideas"
+          ],
+          "checklist": [
+            "30 ideas generated across 5 pillars",
+            "Each idea tagged with platform + format",
+            "Difficulty level assigned",
+            "Trend-based ideas flagged if applicable"
+          ],
+          "prompts": {
+            "en": "Generate exactly 30 content ideas in 5 pillars following the content-calendar-generator stage 1 template. Inject {{brand_name}}, {{niche}}, {{audience_demographics}}, {{audience_psychographics}}, {{pain_points}}, {{tone}}, {{platforms}}, {{content_goal}}.",
+            "ar": "إنشاء 30 فكرة محتوى في 5 أعمدة وفقاً لقالب المرحلة 1. حقن بيانات العميل المناسبة."
+          },
+          "batching": {
+            "batchSize": 1,
+            "parallel": false
+          }
+        },
+        {
+          "id": "select-ideas",
+          "name": "Select Ideas to Proceed",
+          "description": "Present ideas as kanban. User selects 15-30 ideas to continue with",
+          "assignedRole": "client-services",
+          "inputs": [
+            "content-ideas"
+          ],
+          "outputs": [
+            "selected-ideas"
+          ],
+          "checklist": [
+            "Ideas presented in kanban format",
+            "User selected ideas",
+            "Selection confirmed (15-30 range)"
+          ],
+          "prompts": {
+            "en": "Present ideas as a kanban with 5 columns (one per pillar). User selects 15-30 ideas to proceed.",
+            "ar": "عرض الأفكار كـ kanban بـ 5 أعمدة. يختار المستخدم 15-30 فكرة للمتابعة."
+          }
+        }
+      ]
+    },
+    {
+      "id": "hooks",
+      "name": "Hook Generation",
+      "color": "#00d4aa",
+      "activities": [
+        {
+          "id": "generate-hooks",
+          "name": "Generate Hooks per Idea",
+          "description": "For each selected idea, generate 8 hooks using psychological formulas: Curiosity Gap, Bold Contrarian, Pain-Point Mirror, Surprising Stat, Direct 'You', Story Opener, 'What If' Reframe, Social Proof",
+          "assignedRole": "copy",
+          "inputs": [
+            "selected-ideas"
+          ],
+          "outputs": [
+            "hooks"
+          ],
+          "checklist": [
+            "8 hooks generated per idea",
+            "Each hook under 20 words",
+            "Brand voice match verified",
+            "1 hook selected per idea by user"
+          ],
+          "prompts": {
+            "en": "For each selected idea, generate 8 hooks using the 8 formulas from content-calendar-generator stage 2. Inject {{brand_name}}, {{niche}}, {{tone}}. Each hook must be under 20 words.",
+            "ar": "لكل فكرة مختارة، إنشاء 8 خطافات باستخدام الـ 8 صيغ من المرحلة 2. حقن {{brand_name}}، {{niche}}، {{tone}}."
+          },
+          "batching": {
+            "batchSize": 5,
+            "parallel": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "drafting",
+      "name": "Post Drafting",
+      "color": "#ffd166",
+      "activities": [
+        {
+          "id": "draft-posts",
+          "name": "Draft Full Posts",
+          "description": "Write complete ready-to-publish posts. Route by pillar: Educational(3A), Storytelling(3B), Engagement(3C), Authority(3D), Promotional(3E)",
+          "assignedRole": "copy",
+          "inputs": [
+            "selected-ideas",
+            "hooks"
+          ],
+          "outputs": [
+            "drafted-posts"
+          ],
+          "checklist": [
+            "Posts written per pillar framework",
+            "Platform formatting rules applied",
+            "Hook used as opener",
+            "CTA matched to audience temperature"
+          ],
+          "prompts": {
+            "en": "Write complete posts using stage 3 templates (3A-3E). Inject {{brand_name}}, {{niche}}, {{tone}}, {{content_goal}}. Apply platform formatting rules. Use selected hook as opener.",
+            "ar": "كتابة منشورات كاملة باستخدام قوالب المرحلة 3 (3A-3E). تطبيق قواعد تنسيق المنصات. استخدام الخطاف المحدد كافتتاحية."
+          },
+          "batching": {
+            "batchSize": 5,
+            "parallel": false
+          }
+        },
+        {
+          "id": "review-posts",
+          "name": "Review & Adjust Posts",
+          "description": "User can regenerate, adjust tone (casual/professional/bold/friendly), or request translation",
+          "assignedRole": "client-services",
+          "inputs": [
+            "drafted-posts"
+          ],
+          "outputs": [
+            "approved-posts"
+          ],
+          "checklist": [
+            "Posts reviewed by user",
+            "Adjustments noted",
+            "Final versions approved"
+          ],
+          "prompts": {
+            "en": "Present drafted posts for review. Offer options: Regenerate, Adjust Tone, Translate.",
+            "ar": "عرض المسودات للمراجعة. خيارات: إعادة الإنشاء، تعديل النبرة، الترجمة."
+          }
+        }
+      ]
+    },
+    {
+      "id": "assembly",
+      "name": "Calendar Assembly",
+      "color": "#ff5fa0",
+      "activities": [
+        {
+          "id": "assemble-calendar",
+          "name": "Build 30-Day Calendar",
+          "description": "Arrange posts into strategic 30-day calendar following weekly arc. Respect posting frequency, distribute platforms evenly, avoid consecutive same-pillar days",
+          "assignedRole": "content-strategist",
+          "inputs": [
+            "approved-posts",
+            "approved-profile"
+          ],
+          "outputs": [
+            "calendar"
+          ],
+          "checklist": [
+            "Week 1: Awareness & Pain Points",
+            "Week 2: Education & Trust",
+            "Week 3: Story & Authority",
+            "Week 4: Conversion Push",
+            "Day 15: Mid-month review note inserted",
+            "Posting frequency respected",
+            "Platform distribution even",
+            "No consecutive same-pillar days"
+          ],
+          "prompts": {
+            "en": "Build 30-day calendar following stage 4 template. Inject {{brand_name}}, {{niche}}, {{platforms}}, {{posting_frequency}}, {{content_goal}}, {{month_label}}. Apply weekly arc rules. Return JSON array.",
+            "ar": "بناء تقويم 30 يوم وفقاً لقالب المرحلة 4. تطبيق قواعد القوس الأسبوعي."
+          },
+          "batching": {
+            "batchSize": 1,
+            "parallel": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "repurposing",
+      "name": "Cross-Platform",
+      "color": "#38bdf8",
+      "activities": [
+        {
+          "id": "adapt-posts",
+          "name": "Adapt for All Platforms",
+          "description": "Generate native adaptations for all other platforms per post. Adapted versions must feel native, not copy-paste",
+          "assignedRole": "copy",
+          "inputs": [
+            "approved-posts"
+          ],
+          "outputs": [
+            "adapted-posts"
+          ],
+          "checklist": [
+            "All posts adapted per platform",
+            "Native formatting applied",
+            "what_changed explanation included"
+          ],
+          "prompts": {
+            "en": "Adapt posts for all client platforms following stage 5 template. Inject {{brand_name}}, {{niche}}, {{tone}}. Apply platform adaptation rules for Instagram, LinkedIn, X, TikTok, Facebook.",
+            "ar": "تكييف المنشورات لجميع منصات العميل وفقاً لقالب المرحلة 5."
+          },
+          "batching": {
+            "batchSize": 5,
+            "parallel": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "hashtags",
+      "name": "Hashtags & SEO",
+      "color": "#a78bfa",
+      "activities": [
+        {
+          "id": "generate-hashtags",
+          "name": "Generate Hashtags & Keywords",
+          "description": "Platform-specific hashtags: Instagram(20-30), LinkedIn(3-5), X(1-3), TikTok(4-6), Facebook(3-5). Plus 5 SEO keywords per post",
+          "assignedRole": "seo-specialist",
+          "inputs": [
+            "approved-posts"
+          ],
+          "outputs": [
+            "hashtags"
+          ],
+          "checklist": [
+            "Hashtags per platform rules",
+            "SEO keywords per post",
+            "Arabic hashtags if applicable"
+          ],
+          "prompts": {
+            "en": "Generate hashtags following stage 6 template. Inject {{niche}}, {{platforms}}. Apply hashtag rules by platform. Include SEO keywords.",
+            "ar": "إنشاء هاشتاقات وفقاً لقالب المرحلة 6. تطبيق قواعد الهاشتاقات حسب المنصة."
+          },
+          "batching": {
+            "batchSize": 1,
+            "parallel": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "visual",
+      "name": "Visual Briefs",
+      "color": "#f97316",
+      "activities": [
+        {
+          "id": "create-visual-briefs",
+          "name": "Create Visual Direction Briefs",
+          "description": "Designer-ready briefs under 80 words each. Include visual_brief, suggested_style, color_suggestions, text_on_image",
+          "assignedRole": "visual-producer",
+          "inputs": [
+            "approved-posts"
+          ],
+          "outputs": [
+            "visual-briefs"
+          ],
+          "checklist": [
+            "Brief under 80 words per post",
+            "Style, colors, text overlay specified",
+            "Platform-specific tailoring"
+          ],
+          "prompts": {
+            "en": "Create visual briefs following stage 7 template. Inject {{brand_name}}, {{niche}}, {{tone}}, {{platforms}}. Each brief under 80 words. Include visual_brief, suggested_style, color_suggestions, text_on_image.",
+            "ar": "إنشاء ملخصات بصرية وفقاً لقالب المرحلة 7. كل ملخص أقل من 80 كلمة."
+          },
+          "batching": {
+            "batchSize": 1,
+            "parallel": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "export",
+      "name": "Export & Delivery",
+      "color": "#22c55e",
+      "activities": [
+        {
+          "id": "export-calendar",
+          "name": "Export Calendar",
+          "description": "Export as PDF or XLSX with all sheets: Calendar, Full Posts, Repurposed Versions, Hashtags & Briefs",
+          "assignedRole": "content-strategist",
+          "inputs": [
+            "calendar",
+            "approved-posts",
+            "adapted-posts",
+            "hashtags",
+            "visual-briefs"
+          ],
+          "outputs": [
+            "exported-calendar"
+          ],
+          "checklist": [
+            "PDF export ready OR",
+            "XLSX export with 4 sheets",
+            "All content included"
+          ],
+          "prompts": {
+            "en": "Export calendar following stage 8 template. Option A: PDF with cover, TOC, calendar grid, post pages. Option B: XLSX with 4 sheets.",
+            "ar": "تصدير التقويم وفقاً لقالب المرحلة 8. الخيار أ: PDF. الخيار ب: XLSX."
+          }
+        }
+      ]
+    }
+  ]
+}

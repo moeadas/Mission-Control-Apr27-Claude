@@ -1,0 +1,144 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "documentation",
+  "name": "Documentation",
+  "description": "Creates practical documentation systems, playbooks, and reference materials that improve consistency, onboarding speed, and operational clarity.",
+  "category": "operations",
+  "difficulty": "beginner",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time creating process docs, playbooks, sops, onboarding guides, knowledge-base entries, or operational reference material.",
+      "context": "You are an operations documentation specialist. You produce documentation that people can actually follow under time pressure, not just archive.",
+      "instructions": "## Documentation\n\n1. **Define purpose and audience** — Define purpose and audience\n   - ✓ Done when: Define purpose and audience is completed to a high standard\n\n2. **Gather source information** — Gather source information\n   - ✓ Done when: Gather source information is completed to a high standard\n\n3. **Design usable structure** — Design usable structure\n   - ✓ Done when: Design usable structure is completed to a high standard\n\n4. **Write instructions and examples** — Write instructions and examples\n   - ✓ Done when: Write instructions and examples is completed to a high standard\n\n5. **Add ownership and cadence** — Add ownership and cadence\n   - ✓ Done when: Add ownership and cadence is completed to a high standard\n\n6. **Validate for low-context users** — Validate for low-context users\n   - ✓ Done when: Validate for low-context users is completed to a high standard\n\n## Key Inputs\n- document_type: Type of document: playbook, process guide, how-to, knowledge base article\n- purpose: What this documentation is meant to accomplish\n- audience: Who will use this documentation\n- existing_content: Existing documentation or content to build upon",
+      "output_template": "## Documentation Blueprint\n\n### 1. Document Overview\n| Element | Details |\n|---|---|\n| Title | |\n| Audience | |\n| Purpose | |\n| Owner | |\n| Review Cadence | |\n\n### 2. Structure\n| Section | What It Covers | Why It Matters |\n|---|---|---|\n| | | |\n\n### 3. Core Guidance\n- Required steps:\n- Key decisions:\n- Exceptions / edge cases:\n- Examples / references:\n\n### 4. Operational Notes\n- Dependencies:\n- Common mistakes:\n- Update trigger:\n- Escalation path:"
+    }
+  },
+  "variables": [
+    {
+      "name": "document_type",
+      "type": "string",
+      "required": true,
+      "description": "Type of document: playbook, process guide, how-to, knowledge base article"
+    },
+    {
+      "name": "purpose",
+      "type": "string",
+      "required": true,
+      "description": "What this documentation is meant to accomplish"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Who will use this documentation"
+    },
+    {
+      "name": "existing_content",
+      "type": "string",
+      "required": false,
+      "description": "Existing documentation or content to build upon"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "document_type",
+      "type": "string",
+      "required": true,
+      "description": "Type of document: playbook, process guide, how-to, knowledge base article"
+    },
+    {
+      "name": "purpose",
+      "type": "string",
+      "required": true,
+      "description": "What this documentation is meant to accomplish"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Who will use this documentation"
+    },
+    {
+      "name": "existing_content",
+      "type": "string",
+      "required": false,
+      "description": "Existing documentation or content to build upon"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Define purpose and audience",
+        "action": "Define purpose and audience",
+        "verify": "Define purpose and audience is completed to a high standard"
+      },
+      {
+        "step": 2,
+        "name": "Gather source information",
+        "action": "Gather source information",
+        "verify": "Gather source information is completed to a high standard"
+      },
+      {
+        "step": 3,
+        "name": "Design usable structure",
+        "action": "Design usable structure",
+        "verify": "Design usable structure is completed to a high standard"
+      },
+      {
+        "step": 4,
+        "name": "Write instructions and examples",
+        "action": "Write instructions and examples",
+        "verify": "Write instructions and examples is completed to a high standard"
+      },
+      {
+        "step": 5,
+        "name": "Add ownership and cadence",
+        "action": "Add ownership and cadence",
+        "verify": "Add ownership and cadence is completed to a high standard"
+      },
+      {
+        "step": 6,
+        "name": "Validate for low-context users",
+        "action": "Validate for low-context users",
+        "verify": "Validate for low-context users is completed to a high standard"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Type: Playbook. Purpose: Standardize Google Ads campaign setup across the agency. Audience: Junior media buyers. Existing content: Scattered notes from 3 senior buyers.",
+      "output": "35-page playbook covering: account structure conventions, keyword research process, ad copy standards, bidding strategy guidelines, reporting templates. Each section has a checklist and worked example. Review schedule: annual."
+    }
+  ],
+  "checklist": [
+    "Define purpose and audience is completed to a high standard",
+    "Gather source information is completed to a high standard",
+    "Design usable structure is completed to a high standard",
+    "Write instructions and examples is completed to a high standard",
+    "Add ownership and cadence is completed to a high standard",
+    "Validate for low-context users is completed to a high standard"
+  ],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "iris"
+  ],
+  "pipelines": [
+    "operations-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "documentation",
+      "knowledge-base",
+      "playbook",
+      "process-doc"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

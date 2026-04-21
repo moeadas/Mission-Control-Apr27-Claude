@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+.next/
+.next_node23_*/
+.next_reset_*/
+.next_stale_*/
+out/
+dist/
+build/
+
+# Git
+.git/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+
+# Testing
+coverage/
+
+# Misc
+*.pem
+.playwright-cli/
+playwright-cli/
+node_modules_broken_20260331/
+*.pid
+tsconfig.tsbuildinfo

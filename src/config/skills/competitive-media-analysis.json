@@ -1,0 +1,157 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "competitive-media-analysis",
+  "name": "Competitive Media Analysis",
+  "description": "Analyzes competitor media spending, channel strategies, creative approaches, and share of voice to inform media planning decisions and identify competitive advantages.",
+  "category": "media",
+  "difficulty": "advanced",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time conducting competitive media analysis, benchmarking against competitors, or analyzing share of voice and competitive media strategies.",
+      "context": "You are a competitive intelligence specialist focused on media. You analyze competitor advertising patterns, spending trends, channel choices, and creative strategies to identify opportunities and threats for your client's media plan.",
+      "instructions": "## Competitive Media Analysis\n\n1. **Define Competitive Set** — Identify direct and indirect competitors\n   - ✓ Done when: Competitive set is comprehensive\n\n2. **Spending Analysis** — Estimate competitor media spend\n   - ✓ Done when: Estimates are sourced and reasonable\n\n3. **Channel Mapping** — Map competitor channel strategies\n   - ✓ Done when: Channel data covers all major channels\n\n4. **SOV Calculation** — Calculate share of voice by channel\n   - ✓ Done when: SOV calculations are consistent\n\n5. **Creative Audit** — Analyze competitor creative approaches\n   - ✓ Done when: Creative analysis covers themes, formats, messaging\n\n6. **Gap Analysis** — Identify whitespace and opportunities\n   - ✓ Done when: Opportunities are actionable\n\n## Key Inputs\n- client_name: Client or brand name\n- industry: Industry or category\n- competitors: Key competitors to analyze\n- channels: Channels to focus analysis on\n- period: Analysis time period",
+      "output_template": "## Competitive Media Analysis: {{client_name}}\n\n### Competitive Set\n| Competitor | Type | Estimated Annual Spend | Primary Channels |\n|-----------|------|----------------------|------------------|\n| | Direct / Indirect | | |\n\n### Spending Comparison\n| Channel | {{client_name}} | Competitor A | Competitor B | Category Avg |\n|---------|---|---|---|---|\n| | | | | |\n\n### Share of Voice\n| Channel | {{client_name}} SOV | Comp A SOV | Comp B SOV | Opportunity |\n|---------|---|---|---|---|\n| | % | % | % | |\n\n### Competitor Creative Themes\n| Competitor | Primary Message | Tone | Key Formats | Differentiator |\n|-----------|----------------|------|-------------|----------------|\n| | | | | |\n\n### Seasonal Patterns\n| Quarter | Category Spend Index | Key Competitors Active | Promotional Themes |\n|---------|---------------------|----------------------|-------------------|\n| Q1 | | | |\n\n### Whitespace Opportunities\n| Opportunity | Channel | Rationale | Priority |\n|------------|---------|-----------|----------|\n| | | | High / Med |"
+    }
+  },
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "industry",
+      "type": "string",
+      "required": true,
+      "description": "Industry or category"
+    },
+    {
+      "name": "competitors",
+      "type": "string",
+      "required": true,
+      "description": "Key competitors to analyze"
+    },
+    {
+      "name": "channels",
+      "type": "string",
+      "required": false,
+      "description": "Channels to focus analysis on"
+    },
+    {
+      "name": "period",
+      "type": "string",
+      "required": false,
+      "description": "Analysis time period"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "industry",
+      "type": "string",
+      "required": true,
+      "description": "Industry or category"
+    },
+    {
+      "name": "competitors",
+      "type": "string",
+      "required": true,
+      "description": "Key competitors to analyze"
+    },
+    {
+      "name": "channels",
+      "type": "string",
+      "required": false,
+      "description": "Channels to focus analysis on"
+    },
+    {
+      "name": "period",
+      "type": "string",
+      "required": false,
+      "description": "Analysis time period"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Define Competitive Set",
+        "action": "Identify direct and indirect competitors",
+        "verify": "Competitive set is comprehensive"
+      },
+      {
+        "step": 2,
+        "name": "Spending Analysis",
+        "action": "Estimate competitor media spend",
+        "verify": "Estimates are sourced and reasonable"
+      },
+      {
+        "step": 3,
+        "name": "Channel Mapping",
+        "action": "Map competitor channel strategies",
+        "verify": "Channel data covers all major channels"
+      },
+      {
+        "step": 4,
+        "name": "SOV Calculation",
+        "action": "Calculate share of voice by channel",
+        "verify": "SOV calculations are consistent"
+      },
+      {
+        "step": 5,
+        "name": "Creative Audit",
+        "action": "Analyze competitor creative approaches",
+        "verify": "Creative analysis covers themes, formats, messaging"
+      },
+      {
+        "step": 6,
+        "name": "Gap Analysis",
+        "action": "Identify whitespace and opportunities",
+        "verify": "Opportunities are actionable"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Analyze competitive media landscape for a fintech startup in UAE against Tabby, Tamara, and Postpay.",
+      "output": "Analysis showing Tabby dominates digital social SOV (45%), Tamara leads in OOH, Postpay is minimal. Whitespace: podcast advertising, CTV, and employer branding on LinkedIn. Recommendation: invest in audio and CTV where competitors are absent."
+    }
+  ],
+  "checklist": [
+    "Competitive set is comprehensive",
+    "Estimates are sourced and reasonable",
+    "Channel data covers all major channels",
+    "SOV calculations are consistent",
+    "Creative analysis covers themes, formats, messaging",
+    "Opportunities are actionable"
+  ],
+  "tools": [
+    "analytics",
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "nova"
+  ],
+  "pipelines": [
+    "media-plan"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "media",
+      "planning",
+      "competitive-media-analysis"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

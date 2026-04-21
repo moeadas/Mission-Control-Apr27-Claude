@@ -1,0 +1,177 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "content-calendar",
+  "name": "content-calendar",
+  "description": "Builds strategic multi-platform content calendars that align themes, cadence, campaign moments, and channel-native formats with business goals.",
+  "category": "content",
+  "difficulty": "beginner",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time planning monthly or quarterly content calendars, editorial plans, social posting schedules, or integrated content campaigns.",
+      "context": "You are a senior content strategy lead designing a practical, channel-aware content calendar for {{client_name}}. You balance brand goals, audience behavior, publishing capacity, campaign timing, and creative variation so the plan is both strategic and executable.",
+      "instructions": "## content-calendar\n\n1. **Clarify brief** — Clarify brief\n   - ✓ Done when: Clarify brief is completed to a high standard\n\n2. **Define content pillars** — Define content pillars\n   - ✓ Done when: Define content pillars is completed to a high standard\n\n3. **Map platform roles** — Map platform roles\n   - ✓ Done when: Map platform roles is completed to a high standard\n\n4. **Set cadence** — Set cadence\n   - ✓ Done when: Set cadence is completed to a high standard\n\n5. **Plan weekly themes** — Plan weekly themes\n   - ✓ Done when: Plan weekly themes is completed to a high standard\n\n6. **Design format mix** — Design format mix\n   - ✓ Done when: Design format mix is completed to a high standard\n\n7. **Build calendar** — Build calendar\n   - ✓ Done when: Build calendar is completed to a high standard\n\n8. **Add repurposing** — Add repurposing\n   - ✓ Done when: Add repurposing is completed to a high standard\n\n9. **Stress-test execution** — Stress-test execution\n   - ✓ Done when: Stress-test execution is completed to a high standard\n\n## Key Inputs\n- client_name: Client or brand name\n- platforms: Social platforms (Instagram, LinkedIn, Twitter, etc)\n- frequency: Posts per week per platform\n- objectives: Content goals (awareness, engagement, leads)\n- target_audience: Primary audience",
+      "output_template": "## Content Calendar: {{client_name}}\n\n### 1. Strategic Summary\n| Element | Decision |\n|---|---|\n| Primary Objective | |\n| Audience Focus | |\n| Core Offer / Theme | |\n| Recommended Cadence | |\n| Primary Success Signal | |\n\n### 2. Content Pillars\n| Pillar | Why It Matters | Funnel Role | Priority Formats |\n|---|---|---|---|\n| | | | |\n\n### 3. Platform Roles\n| Platform | Role In Mix | Content Style | CTA Style | Posting Frequency |\n|---|---|---|---|---|\n| | | | | |\n\n### 4. Weekly Calendar\n| Week | Channel | Format | Pillar | Post Angle / Hook | CTA | Production Notes |\n|---|---|---|---|---|---|---|\n| 1 | | | | | | |\n| 2 | | | | | | |\n| 3 | | | | | | |\n| 4 | | | | | | |\n\n### 5. Repurposing Opportunities\n| Core Idea | Source Asset | Adaptations |\n|---|---|---|\n| | | |\n\n### 6. Key Dates And Campaign Moments\n| Date / Window | Opportunity | Content Recommendation |\n|---|---|---|\n| | | |\n\n### 7. Editorial Guardrails\n- Voice / tone:\n- Topics to emphasize:\n- Topics to avoid:\n- Proof assets required:\n- Dependencies / approvals:\n\n### 8. Success Review\n- What should be measured weekly:\n- What should be adjusted after two weeks:\n- Immediate creative gaps to fill:"
+    }
+  },
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "platforms",
+      "type": "string",
+      "required": true,
+      "description": "Social platforms (Instagram, LinkedIn, Twitter, etc)"
+    },
+    {
+      "name": "frequency",
+      "type": "string",
+      "required": true,
+      "description": "Posts per week per platform"
+    },
+    {
+      "name": "objectives",
+      "type": "string",
+      "required": true,
+      "description": "Content goals (awareness, engagement, leads)"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Primary audience"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "platforms",
+      "type": "string",
+      "required": true,
+      "description": "Social platforms (Instagram, LinkedIn, Twitter, etc)"
+    },
+    {
+      "name": "frequency",
+      "type": "string",
+      "required": true,
+      "description": "Posts per week per platform"
+    },
+    {
+      "name": "objectives",
+      "type": "string",
+      "required": true,
+      "description": "Content goals (awareness, engagement, leads)"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Primary audience"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Clarify brief",
+        "action": "Clarify brief",
+        "verify": "Clarify brief is completed to a high standard"
+      },
+      {
+        "step": 2,
+        "name": "Define content pillars",
+        "action": "Define content pillars",
+        "verify": "Define content pillars is completed to a high standard"
+      },
+      {
+        "step": 3,
+        "name": "Map platform roles",
+        "action": "Map platform roles",
+        "verify": "Map platform roles is completed to a high standard"
+      },
+      {
+        "step": 4,
+        "name": "Set cadence",
+        "action": "Set cadence",
+        "verify": "Set cadence is completed to a high standard"
+      },
+      {
+        "step": 5,
+        "name": "Plan weekly themes",
+        "action": "Plan weekly themes",
+        "verify": "Plan weekly themes is completed to a high standard"
+      },
+      {
+        "step": 6,
+        "name": "Design format mix",
+        "action": "Design format mix",
+        "verify": "Design format mix is completed to a high standard"
+      },
+      {
+        "step": 7,
+        "name": "Build calendar",
+        "action": "Build calendar",
+        "verify": "Build calendar is completed to a high standard"
+      },
+      {
+        "step": 8,
+        "name": "Add repurposing",
+        "action": "Add repurposing",
+        "verify": "Add repurposing is completed to a high standard"
+      },
+      {
+        "step": 9,
+        "name": "Stress-test execution",
+        "action": "Stress-test execution",
+        "verify": "Stress-test execution is completed to a high standard"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Create a content calendar for Bloom - a sustainable fashion brand targeting millennials in UAE, posting 3x/week on Instagram and 2x/week on LinkedIn",
+      "output": "4-week content calendar with content pillars (Sustainability, Style, Behind-the-scenes, Education), weekly breakdown showing post types (carousel, reels, stories), and key dates (UAE Fashion Week, Earth Day)"
+    }
+  ],
+  "checklist": [
+    "Clarify brief is completed to a high standard",
+    "Define content pillars is completed to a high standard",
+    "Map platform roles is completed to a high standard",
+    "Set cadence is completed to a high standard",
+    "Plan weekly themes is completed to a high standard",
+    "Design format mix is completed to a high standard",
+    "Build calendar is completed to a high standard",
+    "Add repurposing is completed to a high standard",
+    "Stress-test execution is completed to a high standard"
+  ],
+  "tools": [
+    "spreadsheet",
+    "document",
+    "presentation"
+  ],
+  "agents": [],
+  "pipelines": [
+    "content-calendar"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "content",
+      "social media",
+      "planning",
+      "editorial"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

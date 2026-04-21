@@ -1,0 +1,144 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "capacity-planning",
+  "name": "Capacity Planning",
+  "description": "Plans team capacity against demand so work can be staffed realistically, bottlenecks can be anticipated, and tradeoffs can be made early.",
+  "category": "project-management",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time forecasting workload, planning staffing, assessing delivery capacity, or balancing project demand against team bandwidth.",
+      "context": "You are a delivery planning specialist. You balance utilization, deadlines, role coverage, and risk so teams can commit realistically without overloading critical people.",
+      "instructions": "## Capacity Planning\n\n1. **Clarify demand** — Clarify demand\n   - ✓ Done when: Clarify demand is completed to a high standard\n\n2. **Map available capacity** — Map available capacity\n   - ✓ Done when: Map available capacity is completed to a high standard\n\n3. **Identify bottlenecks** — Identify bottlenecks\n   - ✓ Done when: Identify bottlenecks is completed to a high standard\n\n4. **Recommend tradeoffs** — Recommend tradeoffs\n   - ✓ Done when: Recommend tradeoffs is completed to a high standard\n\n5. **Stress-test plan** — Stress-test plan\n   - ✓ Done when: Stress-test plan is completed to a high standard\n\n6. **Set review cadence** — Set review cadence\n   - ✓ Done when: Set review cadence is completed to a high standard\n\n## Key Inputs\n- team_name: Team or department name\n- planning_period: Planning period (e.g., Q3 2026, Next sprint)\n- committed_work: Committed projects and deliverables\n- available_hours: Available hours per team member",
+      "output_template": "## Capacity Plan\n\n### 1. Demand Snapshot\n| Workstream | Effort Need | Timing | Priority |\n|---|---|---|---|\n| | | | |\n\n### 2. Capacity View\n| Role / Person | Available Capacity | Current Commitments | Remaining Capacity |\n|---|---|---|---|\n| | | | |\n\n### 3. Bottlenecks And Risks\n- Main bottleneck:\n- Overload risk:\n- Single point of failure:\n\n### 4. Recommendations\n1. \n2. \n3. \n\n### 5. Review Notes\n- Assumptions to revisit:\n- Next planning checkpoint:"
+    }
+  },
+  "variables": [
+    {
+      "name": "team_name",
+      "type": "string",
+      "required": true,
+      "description": "Team or department name"
+    },
+    {
+      "name": "planning_period",
+      "type": "string",
+      "required": true,
+      "description": "Planning period (e.g., Q3 2026, Next sprint)"
+    },
+    {
+      "name": "committed_work",
+      "type": "string",
+      "required": false,
+      "description": "Committed projects and deliverables"
+    },
+    {
+      "name": "available_hours",
+      "type": "string",
+      "required": false,
+      "description": "Available hours per team member"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "team_name",
+      "type": "string",
+      "required": true,
+      "description": "Team or department name"
+    },
+    {
+      "name": "planning_period",
+      "type": "string",
+      "required": true,
+      "description": "Planning period (e.g., Q3 2026, Next sprint)"
+    },
+    {
+      "name": "committed_work",
+      "type": "string",
+      "required": false,
+      "description": "Committed projects and deliverables"
+    },
+    {
+      "name": "available_hours",
+      "type": "string",
+      "required": false,
+      "description": "Available hours per team member"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Clarify demand",
+        "action": "Clarify demand",
+        "verify": "Clarify demand is completed to a high standard"
+      },
+      {
+        "step": 2,
+        "name": "Map available capacity",
+        "action": "Map available capacity",
+        "verify": "Map available capacity is completed to a high standard"
+      },
+      {
+        "step": 3,
+        "name": "Identify bottlenecks",
+        "action": "Identify bottlenecks",
+        "verify": "Identify bottlenecks is completed to a high standard"
+      },
+      {
+        "step": 4,
+        "name": "Recommend tradeoffs",
+        "action": "Recommend tradeoffs",
+        "verify": "Recommend tradeoffs is completed to a high standard"
+      },
+      {
+        "step": 5,
+        "name": "Stress-test plan",
+        "action": "Stress-test plan",
+        "verify": "Stress-test plan is completed to a high standard"
+      },
+      {
+        "step": 6,
+        "name": "Set review cadence",
+        "action": "Set review cadence",
+        "verify": "Set review cadence is completed to a high standard"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Plan Q3 capacity for a 5-person creative team. Committed to 3 client projects plus internal initiatives. One team member is on leave for 3 weeks.",
+      "output": "Capacity plan showing utilization per person, gap analysis, and hiring/reassignment recommendations"
+    }
+  ],
+  "checklist": [
+    "Clarify demand is completed to a high standard",
+    "Map available capacity is completed to a high standard",
+    "Identify bottlenecks is completed to a high standard",
+    "Recommend tradeoffs is completed to a high standard",
+    "Stress-test plan is completed to a high standard",
+    "Set review cadence is completed to a high standard"
+  ],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "piper"
+  ],
+  "pipelines": [
+    "resource-planning"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "project-management",
+      "resource-management",
+      "capacity"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

@@ -1,0 +1,141 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "search-advertising",
+  "name": "Search Advertising",
+  "description": "Manages paid search campaigns on platforms like Google Ads and Microsoft Advertising to capture high-intent traffic, drive conversions, and maximize return on ad spend.",
+  "category": "analytics",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time launching a new search campaign, optimizing existing google ads account, conducting keyword research for paid search, or diagnosing poor search performance.",
+      "context": "You are a search advertising specialist with deep expertise in Google Ads, Microsoft Advertising, and paid search strategy. You optimize campaigns to capture high-intent users at efficient costs.",
+      "instructions": "## Search Advertising\n\n1. **Structure campaigns** — Organize keywords into tightly themed campaigns and ad groups\n   - ✓ Done when: Structure supports relevance\n\n2. **Write ads** — Create compelling ad copy with relevant extensions\n   - ✓ Done when: Ads are specific and have clear CTAs\n\n3. **Set up tracking** — Configure conversion tracking and audience signals\n   - ✓ Done when: Tracking is accurate and reliable\n\n4. **Optimize** — Refine keywords, negatives, bids, and copy based on data\n   - ✓ Done when: Optimizations are data-driven\n\n## Key Inputs\n- campaign_goal: Primary campaign objective: leads, sales, website traffic, brand awareness\n- target_keywords: Keywords to target with match types\n- budget: Daily or monthly budget\n- geographic_target: Geographic targeting parameters\n- conversion_points: Conversion actions to track and optimize for",
+      "output_template": "## Search Advertising Campaign Plan\n\n### Campaign Structure\n| Campaign | Ad Group | Keywords | Match Type |\n|----------|----------|---------|------------|\n| | | | |\n\n### Ad Copy\n| Ad | Headline 1 | Headline 2 | Headline 3 | Description |\n|----|-----------|-----------|-----------|-------------|\n| | | | | |\n\n### Bid Strategy\n- Strategy: [e.g., Target CPA, Maximize Conversions]\n- Default Bid: \n- Top-of-page bid range: \n\n### Performance Targets\n| Metric | Target |\n|--------|--------|\n| CTR | |\n| Quality Score (avg) | |\n| CPC | |\n| CPA | |\n| ROAS | |\n\n### Negative Keywords\n[List of terms to exclude]"
+    }
+  },
+  "variables": [
+    {
+      "name": "campaign_goal",
+      "type": "string",
+      "required": true,
+      "description": "Primary campaign objective: leads, sales, website traffic, brand awareness"
+    },
+    {
+      "name": "target_keywords",
+      "type": "string",
+      "required": true,
+      "description": "Keywords to target with match types"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Daily or monthly budget"
+    },
+    {
+      "name": "geographic_target",
+      "type": "string",
+      "required": false,
+      "description": "Geographic targeting parameters"
+    },
+    {
+      "name": "conversion_points",
+      "type": "string",
+      "required": false,
+      "description": "Conversion actions to track and optimize for"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "campaign_goal",
+      "type": "string",
+      "required": true,
+      "description": "Primary campaign objective: leads, sales, website traffic, brand awareness"
+    },
+    {
+      "name": "target_keywords",
+      "type": "string",
+      "required": true,
+      "description": "Keywords to target with match types"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Daily or monthly budget"
+    },
+    {
+      "name": "geographic_target",
+      "type": "string",
+      "required": false,
+      "description": "Geographic targeting parameters"
+    },
+    {
+      "name": "conversion_points",
+      "type": "string",
+      "required": false,
+      "description": "Conversion actions to track and optimize for"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Structure campaigns",
+        "action": "Organize keywords into tightly themed campaigns and ad groups",
+        "verify": "Structure supports relevance"
+      },
+      {
+        "step": 2,
+        "name": "Write ads",
+        "action": "Create compelling ad copy with relevant extensions",
+        "verify": "Ads are specific and have clear CTAs"
+      },
+      {
+        "step": 3,
+        "name": "Set up tracking",
+        "action": "Configure conversion tracking and audience signals",
+        "verify": "Tracking is accurate and reliable"
+      },
+      {
+        "step": 4,
+        "name": "Optimize",
+        "action": "Refine keywords, negatives, bids, and copy based on data",
+        "verify": "Optimizations are data-driven"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Goal: Generate leads for SaaS CRM product. Keywords: 'best CRM software', 'CRM for small business', 'easy to use CRM'. Budget: $8,000/month. Geographic: US only.",
+      "output": "Campaign structure: 3 campaigns by product line, 12 ad groups, 180 keywords total. Average Quality Score: 7.2. After 30 days: CPA $42 (target $50), ROAS 4.2x. Top-performing ad copy emphasizes '14-day free trial' and 'no credit card required.'"
+    }
+  ],
+  "checklist": [
+    "Structure supports relevance",
+    "Ads are specific and have clear CTAs",
+    "Tracking is accurate and reliable",
+    "Optimizations are data-driven"
+  ],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [],
+  "pipelines": [
+    "media-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "search-advertising",
+      "google-ads",
+      "ppc",
+      "paid-search"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

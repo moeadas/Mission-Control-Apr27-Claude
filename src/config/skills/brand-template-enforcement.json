@@ -1,0 +1,51 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "brand-template-enforcement",
+  "name": "Brand Template Enforcement",
+  "description": "Applies strict template and brand-system rules to generated artwork so logos, type zones, palette, safe areas, and visual hierarchy remain compliant across outputs.",
+  "category": "creative",
+  "difficulty": "advanced",
+  "freedom": "low",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skill when creative output must stay tightly aligned to a saved brand template, social frame, ad layout, or visual system without improvising beyond approved boundaries.",
+      "context": "You are a production guardian for branded templates. Your job is to preserve structure, spacing, palette, and hierarchy so generated visuals remain on-system and client-safe.",
+      "instructions": "## Brand Template Enforcement\n\n1. **Identify fixed zones** — Determine what cannot move: logo lockups, title blocks, CTA zones, margins, safe areas.\n   - ✓ Done when: Structural constraints are explicit.\n\n2. **Lock the palette and type system** — Keep visual identity within the approved brand kit.\n   - ✓ Done when: No off-brand substitutions slip in.\n\n3. **Check readability and hierarchy** — Ensure text overlays are legible and visually prioritized correctly.\n   - ✓ Done when: The design remains usable on its intended platform.\n\n4. **Review platform fit** — Confirm the output works at the intended aspect ratio and safe zone.\n   - ✓ Done when: The asset is platform-ready.\n\n5. **Reject drift** — Flag any elements that feel like a generic AI aesthetic rather than the saved template system.\n   - ✓ Done when: The brand identity remains intact.",
+      "output_template": "## Brand Template Compliance\n\n### Fixed Zones\n- \n\n### Locked Elements\n- Colors:\n- Typography:\n- Logo usage:\n- Safe zones:\n\n### Compliance Review\n| Check | Status | Note |\n|-------|--------|------|\n| Template structure preserved | ✅/❌ | |\n| Brand palette preserved | ✅/❌ | |\n| Typography direction preserved | ✅/❌ | |\n| Overlay readability preserved | ✅/❌ | |\n| Platform fit preserved | ✅/❌ | |\n\n### Corrections Required\n- \n"
+    }
+  },
+  "variables": [],
+  "inputs": [],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      { "step": 1, "name": "Identify fixed zones", "action": "Determine logos, title blocks, CTA zones, and safe areas", "verify": "Structural constraints are explicit" },
+      { "step": 2, "name": "Lock palette and type", "action": "Keep the output within approved visual identity", "verify": "No off-brand substitutions slip in" },
+      { "step": 3, "name": "Check readability", "action": "Review hierarchy and overlay legibility", "verify": "The design remains usable" },
+      { "step": 4, "name": "Review platform fit", "action": "Confirm aspect ratio and safe-zone compliance", "verify": "The asset is platform-ready" },
+      { "step": 5, "name": "Reject drift", "action": "Flag generic AI aesthetics and off-template decisions", "verify": "The brand identity remains intact" }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Enforce an uploaded Instagram 4:5 template with fixed logo lockup, left-aligned headline block, and strict navy/teal palette.",
+      "output": "A compliance checklist and enforcement notes that keep the generated artwork structurally on-template."
+    }
+  ],
+  "checklist": [
+    "Structural constraints are explicit",
+    "No off-brand substitutions slip in",
+    "The design remains usable",
+    "The asset is platform-ready",
+    "The brand identity remains intact"
+  ],
+  "tools": ["document", "figma"],
+  "agents": ["lyra", "finn"],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "mission-control",
+    "tags": ["templates", "brand", "compliance", "visual-production"],
+    "lastUpdated": "2026-04-04"
+  }
+}

@@ -1,0 +1,239 @@
+{
+  "id": "media-plan",
+  "name": "Media Plan Development",
+  "description": "Create comprehensive media strategy and execution plan",
+  "version": "1.0",
+  "isDefault": true,
+  "estimatedDuration": "7 days",
+  "clientProfileFields": [
+    {
+      "id": "brand_name",
+      "label": "Brand Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "campaign_objective",
+      "label": "Campaign Objective",
+      "type": "select",
+      "options": [
+        "awareness",
+        "consideration",
+        "conversion",
+        "retention"
+      ],
+      "required": true
+    },
+    {
+      "id": "target_audience",
+      "label": "Target Audience",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "budget",
+      "label": "Total Media Budget",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "campaign_duration",
+      "label": "Campaign Duration",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "key_dates",
+      "label": "Key Dates/Events",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "id": "previous_campaigns",
+      "label": "Previous Campaign Data (URLs or notes)",
+      "type": "textarea",
+      "required": false
+    }
+  ],
+  "phases": [
+    {
+      "id": "briefing",
+      "name": "Media Briefing",
+      "color": "#4f8ef7",
+      "activities": [
+        {
+          "id": "briefing-1",
+          "name": "Objectives & Budget Analysis",
+          "description": "Define media objectives and budget parameters",
+          "assignedRole": "media-planner",
+          "inputs": [
+            "campaign-brief",
+            "historical-data"
+          ],
+          "outputs": [
+            "media-objectives",
+            "budget-parameters"
+          ],
+          "checklist": [
+            "Campaign objectives clarified",
+            "Budget range confirmed",
+            "Target metrics defined",
+            "Timeline established",
+            "KPIs agreed"
+          ],
+          "prompts": {
+            "en": "Analyze briefing and define media objectives. Inject {{campaign_objective}}, {{budget}}, {{campaign_duration}}. Clarify KPIs and timeline.",
+            "ar": "تحليل الموجز وتحديد الأهداف الإعلامية. توضيح مؤشرات الأداء والجدول الزمني."
+          }
+        }
+      ]
+    },
+    {
+      "id": "strategy",
+      "name": "Media Strategy",
+      "color": "#9b6dff",
+      "activities": [
+        {
+          "id": "strategy-1",
+          "name": "Audience Definition",
+          "description": "Define precise target audiences",
+          "assignedRole": "media-planner",
+          "inputs": [
+            "media-objectives",
+            "customer-data"
+          ],
+          "outputs": [
+            "audience-personas",
+            "targeting-spec"
+          ],
+          "checklist": [
+            "Primary audience defined",
+            "Secondary audiences identified",
+            "Audience size estimated",
+            "Media habits analyzed",
+            "Custom audience parameters set"
+          ],
+          "prompts": {
+            "en": "Define precise target audiences. Inject {{target_audience}}. Analyze media habits, set custom audience parameters.",
+            "ar": "تحديد الجماهير المستهدفة بدقة. تحليل عادات الوسائط، تحديد معايير الجمهور المخصص."
+          }
+        },
+        {
+          "id": "strategy-2",
+          "name": "Channel Strategy",
+          "description": "Develop channel mix and strategy",
+          "assignedRole": "media-planner",
+          "inputs": [
+            "audience-personas",
+            "budget-parameters"
+          ],
+          "outputs": [
+            "channel-strategy",
+            "channel-mix"
+          ],
+          "checklist": [
+            "Channel selection justified",
+            "Budget split by channel",
+            "Allocation rationale documented",
+            "Cross-channel strategy defined",
+            "Attribution approach selected"
+          ],
+          "prompts": {
+            "en": "Develop channel strategy. Inject {{target_audience}}, {{budget}}. Justify channel selection, define budget split, cross-channel strategy.",
+            "ar": "تطوير استراتيجية القنوات. تبرير اختيار القنوات، تحديد تقسيم الميزانية."
+          }
+        }
+      ]
+    },
+    {
+      "id": "planning",
+      "name": "Detailed Planning",
+      "color": "#00d4aa",
+      "activities": [
+        {
+          "id": "planning-1",
+          "name": "Campaign Calendar",
+          "description": "Create detailed campaign timeline",
+          "assignedRole": "media-planner",
+          "inputs": [
+            "channel-strategy",
+            "timeline"
+          ],
+          "outputs": [
+            "campaign-calendar",
+            "flight-schedule"
+          ],
+          "checklist": [
+            "Campaign dates confirmed",
+            "Flight schedule defined",
+            "Pacing strategy set",
+            "Key dates noted",
+            "Contingency time built"
+          ],
+          "prompts": {
+            "en": "Create campaign calendar. Inject {{campaign_duration}}, {{key_dates}}. Define flight schedule, pacing, contingency.",
+            "ar": "إنشاء تقويم الحملة. تحديد جدول الرحلة، استراتيجية الإيقاع."
+          }
+        },
+        {
+          "id": "planning-2",
+          "name": "Budget Breakdown",
+          "description": "Detailed budget allocation",
+          "assignedRole": "media-planner",
+          "inputs": [
+            "channel-mix",
+            "pricing-data"
+          ],
+          "outputs": [
+            "budget-breakdown",
+            "bid-strategy"
+          ],
+          "checklist": [
+            "Cost per channel calculated",
+            "Bid strategies defined",
+            "Expected CPM/CPA estimated",
+            "Total investment mapped",
+            "ROI projections made"
+          ],
+          "prompts": {
+            "en": "Create detailed budget breakdown. Inject {{channel_mix}}, {{budget}}. Calculate CPM/CPA, project ROI.",
+            "ar": "إنشاء تفصيل الميزانية. حساب CPM/CPA، توقع العائد على الاستثمار."
+          }
+        }
+      ]
+    },
+    {
+      "id": "delivery",
+      "name": "Documentation & Handoff",
+      "color": "#ffd166",
+      "activities": [
+        {
+          "id": "delivery-1",
+          "name": "Media Plan Document",
+          "description": "Compile final media plan",
+          "assignedRole": "media-planner",
+          "inputs": [
+            "channel-strategy",
+            "budget-breakdown",
+            "campaign-calendar"
+          ],
+          "outputs": [
+            "media-plan-document",
+            "presentation-deck"
+          ],
+          "checklist": [
+            "Full media plan documented",
+            "Rationale clearly explained",
+            "Presentation prepared",
+            "Recommendations prioritized",
+            "Success metrics confirmed"
+          ],
+          "prompts": {
+            "en": "Compile final media plan document. Inject all inputs. Clearly explain rationale, prepare presentation, confirm success metrics. Inject {{brand_name}}.",
+            "ar": "تجميع وثيقة الخطة الإعلامية النهائية. توضيح التبرير، تحضير العرض، تأكيد مقاييس النجاح."
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,150 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "stakeholder-management",
+  "name": "Stakeholder Management",
+  "description": "Actively manages client and internal stakeholder relationships throughout a project lifecycle — balancing competing priorities, navigating politics, and keeping all parties aligned and invested in project success.",
+  "category": "client-management",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time managing complex client relationships with multiple stakeholders, navigating competing internal priorities, when a stakeholder is becoming difficult, or when a project's stakeholder dynamics need to be reset.",
+      "context": "You are a stakeholder management expert for a creative advertising agency. You understand that every project has a political and relational layer — and you navigate it with diplomacy, transparency, and strategic intent.",
+      "instructions": "## Stakeholder Management\n\n1. **Profile stakeholders** — Document goals, concerns, decision style, and relationship history for each stakeholder\n   - ✓ Done when: All stakeholders profiled with at least goals and concerns\n\n2. **Assess relationship health** — Rate current relationship health and identify at-risk relationships\n   - ✓ Done when: Health ratings reviewed with account lead\n\n3. **Map conflicts and dependencies** — Identify competing priorities and potential points of friction\n   - ✓ Done when: At least one mitigation approach per conflict\n\n4. **Build engagement strategies** — Create tailored relationship strategies for key stakeholders\n   - ✓ Done when: Strategies align with stakeholder personalities and goals\n\n5. **Set up health checks** — Schedule regular check-ins and relationship health reviews\n   - ✓ Done when: Touchpoint schedule integrated with project timeline\n\n6. **Document decisions** — Maintain a decision log to prevent stakeholder misalignment\n   - ✓ Done when: Decision log reviewed at each project milestone\n\n## Key Inputs\n- project: Project with complex stakeholder dynamics\n- stakeholders: List of stakeholders with their roles and organizational positions\n- dynamics: Known interpersonal dynamics, conflicts, or competing priorities\n- complexity: Project complexity level and number of parties involved\n- strategic_importance: How strategically important this client/account is to the agency\n\n## When Not to Use\nThis skill overlaps with: stakeholder-communication, client-relationship-management. Use those instead when: you need to plan longer-term account strategy or resolve conflicts\n\n`stakeholder-management` `client-relations` `project-management` `account-management`",
+      "output_template": "## Stakeholder Management Plan\n\n### Project: {{project}}\n\n### Stakeholder Profiles\n| Name | Role | Key Goals | Key Concerns | Decision Style | Relationship Health |\n|------|------|-----------|-------------|---------------|-------------------|\n| | | | | | |\n\n### Relationship Strategy\n| Stakeholder | Strategy | Engagement Frequency | Key Topics |\n|-------------|---------|---------------------|-----------|\n| | | | |\n\n### Potential Conflicts\n| Conflict | Stakeholders Involved | Mitigation Approach |\n|----------|---------------------|-------------------|\n| | | |\n\n### Stakeholder Health Scorecard\n| Name | Last Contact | Next Touchpoint | Health Trend |\n|------|------------|----------------|-------------|\n| | | | |\n\n### Proactive Concern Tracker\n| Concern | Raised By | Status | Response |\n|---------|---------|--------|---------|\n| | | | |"
+    }
+  },
+  "variables": [
+    {
+      "name": "project",
+      "type": "string",
+      "required": true,
+      "description": "Project with complex stakeholder dynamics"
+    },
+    {
+      "name": "stakeholders",
+      "type": "string",
+      "required": true,
+      "description": "List of stakeholders with their roles and organizational positions"
+    },
+    {
+      "name": "dynamics",
+      "type": "string",
+      "required": false,
+      "description": "Known interpersonal dynamics, conflicts, or competing priorities"
+    },
+    {
+      "name": "complexity",
+      "type": "string",
+      "required": true,
+      "description": "Project complexity level and number of parties involved"
+    },
+    {
+      "name": "strategic_importance",
+      "type": "string",
+      "required": false,
+      "description": "How strategically important this client/account is to the agency"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "project",
+      "type": "string",
+      "required": true,
+      "description": "Project with complex stakeholder dynamics"
+    },
+    {
+      "name": "stakeholders",
+      "type": "string",
+      "required": true,
+      "description": "List of stakeholders with their roles and organizational positions"
+    },
+    {
+      "name": "dynamics",
+      "type": "string",
+      "required": false,
+      "description": "Known interpersonal dynamics, conflicts, or competing priorities"
+    },
+    {
+      "name": "complexity",
+      "type": "string",
+      "required": true,
+      "description": "Project complexity level and number of parties involved"
+    },
+    {
+      "name": "strategic_importance",
+      "type": "string",
+      "required": false,
+      "description": "How strategically important this client/account is to the agency"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Profile stakeholders",
+        "action": "Document goals, concerns, decision style, and relationship history for each stakeholder",
+        "verify": "All stakeholders profiled with at least goals and concerns"
+      },
+      {
+        "step": 2,
+        "name": "Assess relationship health",
+        "action": "Rate current relationship health and identify at-risk relationships",
+        "verify": "Health ratings reviewed with account lead"
+      },
+      {
+        "step": 3,
+        "name": "Map conflicts and dependencies",
+        "action": "Identify competing priorities and potential points of friction",
+        "verify": "At least one mitigation approach per conflict"
+      },
+      {
+        "step": 4,
+        "name": "Build engagement strategies",
+        "action": "Create tailored relationship strategies for key stakeholders",
+        "verify": "Strategies align with stakeholder personalities and goals"
+      },
+      {
+        "step": 5,
+        "name": "Set up health checks",
+        "action": "Schedule regular check-ins and relationship health reviews",
+        "verify": "Touchpoint schedule integrated with project timeline"
+      },
+      {
+        "step": 6,
+        "name": "Document decisions",
+        "action": "Maintain a decision log to prevent stakeholder misalignment",
+        "verify": "Decision log reviewed at each project milestone"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "project: Multi-market brand campaign | stakeholders: EMEA CMO, APAC Brand Director, Global Creative Lead, Legal, Finance | dynamics: EMEA CMO and APAC Brand Director disagree on creative direction; Global Creative Lead wants consistency | complexity: High — 4 regions, multiple approval layers | strategic_importance: Top 3 global account",
+      "output": "Stakeholder management plan with tailored engagement strategy per stakeholder, conflict mitigation approach for EMEA vs APAC creative分歧, and a monthly exec alignment call cadence"
+    }
+  ],
+  "checklist": [
+    "All stakeholders profiled with at least goals and concerns",
+    "Health ratings reviewed with account lead",
+    "At least one mitigation approach per conflict",
+    "Strategies align with stakeholder personalities and goals",
+    "Touchpoint schedule integrated with project timeline",
+    "Decision log reviewed at each project milestone"
+  ],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "piper"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [],
+    "lastUpdated": "2026-03-30"
+  }
+}

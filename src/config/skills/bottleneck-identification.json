@@ -1,0 +1,126 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "bottleneck-identification",
+  "name": "Bottleneck Identification",
+  "description": "Identifies and resolves blockages in creative, production, and campaign workflows to keep projects moving and deadlines on track.",
+  "category": "operations",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time a project or workflow is behind schedule, tasks are piling up, or the team is blocked — to identify the specific bottleneck causing the slowdown.",
+      "context": "You are an operations analyst who systematically diagnoses workflow blockages and prescribes targeted fixes to restore flow and meet deadlines.",
+      "instructions": "## Bottleneck Identification\n\n1. **Process Mapping** — Document the full workflow\n   - ✓ Done when: All stages are identified and sequenced\n\n2. **Constraint Identification** — Find the single limiting factor\n   - ✓ Done when: Bottleneck is clearly identified\n\n3. **Root Cause Diagnosis** — Understand why the bottleneck exists\n   - ✓ Done when: Cause is specific and actionable\n\n4. **Fix Prioritization** — Short-term workaround vs. long-term fix\n   - ✓ Done when: Both timeframes are addressed\n\n5. **Implementation** — Execute the fixes\n   - ✓ Done when: Throughput improves\n\n## Key Inputs\n- process_name: Name of the workflow or process\n- current_blockers: Description of current blockers or delays\n- timeline_impact: How the bottleneck is affecting the timeline",
+      "output_template": "## Bottleneck Analysis: {{process_name}}\n\n### Process Map\n| Stage | Duration | Work in progress | Capacity |\n|-------|----------|-----------------|----------|\n| | | | |\n\n### Bottleneck Identified\n**Stage:**\n**Type:** Capacity / Dependency / Decision / Rework\n**Root cause:**\n**Impact:**\n\n### Fix Recommendations\n| Fix | Type | Effort | Impact | Priority |\n|-----|------|--------|--------|----------|\n| | | | | |\n\n### Short-Term Workaround\n| Action | Owner | By when |\n|--------|-------|---------|\n| | | |\n\n### Long-Term Structural Fix\n| Action | Owner | By when |\n|--------|-------|---------|\n| | | |\n\n### Expected Outcome\n| Metric | Before | After |\n|--------|--------|-------|\n| | | |"
+    }
+  },
+  "variables": [
+    {
+      "name": "process_name",
+      "type": "string",
+      "required": true,
+      "description": "Name of the workflow or process"
+    },
+    {
+      "name": "current_blockers",
+      "type": "string",
+      "required": false,
+      "description": "Description of current blockers or delays"
+    },
+    {
+      "name": "timeline_impact",
+      "type": "string",
+      "required": false,
+      "description": "How the bottleneck is affecting the timeline"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "process_name",
+      "type": "string",
+      "required": true,
+      "description": "Name of the workflow or process"
+    },
+    {
+      "name": "current_blockers",
+      "type": "string",
+      "required": false,
+      "description": "Description of current blockers or delays"
+    },
+    {
+      "name": "timeline_impact",
+      "type": "string",
+      "required": false,
+      "description": "How the bottleneck is affecting the timeline"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Process Mapping",
+        "action": "Document the full workflow",
+        "verify": "All stages are identified and sequenced"
+      },
+      {
+        "step": 2,
+        "name": "Constraint Identification",
+        "action": "Find the single limiting factor",
+        "verify": "Bottleneck is clearly identified"
+      },
+      {
+        "step": 3,
+        "name": "Root Cause Diagnosis",
+        "action": "Understand why the bottleneck exists",
+        "verify": "Cause is specific and actionable"
+      },
+      {
+        "step": 4,
+        "name": "Fix Prioritization",
+        "action": "Short-term workaround vs. long-term fix",
+        "verify": "Both timeframes are addressed"
+      },
+      {
+        "step": 5,
+        "name": "Implementation",
+        "action": "Execute the fixes",
+        "verify": "Throughput improves"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Campaign creative is behind schedule. The brief-to-design handoff takes 3 days on average. Design is a 5-day task. Client presentation prep takes 2 days. Deadline is in 10 days.",
+      "output": "Bottleneck analysis with specific fix recommendations to get back on schedule"
+    }
+  ],
+  "checklist": [
+    "All stages are identified and sequenced",
+    "Bottleneck is clearly identified",
+    "Cause is specific and actionable",
+    "Both timeframes are addressed",
+    "Throughput improves"
+  ],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "iris"
+  ],
+  "pipelines": [
+    "project-management"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "operations",
+      "workflow",
+      "project-management",
+      "efficiency"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

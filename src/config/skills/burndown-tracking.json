@@ -1,0 +1,143 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "burndown-tracking",
+  "name": "Burndown Tracking",
+  "description": "Monitors sprint progress using burndown charts to track remaining work versus ideal progress, identifying risks to delivery and enabling data-driven scope and timeline decisions.",
+  "category": "project-management",
+  "difficulty": "beginner",
+  "freedom": "low",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time tracking sprint or project progress with burndown charts — to monitor velocity, identify scope creep, and predict whether the sprint will complete on time.",
+      "context": "You are a Scrum master or project tracker who uses burndown charts to keep sprints on track and surface delivery risks before they become problems.",
+      "instructions": "## Burndown Tracking\n\n1. **Baseline Setup** — Establish ideal burndown line\n   - ✓ Done when: Baseline is realistic and committed\n\n2. **Daily Tracking** — Update actual progress daily\n   - ✓ Done when: Chart reflects current state\n\n3. **Deviation Analysis** — Compare actual to ideal and diagnose causes\n   - ✓ Done when: Causes are understood\n\n4. **Course Correction** — Adjust scope or resources to stay on track\n   - ✓ Done when: Sprint goal is achievable\n\n## Key Inputs\n- sprint_goal: Sprint goal or name\n- total_story_points: Total story points committed\n- sprint_length: Sprint length in days or weeks\n- daily_updates: Daily progress updates\n- sprint_name: Sprint name/number",
+      "output_template": "## Burndown Report: {{sprint_goal}}\n\n### Sprint Overview\n| Field | Value |\n|-------|-------|\n| Sprint | {{sprint_name}} |\n| Start date | |\n| End date | |\n| Total story points | {{total_story_points}} |\n| Days remaining | |\n\n### Burndown Status\n| Day | Ideal remaining | Actual remaining | Delta |\n|-----|---------------|-----------------|-------|\n| 0 | | {{total_story_points}} | 0 |\n| 1 | | | |\n| 2 | | | |\n| ... | | | |\n\n### Velocity Analysis\n| Metric | Value |\n|--------|-------|\n| Average daily burn | |\n| Projected completion | |\n| On track? | ✅ / ⚠️ / ❌ |\n\n### Issues Identified\n| Issue | Impact | Resolution |\n|-------|--------|------------|\n| | | |\n\n### Recommendations\n| Action | By who | By when |\n|--------|--------|---------|\n| | | |\n\n### Sprint Goal Forecast\n**Status:** ✅ On track / ⚠️ At risk / ❌ Not achievable\n**Notes:**"
+    }
+  },
+  "variables": [
+    {
+      "name": "sprint_goal",
+      "type": "string",
+      "required": true,
+      "description": "Sprint goal or name"
+    },
+    {
+      "name": "total_story_points",
+      "type": "string",
+      "required": true,
+      "description": "Total story points committed"
+    },
+    {
+      "name": "sprint_length",
+      "type": "string",
+      "required": false,
+      "description": "Sprint length in days or weeks"
+    },
+    {
+      "name": "daily_updates",
+      "type": "string",
+      "required": false,
+      "description": "Daily progress updates"
+    },
+    {
+      "name": "sprint_name",
+      "type": "string",
+      "required": false,
+      "description": "Sprint name/number"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "sprint_goal",
+      "type": "string",
+      "required": true,
+      "description": "Sprint goal or name"
+    },
+    {
+      "name": "total_story_points",
+      "type": "string",
+      "required": true,
+      "description": "Total story points committed"
+    },
+    {
+      "name": "sprint_length",
+      "type": "string",
+      "required": false,
+      "description": "Sprint length in days or weeks"
+    },
+    {
+      "name": "daily_updates",
+      "type": "string",
+      "required": false,
+      "description": "Daily progress updates"
+    },
+    {
+      "name": "sprint_name",
+      "type": "string",
+      "required": false,
+      "description": "Sprint name/number"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Baseline Setup",
+        "action": "Establish ideal burndown line",
+        "verify": "Baseline is realistic and committed"
+      },
+      {
+        "step": 2,
+        "name": "Daily Tracking",
+        "action": "Update actual progress daily",
+        "verify": "Chart reflects current state"
+      },
+      {
+        "step": 3,
+        "name": "Deviation Analysis",
+        "action": "Compare actual to ideal and diagnose causes",
+        "verify": "Causes are understood"
+      },
+      {
+        "step": 4,
+        "name": "Course Correction",
+        "action": "Adjust scope or resources to stay on track",
+        "verify": "Sprint goal is achievable"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Track sprint 14 burndown. Committed 34 story points over 10 days. Day 5: 18 points completed, 16 remaining. Actual should have 17 remaining.",
+      "output": "Burndown report with velocity analysis, issue diagnosis, and recommendations to get back on track"
+    }
+  ],
+  "checklist": [
+    "Baseline is realistic and committed",
+    "Chart reflects current state",
+    "Causes are understood",
+    "Sprint goal is achievable"
+  ],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "piper"
+  ],
+  "pipelines": [
+    "agile-sprint"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "project-management",
+      "agile",
+      "sprint",
+      "burndown"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

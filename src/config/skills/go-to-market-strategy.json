@@ -1,0 +1,165 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "go-to-market-strategy",
+  "name": "Go-to-Market Strategy",
+  "description": "Builds go-to-market strategies that connect audience, positioning, offer, channels, sales motion, and rollout sequencing into one practical launch plan.",
+  "category": "strategy",
+  "difficulty": "advanced",
+  "freedom": "high",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time planning a launch, market entry, product rollout, offer introduction, or gtm strategy for a new service, campaign, or product.",
+      "context": "You are a go-to-market strategist building a launch system, not just a messaging summary. You align audience, offer, positioning, acquisition channels, internal readiness, and performance measurement.",
+      "instructions": "## Go-to-Market Strategy\n\n1. **Define offer and objective** — Define offer and objective\n   - ✓ Done when: Define offer and objective is completed to a high standard\n\n2. **Segment audience** — Segment audience\n   - ✓ Done when: Segment audience is completed to a high standard\n\n3. **Clarify positioning** — Clarify positioning\n   - ✓ Done when: Clarify positioning is completed to a high standard\n\n4. **Build messaging hierarchy** — Build messaging hierarchy\n   - ✓ Done when: Build messaging hierarchy is completed to a high standard\n\n5. **Design channel and sales motion** — Design channel and sales motion\n   - ✓ Done when: Design channel and sales motion is completed to a high standard\n\n6. **Sequence rollout** — Sequence rollout\n   - ✓ Done when: Sequence rollout is completed to a high standard\n\n7. **Define metrics and risks** — Define metrics and risks\n   - ✓ Done when: Define metrics and risks is completed to a high standard\n\n## Key Inputs\n- product_service: Product or service being brought to market\n- industry: Target industry or market\n- target_markets: Geographic or segment markets to prioritize\n- competitive_context: Key competitors and competitive dynamics\n- launch_timeline: Expected launch date and key milestones",
+      "output_template": "## Go-To-Market Strategy\n\n### 1. Launch Objective\n| Element | Decision |\n|---|---|\n| Offer | |\n| Revenue / Pipeline Goal | |\n| Launch Window | |\n| Priority Audience | |\n\n### 2. Audience And Positioning\n| Segment | Core Need | Buying Trigger | Positioning Angle |\n|---|---|---|---|\n| | | | |\n\n### 3. Messaging Framework\n- Core message:\n- Proof points:\n- Objections to handle:\n- Differentiation statement:\n\n### 4. Channel And Sales Motion\n| Channel / Motion | Role | Priority | Notes |\n|---|---|---|---|\n| | | High / Med / Low | |\n\n### 5. Rollout Plan\n| Phase | Goal | Actions | Owner |\n|---|---|---|---|\n| Pre-launch | | | |\n| Launch | | | |\n| Optimization | | | |\n\n### 6. Metrics, Risks, And Next Moves\n- KPIs:\n- Main risks:\n- Dependencies:\n- First 30-day optimization focus:"
+    }
+  },
+  "variables": [
+    {
+      "name": "product_service",
+      "type": "string",
+      "required": true,
+      "description": "Product or service being brought to market"
+    },
+    {
+      "name": "industry",
+      "type": "string",
+      "required": true,
+      "description": "Target industry or market"
+    },
+    {
+      "name": "target_markets",
+      "type": "string",
+      "required": false,
+      "description": "Geographic or segment markets to prioritize"
+    },
+    {
+      "name": "competitive_context",
+      "type": "string",
+      "required": false,
+      "description": "Key competitors and competitive dynamics"
+    },
+    {
+      "name": "launch_timeline",
+      "type": "string",
+      "required": false,
+      "description": "Expected launch date and key milestones"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "product_service",
+      "type": "string",
+      "required": true,
+      "description": "Product or service being brought to market"
+    },
+    {
+      "name": "industry",
+      "type": "string",
+      "required": true,
+      "description": "Target industry or market"
+    },
+    {
+      "name": "target_markets",
+      "type": "string",
+      "required": false,
+      "description": "Geographic or segment markets to prioritize"
+    },
+    {
+      "name": "competitive_context",
+      "type": "string",
+      "required": false,
+      "description": "Key competitors and competitive dynamics"
+    },
+    {
+      "name": "launch_timeline",
+      "type": "string",
+      "required": false,
+      "description": "Expected launch date and key milestones"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Define offer and objective",
+        "action": "Define offer and objective",
+        "verify": "Define offer and objective is completed to a high standard"
+      },
+      {
+        "step": 2,
+        "name": "Segment audience",
+        "action": "Segment audience",
+        "verify": "Segment audience is completed to a high standard"
+      },
+      {
+        "step": 3,
+        "name": "Clarify positioning",
+        "action": "Clarify positioning",
+        "verify": "Clarify positioning is completed to a high standard"
+      },
+      {
+        "step": 4,
+        "name": "Build messaging hierarchy",
+        "action": "Build messaging hierarchy",
+        "verify": "Build messaging hierarchy is completed to a high standard"
+      },
+      {
+        "step": 5,
+        "name": "Design channel and sales motion",
+        "action": "Design channel and sales motion",
+        "verify": "Design channel and sales motion is completed to a high standard"
+      },
+      {
+        "step": 6,
+        "name": "Sequence rollout",
+        "action": "Sequence rollout",
+        "verify": "Sequence rollout is completed to a high standard"
+      },
+      {
+        "step": 7,
+        "name": "Define metrics and risks",
+        "action": "Define metrics and risks",
+        "verify": "Define metrics and risks is completed to a high standard"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Product: AI-powered project management SaaS. Industry: SMB tech companies. Markets: US first, then UK and Germany. Timeline: Q3 launch.",
+      "output": "Primary segment: 50-200 employee tech startups with project complexity issues. Positioning: 'Asana's power with Notion's simplicity.' Channel strategy: Product-led growth with paid search. Secondary: mid-market enterprise via outbound. Launch: 3-month beta → full launch with 3x paid media burst."
+    }
+  ],
+  "checklist": [
+    "Define offer and objective is completed to a high standard",
+    "Segment audience is completed to a high standard",
+    "Clarify positioning is completed to a high standard",
+    "Build messaging hierarchy is completed to a high standard",
+    "Design channel and sales motion is completed to a high standard",
+    "Sequence rollout is completed to a high standard",
+    "Define metrics and risks is completed to a high standard"
+  ],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "maya"
+  ],
+  "pipelines": [
+    "strategy-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "go-to-market",
+      "gtm",
+      "market-entry",
+      "launch",
+      "strategy"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

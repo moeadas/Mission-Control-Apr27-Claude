@@ -1,0 +1,145 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "critical-path-analysis",
+  "name": "Critical Path Analysis",
+  "description": "Identifies the longest sequence of dependent tasks in a project — the critical path — to determine the minimum possible project duration and which tasks have zero float (cannot slip without delaying the project).",
+  "category": "project-management",
+  "difficulty": "intermediate",
+  "freedom": "low",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time analyzing project schedules to identify the critical path — to understand which tasks cannot slip without delaying the project and where to focus management attention.",
+      "context": "You are a project planning specialist who applies critical path analysis to identify the sequence of tasks that determines minimum project duration and where float exists.",
+      "instructions": "## Critical Path Analysis\n\n1. **Task Listing** — List all project tasks\n   - ✓ Done when: Tasks are comprehensive\n\n2. **Network Diagram** — Build the task dependency network\n   - ✓ Done when: Dependencies are correct\n\n3. **Forward Pass** — Calculate earliest start and finish times\n   - ✓ Done when: Forward pass is correct\n\n4. **Backward Pass** — Calculate latest start and finish times\n   - ✓ Done when: Backward pass is correct\n\n5. **Float Calculation** — Calculate float and identify critical path\n   - ✓ Done when: Critical path is correctly identified\n\n6. **Compression Analysis** — Identify options to compress the schedule\n   - ✓ Done when: Compression options are feasible\n\n## Key Inputs\n- project_name: Project being analyzed\n- task_list: List of project tasks\n- dependencies: Task dependencies\n- constraints: Project constraints",
+      "output_template": "## Critical Path Analysis: {{project_name}}\n\n### Project Overview\n| Field | Value |\n|-------|-------|\n| Project | {{project_name}} |\n| Total tasks | |\n| Estimated duration | |\n| Critical path length | |\n| Date | {{date}} |\n\n### Task List\n| Task ID | Task name | Duration | Early start | Early finish | Late start | Late finish | Float | Critical? |\n|---------|-----------|----------|------------|-------------|-----------|-------------|-------|-----------|\n| | | | | | | | | |\n\n### Critical Path Tasks\n| Sequence | Task | Duration | Cumulative |\n|----------|------|----------|-----------|\n| 1 | | | |\n| 2 | | | |\n| 3 | | | |\n\n**Critical path duration:**\n\n### Non-Critical Tasks with Float\n| Task | Float (days) | How float can be used |\n|------|-------------|----------------------|\n| | | |\n\n### Project Float Analysis\n| Scenario | Impact on duration |\n|----------|-----------------|\n| Task A slips 2 days | |\n| Task B slips 3 days | |\n| Task C slips 1 day | |\n\n### Schedule Compression Options\n| Technique | Task | Time saved | Cost/trade-off |\n|-----------|------|-----------|---------------|\n| Crashing | | | |\n| Fast-tracking | | | |\n\n### Risk: Critical Path Slippage\n| Risk | Probability | Impact | Mitigation |\n|------|-------------|--------|------------|\n| | | | |"
+    }
+  },
+  "variables": [
+    {
+      "name": "project_name",
+      "type": "string",
+      "required": true,
+      "description": "Project being analyzed"
+    },
+    {
+      "name": "task_list",
+      "type": "string",
+      "required": true,
+      "description": "List of project tasks"
+    },
+    {
+      "name": "dependencies",
+      "type": "string",
+      "required": false,
+      "description": "Task dependencies"
+    },
+    {
+      "name": "constraints",
+      "type": "string",
+      "required": false,
+      "description": "Project constraints"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "project_name",
+      "type": "string",
+      "required": true,
+      "description": "Project being analyzed"
+    },
+    {
+      "name": "task_list",
+      "type": "string",
+      "required": true,
+      "description": "List of project tasks"
+    },
+    {
+      "name": "dependencies",
+      "type": "string",
+      "required": false,
+      "description": "Task dependencies"
+    },
+    {
+      "name": "constraints",
+      "type": "string",
+      "required": false,
+      "description": "Project constraints"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Task Listing",
+        "action": "List all project tasks",
+        "verify": "Tasks are comprehensive"
+      },
+      {
+        "step": 2,
+        "name": "Network Diagram",
+        "action": "Build the task dependency network",
+        "verify": "Dependencies are correct"
+      },
+      {
+        "step": 3,
+        "name": "Forward Pass",
+        "action": "Calculate earliest start and finish times",
+        "verify": "Forward pass is correct"
+      },
+      {
+        "step": 4,
+        "name": "Backward Pass",
+        "action": "Calculate latest start and finish times",
+        "verify": "Backward pass is correct"
+      },
+      {
+        "step": 5,
+        "name": "Float Calculation",
+        "action": "Calculate float and identify critical path",
+        "verify": "Critical path is correctly identified"
+      },
+      {
+        "step": 6,
+        "name": "Compression Analysis",
+        "action": "Identify options to compress the schedule",
+        "verify": "Compression options are feasible"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Run critical path analysis on a 5-week campaign production project. Tasks: brief (1d), concept (3d), design (5d), copy (3d), review (2d), amends (2d), final (1d). Design and copy can run in parallel after concept. Review follows both.",
+      "output": "Critical path analysis showing the critical path, float for non-critical tasks, and compression options"
+    }
+  ],
+  "checklist": [
+    "Tasks are comprehensive",
+    "Dependencies are correct",
+    "Forward pass is correct",
+    "Backward pass is correct",
+    "Critical path is correctly identified",
+    "Compression options are feasible"
+  ],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "piper"
+  ],
+  "pipelines": [
+    "project-management"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "project-management",
+      "critical-path",
+      "scheduling",
+      "planning"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

@@ -1,0 +1,162 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "strategic-planning",
+  "name": "Strategic Planning",
+  "description": "Develops comprehensive long-term strategies for brands and businesses — connecting brand positioning, market dynamics, audience insights, and business objectives into coherent plans that guide all marketing and creative decisions.",
+  "category": "strategy",
+  "difficulty": "advanced",
+  "freedom": "high",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time building a brand strategy from scratch, refreshing an existing brand's positioning, planning annual marketing strategies, or when a client needs a coherent plan that connects creative work to business outcomes.",
+      "context": "You are a strategic planner for a creative advertising agency. You are the connective tissue between what a brand wants to achieve and how it gets there — and you build strategies that are bold enough to inspire creatives and rigorous enough to convince CFOs.",
+      "instructions": "## Strategic Planning\n\n1. **Situation diagnosis** — Analyze brand health data, market position, and competitive landscape\n   - ✓ Done when: Diagnosis validated with available data\n\n2. **Define strategic challenge** — Articulate the core strategic problem the brand must solve\n   - ✓ Done when: Challenge statement approved by brand lead\n\n3. **Develop positioning** — Build a clear, ownable, differentiated brand positioning\n   - ✓ Done when: Positioning tested against competitive set\n\n4. **Define audience profiles** — Create insight-driven target audience profiles with unmet needs\n   - ✓ Done when: Audiences grounded in real insights\n\n5. **Build brand framework** — Define purpose, values, personality, and territory\n   - ✓ Done when: Framework resonates with creative and strategic teams\n\n6. **Translate to strategic imperatives** — Convert positioning into actionable strategic priorities\n   - ✓ Done when: Imperatives are specific and measurable\n\n7. **Define success metrics** — Tie metrics to business outcomes and brand goals\n   - ✓ Done when: Metrics approved by client\n\n## Key Inputs\n- brand_name: Brand or company name\n- business_objective: The overarching business objective the strategy must support\n- market_context: Current market conditions, category trends, and market dynamics\n- competitive_landscape: Key competitors, their positioning, and market shares\n- timeline: Planning horizon — 1 year, 3 years, 5 years",
+      "output_template": "## Strategic Plan\n\n### Brand: {{brand_name}}\n### Developed: {{date}}\n\n### Situation Analysis\n| Area | Key Finding |\n|------|------------|\n| Brand health | |\n| Market position | |\n| Competitive landscape | |\n| Audience insight | |\n\n### The Strategic Challenge\n> [One clear sentence defining the core problem to solve]\n\n### Strategic Ambition\n> [Where the brand wants to be in 3-5 years]\n\n### Brand Positioning\n| Element | Statement |\n|---------|----------|\n| Target audience | |\n| Category | |\n| Brand promise | |\n| Reason to believe | |\n| Point of difference | |\n\n### Brand Framework\n| Element | Description |\n|---------|-------------|\n| Purpose | |\n| Values | |\n| Personality | |\n| Brand territory | |\n\n### Strategic Imperatives\n1. ...\n2. ...\n3. ...\n\n### Success Metrics\n| Metric | Baseline | Target | Timeline |\n|--------|---------|--------|----------|\n| | | | |"
+    }
+  },
+  "variables": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand or company name"
+    },
+    {
+      "name": "business_objective",
+      "type": "string",
+      "required": true,
+      "description": "The overarching business objective the strategy must support"
+    },
+    {
+      "name": "market_context",
+      "type": "string",
+      "required": true,
+      "description": "Current market conditions, category trends, and market dynamics"
+    },
+    {
+      "name": "competitive_landscape",
+      "type": "string",
+      "required": true,
+      "description": "Key competitors, their positioning, and market shares"
+    },
+    {
+      "name": "timeline",
+      "type": "string",
+      "required": false,
+      "description": "Planning horizon — 1 year, 3 years, 5 years"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand or company name"
+    },
+    {
+      "name": "business_objective",
+      "type": "string",
+      "required": true,
+      "description": "The overarching business objective the strategy must support"
+    },
+    {
+      "name": "market_context",
+      "type": "string",
+      "required": true,
+      "description": "Current market conditions, category trends, and market dynamics"
+    },
+    {
+      "name": "competitive_landscape",
+      "type": "string",
+      "required": true,
+      "description": "Key competitors, their positioning, and market shares"
+    },
+    {
+      "name": "timeline",
+      "type": "string",
+      "required": false,
+      "description": "Planning horizon — 1 year, 3 years, 5 years"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Situation diagnosis",
+        "action": "Analyze brand health data, market position, and competitive landscape",
+        "verify": "Diagnosis validated with available data"
+      },
+      {
+        "step": 2,
+        "name": "Define strategic challenge",
+        "action": "Articulate the core strategic problem the brand must solve",
+        "verify": "Challenge statement approved by brand lead"
+      },
+      {
+        "step": 3,
+        "name": "Develop positioning",
+        "action": "Build a clear, ownable, differentiated brand positioning",
+        "verify": "Positioning tested against competitive set"
+      },
+      {
+        "step": 4,
+        "name": "Define audience profiles",
+        "action": "Create insight-driven target audience profiles with unmet needs",
+        "verify": "Audiences grounded in real insights"
+      },
+      {
+        "step": 5,
+        "name": "Build brand framework",
+        "action": "Define purpose, values, personality, and territory",
+        "verify": "Framework resonates with creative and strategic teams"
+      },
+      {
+        "step": 6,
+        "name": "Translate to strategic imperatives",
+        "action": "Convert positioning into actionable strategic priorities",
+        "verify": "Imperatives are specific and measurable"
+      },
+      {
+        "step": 7,
+        "name": "Define success metrics",
+        "action": "Tie metrics to business outcomes and brand goals",
+        "verify": "Metrics approved by client"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "brand_name: Premium organic pet food brand | business_objective: Break into mass market without losing premium positioning | market_context: Pet humanization trend, +12% category growth | competitive_landscape: Giants dominate mass, premium niche crowded | timeline: 3 years",
+      "output": "Strategic plan with 'premium for the masses' positioning as the strategic challenge, new target segment of value-conscious premium pet parents, repositioning from luxury to accessible quality, and 3 strategic imperatives with measurable KPIs"
+    }
+  ],
+  "checklist": [
+    "Diagnosis validated with available data",
+    "Challenge statement approved by brand lead",
+    "Positioning tested against competitive set",
+    "Audiences grounded in real insights",
+    "Framework resonates with creative and strategic teams",
+    "Imperatives are specific and measurable",
+    "Metrics approved by client"
+  ],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "maya"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "strategy",
+      "brand-planning",
+      "positioning",
+      "marketing-strategy"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

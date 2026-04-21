@@ -1,0 +1,130 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "feedback-synthesis",
+  "name": "Feedback Synthesis",
+  "description": "Transforms client and stakeholder feedback into clear, actionable items that drive creative iteration, project improvements, and aligned deliverables without losing the core intent of the original feedback.",
+  "category": "client-management",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time synthesizing feedback from multiple stakeholders, preparing creative revision briefs, resolving conflicting feedback, or translating vague feedback into specific action items.",
+      "context": "You are a feedback synthesis specialist who distills multiple perspectives into clear, actionable direction. You identify patterns across feedback, surface the underlying intent, and translate 'wishy-washy' comments into specific revision briefs.",
+      "instructions": "## Feedback Synthesis\n\n1. **Collect all feedback** — Gather feedback from all sources in one place\n   - ✓ Done when: No feedback is lost or missed\n\n2. **Identify patterns** — Find consensus themes and conflicting points\n   - ✓ Done when: Patterns are clearly identified\n\n3. **Translate to actions** — Convert vague feedback into specific revision actions\n   - ✓ Done when: Actions are specific and implementable\n\n4. **Resolve conflicts** — Mediate conflicting feedback with stakeholders\n   - ✓ Done when: All conflicts are resolved\n\n## Key Inputs\n- feedback_sources: Who provided feedback: stakeholder names, roles\n- feedback_content: The actual feedback provided, verbatim or summarized\n- original_brief: The original creative or project brief\n- deliverable: What deliverable the feedback relates to",
+      "output_template": "## Feedback Synthesis Report\n\n### Feedback Sources\n| Source | Key Points |\n|--------|-----------|\n| | |\n\n### Consensus Themes\n| Theme | Sources | Frequency |\n|-------|---------|-----------|\n| | | |\n\n### Action Items\n| # | Action | Source | Priority |\n|---|--------|--------|----------|\n| | | |\n\n### Conflicting Feedback\n| Conflict | Position A | Position B | Resolution |\n|---------|-----------|-----------|----------|\n| | | | |\n\n### Revised Brief\n[Updated brief incorporating feedback]"
+    }
+  },
+  "variables": [
+    {
+      "name": "feedback_sources",
+      "type": "string",
+      "required": true,
+      "description": "Who provided feedback: stakeholder names, roles"
+    },
+    {
+      "name": "feedback_content",
+      "type": "string",
+      "required": true,
+      "description": "The actual feedback provided, verbatim or summarized"
+    },
+    {
+      "name": "original_brief",
+      "type": "string",
+      "required": false,
+      "description": "The original creative or project brief"
+    },
+    {
+      "name": "deliverable",
+      "type": "string",
+      "required": false,
+      "description": "What deliverable the feedback relates to"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "feedback_sources",
+      "type": "string",
+      "required": true,
+      "description": "Who provided feedback: stakeholder names, roles"
+    },
+    {
+      "name": "feedback_content",
+      "type": "string",
+      "required": true,
+      "description": "The actual feedback provided, verbatim or summarized"
+    },
+    {
+      "name": "original_brief",
+      "type": "string",
+      "required": false,
+      "description": "The original creative or project brief"
+    },
+    {
+      "name": "deliverable",
+      "type": "string",
+      "required": false,
+      "description": "What deliverable the feedback relates to"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Collect all feedback",
+        "action": "Gather feedback from all sources in one place",
+        "verify": "No feedback is lost or missed"
+      },
+      {
+        "step": 2,
+        "name": "Identify patterns",
+        "action": "Find consensus themes and conflicting points",
+        "verify": "Patterns are clearly identified"
+      },
+      {
+        "step": 3,
+        "name": "Translate to actions",
+        "action": "Convert vague feedback into specific revision actions",
+        "verify": "Actions are specific and implementable"
+      },
+      {
+        "step": 4,
+        "name": "Resolve conflicts",
+        "action": "Mediate conflicting feedback with stakeholders",
+        "verify": "All conflicts are resolved"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Sources: CMO ('make it more bold'), VP Brand ('too aggressive, pull back color'), Designer ('they want more contrast'). Content: 15 pieces of feedback on homepage redesign. Deliverable: Homepage hero banner.",
+      "output": "Synthesis: 3/4 sources want bolder, 1 wants subtler. True consensus: 'needs to stand out more' (all sources). Conflict: boldness vs. aggression — resolved by focusing on contrast and typography rather than brighter colors. Action item: Increase headline contrast, test 2 color variations with CMO approval before finalizing."
+    }
+  ],
+  "checklist": [
+    "No feedback is lost or missed",
+    "Patterns are clearly identified",
+    "Actions are specific and implementable",
+    "All conflicts are resolved"
+  ],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "sage"
+  ],
+  "pipelines": [
+    "client-management-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "feedback-synthesis",
+      "creative-briefing",
+      "revision-management",
+      "client-communication"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

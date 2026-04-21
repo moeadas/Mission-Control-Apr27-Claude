@@ -1,0 +1,165 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "email-copy",
+  "name": "Email Copywriting",
+  "description": "Writes high-converting email campaigns, sequences, and newsletters with sharp positioning, strong subject lines, and clear funnel intent.",
+  "category": "content",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time writing promotional emails, nurture sequences, launches, newsletters, retention emails, re-engagement flows, or lifecycle email campaigns.",
+      "context": "You are a senior lifecycle copywriter creating email copy that gets opened, read, and acted on. You understand sequencing, audience intent, conversion psychology, scannability, and how to shape one email so it earns the next action.",
+      "instructions": "## Email Copywriting\n\n1. **Identify email job** — Identify email job\n   - ✓ Done when: Identify email job is completed to a high standard\n\n2. **Clarify audience state** — Clarify audience state\n   - ✓ Done when: Clarify audience state is completed to a high standard\n\n3. **Choose message angle** — Choose message angle\n   - ✓ Done when: Choose message angle is completed to a high standard\n\n4. **Create subject lines** — Create subject lines\n   - ✓ Done when: Create subject lines is completed to a high standard\n\n5. **Write scannable body** — Write scannable body\n   - ✓ Done when: Write scannable body is completed to a high standard\n\n6. **Tune CTA** — Tune CTA\n   - ✓ Done when: Tune CTA is completed to a high standard\n\n7. **Check sequence logic** — Check sequence logic\n   - ✓ Done when: Check sequence logic is completed to a high standard\n\n8. **QA tone** — QA tone\n   - ✓ Done when: QA tone is completed to a high standard\n\n## Key Inputs\n- email_goal: Goal of the email: nurture leads, promote offer, deliver news, re-engage inactive subscribers\n- audience: Target audience segment and their relationship to the brand\n- offer_message: The core message, offer, or content of the email\n- tone: Tone of voice: formal, casual, urgent, warm, professional\n- cta: Primary call-to-action: what you want the reader to do\n\n## When Not to Use\nThis skill overlaps with: landing-page-copy, direct-response-copy. Use those instead when: your email is part of a broader landing page or funnel sequence\n\n`email-copy` `email-marketing` `drip-campaign` `copywriting`",
+      "output_template": "## Email Copy Pack\n\n### 1. Messaging Strategy\n| Element | Decision |\n|---|---|\n| Email Goal | |\n| Audience Insight | |\n| Primary Angle | |\n| Core Offer / Message | |\n| Main CTA | |\n\n### 2. Subject Line Options\n1. \n2. \n3. \n\n### 3. Preview Text Options\n1. \n2. \n\n### 4. Primary Email Draft\n**Hook**\n\n**Body**\n\n**Proof / Value Block**\n\n**CTA**\n\n### 5. Alternate CTA Variations\n- \n- \n\n### 6. Sequence Extension (If Relevant)\n| Email | Role | Angle | CTA |\n|---|---|---|---|\n| 1 | | | |\n| 2 | | | |\n| 3 | | | |\n\n### 7. Optimization Notes\n- Suggested send timing:\n- Personalization tokens to use:\n- Segmentation notes:\n- A/B test suggestion:\n- Mobile-readability notes:"
+    }
+  },
+  "variables": [
+    {
+      "name": "email_goal",
+      "type": "string",
+      "required": true,
+      "description": "Goal of the email: nurture leads, promote offer, deliver news, re-engage inactive subscribers"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience segment and their relationship to the brand"
+    },
+    {
+      "name": "offer_message",
+      "type": "string",
+      "required": true,
+      "description": "The core message, offer, or content of the email"
+    },
+    {
+      "name": "tone",
+      "type": "string",
+      "required": false,
+      "description": "Tone of voice: formal, casual, urgent, warm, professional"
+    },
+    {
+      "name": "cta",
+      "type": "string",
+      "required": false,
+      "description": "Primary call-to-action: what you want the reader to do"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "email_goal",
+      "type": "string",
+      "required": true,
+      "description": "Goal of the email: nurture leads, promote offer, deliver news, re-engage inactive subscribers"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience segment and their relationship to the brand"
+    },
+    {
+      "name": "offer_message",
+      "type": "string",
+      "required": true,
+      "description": "The core message, offer, or content of the email"
+    },
+    {
+      "name": "tone",
+      "type": "string",
+      "required": false,
+      "description": "Tone of voice: formal, casual, urgent, warm, professional"
+    },
+    {
+      "name": "cta",
+      "type": "string",
+      "required": false,
+      "description": "Primary call-to-action: what you want the reader to do"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Identify email job",
+        "action": "Identify email job",
+        "verify": "Identify email job is completed to a high standard"
+      },
+      {
+        "step": 2,
+        "name": "Clarify audience state",
+        "action": "Clarify audience state",
+        "verify": "Clarify audience state is completed to a high standard"
+      },
+      {
+        "step": 3,
+        "name": "Choose message angle",
+        "action": "Choose message angle",
+        "verify": "Choose message angle is completed to a high standard"
+      },
+      {
+        "step": 4,
+        "name": "Create subject lines",
+        "action": "Create subject lines",
+        "verify": "Create subject lines is completed to a high standard"
+      },
+      {
+        "step": 5,
+        "name": "Write scannable body",
+        "action": "Write scannable body",
+        "verify": "Write scannable body is completed to a high standard"
+      },
+      {
+        "step": 6,
+        "name": "Tune CTA",
+        "action": "Tune CTA",
+        "verify": "Tune CTA is completed to a high standard"
+      },
+      {
+        "step": 7,
+        "name": "Check sequence logic",
+        "action": "Check sequence logic",
+        "verify": "Check sequence logic is completed to a high standard"
+      },
+      {
+        "step": 8,
+        "name": "QA tone",
+        "action": "QA tone",
+        "verify": "QA tone is completed to a high standard"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Goal: Re-engage inactive subscribers. Audience: Users who haven't opened in 90 days. Message: Exclusive 20% off for returning customers. Tone: Warm, personal. CTA: 'Come back and shop.'",
+      "output": "Subject: We miss you, [First Name] — here's 20% off to say sorry. Preview: It's been a while. We'd love to have you back. Body: Hey [First Name], it's been a while since we last saw you... [story about new products]... [20% offer with clear CTA button]. A/B test shows 'We miss you' outperforms 'Special offer' by 34% in open rate."
+    }
+  ],
+  "checklist": [
+    "Identify email job is completed to a high standard",
+    "Clarify audience state is completed to a high standard",
+    "Choose message angle is completed to a high standard",
+    "Create subject lines is completed to a high standard",
+    "Write scannable body is completed to a high standard",
+    "Tune CTA is completed to a high standard",
+    "Check sequence logic is completed to a high standard",
+    "QA tone is completed to a high standard"
+  ],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "echo"
+  ],
+  "pipelines": [
+    "content-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [],
+    "lastUpdated": "2026-03-30"
+  }
+}

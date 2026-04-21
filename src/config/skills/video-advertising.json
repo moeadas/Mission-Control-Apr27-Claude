@@ -1,0 +1,161 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "video-advertising",
+  "name": "Video Advertising",
+  "description": "Develops video advertising concepts and channel-ready structures that align hook, story, visual rhythm, proof, and CTA with the placement objective.",
+  "category": "media",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time planning video ads, scripting paid video creative, adapting creative by placement, or structuring short- and mid-form video campaigns.",
+      "context": "You are a video advertising strategist. You understand how hooks, pacing, scene sequencing, proof, and CTA structure change across placements and funnel stages.",
+      "instructions": "## Video Advertising\n\n1. **Define objective and placement** — Define objective and placement\n   - ✓ Done when: Define objective and placement is completed to a high standard\n\n2. **Select angle** — Select angle\n   - ✓ Done when: Select angle is completed to a high standard\n\n3. **Build scene structure** — Build scene structure\n   - ✓ Done when: Build scene structure is completed to a high standard\n\n4. **Adapt pacing** — Adapt pacing\n   - ✓ Done when: Adapt pacing is completed to a high standard\n\n5. **Specify production needs** — Specify production needs\n   - ✓ Done when: Specify production needs is completed to a high standard\n\n6. **Define test variations** — Define test variations\n   - ✓ Done when: Define test variations is completed to a high standard\n\n## Key Inputs\n- objective: Campaign objective: awareness, consideration, conversion\n- audience: Target audience\n- budget: Budget and duration\n- concept: Video concept and message\n- platforms: Target platforms",
+      "output_template": "## Video Advertising Concept Pack\n\n### 1. Creative Strategy\n| Element | Decision |\n|---|---|\n| Objective | |\n| Audience | |\n| Placement | |\n| Core Angle | |\n| CTA | |\n\n### 2. Primary Video Structure\n| Beat | Purpose | Script / Visual Direction |\n|---|---|---|\n| Hook | | |\n| Problem | | |\n| Demonstration | | |\n| Proof | | |\n| CTA | | |\n\n### 3. Variation Ideas\n- Hook variation:\n- Proof variation:\n- Offer variation:\n- CTA variation:\n\n### 4. Production Notes\n- Visual assets needed:\n- On-screen text guidance:\n- Duration recommendations:\n- Placement-specific edits:"
+    }
+  },
+  "variables": [
+    {
+      "name": "objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objective: awareness, consideration, conversion"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Budget and duration"
+    },
+    {
+      "name": "concept",
+      "type": "string",
+      "required": false,
+      "description": "Video concept and message"
+    },
+    {
+      "name": "platforms",
+      "type": "string",
+      "required": false,
+      "description": "Target platforms"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objective: awareness, consideration, conversion"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Budget and duration"
+    },
+    {
+      "name": "concept",
+      "type": "string",
+      "required": false,
+      "description": "Video concept and message"
+    },
+    {
+      "name": "platforms",
+      "type": "string",
+      "required": false,
+      "description": "Target platforms"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Define objective and placement",
+        "action": "Define objective and placement",
+        "verify": "Define objective and placement is completed to a high standard"
+      },
+      {
+        "step": 2,
+        "name": "Select angle",
+        "action": "Select angle",
+        "verify": "Select angle is completed to a high standard"
+      },
+      {
+        "step": 3,
+        "name": "Build scene structure",
+        "action": "Build scene structure",
+        "verify": "Build scene structure is completed to a high standard"
+      },
+      {
+        "step": 4,
+        "name": "Adapt pacing",
+        "action": "Adapt pacing",
+        "verify": "Adapt pacing is completed to a high standard"
+      },
+      {
+        "step": 5,
+        "name": "Specify production needs",
+        "action": "Specify production needs",
+        "verify": "Specify production needs is completed to a high standard"
+      },
+      {
+        "step": 6,
+        "name": "Define test variations",
+        "action": "Define test variations",
+        "verify": "Define test variations is completed to a high standard"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Plan a video advertising campaign for a new mobile game targeting 18-34 males across YouTube and CTV.",
+      "output": "Complete video campaign plan with platform strategy, creative approach, and measurement."
+    },
+    {
+      "input": "Develop video creative strategy for a D2C brand's first video campaign with $50K budget.",
+      "output": "Video strategy with creative concepts, platform mix, and optimization approach."
+    }
+  ],
+  "checklist": [
+    "Define objective and placement is completed to a high standard",
+    "Select angle is completed to a high standard",
+    "Build scene structure is completed to a high standard",
+    "Adapt pacing is completed to a high standard",
+    "Specify production needs is completed to a high standard",
+    "Define test variations is completed to a high standard"
+  ],
+  "tools": [
+    "document",
+    "spreadsheet",
+    "## Operations"
+  ],
+  "agents": [
+    "nova"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "video-advertising",
+      "connected-tv",
+      "youtube",
+      "pre-roll",
+      "video-creative"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

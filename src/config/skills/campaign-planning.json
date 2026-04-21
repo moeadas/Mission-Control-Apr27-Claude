@@ -1,0 +1,195 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "campaign-planning",
+  "name": "campaign-planning",
+  "description": "Plans advertising campaigns from brief to execution. Use when creating campaign strategies, media plans, budget allocation, or campaign timelines.",
+  "category": "media",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time when to use this skill.",
+      "context": "You are a media strategist planning campaigns for {{client_name}} in the {{industry}} industry.",
+      "instructions": "## campaign-planning\n\n1. **Brief Analysis** — Review campaign brief and extract key requirements\n   - ✓ Done when: All brief elements understood and documented\n\n2. **Audience Research** — Define audience segments and their media consumption\n   - ✓ Done when: Segments are distinct and actionable\n\n3. **Channel Selection** — Choose channels based on audience and objectives\n   - ✓ Done when: Channel selection justified by data\n\n4. **Budget Planning** — Allocate budget across channels\n   - ✓ Done when: Budget supports campaign objectives\n\n5. **Timeline Creation** — Build campaign schedule with milestones\n   - ✓ Done when: Timeline is realistic and achievable\n\n6. **KPI Definition** — Define measurable success metrics\n   - ✓ Done when: KPIs are specific and trackable\n\n## Key Inputs\n- client_name: Client brand name\n- campaign_name: Name of this campaign\n- industry: Industry sector\n- objective: Campaign objective (awareness, consideration, conversion)\n- target_audience: Target audience description\n- budget: Total campaign budget\n- timeline: Campaign duration and key dates\n- competitors: Main competitors to consider",
+      "output_template": "## Campaign Plan: {{client_name}} - {{campaign_name}}\n\n### Executive Summary\n[2-3 paragraph overview of campaign strategy]\n\n### 1. Campaign Objectives\n| Objective | Target | Measurement |\n|-----------|--------|-------------|\n| | | |\n\n### 2. Target Audience\n[Audience segments with demographics and media habits]\n\n### 3. Channel Strategy\n| Channel | Budget % | Rationale | Key Messages |\n|---------|----------|-----------|--------------|\n| | | | |\n\n### 4. Budget Breakdown\n| Channel | Allocation | Expected ROI |\n|---------|-----------|-------------|\n| | | |\n\n### 5. Campaign Timeline\n| Phase | Dates | Activities |\n|-------|-------|------------|\n| Setup | | |\n| Launch | | |\n| Optimize | | |\n| Wrap | | |\n\n### 6. Success Metrics\n| KPI | Baseline | Target | Tracking |\n|-----|----------|--------|----------|\n| | | | |"
+    }
+  },
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client brand name"
+    },
+    {
+      "name": "campaign_name",
+      "type": "string",
+      "required": true,
+      "description": "Name of this campaign"
+    },
+    {
+      "name": "industry",
+      "type": "string",
+      "required": true,
+      "description": "Industry sector"
+    },
+    {
+      "name": "objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objective (awareness, consideration, conversion)"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience description"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Total campaign budget"
+    },
+    {
+      "name": "timeline",
+      "type": "string",
+      "required": true,
+      "description": "Campaign duration and key dates"
+    },
+    {
+      "name": "competitors",
+      "type": "string",
+      "required": false,
+      "description": "Main competitors to consider"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client brand name"
+    },
+    {
+      "name": "campaign_name",
+      "type": "string",
+      "required": true,
+      "description": "Name of this campaign"
+    },
+    {
+      "name": "industry",
+      "type": "string",
+      "required": true,
+      "description": "Industry sector"
+    },
+    {
+      "name": "objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objective (awareness, consideration, conversion)"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience description"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Total campaign budget"
+    },
+    {
+      "name": "timeline",
+      "type": "string",
+      "required": true,
+      "description": "Campaign duration and key dates"
+    },
+    {
+      "name": "competitors",
+      "type": "string",
+      "required": false,
+      "description": "Main competitors to consider"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Brief Analysis",
+        "action": "Review campaign brief and extract key requirements",
+        "verify": "All brief elements understood and documented"
+      },
+      {
+        "step": 2,
+        "name": "Audience Research",
+        "action": "Define audience segments and their media consumption",
+        "verify": "Segments are distinct and actionable"
+      },
+      {
+        "step": 3,
+        "name": "Channel Selection",
+        "action": "Choose channels based on audience and objectives",
+        "verify": "Channel selection justified by data"
+      },
+      {
+        "step": 4,
+        "name": "Budget Planning",
+        "action": "Allocate budget across channels",
+        "verify": "Budget supports campaign objectives"
+      },
+      {
+        "step": 5,
+        "name": "Timeline Creation",
+        "action": "Build campaign schedule with milestones",
+        "verify": "Timeline is realistic and achievable"
+      },
+      {
+        "step": 6,
+        "name": "KPI Definition",
+        "action": "Define measurable success metrics",
+        "verify": "KPIs are specific and trackable"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Plan a Q2 awareness campaign for TechStart - a fintech app targeting millennials in UAE, budget 50K AED over 8 weeks",
+      "output": "Complete campaign plan with social media and display strategy, budget split across Instagram, TikTok, and Google Ads, 8-week timeline with launch in week 2, KPIs around reach and brand recall"
+    }
+  ],
+  "checklist": [
+    "All brief elements understood and documented",
+    "Segments are distinct and actionable",
+    "Channel selection justified by data",
+    "Budget supports campaign objectives",
+    "Timeline is realistic and achievable",
+    "KPIs are specific and trackable"
+  ],
+  "tools": [
+    "spreadsheet",
+    "presentation",
+    "analytics"
+  ],
+  "agents": [
+    "maya"
+  ],
+  "pipelines": [
+    "media-plan",
+    "campaign-brief"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "campaign",
+      "media",
+      "planning",
+      "advertising"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

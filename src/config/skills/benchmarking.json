@@ -1,0 +1,131 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "benchmarking",
+  "name": "Benchmarking",
+  "description": "Compares client or campaign performance against industry standards and competitive benchmarks to identify performance gaps and improvement opportunities.",
+  "category": "research",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time comparing campaign or brand performance against industry benchmarks, competitor benchmarks, or historical baselines to identify gaps and improvement areas.",
+      "context": "You are a performance analyst who uses data-driven benchmarking to surface where a brand or campaign stands relative to industry standards and competitors.",
+      "instructions": "## Benchmarking\n\n1. **Benchmark Definition** — Identify relevant industry and competitive benchmarks\n   - ✓ Done when: Benchmarks are current and comparable\n\n2. **Data Collection** — Gather client and benchmark data\n   - ✓ Done when: Data is accurate and aligned in time period\n\n3. **Gap Analysis** — Identify performance gaps\n   - ✓ Done when: Gaps are quantified and contextualized\n\n4. **Recommendations** — Prioritize actions based on gap size and effort\n   - ✓ Done when: Recommendations are specific and actionable\n\n## Key Inputs\n- client_name: Client or brand being benchmarked\n- industry: Industry for benchmark comparison\n- metrics: Specific metrics to benchmark (e.g., CPM, CTR, ROAS)\n- reference_period: Time period for comparison",
+      "output_template": "## Benchmarking Report: {{client_name}}\n\n### Benchmark Scope\n| Field | Value |\n|-------|-------|\n| Industry | {{industry}} |\n| Reference period | {{reference_period}} |\n| Date | {{date}} |\n\n### Performance vs. Benchmarks\n| Metric | Client performance | Industry benchmark | Gap | Status |\n|--------|-------------------|-------------------|-----|--------|\n| | | | | ✅ Above / ⚠️ Below |\n\n### Gap Analysis\n| Area | Gap size | Priority |\n|------|----------|----------|\n| | | |\n\n### Contextual Factors\n| Factor | Impact on benchmarking |\n|--------|----------------------|\n| Seasonality | |\n| Market conditions | |\n| Audience differences | |\n\n### Recommendations\n| Action | Expected impact | Priority |\n|--------|----------------|----------|\n| | | |"
+    }
+  },
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand being benchmarked"
+    },
+    {
+      "name": "industry",
+      "type": "string",
+      "required": true,
+      "description": "Industry for benchmark comparison"
+    },
+    {
+      "name": "metrics",
+      "type": "string",
+      "required": false,
+      "description": "Specific metrics to benchmark (e.g., CPM, CTR, ROAS)"
+    },
+    {
+      "name": "reference_period",
+      "type": "string",
+      "required": false,
+      "description": "Time period for comparison"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand being benchmarked"
+    },
+    {
+      "name": "industry",
+      "type": "string",
+      "required": true,
+      "description": "Industry for benchmark comparison"
+    },
+    {
+      "name": "metrics",
+      "type": "string",
+      "required": false,
+      "description": "Specific metrics to benchmark (e.g., CPM, CTR, ROAS)"
+    },
+    {
+      "name": "reference_period",
+      "type": "string",
+      "required": false,
+      "description": "Time period for comparison"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Benchmark Definition",
+        "action": "Identify relevant industry and competitive benchmarks",
+        "verify": "Benchmarks are current and comparable"
+      },
+      {
+        "step": 2,
+        "name": "Data Collection",
+        "action": "Gather client and benchmark data",
+        "verify": "Data is accurate and aligned in time period"
+      },
+      {
+        "step": 3,
+        "name": "Gap Analysis",
+        "action": "Identify performance gaps",
+        "verify": "Gaps are quantified and contextualized"
+      },
+      {
+        "step": 4,
+        "name": "Recommendations",
+        "action": "Prioritize actions based on gap size and effort",
+        "verify": "Recommendations are specific and actionable"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Benchmark TechStart's Q4 paid social performance (CPM, CTR, CPA, ROAS) against UAE fintech industry standards.",
+      "output": "Benchmarking report showing performance gaps with prioritized recommendations"
+    }
+  ],
+  "checklist": [
+    "Benchmarks are current and comparable",
+    "Data is accurate and aligned in time period",
+    "Gaps are quantified and contextualized",
+    "Recommendations are specific and actionable"
+  ],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "atlas"
+  ],
+  "pipelines": [
+    "performance-review"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "analytics",
+      "benchmarking",
+      "performance",
+      "research"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

@@ -1,0 +1,184 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "channel-mix-optimization",
+  "name": "Channel Mix Optimization",
+  "description": "Optimizes the allocation of budget and effort across marketing channels to maximize reach, engagement, and ROI based on performance data, attribution insights, and audience behavior.",
+  "category": "media",
+  "difficulty": "advanced",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time optimizing channel mix based on performance data, reallocating budgets mid-campaign, or analyzing which channels drive the best roi for a given audience.",
+      "context": "You are a performance media specialist who uses data-driven analysis to optimize marketing channel allocation. You understand diminishing returns, attribution models, and how to shift spend to maximize outcomes.",
+      "instructions": "## Channel Mix Optimization\n\n1. **Performance Audit** — Compile performance data across all channels\n   - ✓ Done when: Data is complete and consistent across channels\n\n2. **Attribution Analysis** — Apply attribution model to understand true contribution\n   - ✓ Done when: Multi-touch attribution applied, not just last-click\n\n3. **Efficiency Scoring** — Calculate and benchmark cost-per-outcome metrics\n   - ✓ Done when: Benchmarks are relevant to industry and market\n\n4. **Saturation Analysis** — Identify diminishing returns and scaling headroom\n   - ✓ Done when: Saturation curves are evidence-based\n\n5. **Overlap Audit** — Check audience overlap between channels\n   - ✓ Done when: Overlap is quantified and addressable\n\n6. **Reallocation Modeling** — Model reallocation scenarios with projected impact\n   - ✓ Done when: Projections are conservative and defensible\n\n7. **Recommendations** — Prioritize optimization actions by impact and risk\n   - ✓ Done when: Recommendations are actionable and phased\n\n8. **Test Plan** — Design tests to validate optimization hypotheses\n   - ✓ Done when: Tests have clear success metrics and timelines\n\n## Key Inputs\n- client_name: Client or brand name\n- current_channels: Active marketing channels\n- budget: Total media budget\n- performance_period: Data period being analyzed\n- primary_kpi: Primary optimization KPI (ROAS, CPA, etc.)\n- attribution_model: Attribution model in use (last-click, linear, data-driven)",
+      "output_template": "## Channel Mix Optimization: {{client_name}}\n\n### Current Performance Summary\n| Channel | Spend | Impressions | Clicks | Conversions | CPA | ROAS |\n|---------|-------|-------------|--------|-------------|-----|------|\n| | | | | | | |\n| **Total** | | | | | | |\n\n### Attribution-Adjusted Performance\n| Channel | Last-Click Conv | Attributed Conv | True CPA | Adjusted ROAS |\n|---------|----------------|-----------------|----------|---------------|\n| | | | | |\n\n### Efficiency vs. Benchmark\n| Channel | Current CPA | Industry Benchmark | Variance | Rating |\n|---------|-------------|-------------------|----------|--------|\n| | | | | Over / Under / At |\n\n### Saturation Analysis\n| Channel | Current Spend | Optimal Range | Status | Action |\n|---------|--------------|---------------|--------|--------|\n| | | | Scaling / Saturated / Underinvested | |\n\n### Reallocation Scenarios\n| Scenario | Changes | Projected Impact | Risk Level |\n|----------|---------|-----------------|------------|\n| Conservative | | +X% ROAS | Low |\n| Moderate | | +Y% ROAS | Medium |\n| Aggressive | | +Z% ROAS | High |\n\n### Recommended Reallocation\n| Channel | Current % | New % | Change | Rationale |\n|---------|-----------|-------|--------|-----------|\n| | | | +/- X% | |\n\n### Test Plan\n| Test | Hypothesis | Method | Duration | Success Metric |\n|------|-----------|--------|----------|----------------|\n| | | A/B / Holdout | | |"
+    }
+  },
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "current_channels",
+      "type": "string",
+      "required": true,
+      "description": "Active marketing channels"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Total media budget"
+    },
+    {
+      "name": "performance_period",
+      "type": "string",
+      "required": true,
+      "description": "Data period being analyzed"
+    },
+    {
+      "name": "primary_kpi",
+      "type": "string",
+      "required": true,
+      "description": "Primary optimization KPI (ROAS, CPA, etc.)"
+    },
+    {
+      "name": "attribution_model",
+      "type": "string",
+      "required": false,
+      "description": "Attribution model in use (last-click, linear, data-driven)"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "current_channels",
+      "type": "string",
+      "required": true,
+      "description": "Active marketing channels"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Total media budget"
+    },
+    {
+      "name": "performance_period",
+      "type": "string",
+      "required": true,
+      "description": "Data period being analyzed"
+    },
+    {
+      "name": "primary_kpi",
+      "type": "string",
+      "required": true,
+      "description": "Primary optimization KPI (ROAS, CPA, etc.)"
+    },
+    {
+      "name": "attribution_model",
+      "type": "string",
+      "required": false,
+      "description": "Attribution model in use (last-click, linear, data-driven)"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Performance Audit",
+        "action": "Compile performance data across all channels",
+        "verify": "Data is complete and consistent across channels"
+      },
+      {
+        "step": 2,
+        "name": "Attribution Analysis",
+        "action": "Apply attribution model to understand true contribution",
+        "verify": "Multi-touch attribution applied, not just last-click"
+      },
+      {
+        "step": 3,
+        "name": "Efficiency Scoring",
+        "action": "Calculate and benchmark cost-per-outcome metrics",
+        "verify": "Benchmarks are relevant to industry and market"
+      },
+      {
+        "step": 4,
+        "name": "Saturation Analysis",
+        "action": "Identify diminishing returns and scaling headroom",
+        "verify": "Saturation curves are evidence-based"
+      },
+      {
+        "step": 5,
+        "name": "Overlap Audit",
+        "action": "Check audience overlap between channels",
+        "verify": "Overlap is quantified and addressable"
+      },
+      {
+        "step": 6,
+        "name": "Reallocation Modeling",
+        "action": "Model reallocation scenarios with projected impact",
+        "verify": "Projections are conservative and defensible"
+      },
+      {
+        "step": 7,
+        "name": "Recommendations",
+        "action": "Prioritize optimization actions by impact and risk",
+        "verify": "Recommendations are actionable and phased"
+      },
+      {
+        "step": 8,
+        "name": "Test Plan",
+        "action": "Design tests to validate optimization hypotheses",
+        "verify": "Tests have clear success metrics and timelines"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Optimize the channel mix for an e-commerce fashion brand spending AED 150K/month across Meta, Google, TikTok, and Snapchat. Current ROAS is 3.2x overall but varies significantly by channel.",
+      "output": "Full optimization analysis showing Meta at 4.1x ROAS vs. Snapchat at 1.8x, with recommendation to shift 15% of Snapchat budget to Meta prospecting and 10% to Google Shopping. Projected overall ROAS improvement to 3.8x."
+    }
+  ],
+  "checklist": [
+    "Data is complete and consistent across channels",
+    "Multi-touch attribution applied, not just last-click",
+    "Benchmarks are relevant to industry and market",
+    "Saturation curves are evidence-based",
+    "Overlap is quantified and addressable",
+    "Projections are conservative and defensible",
+    "Recommendations are actionable and phased",
+    "Tests have clear success metrics and timelines"
+  ],
+  "tools": [
+    "analytics",
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "nova"
+  ],
+  "pipelines": [
+    "media-plan"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "media",
+      "optimization",
+      "channel-mix",
+      "performance"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

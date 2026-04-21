@@ -1,0 +1,147 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "creative-iteration",
+  "name": "Creative Iteration",
+  "description": "Manages the creative review and iteration process, synthesizing feedback from clients and stakeholders into clear direction for designers and copywriters.",
+  "category": "creative",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time reviewing creative work and need to synthesize feedback into clear iteration direction — includes feedback consolidation, prioritisation, and revision briefs.",
+      "context": "You are a creative project manager who translates scattered feedback into clear, actionable revision direction without losing the original creative vision.",
+      "instructions": "## Creative Iteration\n\n1. **Feedback Collection** — Gather all feedback from all sources in one document\n   - ✓ Done when: Complete picture of all opinions\n\n2. **Synthesis** — Identify themes, separate signal from noise\n   - ✓ Done when: Common themes are clear\n\n3. **Prioritisation** — Classify changes by priority and effort\n   - ✓ Done when: Team knows what matters most\n\n4. **Briefing** — Write clear revision brief for creative team\n   - ✓ Done when: Direction is specific and unambiguous\n\n5. **Vision Protection** — Ensure feedback doesn't erode core creative idea\n   - ✓ Done when: Original vision intact\n\n6. **Iteration Tracking** — Document version history and decisions\n   - ✓ Done when: Clear audit trail\n\n## Key Inputs\n- project_name: Project or campaign name\n- current_work: Description of current creative state\n- stakeholders: List of stakeholders who provided feedback\n- current_version: Current version number or identifier",
+      "output_template": "## Creative Iteration Brief: {{project_name}} v{{version}}\n\n### Current Version\n{{current_version}}\n\n### Feedback Summary\n| Source | Feedback Summary |\n|--------|------------------|\n| | |\n\n### Feedback Themes (Common Signals)\n1. \n2. \n3. \n\n### Isolated Opinions (Not Actioned)\n| Feedback | Reason for Not Actioning |\n|----------|------------------------|\n| | |\n\n### Priority Classification\n| Change | Priority | Type |\n|--------|----------|------|\n| | Critical/Major/Minor |\n\n### Revision Brief\n**Must fix (Critical):**\n1. \n\n**Major improvements:**\n1. \n\n**Minor refinements:**\n1. \n\n### What NOT to Change\n[Elements that are working and should be preserved]\n\n### Vision Check\n**Original creative intent:**\n**Is intent still intact?** ✅/❌\n**Notes:**\n\n### Revision Timeline\n| Action | Owner | Due |\n|--------|-------|-----|\n| | | |\n\n### Version History\n| Version | Date | Changes |\n|---------|------|--------|\n| v1 | | Original |\n| v2 | | |\n| v3 | | [Current] |"
+    }
+  },
+  "variables": [
+    {
+      "name": "project_name",
+      "type": "string",
+      "required": true,
+      "description": "Project or campaign name"
+    },
+    {
+      "name": "current_work",
+      "type": "string",
+      "required": true,
+      "description": "Description of current creative state"
+    },
+    {
+      "name": "stakeholders",
+      "type": "string",
+      "required": true,
+      "description": "List of stakeholders who provided feedback"
+    },
+    {
+      "name": "current_version",
+      "type": "string",
+      "required": false,
+      "description": "Current version number or identifier"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "project_name",
+      "type": "string",
+      "required": true,
+      "description": "Project or campaign name"
+    },
+    {
+      "name": "current_work",
+      "type": "string",
+      "required": true,
+      "description": "Description of current creative state"
+    },
+    {
+      "name": "stakeholders",
+      "type": "string",
+      "required": true,
+      "description": "List of stakeholders who provided feedback"
+    },
+    {
+      "name": "current_version",
+      "type": "string",
+      "required": false,
+      "description": "Current version number or identifier"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Feedback Collection",
+        "action": "Gather all feedback from all sources in one document",
+        "verify": "Complete picture of all opinions"
+      },
+      {
+        "step": 2,
+        "name": "Synthesis",
+        "action": "Identify themes, separate signal from noise",
+        "verify": "Common themes are clear"
+      },
+      {
+        "step": 3,
+        "name": "Prioritisation",
+        "action": "Classify changes by priority and effort",
+        "verify": "Team knows what matters most"
+      },
+      {
+        "step": 4,
+        "name": "Briefing",
+        "action": "Write clear revision brief for creative team",
+        "verify": "Direction is specific and unambiguous"
+      },
+      {
+        "step": 5,
+        "name": "Vision Protection",
+        "action": "Ensure feedback doesn't erode core creative idea",
+        "verify": "Original vision intact"
+      },
+      {
+        "step": 6,
+        "name": "Iteration Tracking",
+        "action": "Document version history and decisions",
+        "verify": "Clear audit trail"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Synthesize feedback on TechStart hero banner from 4 stakeholders — CMO wants more white space, CFO says brand colors are wrong, designer says tagline is too long, CEO just says 'make it pop.' Current v2.",
+      "output": "Clear iteration brief separating real feedback from noise, with specific revision direction and protected elements"
+    }
+  ],
+  "checklist": [
+    "Complete picture of all opinions",
+    "Common themes are clear",
+    "Team knows what matters most",
+    "Direction is specific and unambiguous",
+    "Original vision intact",
+    "Clear audit trail"
+  ],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "finn",
+    "lyra"
+  ],
+  "pipelines": [
+    "creative-review"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "creative",
+      "iteration",
+      "review",
+      "feedback",
+      "project-management"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

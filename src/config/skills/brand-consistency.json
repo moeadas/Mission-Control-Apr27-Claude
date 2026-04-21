@@ -1,0 +1,139 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "brand-consistency",
+  "name": "Brand Consistency",
+  "description": "Ensures all creative output maintains consistent brand standards across visuals, tone, messaging, and execution — protecting brand integrity across every touchpoint.",
+  "category": "creative",
+  "difficulty": "intermediate",
+  "freedom": "low",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time reviewing creative output to ensure brand consistency — checking visuals, copy tone, messaging alignment, and adherence to brand guidelines across all channels.",
+      "context": "You are a brand guardian who ensures every piece of creative maintains the client's brand standards, visual identity, and voice — flagging inconsistencies before they go live.",
+      "instructions": "## Brand Consistency\n\n1. **Guidelines Review** — Pull and review brand guidelines\n   - ✓ Done when: Guidelines are current and accessible\n\n2. **Visual Audit** — Check logo, colors, typography, imagery\n   - ✓ Done when: All visual elements match guidelines\n\n3. **Tone Check** — Review copy tone and voice\n   - ✓ Done when: Copy sounds like the brand\n\n4. **Messaging Check** — Verify messaging alignment\n   - ✓ Done when: Message aligns with brand positioning\n\n5. **Issue Documentation** — Document and prioritize any issues found\n   - ✓ Done when: Fixes are clear and actionable\n\n## Key Inputs\n- brand_name: Brand being reviewed\n- creative_asset: Specific creative asset being reviewed\n- deliverable_type: Type of deliverable (banner, social post, video, etc.)\n- channel: Channel where the asset will run",
+      "output_template": "## Brand Consistency Review: {{creative_asset}}\n\n### Review Details\n| Field | Value |\n|-------|-------|\n| Brand | {{brand_name}} |\n| Asset | {{creative_asset}} |\n| Deliverable type | {{deliverable_type}} |\n| Channel | {{channel}} |\n| Review date | {{date}} |\n\n### Visual Consistency\n| Element | Guideline | Asset | Status |\n|---------|-----------|-------|--------|\n| Logo usage | | | ✅ / ❌ |\n| Color palette | | | ✅ / ❌ |\n| Typography | | | ✅ / ❌ |\n| Imagery style | | | ✅ / ❌ |\n| Spacing/layout | | | ✅ / ❌ |\n\n### Tone & Voice\n| Aspect | Expected | Actual | Status |\n|--------|----------|--------|--------|\n| | | | ✅ / ❌ |\n\n### Messaging Alignment\n| Message | Brand positioning | Asset message | Status |\n|---------|------------------|--------------|--------|\n| | | | ✅ / ❌ |\n\n### Issues Found\n| Issue | Severity | Fix |\n|-------|----------|-----|\n| | | |\n\n### Overall Verdict\n**Status:** ✅ Approved / ⚠️ Revisions needed / ❌ Rejected\n**Notes:**"
+    }
+  },
+  "variables": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand being reviewed"
+    },
+    {
+      "name": "creative_asset",
+      "type": "string",
+      "required": true,
+      "description": "Specific creative asset being reviewed"
+    },
+    {
+      "name": "deliverable_type",
+      "type": "string",
+      "required": false,
+      "description": "Type of deliverable (banner, social post, video, etc.)"
+    },
+    {
+      "name": "channel",
+      "type": "string",
+      "required": false,
+      "description": "Channel where the asset will run"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand being reviewed"
+    },
+    {
+      "name": "creative_asset",
+      "type": "string",
+      "required": true,
+      "description": "Specific creative asset being reviewed"
+    },
+    {
+      "name": "deliverable_type",
+      "type": "string",
+      "required": false,
+      "description": "Type of deliverable (banner, social post, video, etc.)"
+    },
+    {
+      "name": "channel",
+      "type": "string",
+      "required": false,
+      "description": "Channel where the asset will run"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Guidelines Review",
+        "action": "Pull and review brand guidelines",
+        "verify": "Guidelines are current and accessible"
+      },
+      {
+        "step": 2,
+        "name": "Visual Audit",
+        "action": "Check logo, colors, typography, imagery",
+        "verify": "All visual elements match guidelines"
+      },
+      {
+        "step": 3,
+        "name": "Tone Check",
+        "action": "Review copy tone and voice",
+        "verify": "Copy sounds like the brand"
+      },
+      {
+        "step": 4,
+        "name": "Messaging Check",
+        "action": "Verify messaging alignment",
+        "verify": "Message aligns with brand positioning"
+      },
+      {
+        "step": 5,
+        "name": "Issue Documentation",
+        "action": "Document and prioritize any issues found",
+        "verify": "Fixes are clear and actionable"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Review a LinkedIn carousel for TechStart. Check logo placement, brand colors (teal and navy), typeface (Inter), and tone of voice (professional but approachable).",
+      "output": "Brand consistency review with specific issue flags and fix recommendations"
+    }
+  ],
+  "checklist": [
+    "Guidelines are current and accessible",
+    "All visual elements match guidelines",
+    "Copy sounds like the brand",
+    "Message aligns with brand positioning",
+    "Fixes are clear and actionable"
+  ],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "finn",
+    "lyra"
+  ],
+  "pipelines": [
+    "creative-review"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "creative",
+      "brand",
+      "quality",
+      "consistency"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

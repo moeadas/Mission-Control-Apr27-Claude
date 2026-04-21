@@ -1,0 +1,155 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "strategic-account-planning",
+  "name": "Strategic Account Planning",
+  "description": "Develops long-term strategic plans for key client accounts — uncovering growth opportunities, deepening relationships, and positioning the agency as an indispensable creative partner rather than just a vendor.",
+  "category": "client-management",
+  "difficulty": "advanced",
+  "freedom": "high",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time developing annual account strategies, preparing for quarterly business reviews, identifying upsell and growth opportunities, or repositioning an agency's role with a key client.",
+      "context": "You are a strategic account planner for a creative advertising agency. You see the big picture — where the client is headed, where the relationship is underperforming, and what it takes to make the agency indispensable.",
+      "instructions": "## Strategic Account Planning\n\n1. **Audit account relationship** — Review what is working and what isn't — creative, relationship, operations\n   - ✓ Done when: Account health scores documented\n\n2. **Understand client business** — Research client's strategy, financials, market position, and competitive set\n   - ✓ Done when: Client context documented and validated\n\n3. **Identify whitespace** — Find unmet needs and opportunities the agency is uniquely positioned to solve\n   - ✓ Done when: At least 3 whitespace opportunities identified\n\n4. **Map growth opportunities** — Connect whitespace to specific service expansions or new offerings\n   - ✓ Done when: Opportunities tied to client priorities\n\n5. **Define strategic goals** — Set measurable goals for the account over 12 months\n   - ✓ Done when: Goals reviewed by agency leadership\n\n6. **Build account roadmap** — Create 12-month roadmap with quarterly milestones and clear ownership\n   - ✓ Done when: Roadmap presented and agreed with client\n\n## Key Inputs\n- client: Client account name\n- current_scope: Current services and scope delivered to this client\n- business_context: Client's business strategy, market, and competitive landscape\n- relationship_health: Current state of the agency-client relationship\n- growth_objectives: Agency's growth goals for this account",
+      "output_template": "## Strategic Account Plan\n\n### Client: {{client}}\n### Period: [Year]\n\n### Account Health Overview\n| Dimension | Score (1-5) | Notes |\n|-----------|------------|-------|\n| Relationship quality | | |\n| Creative output | | |\n| Financial performance | | |\n| Strategic alignment | | |\n\n### Client Business Context\n| Area | Key Insight |\n|------|------------|\n| Business strategy | |\n| Market position | |\n| Competitive threats | |\n| Growth priorities | |\n\n### Unmet Needs & Whitespace\n1. **Whitespace 1**: ... — Opportunity: ...\n\n### Current vs. Potential Scope\n| Service Area | Currently Delivered | Growth Potential |\n|-------------|-------------------|-----------------|\n| | | |\n\n### Strategic Goals (12 Months)\n| Goal | Metric | Owner | Quarter |\n|------|--------|-------|--------|\n| | | | |\n\n### Account Roadmap\n| Initiative | Q1 | Q2 | Q3 | Q4 | Owner |\n|-----------|----|----|----|----|-------|\n| | | | | | |"
+    }
+  },
+  "variables": [
+    {
+      "name": "client",
+      "type": "string",
+      "required": true,
+      "description": "Client account name"
+    },
+    {
+      "name": "current_scope",
+      "type": "string",
+      "required": true,
+      "description": "Current services and scope delivered to this client"
+    },
+    {
+      "name": "business_context",
+      "type": "string",
+      "required": true,
+      "description": "Client's business strategy, market, and competitive landscape"
+    },
+    {
+      "name": "relationship_health",
+      "type": "string",
+      "required": true,
+      "description": "Current state of the agency-client relationship"
+    },
+    {
+      "name": "growth_objectives",
+      "type": "string",
+      "required": true,
+      "description": "Agency's growth goals for this account"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client",
+      "type": "string",
+      "required": true,
+      "description": "Client account name"
+    },
+    {
+      "name": "current_scope",
+      "type": "string",
+      "required": true,
+      "description": "Current services and scope delivered to this client"
+    },
+    {
+      "name": "business_context",
+      "type": "string",
+      "required": true,
+      "description": "Client's business strategy, market, and competitive landscape"
+    },
+    {
+      "name": "relationship_health",
+      "type": "string",
+      "required": true,
+      "description": "Current state of the agency-client relationship"
+    },
+    {
+      "name": "growth_objectives",
+      "type": "string",
+      "required": true,
+      "description": "Agency's growth goals for this account"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Audit account relationship",
+        "action": "Review what is working and what isn't — creative, relationship, operations",
+        "verify": "Account health scores documented"
+      },
+      {
+        "step": 2,
+        "name": "Understand client business",
+        "action": "Research client's strategy, financials, market position, and competitive set",
+        "verify": "Client context documented and validated"
+      },
+      {
+        "step": 3,
+        "name": "Identify whitespace",
+        "action": "Find unmet needs and opportunities the agency is uniquely positioned to solve",
+        "verify": "At least 3 whitespace opportunities identified"
+      },
+      {
+        "step": 4,
+        "name": "Map growth opportunities",
+        "action": "Connect whitespace to specific service expansions or new offerings",
+        "verify": "Opportunities tied to client priorities"
+      },
+      {
+        "step": 5,
+        "name": "Define strategic goals",
+        "action": "Set measurable goals for the account over 12 months",
+        "verify": "Goals reviewed by agency leadership"
+      },
+      {
+        "step": 6,
+        "name": "Build account roadmap",
+        "action": "Create 12-month roadmap with quarterly milestones and clear ownership",
+        "verify": "Roadmap presented and agreed with client"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "client: Regional bank franchise | current_scope: Social media management, paid search | business_context: Disrupting fintech competition, launching new digital products | relationship_health: Strong day-to-day, weak C-suite visibility | growth_objectives: Expand into brand campaign work, grow retainer 40%",
+      "output": "Account plan with 3 growth pillars — brand campaign expansion, executive thought leadership program, and product launch support — with QBR cadence and 40% retainer growth target"
+    }
+  ],
+  "checklist": [
+    "Account health scores documented",
+    "Client context documented and validated",
+    "At least 3 whitespace opportunities identified",
+    "Opportunities tied to client priorities",
+    "Goals reviewed by agency leadership",
+    "Roadmap presented and agreed with client"
+  ],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "sage"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "account-planning",
+      "strategy",
+      "client-management",
+      "growth"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

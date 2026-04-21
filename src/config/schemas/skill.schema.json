@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mission-control://schemas/skill.schema.json",
+  "title": "Mission Control Skill",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "id",
+    "name",
+    "description",
+    "category",
+    "difficulty",
+    "freedom",
+    "prompts",
+    "metadata"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "category": {
+      "type": "string",
+      "minLength": 1
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": ["beginner", "intermediate", "advanced"]
+    },
+    "freedom": {
+      "type": "string",
+      "enum": ["high", "medium", "low"]
+    },
+    "prompts": {
+      "type": "object",
+      "required": ["en"],
+      "properties": {
+        "en": {
+          "$ref": "#/$defs/promptSet"
+        },
+        "ar": {
+          "$ref": "#/$defs/promptSet"
+        }
+      }
+    },
+    "variables": {
+      "type": "array"
+    },
+    "inputs": {
+      "type": "array"
+    },
+    "outputs": {
+      "type": "array"
+    },
+    "workflow": {
+      "type": "object"
+    },
+    "examples": {
+      "type": "array"
+    },
+    "checklist": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "tools": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "agents": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "pipelines": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["version", "lastUpdated"],
+      "properties": {
+        "version": {
+          "type": "string"
+        },
+        "author": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "lastUpdated": {
+          "type": "string"
+        },
+        "bundle": {
+          "type": "object"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "promptSet": {
+      "type": "object",
+      "required": ["trigger", "context", "instructions", "output_template"],
+      "properties": {
+        "trigger": {
+          "type": "string"
+        },
+        "context": {
+          "type": "string"
+        },
+        "instructions": {
+          "type": "string"
+        },
+        "output_template": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

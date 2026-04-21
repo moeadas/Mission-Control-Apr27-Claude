@@ -1,0 +1,161 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "visual-storytelling",
+  "name": "Visual Storytelling",
+  "description": "Builds visual storytelling systems that align narrative, composition, sequence, and emotional progression with the campaign or brand objective.",
+  "category": "creative",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time shaping visual narratives, storyboards, campaign sequences, carousel arcs, or presentation flows that must communicate through visuals.",
+      "context": "You are a visual storytelling strategist. You translate message and emotion into scenes, composition choices, narrative beats, and progression across frames or assets.",
+      "instructions": "## Visual Storytelling\n\n1. **Define narrative objective** — Define narrative objective\n   - ✓ Done when: Define narrative objective is completed to a high standard\n\n2. **Identify emotional arc** — Identify emotional arc\n   - ✓ Done when: Identify emotional arc is completed to a high standard\n\n3. **Sequence story beats** — Sequence story beats\n   - ✓ Done when: Sequence story beats is completed to a high standard\n\n4. **Specify focal points and transitions** — Specify focal points and transitions\n   - ✓ Done when: Specify focal points and transitions is completed to a high standard\n\n5. **Align with strategic CTA** — Align with strategic CTA\n   - ✓ Done when: Align with strategic CTA is completed to a high standard\n\n6. **Add production notes** — Add production notes\n   - ✓ Done when: Add production notes is completed to a high standard\n\n## Key Inputs\n- story: The story or narrative to tell\n- brand: Brand context\n- audience: Target audience\n- emotion: Emotional response to evoke\n- context: Where visuals will be used",
+      "output_template": "## Visual Storytelling Framework\n\n### 1. Narrative Objective\n| Element | Definition |\n|---|---|\n| Core message | |\n| Audience takeaway | |\n| Emotional direction | |\n| CTA / strategic role | |\n\n### 2. Story Beat Sequence\n| Beat | What Happens | Visual Focus | Why It Matters |\n|---|---|---|---|\n| 1 | | | |\n| 2 | | | |\n| 3 | | | |\n| 4 | | | |\n| 5 | | | |\n\n### 3. Visual Direction Notes\n- Composition guidance:\n- Transition / pacing guidance:\n- Color / mood cues:\n- Proof or CTA integration notes:\n\n### 4. Production Considerations\n- Must-have assets:\n- Risks to avoid:\n- Best execution notes:"
+    }
+  },
+  "variables": [
+    {
+      "name": "story",
+      "type": "string",
+      "required": true,
+      "description": "The story or narrative to tell"
+    },
+    {
+      "name": "brand",
+      "type": "string",
+      "required": true,
+      "description": "Brand context"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": false,
+      "description": "Target audience"
+    },
+    {
+      "name": "emotion",
+      "type": "string",
+      "required": false,
+      "description": "Emotional response to evoke"
+    },
+    {
+      "name": "context",
+      "type": "string",
+      "required": false,
+      "description": "Where visuals will be used"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "story",
+      "type": "string",
+      "required": true,
+      "description": "The story or narrative to tell"
+    },
+    {
+      "name": "brand",
+      "type": "string",
+      "required": true,
+      "description": "Brand context"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": false,
+      "description": "Target audience"
+    },
+    {
+      "name": "emotion",
+      "type": "string",
+      "required": false,
+      "description": "Emotional response to evoke"
+    },
+    {
+      "name": "context",
+      "type": "string",
+      "required": false,
+      "description": "Where visuals will be used"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Define narrative objective",
+        "action": "Define narrative objective",
+        "verify": "Define narrative objective is completed to a high standard"
+      },
+      {
+        "step": 2,
+        "name": "Identify emotional arc",
+        "action": "Identify emotional arc",
+        "verify": "Identify emotional arc is completed to a high standard"
+      },
+      {
+        "step": 3,
+        "name": "Sequence story beats",
+        "action": "Sequence story beats",
+        "verify": "Sequence story beats is completed to a high standard"
+      },
+      {
+        "step": 4,
+        "name": "Specify focal points and transitions",
+        "action": "Specify focal points and transitions",
+        "verify": "Specify focal points and transitions is completed to a high standard"
+      },
+      {
+        "step": 5,
+        "name": "Align with strategic CTA",
+        "action": "Align with strategic CTA",
+        "verify": "Align with strategic CTA is completed to a high standard"
+      },
+      {
+        "step": 6,
+        "name": "Add production notes",
+        "action": "Add production notes",
+        "verify": "Add production notes is completed to a high standard"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Create visual storytelling direction for a brand campaign about overcoming obstacles — emotional, aspirational tone.",
+      "output": "Visual narrative with mood board, story arc, and technical guidelines."
+    },
+    {
+      "input": "Develop a visual story for a product launch that creates anticipation and excitement.",
+      "output": "Visual storytelling framework with key moments and emotional progression."
+    }
+  ],
+  "checklist": [
+    "Define narrative objective is completed to a high standard",
+    "Identify emotional arc is completed to a high standard",
+    "Sequence story beats is completed to a high standard",
+    "Specify focal points and transitions is completed to a high standard",
+    "Align with strategic CTA is completed to a high standard",
+    "Add production notes is completed to a high standard"
+  ],
+  "tools": [
+    "document",
+    "## Media"
+  ],
+  "agents": [
+    "finn",
+    "lyra"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "visual-storytelling",
+      "imagery",
+      "mood-board",
+      "creative-direction",
+      "campaign"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

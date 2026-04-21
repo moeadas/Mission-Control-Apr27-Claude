@@ -1,0 +1,159 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "client-offboarding",
+  "name": "Client Offboarding",
+  "description": "Manages the professional and structured conclusion of client engagements, including handoffs, final deliverables, knowledge transfer, and archival.",
+  "category": "client-services",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time ending a client engagement — contract expiry, mutual termination, or client churn. covers final reporting, asset handover, offboarding comms, and archival.",
+      "context": "You are a client success specialist ensuring clean, professional client exits that preserve the relationship, protect agency reputation, and enable smooth knowledge transfer.",
+      "instructions": "## Client Offboarding\n\n1. **Notice & Planning** — Confirm notice period and map all outstanding work\n   - ✓ Done when: Timeline agreed with client\n\n2. **Final Deliverables** — Complete all outstanding work to quality standard\n   - ✓ Done when: All deliverables signed off\n\n3. **Performance Summary** — Compile comprehensive lifetime performance report\n   - ✓ Done when: Report is complete and accurate\n\n4. **Asset Handover** — Transfer all client assets and access in organized format\n   - ✓ Done when: Client confirms receipt of all assets\n\n5. **Knowledge Documentation** — Document account history, learnings, and recommendations\n   - ✓ Done when: Document is thorough and actionable\n\n6. **Financial Settlement** — Issue final invoice and reconcile all credits\n   - ✓ Done when: All financial items settled\n\n7. **Exit Communication** — Send professional offboarding communication\n   - ✓ Done when: Relationship preserved positively\n\n8. **Archival** — Archive all account materials internally\n   - ✓ Done when: Everything is organized and retrievable\n\n## Key Inputs\n- client_name: Client brand or company name\n- exit_reason: Reason for ending the engagement\n- end_date: Final working date with client\n- outstanding_work: List of active deliverables needing completion",
+      "output_template": "## Client Offboarding: {{client_name}}\n\n### Exit Summary\n| Field | Details |\n|-------|---------|\n| Exit reason | {{exit_reason}} |\n| Final date | {{end_date}} |\n| Notice given | ✅/❌ |\n| Contract end | |\n\n### Final Deliverables Status\n| Deliverable | Status | Owner | Due |\n|-------------|--------|-------|-----|\n| | | | |\n\n### Performance Summary (Full Engagement)\n| Metric | Lifetime Value | Avg Monthly |\n|--------|---------------|------------|\n| Spend managed | | |\n| Campaigns run | | |\n| Leads generated | | |\n| Revenue attributed | | |\n\n### Asset Handover Checklist\n- [ ] All creative files (logos, images, copy docs)\n- [ ] Ad account admin access transferred\n- [ ] Analytics access read-only or exported\n- [ ] Landing pages and funnels documented\n- [ ] Tracking pixels confirmed active\n- [ ] Domain ownership verified\n- [ ] Third-party tool accounts transferred\n- [ ] Brand guidelines and style guides\n- [ ] Historical performance data exported\n\n### Financial Close\n| Item | Amount | Status |\n|------|--------|--------|\n| Final invoice | | |\n| Unbilled credits | | |\n| Ad platform credits | | |\n| Outstanding balance | | |\n\n### Knowledge Transfer Document\n**Account history:**\n**What worked:**\n**What to avoid:**\n**Key contacts:**\n**Recommendations for next agency:**\n\n### Exit Communication\n[Professional offboarding email/letter]\n\n### Internal Archival\n- [ ] All files moved to archive folder\n- [ ] Credentials documented and secured\n- [ ] Client contact retained (CRM)\n- [ ] Lessons learned logged"
+    }
+  },
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client brand or company name"
+    },
+    {
+      "name": "exit_reason",
+      "type": "string",
+      "required": true,
+      "description": "Reason for ending the engagement"
+    },
+    {
+      "name": "end_date",
+      "type": "string",
+      "required": true,
+      "description": "Final working date with client"
+    },
+    {
+      "name": "outstanding_work",
+      "type": "string",
+      "required": false,
+      "description": "List of active deliverables needing completion"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client brand or company name"
+    },
+    {
+      "name": "exit_reason",
+      "type": "string",
+      "required": true,
+      "description": "Reason for ending the engagement"
+    },
+    {
+      "name": "end_date",
+      "type": "string",
+      "required": true,
+      "description": "Final working date with client"
+    },
+    {
+      "name": "outstanding_work",
+      "type": "string",
+      "required": false,
+      "description": "List of active deliverables needing completion"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Notice & Planning",
+        "action": "Confirm notice period and map all outstanding work",
+        "verify": "Timeline agreed with client"
+      },
+      {
+        "step": 2,
+        "name": "Final Deliverables",
+        "action": "Complete all outstanding work to quality standard",
+        "verify": "All deliverables signed off"
+      },
+      {
+        "step": 3,
+        "name": "Performance Summary",
+        "action": "Compile comprehensive lifetime performance report",
+        "verify": "Report is complete and accurate"
+      },
+      {
+        "step": 4,
+        "name": "Asset Handover",
+        "action": "Transfer all client assets and access in organized format",
+        "verify": "Client confirms receipt of all assets"
+      },
+      {
+        "step": 5,
+        "name": "Knowledge Documentation",
+        "action": "Document account history, learnings, and recommendations",
+        "verify": "Document is thorough and actionable"
+      },
+      {
+        "step": 6,
+        "name": "Financial Settlement",
+        "action": "Issue final invoice and reconcile all credits",
+        "verify": "All financial items settled"
+      },
+      {
+        "step": 7,
+        "name": "Exit Communication",
+        "action": "Send professional offboarding communication",
+        "verify": "Relationship preserved positively"
+      },
+      {
+        "step": 8,
+        "name": "Archival",
+        "action": "Archive all account materials internally",
+        "verify": "Everything is organized and retrievable"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Offboard TechStart after 18 months. Reason: client pivoting internally. Final date: March 31. Outstanding: Q1 report and final campaign wrap.",
+      "output": "Full offboarding plan with performance summary, handover checklist, financial close, and archival instructions"
+    }
+  ],
+  "checklist": [
+    "Timeline agreed with client",
+    "All deliverables signed off",
+    "Report is complete and accurate",
+    "Client confirms receipt of all assets",
+    "Document is thorough and actionable",
+    "All financial items settled",
+    "Relationship preserved positively",
+    "Everything is organized and retrievable"
+  ],
+  "tools": [
+    "document",
+    "spreadsheet",
+    "presentation"
+  ],
+  "agents": [],
+  "pipelines": [
+    "client-close"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "client-services",
+      "offboarding",
+      "exit",
+      "knowledge-transfer",
+      "handover"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

@@ -1,0 +1,152 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "differentiation-strategy",
+  "name": "Differentiation Strategy",
+  "description": "Develops a unique, ownable market position that creates competitive advantage — identifying what makes a brand meaningfully different and communicating it consistently across all touchpoints.",
+  "category": "strategy",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time developing or refreshing a differentiation strategy — to identify what makes a brand meaningfully different from competitors and create a compelling, ownable competitive position.",
+      "context": "You are a brand strategist who helps brands find and own a distinctive competitive position that resonates with target audiences and is difficult for competitors to replicate.",
+      "instructions": "## Differentiation Strategy\n\n1. **Category Analysis** — Understand how differentiation currently works\n   - ✓ Done when: Category dynamics are clear\n\n2. **Competitive Mapping** — Map existing competitor positions\n   - ✓ Done when: Owned positions are identified\n\n3. **Self-Analysis** — Identify genuine brand differentiators\n   - ✓ Done when: Differentiators are authentic and credible\n\n4. **White Space Finding** — Find ownable differentiation territory\n   - ✓ Done when: White space is real and defensible\n\n5. **Position Building** — Build the differentiation statement\n   - ✓ Done when: Position is clear, ownable, and credible\n\n6. **Proof Points** — Gather evidence supporting the position\n   - ✓ Done when: Claims can be substantiated\n\n7. **Integration** — Integrate into all brand communications\n   - ✓ Done when: Differentiation is consistent across touchpoints\n\n## Key Inputs\n- brand_name: Brand being differentiated\n- category: Competitive category\n- target_audience: Primary target audience\n- competitors: Key competitors",
+      "output_template": "## Differentiation Strategy: {{brand_name}}\n\n### Category Context\n**How differentiation currently works in {{category}}:**\n\n### Competitive Differentiation Map\n| Competitor | Position | Ownable? |\n|------------|---------|----------|\n| | | |\n\n### Self-Assessment\n**Genuine brand strengths:**\n\n**Authentic differentiators:**\n\n**Credible but harder to own:**\n\n### Audience Insights\n**What audiences value most:**\n\n**Current dissatisfaction:**\n\n**Unmet needs:**\n\n### White Space Analysis\n**Available, ownable territory:**\n\n**Why competitors can't easily copy it:**\n\n### Differentiation Statement\n**For** [target audience]\n**Who** [audience need]\n**{{brand_name}}** is the [category]\n**that** [key differentiator]\n**because** [reason to believe]\n\n### What We Are NOT\n[Clear boundaries — what we don't claim]\n\n### Proof Points\n| Claim | Evidence |\n|-------|----------|\n| | |\n\n### Communication Priorities\n| Channel | Differentiation message | How |\n|---------|----------------------|------|\n| | | |\n\n### Competitive Response Plan\n**If competitors try to copy this position:**\n\n**How we stay ahead:**"
+    }
+  },
+  "variables": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand being differentiated"
+    },
+    {
+      "name": "category",
+      "type": "string",
+      "required": true,
+      "description": "Competitive category"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Primary target audience"
+    },
+    {
+      "name": "competitors",
+      "type": "string",
+      "required": false,
+      "description": "Key competitors"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand being differentiated"
+    },
+    {
+      "name": "category",
+      "type": "string",
+      "required": true,
+      "description": "Competitive category"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Primary target audience"
+    },
+    {
+      "name": "competitors",
+      "type": "string",
+      "required": false,
+      "description": "Key competitors"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Category Analysis",
+        "action": "Understand how differentiation currently works",
+        "verify": "Category dynamics are clear"
+      },
+      {
+        "step": 2,
+        "name": "Competitive Mapping",
+        "action": "Map existing competitor positions",
+        "verify": "Owned positions are identified"
+      },
+      {
+        "step": 3,
+        "name": "Self-Analysis",
+        "action": "Identify genuine brand differentiators",
+        "verify": "Differentiators are authentic and credible"
+      },
+      {
+        "step": 4,
+        "name": "White Space Finding",
+        "action": "Find ownable differentiation territory",
+        "verify": "White space is real and defensible"
+      },
+      {
+        "step": 5,
+        "name": "Position Building",
+        "action": "Build the differentiation statement",
+        "verify": "Position is clear, ownable, and credible"
+      },
+      {
+        "step": 6,
+        "name": "Proof Points",
+        "action": "Gather evidence supporting the position",
+        "verify": "Claims can be substantiated"
+      },
+      {
+        "step": 7,
+        "name": "Integration",
+        "action": "Integrate into all brand communications",
+        "verify": "Differentiation is consistent across touchpoints"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Develop a differentiation strategy for TechStart in the B2B expense management space. Category: fintech. Audience: CFOs at mid-market companies in MENA. Competitors: SAP Concur, Moss, Pleo.",
+      "output": "Full differentiation strategy with white space analysis, positioning statement, and proof points"
+    }
+  ],
+  "checklist": [
+    "Category dynamics are clear",
+    "Owned positions are identified",
+    "Differentiators are authentic and credible",
+    "White space is real and defensible",
+    "Position is clear, ownable, and credible",
+    "Claims can be substantiated",
+    "Differentiation is consistent across touchpoints"
+  ],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "maya"
+  ],
+  "pipelines": [
+    "strategy"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "strategy",
+      "differentiation",
+      "positioning",
+      "competitive"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

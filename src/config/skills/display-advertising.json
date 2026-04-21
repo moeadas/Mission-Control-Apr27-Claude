@@ -1,0 +1,143 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "display-advertising",
+  "name": "Display Advertising",
+  "description": "Plans, launches, and optimizes banner and display ad campaigns across programmatic networks, publisher sites, and retargeting platforms to build brand awareness and drive conversions.",
+  "category": "analytics",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time planning a display campaign, setting up retargeting, optimizing placements, analyzing display performance, or recommending display as part of a media mix.",
+      "context": "You are a display advertising specialist with expertise in programmatic buying, creative optimization, and display attribution. You manage campaigns that build brand awareness and drive conversions through visual advertising.",
+      "instructions": "## Display Advertising\n\n1. **Define strategy** — Set objectives, targeting, and bidding approach\n   - ✓ Done when: Strategy aligns with business goals\n\n2. **Build campaign** — Set up campaign structure in ad platform\n   - ✓ Done when: Targeting and placements are correct\n\n3. **Launch** — Go live and begin monitoring\n   - ✓ Done when: Campaign is live and serving\n\n4. **Optimize** — Adjust targeting, bids, and creatives based on performance\n   - ✓ Done when: Optimizations are data-driven\n\n## Key Inputs\n- campaign_objective: Campaign goal: brand awareness, consideration, or conversion\n- target_audience: Targeting parameters: demographics, interests, behaviors, retargeting lists\n- budget: Campaign budget and spend pace\n- duration: Campaign start and end dates\n- key_metrics: Primary KPIs: CTR, CPM, VTR, CPA, ROAS",
+      "output_template": "## Display Campaign Plan\n\n### Campaign Overview\n| Parameter | Value |\n|-----------|-------|\n| Objective | |\n| Budget | |\n| Duration | |\n| Target Audience | |\n\n### Media Plan\n| Placement | Format | Targeting | Bid Strategy |\n|----------|--------|-----------|-------------|\n| | | | |\n\n### Creative Requirements\n| Format | Size | Quantity | Notes |\n|--------|------|----------|-------|\n| | | | |\n\n### Performance Targets\n| Metric | Target |\n|--------|--------|\n| Impressions | |\n| CTR | |\n| View-through Rate | |\n| CPA | |\n\n### Optimization Plan\n- [ ] Primary lever: \n- [ ] Secondary lever:"
+    }
+  },
+  "variables": [
+    {
+      "name": "campaign_objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign goal: brand awareness, consideration, or conversion"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Targeting parameters: demographics, interests, behaviors, retargeting lists"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Campaign budget and spend pace"
+    },
+    {
+      "name": "duration",
+      "type": "string",
+      "required": false,
+      "description": "Campaign start and end dates"
+    },
+    {
+      "name": "key_metrics",
+      "type": "string",
+      "required": false,
+      "description": "Primary KPIs: CTR, CPM, VTR, CPA, ROAS"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "campaign_objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign goal: brand awareness, consideration, or conversion"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Targeting parameters: demographics, interests, behaviors, retargeting lists"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Campaign budget and spend pace"
+    },
+    {
+      "name": "duration",
+      "type": "string",
+      "required": false,
+      "description": "Campaign start and end dates"
+    },
+    {
+      "name": "key_metrics",
+      "type": "string",
+      "required": false,
+      "description": "Primary KPIs: CTR, CPM, VTR, CPA, ROAS"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Define strategy",
+        "action": "Set objectives, targeting, and bidding approach",
+        "verify": "Strategy aligns with business goals"
+      },
+      {
+        "step": 2,
+        "name": "Build campaign",
+        "action": "Set up campaign structure in ad platform",
+        "verify": "Targeting and placements are correct"
+      },
+      {
+        "step": 3,
+        "name": "Launch",
+        "action": "Go live and begin monitoring",
+        "verify": "Campaign is live and serving"
+      },
+      {
+        "step": 4,
+        "name": "Optimize",
+        "action": "Adjust targeting, bids, and creatives based on performance",
+        "verify": "Optimizations are data-driven"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Objective: Drive website visits for new product launch. Audience: Women 25-45, interest in fitness. Budget: $15,000/month. Duration: 4 weeks.",
+      "output": "Campaign delivered 2.3M impressions at $6.52 CPM with 0.42% CTR. View-through conversions tracked at 3.8%. Best-performing placement: fitness publisher sites. Recommendation: Increase spend on top 3 publisher placements, test new 300x250 format."
+    }
+  ],
+  "checklist": [
+    "Strategy aligns with business goals",
+    "Targeting and placements are correct",
+    "Campaign is live and serving",
+    "Optimizations are data-driven"
+  ],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "nova"
+  ],
+  "pipelines": [
+    "media-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "display-advertising",
+      "programmatic",
+      "banner-ads",
+      "retargeting"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

@@ -1,0 +1,239 @@
+{
+  "checkpointTypes": [
+    {
+      "id": "strategy-approved",
+      "name": "Strategy Approved",
+      "phase": "strategy",
+      "description": "Gate to ensure strategy is solid before moving to creative",
+      "checkpoints": [
+        {
+          "id": "checkpoint-1",
+          "label": "Research Complete",
+          "description": "All required research has been completed and documented",
+          "verifiedBy": "brand-strategist",
+          "required": true,
+          "items": [
+            "Market research approved by lead",
+            "Competitive analysis complete",
+            "Consumer insights documented",
+            "Data sources cited and credible"
+          ]
+        },
+        {
+          "id": "checkpoint-2",
+          "label": "Target Audience Validated",
+          "description": "Target audience has been researched and approved",
+          "verifiedBy": "brand-strategist",
+          "required": true,
+          "items": [
+            "Primary persona created with data",
+            "Secondary personas identified",
+            "Audience size estimated",
+            "Media habits documented"
+          ]
+        },
+        {
+          "id": "checkpoint-3",
+          "label": "Positioning Clear",
+          "description": "Competitive positioning is defined and differentiated",
+          "verifiedBy": "brand-strategist",
+          "required": true,
+          "items": [
+            "Unique value proposition defined",
+            "Competitive differentiation clear",
+            "Positioning statement approved",
+            "Messaging hierarchy created"
+          ]
+        },
+        {
+          "id": "checkpoint-4",
+          "label": "KPIs Defined",
+          "description": "Success metrics are specific, measurable, and agreed upon",
+          "verifiedBy": "client-services",
+          "required": true,
+          "items": [
+            "Primary KPIs identified",
+            "Target numbers set",
+            "Measurement methodology defined",
+            "Client approval received"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "creative-approved",
+      "name": "Creative Approved",
+      "phase": "creative",
+      "description": "Gate to ensure creative is ready for review",
+      "checkpoints": [
+        {
+          "id": "checkpoint-1",
+          "label": "Copy Complete",
+          "description": "All copy has been written and reviewed",
+          "verifiedBy": "copywriter",
+          "required": true,
+          "items": [
+            "All headlines written",
+            "Body copy complete",
+            "CTAs clear and compelling",
+            "Legal/compliance reviewed"
+          ]
+        },
+        {
+          "id": "checkpoint-2",
+          "label": "Visuals Complete",
+          "description": "All visual assets have been created",
+          "verifiedBy": "visual-producer",
+          "required": true,
+          "items": [
+            "Primary visuals ready",
+            "A/B variants prepared",
+            "Format specs met per platform",
+            "Accessibility checked"
+          ]
+        },
+        {
+          "id": "checkpoint-3",
+          "label": "Brand Compliance",
+          "description": "All assets comply with brand guidelines",
+          "verifiedBy": "brand-strategist",
+          "required": true,
+          "items": [
+            "Voice and tone consistent",
+            "Colors within brand palette",
+            "Typography guidelines followed",
+            "Logo usage correct"
+          ]
+        },
+        {
+          "id": "checkpoint-4",
+          "label": "Technical Specs Met",
+          "description": "All technical requirements are satisfied",
+          "verifiedBy": "traffic-manager",
+          "required": true,
+          "items": [
+            "File formats correct",
+            "Resolution meets requirements",
+            "File sizes optimized",
+            "Naming conventions followed"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "client-approved",
+      "name": "Client Approved",
+      "phase": "review",
+      "description": "Gate to ensure client has approved before production",
+      "checkpoints": [
+        {
+          "id": "checkpoint-1",
+          "label": "Presentation Ready",
+          "description": "All materials are prepared for client presentation",
+          "verifiedBy": "client-services",
+          "required": true,
+          "items": [
+            "Presentation deck complete",
+            "Key talking points prepared",
+            "Alternative concepts ready",
+            "Feedback mechanism in place"
+          ]
+        },
+        {
+          "id": "checkpoint-2",
+          "label": "Client Feedback Incorporated",
+          "description": "Client feedback has been reviewed and incorporated",
+          "verifiedBy": "client-services",
+          "required": true,
+          "items": [
+            "All feedback documented",
+            "Revision requests addressed",
+            "Unresolved items flagged",
+            "Client satisfaction confirmed"
+          ]
+        },
+        {
+          "id": "checkpoint-3",
+          "label": "Final Approval Received",
+          "description": "Formal client approval has been obtained",
+          "verifiedBy": "client-services",
+          "required": true,
+          "items": [
+            "Approval email/document received",
+            "Scope confirmed",
+            "Timeline acknowledged",
+            "Sign-off documented"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "delivery-approved",
+      "name": "Delivery Approved",
+      "phase": "delivery",
+      "description": "Gate to ensure everything is ready for launch",
+      "checkpoints": [
+        {
+          "id": "checkpoint-1",
+          "label": "Campaigns Set Up",
+          "description": "All campaigns are configured in ad platforms",
+          "verifiedBy": "media-planner",
+          "required": true,
+          "items": [
+            "Campaigns created in platforms",
+            "Targeting configured",
+            "Budget allocated",
+            "Tracking implemented"
+          ]
+        },
+        {
+          "id": "checkpoint-2",
+          "label": "Assets Uploaded",
+          "description": "All creative assets are uploaded to platforms",
+          "verifiedBy": "media-planner",
+          "required": true,
+          "items": [
+            "All visuals uploaded",
+            "Copy entered in platforms",
+            "UTM parameters added",
+            "Preview approved"
+          ]
+        },
+        {
+          "id": "checkpoint-3",
+          "label": "Launch Verified",
+          "description": "All campaigns are live and tracking correctly",
+          "verifiedBy": "performance-manager",
+          "required": true,
+          "items": [
+            "Campaigns live",
+            "Pixels/firewalls verified",
+            "First impressions confirmed",
+            "Monitoring dashboard active"
+          ]
+        }
+      ]
+    }
+  ],
+  "qualityStandards": {
+    "research": {
+      "minDataSources": 3,
+      "requiredElements": ["quantitative data", "qualitative insights", "competitive context"],
+      "citationRequired": true
+    },
+    "strategy": {
+      "requiredDocuments": ["situation analysis", "target audience", "competitive positioning", "strategic recommendation"],
+      "stakeholderApproval": true
+    },
+    "creative": {
+      "requiredVariants": 2,
+      "accessibilityCheck": true,
+      "brandComplianceReview": true,
+      "legalReview": true
+    },
+    "media": {
+      "requiredDocumentation": ["media plan", "budget breakdown", "timeline", "success metrics"],
+      "technicalValidation": true
+    }
+  }
+}

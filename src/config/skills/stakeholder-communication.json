@@ -1,0 +1,143 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "stakeholder-communication",
+  "name": "Stakeholder Communication",
+  "description": "Plans and executes clear, structured communication with project stakeholders — from status updates and executive briefings to crisis comms and client presentations that keep everyone informed and aligned.",
+  "category": "client-management",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time preparing client status reports, executive summaries, project kickoff decks, crisis communications, or any situation where the right message needs to reach the right stakeholder at the right time.",
+      "context": "You are a stakeholder communication specialist for a creative advertising agency. You know that how you communicate is as important as what you communicate — and you tailor every message to the audience, the stakes, and the relationship.",
+      "instructions": "## Stakeholder Communication\n\n1. **Map stakeholders** — Identify all stakeholders and categorize by influence and interest\n   - ✓ Done when: All stakeholders named and categorized\n\n2. **Define communication needs** — Determine what each stakeholder needs to hear and how often\n   - ✓ Done when: Channel and frequency defined per stakeholder\n\n3. **Draft key messages** — Write clear, audience-appropriate messages for each group\n   - ✓ Done when: Messages aligned with client objectives\n\n4. **Build communication calendar** — Schedule recurring communications and milestones\n   - ✓ Done when: Calendar reviewed by project lead\n\n5. **Review for tone and accuracy** — Proof and strategically review all communications before sending\n   - ✓ Done when: All communications reviewed by account lead\n\n## Key Inputs\n- project: Project or initiative requiring stakeholder communication\n- stakeholders: List of stakeholders with their roles and levels of influence\n- message: Core message or update to be communicated\n- goal: What the communication should achieve\n- relationship: Client relationship context — high-trust, sensitive, at-risk, etc.\n\n## When Not to Use\nThis skill overlaps with: stakeholder-management, client-reporting. Use those instead when: you are preparing external-facing materials or client updates\n\n`communication` `stakeholders` `client-management` `reporting`",
+      "output_template": "## Stakeholder Communication Plan\n\n### Project: {{project}}\n\n### Stakeholder Map\n| Stakeholder | Role | Influence | Interest | Communication Need |\n|-------------|------|-----------|---------|-------------------|\n| | | | | |\n\n### Communication Matrix\n| Stakeholder | Channel | Frequency | Owner | Message Focus |\n|-------------|---------|-----------|-------|--------------|\n| | | | | |\n\n### Key Messages This Cycle\n- **For executives**: ...\n- **For day-to-day contacts**: ...\n- **For creative team**: ...\n\n### Upcoming Communications\n| Date | Communication | Audience | Format | Owner |\n|------|--------------|---------|--------|-------|\n| | | | | |\n\n### Tone Notes\n> [How to communicate given the relationship context]"
+    }
+  },
+  "variables": [
+    {
+      "name": "project",
+      "type": "string",
+      "required": true,
+      "description": "Project or initiative requiring stakeholder communication"
+    },
+    {
+      "name": "stakeholders",
+      "type": "string",
+      "required": true,
+      "description": "List of stakeholders with their roles and levels of influence"
+    },
+    {
+      "name": "message",
+      "type": "string",
+      "required": true,
+      "description": "Core message or update to be communicated"
+    },
+    {
+      "name": "goal",
+      "type": "string",
+      "required": true,
+      "description": "What the communication should achieve"
+    },
+    {
+      "name": "relationship",
+      "type": "string",
+      "required": false,
+      "description": "Client relationship context — high-trust, sensitive, at-risk, etc."
+    }
+  ],
+  "inputs": [
+    {
+      "name": "project",
+      "type": "string",
+      "required": true,
+      "description": "Project or initiative requiring stakeholder communication"
+    },
+    {
+      "name": "stakeholders",
+      "type": "string",
+      "required": true,
+      "description": "List of stakeholders with their roles and levels of influence"
+    },
+    {
+      "name": "message",
+      "type": "string",
+      "required": true,
+      "description": "Core message or update to be communicated"
+    },
+    {
+      "name": "goal",
+      "type": "string",
+      "required": true,
+      "description": "What the communication should achieve"
+    },
+    {
+      "name": "relationship",
+      "type": "string",
+      "required": false,
+      "description": "Client relationship context — high-trust, sensitive, at-risk, etc."
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Map stakeholders",
+        "action": "Identify all stakeholders and categorize by influence and interest",
+        "verify": "All stakeholders named and categorized"
+      },
+      {
+        "step": 2,
+        "name": "Define communication needs",
+        "action": "Determine what each stakeholder needs to hear and how often",
+        "verify": "Channel and frequency defined per stakeholder"
+      },
+      {
+        "step": 3,
+        "name": "Draft key messages",
+        "action": "Write clear, audience-appropriate messages for each group",
+        "verify": "Messages aligned with client objectives"
+      },
+      {
+        "step": 4,
+        "name": "Build communication calendar",
+        "action": "Schedule recurring communications and milestones",
+        "verify": "Calendar reviewed by project lead"
+      },
+      {
+        "step": 5,
+        "name": "Review for tone and accuracy",
+        "action": "Proof and strategically review all communications before sending",
+        "verify": "All communications reviewed by account lead"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "project: Brand refresh campaign for Q3 launch | stakeholders: CMO (exec sponsor), Brand Director (day-to-day), Legal (compliance reviewer) | message: Campaign delayed 2 weeks due to creative revision | goal: Keep exec sponsor confident, day-to-day aligned, legal informed without alarming | relationship: High-trust, 5-year partnership",
+      "output": "Three-tier communication plan — exec summary for CMO focused on opportunity, detailed status for Brand Director with revised timeline, compliance checklist update for Legal"
+    }
+  ],
+  "checklist": [
+    "All stakeholders named and categorized",
+    "Channel and frequency defined per stakeholder",
+    "Messages aligned with client objectives",
+    "Calendar reviewed by project lead",
+    "All communications reviewed by account lead"
+  ],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "iris"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [],
+    "lastUpdated": "2026-03-30"
+  }
+}

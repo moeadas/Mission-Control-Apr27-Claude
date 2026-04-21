@@ -1,0 +1,133 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "risk-assessment",
+  "name": "Risk Assessment",
+  "description": "Assesses strategic, delivery, operational, or campaign risks so teams can plan mitigation before issues become expensive problems.",
+  "category": "project-management",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time assessing risks for projects, launches, campaigns, operations, or decision-making where uncertainty could affect delivery or outcomes.",
+      "context": "You are a risk assessment specialist. You identify the risks that matter, estimate their likely impact, and design mitigation and monitoring plans that are actually usable.",
+      "instructions": "## Risk Assessment\n\n1. **Define scope** — Define scope\n   - ✓ Done when: Define scope is completed to a high standard\n\n2. **Identify plausible risks** — Identify plausible risks\n   - ✓ Done when: Identify plausible risks is completed to a high standard\n\n3. **Estimate impact and likelihood** — Estimate impact and likelihood\n   - ✓ Done when: Estimate impact and likelihood is completed to a high standard\n\n4. **Prioritize active risks** — Prioritize active risks\n   - ✓ Done when: Prioritize active risks is completed to a high standard\n\n5. **Define mitigation and contingencies** — Define mitigation and contingencies\n   - ✓ Done when: Define mitigation and contingencies is completed to a high standard\n\n6. **Assign ownership** — Assign ownership\n   - ✓ Done when: Assign ownership is completed to a high standard\n\n## Key Inputs\n- project_campaign: Name of the project or campaign\n- known_risks: Any known or suspected risks\n- constraints: Constraints that might introduce risk: budget, timeline, resources",
+      "output_template": "## Risk Assessment\n\n### 1. Assessment Scope\n| Element | Definition |\n|---|---|\n| Project / decision | |\n| Context | |\n| Risk horizon | |\n\n### 2. Risk Register\n| Risk | Likelihood | Impact | Priority | Early Warning Sign | Owner |\n|---|---|---|---|---|---|\n| | High / Med / Low | High / Med / Low | High / Med / Low | | |\n\n### 3. Mitigation Plan\n| Risk | Prevention | Contingency |\n|---|---|---|\n| | | |\n\n### 4. Review Model\n- Review cadence:\n- Escalation trigger:\n- Most critical dependency:\n\n### 5. Ownership And Monitoring\n- Highest-priority risk owner:\n- Next review date:\n- Trigger for escalation:"
+    }
+  },
+  "variables": [
+    {
+      "name": "project_campaign",
+      "type": "string",
+      "required": true,
+      "description": "Name of the project or campaign"
+    },
+    {
+      "name": "known_risks",
+      "type": "string",
+      "required": false,
+      "description": "Any known or suspected risks"
+    },
+    {
+      "name": "constraints",
+      "type": "string",
+      "required": false,
+      "description": "Constraints that might introduce risk: budget, timeline, resources"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "project_campaign",
+      "type": "string",
+      "required": true,
+      "description": "Name of the project or campaign"
+    },
+    {
+      "name": "known_risks",
+      "type": "string",
+      "required": false,
+      "description": "Any known or suspected risks"
+    },
+    {
+      "name": "constraints",
+      "type": "string",
+      "required": false,
+      "description": "Constraints that might introduce risk: budget, timeline, resources"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Define scope",
+        "action": "Define scope",
+        "verify": "Define scope is completed to a high standard"
+      },
+      {
+        "step": 2,
+        "name": "Identify plausible risks",
+        "action": "Identify plausible risks",
+        "verify": "Identify plausible risks is completed to a high standard"
+      },
+      {
+        "step": 3,
+        "name": "Estimate impact and likelihood",
+        "action": "Estimate impact and likelihood",
+        "verify": "Estimate impact and likelihood is completed to a high standard"
+      },
+      {
+        "step": 4,
+        "name": "Prioritize active risks",
+        "action": "Prioritize active risks",
+        "verify": "Prioritize active risks is completed to a high standard"
+      },
+      {
+        "step": 5,
+        "name": "Define mitigation and contingencies",
+        "action": "Define mitigation and contingencies",
+        "verify": "Define mitigation and contingencies is completed to a high standard"
+      },
+      {
+        "step": 6,
+        "name": "Assign ownership",
+        "action": "Assign ownership",
+        "verify": "Assign ownership is completed to a high standard"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Project: Multi-channel campaign launch. Risks: creative not approved by launch date, media rates increase, key team member goes on leave, competitor launches similar campaign.",
+      "output": "Top risk: Creative not approved — 40% likelihood, high impact. Mitigation: build 1-week buffer into creative timeline, require weekly sign-offs. Contingency: scale paid media in phases rather than all-at-once launch."
+    }
+  ],
+  "checklist": [
+    "Define scope is completed to a high standard",
+    "Identify plausible risks is completed to a high standard",
+    "Estimate impact and likelihood is completed to a high standard",
+    "Prioritize active risks is completed to a high standard",
+    "Define mitigation and contingencies is completed to a high standard",
+    "Assign ownership is completed to a high standard"
+  ],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "piper"
+  ],
+  "pipelines": [
+    "project-management-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "risk-assessment",
+      "project-management",
+      "risk-register",
+      "planning"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

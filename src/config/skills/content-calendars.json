@@ -1,0 +1,157 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "content-calendars",
+  "name": "Content Calendar Management",
+  "description": "Plans, schedules, and manages content across multiple platforms and channels — ensuring consistent publishing cadence, brand alignment, and optimal timing for each platform and audience.",
+  "category": "content",
+  "difficulty": "beginner",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time planning or managing a content calendar across platforms — to schedule content, ensure consistency, avoid gaps, and align content with campaigns and business objectives.",
+      "context": "You are a content operations specialist who builds and manages content calendars that ensure consistent publishing, brand alignment, and optimal timing across all channels.",
+      "instructions": "## Content Calendar Management\n\n1. **Objective Alignment** — Align calendar with business and campaign goals\n   - ✓ Done when: Calendar supports key business objectives\n\n2. **Cadence Planning** — Define publishing frequency per platform\n   - ✓ Done when: Cadence is realistic and consistent\n\n3. **Theme Mapping** — Map content themes to objectives and weeks\n   - ✓ Done when: Themes are coherent and varied\n\n4. **Calendar Build** — Assign content to specific dates and platforms\n   - ✓ Done when: Calendar is complete with no major gaps\n\n5. **Owner Assignment** — Assign create, review, and publish owners\n   - ✓ Done when: Every piece has a clear owner\n\n6. **Weekly Review** — Review pipeline status weekly\n   - ✓ Done when: Calendar stays on track\n\n## Key Inputs\n- brand_name: Brand being planned\n- platforms: Platforms to publish on\n- publishing_cadence: Publishing frequency per platform\n- campaigns: Upcoming campaigns to align with\n- content_themes: Content themes for the period",
+      "output_template": "## Content Calendar: {{brand_name}}\n\n### Calendar Overview\n| Field | Value |\n|-------|-------|\n| Brand | {{brand_name}} |\n| Period | |\n| Platforms | {{platforms}} |\n| Total content pieces | |\n| Date | {{date}} |\n\n### Publishing Cadence\n| Platform | Frequency | Best time | Owner |\n|----------|-----------|-----------|-------|\n| | | | |\n\n### Content Theme Mapping\n| Week | Theme | Business objective | Content pieces |\n|------|-------|-------------------|---------------|\n| | | | |\n\n### Campaign Overlay\n| Campaign | Start | End | Content needed |\n|---------|-------|-----|---------------|\n| | | | |\n\n### Monthly Calendar\n| Date | Platform | Content type | Topic | Owner | Status |\n|------|----------|-------------|-------|-------|--------|\n| | | | | | |\n\n### Content Pipeline\n| Status | Count | Pieces |\n|--------|-------|-------|\n| Ideated | | |\n| In progress | | |\n| Approved | | |\n| Scheduled | | |\n| Published | | |\n\n### Gaps and Risks\n| Gap/Risk | Date affected | Mitigation |\n|----------|--------------|------------|\n| | | |"
+    }
+  },
+  "variables": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand being planned"
+    },
+    {
+      "name": "platforms",
+      "type": "string",
+      "required": true,
+      "description": "Platforms to publish on"
+    },
+    {
+      "name": "publishing_cadence",
+      "type": "string",
+      "required": false,
+      "description": "Publishing frequency per platform"
+    },
+    {
+      "name": "campaigns",
+      "type": "string",
+      "required": false,
+      "description": "Upcoming campaigns to align with"
+    },
+    {
+      "name": "content_themes",
+      "type": "string",
+      "required": false,
+      "description": "Content themes for the period"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand being planned"
+    },
+    {
+      "name": "platforms",
+      "type": "string",
+      "required": true,
+      "description": "Platforms to publish on"
+    },
+    {
+      "name": "publishing_cadence",
+      "type": "string",
+      "required": false,
+      "description": "Publishing frequency per platform"
+    },
+    {
+      "name": "campaigns",
+      "type": "string",
+      "required": false,
+      "description": "Upcoming campaigns to align with"
+    },
+    {
+      "name": "content_themes",
+      "type": "string",
+      "required": false,
+      "description": "Content themes for the period"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Objective Alignment",
+        "action": "Align calendar with business and campaign goals",
+        "verify": "Calendar supports key business objectives"
+      },
+      {
+        "step": 2,
+        "name": "Cadence Planning",
+        "action": "Define publishing frequency per platform",
+        "verify": "Cadence is realistic and consistent"
+      },
+      {
+        "step": 3,
+        "name": "Theme Mapping",
+        "action": "Map content themes to objectives and weeks",
+        "verify": "Themes are coherent and varied"
+      },
+      {
+        "step": 4,
+        "name": "Calendar Build",
+        "action": "Assign content to specific dates and platforms",
+        "verify": "Calendar is complete with no major gaps"
+      },
+      {
+        "step": 5,
+        "name": "Owner Assignment",
+        "action": "Assign create, review, and publish owners",
+        "verify": "Every piece has a clear owner"
+      },
+      {
+        "step": 6,
+        "name": "Weekly Review",
+        "action": "Review pipeline status weekly",
+        "verify": "Calendar stays on track"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Build a 4-week content calendar for TechStart across LinkedIn, Instagram, and email. Publishing cadence: 3x/week LinkedIn, 2x/week Instagram, 1x/week email. Q2 campaign starts in week 3.",
+      "output": "Full content calendar with themes, platform assignments, owners, and campaign overlay"
+    }
+  ],
+  "checklist": [
+    "Calendar supports key business objectives",
+    "Cadence is realistic and consistent",
+    "Themes are coherent and varied",
+    "Calendar is complete with no major gaps",
+    "Every piece has a clear owner",
+    "Calendar stays on track"
+  ],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "echo"
+  ],
+  "pipelines": [
+    "content"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "content",
+      "social-media",
+      "planning",
+      "calendar"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

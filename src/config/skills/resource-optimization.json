@@ -1,0 +1,138 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "resource-optimization",
+  "name": "Resource Optimization",
+  "description": "Improves how time, budget, tools, and people are used so the team can create more impact with less waste.",
+  "category": "project-management",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time reallocating resources, improving utilization, reducing waste, or deciding how to deploy people, budget, or tools more effectively.",
+      "context": "You are an operations and resource strategist. You identify underused assets, overloaded points, and smarter allocations that improve output quality or efficiency.",
+      "instructions": "## Resource Optimization\n\n1. **Clarify constrained resource** — Clarify constrained resource\n   - ✓ Done when: Clarify constrained resource is completed to a high standard\n\n2. **Map current allocation** — Map current allocation\n   - ✓ Done when: Map current allocation is completed to a high standard\n\n3. **Identify impactful reallocations** — Identify impactful reallocations\n   - ✓ Done when: Identify impactful reallocations is completed to a high standard\n\n4. **Compare options** — Compare options\n   - ✓ Done when: Compare options is completed to a high standard\n\n5. **Recommend plan** — Recommend plan\n   - ✓ Done when: Recommend plan is completed to a high standard\n\n## Key Inputs\n- resources: Resources to optimize: people, budget, time, tools\n- priorities: Current priorities and what matters most\n- current_allocation: Current resource allocation across projects or tasks\n- optimization_goal: Goal: cost reduction, efficiency gain, better output quality",
+      "output_template": "## Resource Optimization Plan\n\n### 1. Resource Context\n| Element | Detail |\n|---|---|\n| Resource under review | |\n| Current pressure point | |\n| Desired outcome | |\n\n### 2. Current Allocation\n| Area | Current Use | Issue |\n|---|---|---|\n| | | |\n\n### 3. Optimization Options\n| Option | Expected Benefit | Risk | Feasibility |\n|---|---|---|---|\n| | | | High / Med / Low |\n\n### 4. Recommended Plan\n- Immediate reallocation:\n- Medium-term adjustment:\n- Review checkpoint:\n\n### 5. Risks And Dependencies\n- Main risk:\n- Dependency to manage:\n\n### 6. Tradeoff Summary\n- What improves:\n- What becomes more constrained:\n- How success will be judged:"
+    }
+  },
+  "variables": [
+    {
+      "name": "resources",
+      "type": "string",
+      "required": true,
+      "description": "Resources to optimize: people, budget, time, tools"
+    },
+    {
+      "name": "priorities",
+      "type": "string",
+      "required": true,
+      "description": "Current priorities and what matters most"
+    },
+    {
+      "name": "current_allocation",
+      "type": "string",
+      "required": false,
+      "description": "Current resource allocation across projects or tasks"
+    },
+    {
+      "name": "optimization_goal",
+      "type": "string",
+      "required": false,
+      "description": "Goal: cost reduction, efficiency gain, better output quality"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "resources",
+      "type": "string",
+      "required": true,
+      "description": "Resources to optimize: people, budget, time, tools"
+    },
+    {
+      "name": "priorities",
+      "type": "string",
+      "required": true,
+      "description": "Current priorities and what matters most"
+    },
+    {
+      "name": "current_allocation",
+      "type": "string",
+      "required": false,
+      "description": "Current resource allocation across projects or tasks"
+    },
+    {
+      "name": "optimization_goal",
+      "type": "string",
+      "required": false,
+      "description": "Goal: cost reduction, efficiency gain, better output quality"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Clarify constrained resource",
+        "action": "Clarify constrained resource",
+        "verify": "Clarify constrained resource is completed to a high standard"
+      },
+      {
+        "step": 2,
+        "name": "Map current allocation",
+        "action": "Map current allocation",
+        "verify": "Map current allocation is completed to a high standard"
+      },
+      {
+        "step": 3,
+        "name": "Identify impactful reallocations",
+        "action": "Identify impactful reallocations",
+        "verify": "Identify impactful reallocations is completed to a high standard"
+      },
+      {
+        "step": 4,
+        "name": "Compare options",
+        "action": "Compare options",
+        "verify": "Compare options is completed to a high standard"
+      },
+      {
+        "step": 5,
+        "name": "Recommend plan",
+        "action": "Recommend plan",
+        "verify": "Recommend plan is completed to a high standard"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Resources: $50K monthly media budget, 3-person media team. Priorities: 2 active clients, 1 new business prospect. Current: budget split 70/30 between clients. Goal: better ROI across both accounts.",
+      "output": "Found $8K/month was going to underperforming placements in Client B account. Rebalanced: shifted $8K to top-performing placements in Client A and added $5K test for new CTV inventory. Result: overall ROAS improved from 3.2x to 4.1x."
+    }
+  ],
+  "checklist": [
+    "Clarify constrained resource is completed to a high standard",
+    "Map current allocation is completed to a high standard",
+    "Identify impactful reallocations is completed to a high standard",
+    "Compare options is completed to a high standard",
+    "Recommend plan is completed to a high standard"
+  ],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "iris"
+  ],
+  "pipelines": [
+    "project-management-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "resource-optimization",
+      "efficiency",
+      "budget-optimization",
+      "project-management"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

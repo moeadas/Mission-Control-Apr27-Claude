@@ -1,0 +1,188 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "campaign-setup",
+  "name": "Campaign Setup",
+  "description": "Builds out paid media campaigns across platforms including campaign structure, ad groups, targeting, bidding, tracking, and creative brief delivery for execution.",
+  "category": "media",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time setting up a new paid media campaign — creating campaign structure, ad groups, audience targeting, bidding strategy, tracking, and preparing creative briefs.",
+      "context": "You are a media strategist building out campaign infrastructure with precision, ensuring proper tracking, targeting, and structure before creative assets are needed.",
+      "instructions": "## Campaign Setup\n\n1. **Platform Strategy** — Select and justify platform choices based on objectives\n   - ✓ Done when: Platforms are aligned with audience and goal\n\n2. **Structure Design** — Design campaign and ad group hierarchy\n   - ✓ Done when: Structure supports optimization and clear reporting\n\n3. **Targeting Configuration** — Set all targeting parameters per platform\n   - ✓ Done when: Targeting is specific yet scalable\n\n4. **Budget & Bidding** — Set budgets and bidding strategies per platform\n   - ✓ Done when: Budget allocation makes sense for objectives\n\n5. **Tracking Setup** — Configure conversion tracking and UTM parameters\n   - ✓ Done when: All tracking fires correctly in testing\n\n6. **Creative Briefs** — Issue creative briefs to design and copy teams\n   - ✓ Done when: Creative knows exactly what's needed\n\n7. **QA & Launch** — Review all settings and approve for launch\n   - ✓ Done when: Everything is correct before going live\n\n## Key Inputs\n- client_name: Client brand name\n- campaign_name: Name of the campaign\n- campaign_objective: Campaign objective (conversions, traffic, awareness, etc.)\n- platforms: Platforms to run campaign on\n- target_audience: Target audience description\n- budget: Campaign budget and structure\n- campaign_dates: Campaign start and end dates",
+      "output_template": "## Campaign Setup: {{client_name}} - {{campaign_name}}\n\n### Campaign Overview\n| Field | Value |\n|-------|-------|\n| Objective | {{campaign_objective}} |\n| Platforms | {{platforms}} |\n| Total budget | {{budget}} |\n| Duration | {{campaign_dates}} |\n| Campaign manager | |\n\n### Platform Breakdown\n\n#### {{platform_1}}\n| Setting | Value |\n|---------|-------|\n| Campaign type | |\n| Bidding strategy | |\n| Budget type | daily/campaign-lifetime |\n| Budget amount | |\n| Targeting | |\n| Placements | |\n| Start/end dates | |\n\n#### Ad Group Structure\n| Ad Group | Targeting | Bid | Est. Reach |\n|----------|-----------|-----|------------|\n| | | | |\n\n### Audience Targeting\n| Segment | Targeting Details | Size |\n|---------|------------------|------|\n| Primary | | |\n| Secondary | | |\n| Lookalike | | |\n\n### Tracking Configuration\n| Element | Setup |\n|---------|-------|\n| Pixel/floodlight | |\n| Conversions tracked | |\n| UTM structure | |\n| View-through window | |\n| Click-through window | |\n\n### Creative Brief Delivery\n| Ad Format | Dimensions | Specs | Brief Status |\n|-----------|-----------|-------|-------------|\n| | | | |\n\n### QA Checklist\n- [ ] All links verified and tracking correctly\n- [ ] Targeting reviewed and approved\n- [ ] Budget amounts confirmed\n- [ ] Dates correctly set\n- [ ] Pixel firing on test page\n- [ ] Creative assets mapped to ad groups"
+    }
+  },
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client brand name"
+    },
+    {
+      "name": "campaign_name",
+      "type": "string",
+      "required": true,
+      "description": "Name of the campaign"
+    },
+    {
+      "name": "campaign_objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objective (conversions, traffic, awareness, etc.)"
+    },
+    {
+      "name": "platforms",
+      "type": "string",
+      "required": true,
+      "description": "Platforms to run campaign on"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience description"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Campaign budget and structure"
+    },
+    {
+      "name": "campaign_dates",
+      "type": "string",
+      "required": false,
+      "description": "Campaign start and end dates"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client brand name"
+    },
+    {
+      "name": "campaign_name",
+      "type": "string",
+      "required": true,
+      "description": "Name of the campaign"
+    },
+    {
+      "name": "campaign_objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objective (conversions, traffic, awareness, etc.)"
+    },
+    {
+      "name": "platforms",
+      "type": "string",
+      "required": true,
+      "description": "Platforms to run campaign on"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience description"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Campaign budget and structure"
+    },
+    {
+      "name": "campaign_dates",
+      "type": "string",
+      "required": false,
+      "description": "Campaign start and end dates"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Platform Strategy",
+        "action": "Select and justify platform choices based on objectives",
+        "verify": "Platforms are aligned with audience and goal"
+      },
+      {
+        "step": 2,
+        "name": "Structure Design",
+        "action": "Design campaign and ad group hierarchy",
+        "verify": "Structure supports optimization and clear reporting"
+      },
+      {
+        "step": 3,
+        "name": "Targeting Configuration",
+        "action": "Set all targeting parameters per platform",
+        "verify": "Targeting is specific yet scalable"
+      },
+      {
+        "step": 4,
+        "name": "Budget & Bidding",
+        "action": "Set budgets and bidding strategies per platform",
+        "verify": "Budget allocation makes sense for objectives"
+      },
+      {
+        "step": 5,
+        "name": "Tracking Setup",
+        "action": "Configure conversion tracking and UTM parameters",
+        "verify": "All tracking fires correctly in testing"
+      },
+      {
+        "step": 6,
+        "name": "Creative Briefs",
+        "action": "Issue creative briefs to design and copy teams",
+        "verify": "Creative knows exactly what's needed"
+      },
+      {
+        "step": 7,
+        "name": "QA & Launch",
+        "action": "Review all settings and approve for launch",
+        "verify": "Everything is correct before going live"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Set up a lead-gen campaign for TechStart — B2B fintech, targeting finance directors in UAE and KSA. Budget 30K/month on Meta and LinkedIn. Objective: form fills.",
+      "output": "Full campaign structure with ad groups, targeting specs, tracking setup, and creative briefs for both platforms"
+    }
+  ],
+  "checklist": [
+    "Platforms are aligned with audience and goal",
+    "Structure supports optimization and clear reporting",
+    "Targeting is specific yet scalable",
+    "Budget allocation makes sense for objectives",
+    "All tracking fires correctly in testing",
+    "Creative knows exactly what's needed",
+    "Everything is correct before going live"
+  ],
+  "tools": [
+    "spreadsheet",
+    "analytics",
+    "ad-platform"
+  ],
+  "agents": [],
+  "pipelines": [
+    "campaign-launch"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "media",
+      "campaign",
+      "setup",
+      "paid-ads",
+      "tracking"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

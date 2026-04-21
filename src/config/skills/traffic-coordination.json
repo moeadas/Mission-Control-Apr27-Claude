@@ -1,0 +1,143 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "traffic-coordination",
+  "name": "Traffic Coordination",
+  "description": "Manages the flow of creative work through the agency's production pipeline — routing jobs to the right teams at the right time, managing priorities, preventing bottlenecks, and keeping creative projects moving from brief to delivery.",
+  "category": "project-management",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time managing creative production workflows, routing work between teams, managing agency capacity, or when the creative pipeline is backed up and jobs need to be prioritized and accelerated.",
+      "context": "You are a traffic coordinator for a creative advertising agency. You are the air traffic control tower — you know every job in the air, every gate that's open, and every plane that needs to land first. You keep the creative pipeline flowing without collisions.",
+      "instructions": "## Traffic Coordination\n\n1. **Log and assess briefs** — Receive, document, and prioritize all incoming work\n   - ✓ Done when: All briefs logged within 24 hours of receipt\n\n2. **Assess capacity** — Map current workload against team availability\n   - ✓ Done when: Capacity reviewed daily\n\n3. **Route to teams** — Assign jobs to appropriate teams with clear deadlines\n   - ✓ Done when: All jobs routed with start and due dates\n\n4. **Monitor pipeline health** — Track job progress, flag delays, and communicate status\n   - ✓ Done when: Pipeline reviewed and updated twice daily\n\n5. **Dynamic prioritization** — Rebalance workload when urgent work arrives\n   - ✓ Done when: Priority conflicts escalated to project lead\n\n6. **Post-mortem** — Review completed jobs for routing learnings\n   - ✓ Done when: Learnings documented and shared monthly\n\n## Key Inputs\n- briefs: List of incoming briefs requiring creative production\n- team_capacity: Current team availability and workload\n- pipeline_status: Current status of ongoing jobs in the pipeline\n- priority_conflicts: Any competing priorities or deadline conflicts",
+      "output_template": "## Traffic Coordination Report\n\n### Pipeline Overview\n| Job | Brief Received | Assigned To | Start Date | Due Date | Status | Priority |\n|-----|---------------|------------|------------|---------|--------|----------|\n| | | | | | | |\n\n### Capacity Analysis\n| Team Member | Current Jobs | Available Bandwidth | Next Available |\n|------------|-------------|-------------------|----------------|\n| | | | |\n\n### Bottlenecks Identified\n1. **Bottleneck**: ... — Affected jobs: ... — Resolution: ...\n\n### Priority Decisions\n| Decision | Reasoning | Impact |\n|----------|-----------|--------|\n| | | |\n\n### Recommendations\n> [How to clear the pipeline and prevent future bottlenecks]"
+    }
+  },
+  "variables": [
+    {
+      "name": "briefs",
+      "type": "string",
+      "required": true,
+      "description": "List of incoming briefs requiring creative production"
+    },
+    {
+      "name": "team_capacity",
+      "type": "string",
+      "required": true,
+      "description": "Current team availability and workload"
+    },
+    {
+      "name": "pipeline_status",
+      "type": "string",
+      "required": false,
+      "description": "Current status of ongoing jobs in the pipeline"
+    },
+    {
+      "name": "priority_conflicts",
+      "type": "string",
+      "required": false,
+      "description": "Any competing priorities or deadline conflicts"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "briefs",
+      "type": "string",
+      "required": true,
+      "description": "List of incoming briefs requiring creative production"
+    },
+    {
+      "name": "team_capacity",
+      "type": "string",
+      "required": true,
+      "description": "Current team availability and workload"
+    },
+    {
+      "name": "pipeline_status",
+      "type": "string",
+      "required": false,
+      "description": "Current status of ongoing jobs in the pipeline"
+    },
+    {
+      "name": "priority_conflicts",
+      "type": "string",
+      "required": false,
+      "description": "Any competing priorities or deadline conflicts"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Log and assess briefs",
+        "action": "Receive, document, and prioritize all incoming work",
+        "verify": "All briefs logged within 24 hours of receipt"
+      },
+      {
+        "step": 2,
+        "name": "Assess capacity",
+        "action": "Map current workload against team availability",
+        "verify": "Capacity reviewed daily"
+      },
+      {
+        "step": 3,
+        "name": "Route to teams",
+        "action": "Assign jobs to appropriate teams with clear deadlines",
+        "verify": "All jobs routed with start and due dates"
+      },
+      {
+        "step": 4,
+        "name": "Monitor pipeline health",
+        "action": "Track job progress, flag delays, and communicate status",
+        "verify": "Pipeline reviewed and updated twice daily"
+      },
+      {
+        "step": 5,
+        "name": "Dynamic prioritization",
+        "action": "Rebalance workload when urgent work arrives",
+        "verify": "Priority conflicts escalated to project lead"
+      },
+      {
+        "step": 6,
+        "name": "Post-mortem",
+        "action": "Review completed jobs for routing learnings",
+        "verify": "Learnings documented and shared monthly"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "briefs: 3 social campaigns, 1 video edit, 2 banner sets, all due within 2 weeks | team_capacity: 2 designers overloaded (85% capacity), 1 motion designer at 40% | pipeline_status: 5 jobs in progress, 3 waiting for creative | priority_conflicts: Client A is an executive sponsor and their job was submitted last",
+      "output": "Routed video edit to motion designer immediately, redistributed banner sets across both designers with staggered deadlines, negotiated 2-day extension for lowest-priority social campaign to ease designer load, weekly capacity report created"
+    }
+  ],
+  "checklist": [
+    "All briefs logged within 24 hours of receipt",
+    "Capacity reviewed daily",
+    "All jobs routed with start and due dates",
+    "Pipeline reviewed and updated twice daily",
+    "Priority conflicts escalated to project lead",
+    "Learnings documented and shared monthly"
+  ],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "piper"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "traffic",
+      "production-management",
+      "creative-operations",
+      "project-management"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

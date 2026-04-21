@@ -1,0 +1,138 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "category-analysis",
+  "name": "Category Analysis",
+  "description": "Analyzes product and service categories to understand market structure, competitive dynamics, key players, trends, and opportunities for positioning and growth.",
+  "category": "research",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time conducting a category analysis to understand how a market is structured, who the key players are, and where opportunities exist for a brand to compete or lead.",
+      "context": "You are a market researcher who conducts rigorous category analysis to understand market structure, competitive forces, and white space opportunities for strategic decision-making.",
+      "instructions": "## Category Analysis\n\n1. **Category Definition** — Clearly define what is and isn't in the category\n   - ✓ Done when: Category boundaries are clear and defensible\n\n2. **Structure Analysis** — Assess market structure and concentration\n   - ✓ Done when: Structure type is correctly identified\n\n3. **Player Mapping** — Map key players and their positions\n   - ✓ Done when: Players are accurately characterized\n\n4. **Trend Analysis** — Identify and assess category trends\n   - ✓ Done when: Trends are current and evidenced\n\n5. **Opportunity Identification** — Find white space and underserved needs\n   - ✓ Done when: Opportunities are real and ownable\n\n## Key Inputs\n- category_name: Category being analyzed\n- geography: Geographic scope of analysis\n- brand_name: Brand context for the analysis\n- competitors: Key competitors to focus on",
+      "output_template": "## Category Analysis: {{category_name}}\n\n### Category Definition\n**Scope:**\n**Value chain position:**\n**Category boundaries (in/out):**\n\n### Market Structure\n**Structure type:** Fragmented / Consolidating / Concentrated / Emerging\n**Market size:**\n**Growth rate:**\n\n### Key Players\n| Player | Market share | Strengths | Weaknesses | Strategy |\n|--------|-------------|-----------|------------|---------|\n| | | | | |\n\n### Competitive Dynamics\n**Rivalry intensity:**\n**Key success factors:**\n**Barriers to entry:**\n\n### Category Trends\n| Trend | Implication |\n|-------|-----------|\n| | |\n\n### Consumer Behavior\n**How buyers choose:**\n**Decision criteria:**\n**Purchase frequency:**\n\n### Opportunity Areas\n| Opportunity | Type | Viability |\n|------------|------|----------|\n| | | |\n\n### Strategic Recommendations\n| Recommendation | Rationale | Priority |\n|---------------|----------|----------|\n| | | |"
+    }
+  },
+  "variables": [
+    {
+      "name": "category_name",
+      "type": "string",
+      "required": true,
+      "description": "Category being analyzed"
+    },
+    {
+      "name": "geography",
+      "type": "string",
+      "required": false,
+      "description": "Geographic scope of analysis"
+    },
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": false,
+      "description": "Brand context for the analysis"
+    },
+    {
+      "name": "competitors",
+      "type": "string",
+      "required": false,
+      "description": "Key competitors to focus on"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "category_name",
+      "type": "string",
+      "required": true,
+      "description": "Category being analyzed"
+    },
+    {
+      "name": "geography",
+      "type": "string",
+      "required": false,
+      "description": "Geographic scope of analysis"
+    },
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": false,
+      "description": "Brand context for the analysis"
+    },
+    {
+      "name": "competitors",
+      "type": "string",
+      "required": false,
+      "description": "Key competitors to focus on"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Category Definition",
+        "action": "Clearly define what is and isn't in the category",
+        "verify": "Category boundaries are clear and defensible"
+      },
+      {
+        "step": 2,
+        "name": "Structure Analysis",
+        "action": "Assess market structure and concentration",
+        "verify": "Structure type is correctly identified"
+      },
+      {
+        "step": 3,
+        "name": "Player Mapping",
+        "action": "Map key players and their positions",
+        "verify": "Players are accurately characterized"
+      },
+      {
+        "step": 4,
+        "name": "Trend Analysis",
+        "action": "Identify and assess category trends",
+        "verify": "Trends are current and evidenced"
+      },
+      {
+        "step": 5,
+        "name": "Opportunity Identification",
+        "action": "Find white space and underserved needs",
+        "verify": "Opportunities are real and ownable"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Analyze the B2B expense management software category in MENA. Client is TechStart considering category entry.",
+      "output": "Full category analysis with market structure, key players, trends, and strategic recommendations"
+    }
+  ],
+  "checklist": [
+    "Category boundaries are clear and defensible",
+    "Structure type is correctly identified",
+    "Players are accurately characterized",
+    "Trends are current and evidenced",
+    "Opportunities are real and ownable"
+  ],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "atlas"
+  ],
+  "pipelines": [
+    "market-research"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "research",
+      "market-analysis",
+      "category",
+      "competitive"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

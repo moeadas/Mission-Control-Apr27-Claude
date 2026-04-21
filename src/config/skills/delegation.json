@@ -1,0 +1,154 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "delegation",
+  "name": "Delegation",
+  "description": "Builds delegation plans that move work effectively without losing clarity, accountability, or quality.",
+  "category": "project-management",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time delegating work, clarifying handoffs, improving manager leverage, or making sure work can be transferred cleanly across people or teams.",
+      "context": "You are a delegation and management specialist. You make delegation specific, accountable, and scalable so the receiver knows exactly what good looks like.",
+      "instructions": "## Delegation\n\n1. **Define delegated outcome** — Define delegated outcome\n   - ✓ Done when: Define delegated outcome is completed to a high standard\n\n2. **Clarify boundaries** — Clarify boundaries\n   - ✓ Done when: Clarify boundaries is completed to a high standard\n\n3. **Match work to capability** — Match work to capability\n   - ✓ Done when: Match work to capability is completed to a high standard\n\n4. **Define success and checkpoints** — Define success and checkpoints\n   - ✓ Done when: Define success and checkpoints is completed to a high standard\n\n5. **Support without taking work back** — Support without taking work back\n   - ✓ Done when: Support without taking work back is completed to a high standard\n\n6. **Review and improve delegation** — Review and improve delegation\n   - ✓ Done when: Review and improve delegation is completed to a high standard\n\n## Key Inputs\n- task: Description of the task to delegate\n- team_members: Available team members with their skills and capacity\n- deadline: Deadline for the delegated task\n- success_criteria: Clear definition of what success looks like\n- context: Background and strategic context for the task",
+      "output_template": "## Delegation Plan\n\n### 1. Delegation Summary\n| Element | Definition |\n|---|---|\n| Work being delegated | |\n| Desired outcome | |\n| Owner | |\n| Support person / manager | |\n\n### 2. Boundaries And Expectations\n- Decision rights:\n- Escalation trigger:\n- Non-negotiables:\n- Success criteria:\n\n### 3. Review Structure\n| Checkpoint | Purpose | Timing |\n|---|---|---|\n| | | |\n\n### 4. Risks To Watch\n- Capability gap:\n- Clarity gap:\n- Ownership gap:\n\n### 5. Follow-Up Notes\n- What to reinforce:\n- What to improve next time:"
+    }
+  },
+  "variables": [
+    {
+      "name": "task",
+      "type": "string",
+      "required": true,
+      "description": "Description of the task to delegate"
+    },
+    {
+      "name": "team_members",
+      "type": "string",
+      "required": true,
+      "description": "Available team members with their skills and capacity"
+    },
+    {
+      "name": "deadline",
+      "type": "string",
+      "required": true,
+      "description": "Deadline for the delegated task"
+    },
+    {
+      "name": "success_criteria",
+      "type": "string",
+      "required": false,
+      "description": "Clear definition of what success looks like"
+    },
+    {
+      "name": "context",
+      "type": "string",
+      "required": false,
+      "description": "Background and strategic context for the task"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "task",
+      "type": "string",
+      "required": true,
+      "description": "Description of the task to delegate"
+    },
+    {
+      "name": "team_members",
+      "type": "string",
+      "required": true,
+      "description": "Available team members with their skills and capacity"
+    },
+    {
+      "name": "deadline",
+      "type": "string",
+      "required": true,
+      "description": "Deadline for the delegated task"
+    },
+    {
+      "name": "success_criteria",
+      "type": "string",
+      "required": false,
+      "description": "Clear definition of what success looks like"
+    },
+    {
+      "name": "context",
+      "type": "string",
+      "required": false,
+      "description": "Background and strategic context for the task"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Define delegated outcome",
+        "action": "Define delegated outcome",
+        "verify": "Define delegated outcome is completed to a high standard"
+      },
+      {
+        "step": 2,
+        "name": "Clarify boundaries",
+        "action": "Clarify boundaries",
+        "verify": "Clarify boundaries is completed to a high standard"
+      },
+      {
+        "step": 3,
+        "name": "Match work to capability",
+        "action": "Match work to capability",
+        "verify": "Match work to capability is completed to a high standard"
+      },
+      {
+        "step": 4,
+        "name": "Define success and checkpoints",
+        "action": "Define success and checkpoints",
+        "verify": "Define success and checkpoints is completed to a high standard"
+      },
+      {
+        "step": 5,
+        "name": "Support without taking work back",
+        "action": "Support without taking work back",
+        "verify": "Support without taking work back is completed to a high standard"
+      },
+      {
+        "step": 6,
+        "name": "Review and improve delegation",
+        "action": "Review and improve delegation",
+        "verify": "Review and improve delegation is completed to a high standard"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Task: Write campaign performance report for Q1. Team: Senior analyst (bandwidth: busy), Junior analyst (bandwidth: available, needs development in reporting). Deadline: Friday. Criteria: clear insights, accurate data, client-ready format.",
+      "output": "Delegated to junior analyst with senior analyst as checkpoint resource. Briefed with context: 'This report goes to our most strategic client — they use it to make budget decisions. Here's the template, and John is available for questions.' Checkpoints: draft outline Tuesday, final draft Thursday."
+    }
+  ],
+  "checklist": [
+    "Define delegated outcome is completed to a high standard",
+    "Clarify boundaries is completed to a high standard",
+    "Match work to capability is completed to a high standard",
+    "Define success and checkpoints is completed to a high standard",
+    "Support without taking work back is completed to a high standard",
+    "Review and improve delegation is completed to a high standard"
+  ],
+  "tools": [
+    "document"
+  ],
+  "agents": [],
+  "pipelines": [
+    "project-management-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "delegation",
+      "project-management",
+      "team-management",
+      "leadership"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

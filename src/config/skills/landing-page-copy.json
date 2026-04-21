@@ -1,0 +1,163 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "landing-page-copy",
+  "name": "Landing Page Copy",
+  "description": "Builds conversion-focused landing page copy systems that clarify the offer, reduce friction, and move visitors toward one primary action.",
+  "category": "content",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time writing or restructuring landing pages, hero sections, offer pages, campaign pages, or conversion-focused product/service pages.",
+      "context": "You are a landing page conversion copy specialist. You structure pages so that message hierarchy, proof, objections, CTA flow, and section order support conversion rather than just describing the offer.",
+      "instructions": "## Landing Page Copy\n\n1. **Define objective** — Define objective\n   - ✓ Done when: Define objective is completed to a high standard\n\n2. **Clarify problem and objections** — Clarify problem and objections\n   - ✓ Done when: Clarify problem and objections is completed to a high standard\n\n3. **Build message hierarchy** — Build message hierarchy\n   - ✓ Done when: Build message hierarchy is completed to a high standard\n\n4. **Write sections by role** — Write sections by role\n   - ✓ Done when: Write sections by role is completed to a high standard\n\n5. **Strengthen proof** — Strengthen proof\n   - ✓ Done when: Strengthen proof is completed to a high standard\n\n6. **Tune CTAs** — Tune CTAs\n   - ✓ Done when: Tune CTAs is completed to a high standard\n\n7. **Review scanability** — Review scanability\n   - ✓ Done when: Review scanability is completed to a high standard\n\n## Key Inputs\n- offer: Product, service, or promotion on the landing page\n- goal: Primary conversion goal: sign-up, purchase, lead capture, download\n- audience: Target audience and their primary pain point\n- key_benefits: Key benefits to highlight\n- proof_points: Testimonials, stats, or social proof available",
+      "output_template": "## Landing Page Copy Blueprint\n\n### 1. Conversion Strategy\n| Element | Decision |\n|---|---|\n| Primary Goal | |\n| Audience | |\n| Core Promise | |\n| Primary Objection | |\n| Main CTA | |\n\n### 2. Hero Section\n- Headline:\n- Subheadline:\n- CTA:\n- Supporting proof line:\n\n### 3. Page Sections\n| Section | Purpose | Draft Copy / Key Points |\n|---|---|---|\n| Problem | | |\n| Solution | | |\n| Benefits | | |\n| Proof | | |\n| Objections | | |\n| Final CTA | | |\n\n### 4. Proof Assets Needed\n- \n- \n- \n\n### 5. Optimization Notes\n- CTA placement recommendations:\n- Section order changes:\n- Mobile scanability notes:\n- A/B test ideas:"
+    }
+  },
+  "variables": [
+    {
+      "name": "offer",
+      "type": "string",
+      "required": true,
+      "description": "Product, service, or promotion on the landing page"
+    },
+    {
+      "name": "goal",
+      "type": "string",
+      "required": true,
+      "description": "Primary conversion goal: sign-up, purchase, lead capture, download"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience and their primary pain point"
+    },
+    {
+      "name": "key_benefits",
+      "type": "string",
+      "required": false,
+      "description": "Key benefits to highlight"
+    },
+    {
+      "name": "proof_points",
+      "type": "string",
+      "required": false,
+      "description": "Testimonials, stats, or social proof available"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "offer",
+      "type": "string",
+      "required": true,
+      "description": "Product, service, or promotion on the landing page"
+    },
+    {
+      "name": "goal",
+      "type": "string",
+      "required": true,
+      "description": "Primary conversion goal: sign-up, purchase, lead capture, download"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience and their primary pain point"
+    },
+    {
+      "name": "key_benefits",
+      "type": "string",
+      "required": false,
+      "description": "Key benefits to highlight"
+    },
+    {
+      "name": "proof_points",
+      "type": "string",
+      "required": false,
+      "description": "Testimonials, stats, or social proof available"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Define objective",
+        "action": "Define objective",
+        "verify": "Define objective is completed to a high standard"
+      },
+      {
+        "step": 2,
+        "name": "Clarify problem and objections",
+        "action": "Clarify problem and objections",
+        "verify": "Clarify problem and objections is completed to a high standard"
+      },
+      {
+        "step": 3,
+        "name": "Build message hierarchy",
+        "action": "Build message hierarchy",
+        "verify": "Build message hierarchy is completed to a high standard"
+      },
+      {
+        "step": 4,
+        "name": "Write sections by role",
+        "action": "Write sections by role",
+        "verify": "Write sections by role is completed to a high standard"
+      },
+      {
+        "step": 5,
+        "name": "Strengthen proof",
+        "action": "Strengthen proof",
+        "verify": "Strengthen proof is completed to a high standard"
+      },
+      {
+        "step": 6,
+        "name": "Tune CTAs",
+        "action": "Tune CTAs",
+        "verify": "Tune CTAs is completed to a high standard"
+      },
+      {
+        "step": 7,
+        "name": "Review scanability",
+        "action": "Review scanability",
+        "verify": "Review scanability is completed to a high standard"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Offer: Free trial of CRM software. Goal: Free trial sign-ups. Audience: Sales managers at small businesses, frustrated with spreadsheets. Key benefit: Set up in 5 minutes. Proof: 4.8 G2 rating, 2,000+ companies.",
+      "output": "Above fold: 'Finally, a CRM Your Team Will Actually Use' / 'Set up in 5 minutes. No training required.' / 'Start Free Trial' button. Body: Problem (spreadsheets lose deals), Solution (CRM that works in minutes), Features (5-min setup, mobile app, email tracking), Proof (G2 rating, logos, testimonial), Risk reversal (cancel anytime). Result: 34% increase in trial signups vs. previous page."
+    }
+  ],
+  "checklist": [
+    "Define objective is completed to a high standard",
+    "Clarify problem and objections is completed to a high standard",
+    "Build message hierarchy is completed to a high standard",
+    "Write sections by role is completed to a high standard",
+    "Strengthen proof is completed to a high standard",
+    "Tune CTAs is completed to a high standard",
+    "Review scanability is completed to a high standard"
+  ],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "echo"
+  ],
+  "pipelines": [
+    "content-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "landing-page",
+      "copywriting",
+      "conversion",
+      "content"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

@@ -1,0 +1,156 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "connected-tv",
+  "name": "Connected TV Advertising",
+  "description": "Plans, executes, and optimizes advertising campaigns on connected TV (CTV) platforms — including streaming services like YouTube TV, Hulu, Roku, and other OTT platforms — to reach audiences in a premium, engaged viewing environment.",
+  "category": "creative",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time planning or managing connected tv (ctv/ott) advertising campaigns — to select platforms, define audience targeting, allocate budget, and optimize for view-through and conversion goals.",
+      "context": "You are a CTV media strategist who leverages the unique, high-engagement environment of connected TV to deliver brand-building and performance advertising campaigns.",
+      "instructions": "## Connected TV Advertising\n\n1. **Objective Definition** — Define campaign objective and success metrics\n   - ✓ Done when: Objective is measurable\n\n2. **Platform Selection** — Select CTV platforms based on audience fit\n   - ✓ Done when: Platforms reach the target audience\n\n3. **Audience Targeting** — Define targeting parameters\n   - ✓ Done when: Targeting is specific and achievable\n\n4. **Budget Allocation** — Allocate budget across platforms\n   - ✓ Done when: Budget is realistic for the selected mix\n\n5. **Creative Specs** — Define creative requirements for CTV\n   - ✓ Done when: Creative specs match platform requirements\n\n6. **Optimization Plan** — Define optimization triggers and actions\n   - ✓ Done when: Optimization is data-driven\n\n## Key Inputs\n- campaign_objective: Campaign objective (brand awareness, consideration, conversions)\n- target_audience: Target audience definition\n- budget: Campaign budget\n- platforms: CTV platforms to use\n- creative_assets: Available creative assets",
+      "output_template": "## Connected TV Campaign Plan\n\n### Campaign Overview\n| Field | Value |\n|-------|-------|\n| Objective | {{campaign_objective}} |\n| Target audience | {{target_audience}} |\n| Budget | {{budget}} |\n| Date | {{date}} |\n\n### Platform Selection\n| Platform | Audience fit | CPM | Allocated budget | Format |\n|---------|------------|-----|----------------|-------|\n| | | | | |\n\n### Audience Targeting\n| Targeting type | Specification |\n|---------------|--------------|\n| Device | |\n| Behavioral | |\n| Contextual | |\n| Retargeting | |\n\n### Ad Format\n| Format | Placement | Length | Platform |\n|-------|----------|--------|---------|\n| Pre-roll | | | |\n| Mid-roll | | | |\n\n### Creative Specifications\n| Spec | Requirement |\n|------|-------------|\n| Resolution | |\n| Aspect ratio | |\n| Length | |\n| Format | |\n| Click destination | |\n\n### Pacing & Frequency\n| Metric | Target |\n|--------|--------|\n| Target CPM | |\n| Target VTR | |\n| Frequency cap | |\n| Impressions goal | |\n\n### Expected Performance\n| Metric | Target |\n|--------|--------|\n| Reach | |\n| Completion rate | |\n| Brand lift | |\n\n### Optimization Plan\n| Signal | Action |\n|--------|--------|\n| Low VTR | |\n| Low completion | |\n| High CPA | |"
+    }
+  },
+  "variables": [
+    {
+      "name": "campaign_objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objective (brand awareness, consideration, conversions)"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience definition"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Campaign budget"
+    },
+    {
+      "name": "platforms",
+      "type": "string",
+      "required": false,
+      "description": "CTV platforms to use"
+    },
+    {
+      "name": "creative_assets",
+      "type": "string",
+      "required": false,
+      "description": "Available creative assets"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "campaign_objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objective (brand awareness, consideration, conversions)"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience definition"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Campaign budget"
+    },
+    {
+      "name": "platforms",
+      "type": "string",
+      "required": false,
+      "description": "CTV platforms to use"
+    },
+    {
+      "name": "creative_assets",
+      "type": "string",
+      "required": false,
+      "description": "Available creative assets"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Objective Definition",
+        "action": "Define campaign objective and success metrics",
+        "verify": "Objective is measurable"
+      },
+      {
+        "step": 2,
+        "name": "Platform Selection",
+        "action": "Select CTV platforms based on audience fit",
+        "verify": "Platforms reach the target audience"
+      },
+      {
+        "step": 3,
+        "name": "Audience Targeting",
+        "action": "Define targeting parameters",
+        "verify": "Targeting is specific and achievable"
+      },
+      {
+        "step": 4,
+        "name": "Budget Allocation",
+        "action": "Allocate budget across platforms",
+        "verify": "Budget is realistic for the selected mix"
+      },
+      {
+        "step": 5,
+        "name": "Creative Specs",
+        "action": "Define creative requirements for CTV",
+        "verify": "Creative specs match platform requirements"
+      },
+      {
+        "step": 6,
+        "name": "Optimization Plan",
+        "action": "Define optimization triggers and actions",
+        "verify": "Optimization is data-driven"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Plan a CTV campaign for TechStart. Objective: brand awareness among CFOs and finance VPs. Budget: $40,000. Platforms: YouTube TV and Hulu. 6-week campaign.",
+      "output": "Full CTV campaign plan with platform selection, targeting, budget allocation, and optimization plan"
+    }
+  ],
+  "checklist": [
+    "Objective is measurable",
+    "Platforms reach the target audience",
+    "Targeting is specific and achievable",
+    "Budget is realistic for the selected mix",
+    "Creative specs match platform requirements",
+    "Optimization is data-driven"
+  ],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [],
+  "pipelines": [
+    "video-advertising"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "advertising",
+      "CTV",
+      "OTT",
+      "streaming",
+      "video"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

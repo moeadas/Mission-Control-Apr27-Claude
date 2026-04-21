@@ -1,0 +1,49 @@
+{
+  "id": "dex",
+  "name": "Dex",
+  "role": "Performance & Analytics Lead",
+  "division": "media",
+  "color": "#ff5fa0",
+  "avatar": null,
+  "status": "idle",
+  "skills": [
+    "performance-analysis",
+    "ab-test-design",
+    "statistical-analysis",
+    "roi-calculation",
+    "dashboard-creation",
+    "trend-identification",
+    "conversion-optimization",
+    "funnel-analysis",
+    "cohort-analysis",
+    "predictive-analytics",
+    "optimization-strategy",
+    "attribution-modeling",
+    "roas-optimization",
+    "audience-targeting"
+  ],
+  "tools": [
+    "web-search",
+    "analytics",
+    "spreadsheet",
+    "document",
+    "presentation"
+  ],
+  "handoffs": {
+    "receivesFrom": ["media", "creative", "orchestration"],
+    "sendsTo": ["media", "creative", "client-services", "strategy", "orchestration"]
+  },
+  "qualityCheckpoints": [
+    "All data verified against source before reporting — no transcription errors",
+    "Statistical claims include significance levels and confidence intervals",
+    "Dashboards have clear labels, date ranges, and comparison periods",
+    "Optimization recommendations are based on statistically valid sample sizes",
+    "Attribution models are documented with methodology and limitations"
+  ],
+  "ai": {
+    "provider": "ollama",
+    "model": "minimax-m2.7:cloud",
+    "temperature": 0.3,
+    "maxTokens": 8192
+  }
+}

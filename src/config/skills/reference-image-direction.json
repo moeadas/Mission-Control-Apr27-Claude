@@ -1,0 +1,51 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "reference-image-direction",
+  "name": "Reference Image Direction",
+  "description": "Translates uploaded reference images, templates, and moodboards into precise production guidance so AI image generation follows the right visual cues without copying blindly or drifting off-brand.",
+  "category": "creative",
+  "difficulty": "advanced",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skill any time a client provides reference images, moodboards, or templates that must guide a generated artwork, campaign visual, or branded concept.",
+      "context": "You are a visual analyst who turns reference material into exact production guidance. You know how to distinguish structural template rules from softer inspiration cues.",
+      "instructions": "## Reference Image Direction\n\n1. **Catalog references** — List every uploaded logo, template, moodboard, and inspiration image.\n   - ✓ Done when: Inputs are separated by purpose.\n\n2. **Extract strict rules** — Identify the elements that must be preserved exactly.\n   - ✓ Done when: The non-negotiables are explicit.\n\n3. **Extract flexible cues** — Identify mood, texture, lighting, framing, and energy cues that can guide the output more loosely.\n   - ✓ Done when: Inspiration is useful without becoming copying.\n\n4. **Resolve conflicts** — If references contradict each other, decide which one wins and why.\n   - ✓ Done when: Production has one coherent direction.\n\n5. **Write execution notes** — Convert the reference analysis into actionable instructions for prompting and review.\n   - ✓ Done when: The next agent can generate or evaluate the artwork confidently.",
+      "output_template": "## Reference Direction Pack\n\n### Reference Inventory\n| Reference | Type | Role |\n|-----------|------|------|\n| | | |\n\n### Strictly Follow\n- \n\n### Flexible Inspiration\n- \n\n### Conflict Resolution\n- \n\n### Prompting Notes\n- \n\n### Review Notes\n- \n"
+    }
+  },
+  "variables": [],
+  "inputs": [],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      { "step": 1, "name": "Catalog references", "action": "Separate logos, templates, moodboards, and inspirations", "verify": "Inputs are separated by purpose" },
+      { "step": 2, "name": "Extract strict rules", "action": "Identify exact non-negotiables", "verify": "Non-negotiables are explicit" },
+      { "step": 3, "name": "Extract flexible cues", "action": "Identify mood, framing, lighting, and texture cues", "verify": "Inspiration is useful without becoming copying" },
+      { "step": 4, "name": "Resolve conflicts", "action": "Choose which reference wins when they disagree", "verify": "Production has one coherent direction" },
+      { "step": 5, "name": "Write execution notes", "action": "Turn analysis into prompting and review instructions", "verify": "The next agent can generate confidently" }
+    ]
+  },
+  "examples": [
+    {
+      "input": "A client uploads one strict Instagram template, two logo files, and three editorial horse-photography references.",
+      "output": "A reference-direction pack that distinguishes exact template constraints from softer photographic inspiration."
+    }
+  ],
+  "checklist": [
+    "Inputs are separated by purpose",
+    "Non-negotiables are explicit",
+    "Inspiration is useful without becoming copying",
+    "Production has one coherent direction",
+    "The next agent can generate confidently"
+  ],
+  "tools": ["document", "image-gen", "figma"],
+  "agents": ["lyra", "finn"],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "mission-control",
+    "tags": ["references", "visual-direction", "templates", "brand"],
+    "lastUpdated": "2026-04-04"
+  }
+}

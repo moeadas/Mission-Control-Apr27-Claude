@@ -1,0 +1,389 @@
+{
+  "toolCategories": [
+    {
+      "id": "productivity",
+      "name": "Productivity & Project Management",
+      "icon": "briefcase",
+      "tools": [
+        {
+          "id": "linear",
+          "name": "Linear",
+          "description": "Issue tracking and project management for software teams",
+          "category": "productivity",
+          "apiConnected": false,
+          "actions": ["create-issue", "update-issue", "list-projects", "create-sprint"],
+          "documentation": "https://linear.app/docs"
+        },
+        {
+          "id": "notion",
+          "name": "Notion",
+          "description": "All-in-one workspace for docs, wikis, and project management",
+          "category": "productivity",
+          "apiConnected": false,
+          "actions": ["create-page", "update-database", "query-database", "create-comment"],
+          "documentation": "https://developers.notion.com/"
+        },
+        {
+          "id": "asana",
+          "name": "Asana",
+          "description": "Work management platform for teams",
+          "category": "productivity",
+          "apiConnected": false,
+          "actions": ["create-task", "update-task", "list-projects", "add-subtask"],
+          "documentation": "https://developers.asana.com/"
+        },
+        {
+          "id": "trello",
+          "name": "Trello",
+          "description": "Kanban-style boards for task management",
+          "category": "productivity",
+          "apiConnected": false,
+          "actions": ["create-board", "create-card", "move-card", "add-member"],
+          "documentation": "https://developer.atlassian.com/cloud/trello/"
+        },
+        {
+          "id": "spreadsheet",
+          "name": "Google Sheets",
+          "description": "Spreadsheets for data, tracking, and reporting",
+          "category": "productivity",
+          "apiConnected": false,
+          "actions": ["create-sheet", "update-cell", "read-range", "create-chart"],
+          "documentation": "https://developers.google.com/sheets/api"
+        }
+      ]
+    },
+    {
+      "id": "advertising",
+      "name": "Advertising & Media",
+      "icon": "megaphone",
+      "tools": [
+        {
+          "id": "google-ads",
+          "name": "Google Ads",
+          "description": "Search, display, and YouTube advertising platform",
+          "category": "advertising",
+          "apiConnected": false,
+          "actions": ["create-campaign", "pause-campaign", "get-performance", "optimize-keywords"],
+          "documentation": "https://developers.google.com/google-ads/api/docs"
+        },
+        {
+          "id": "meta-business",
+          "name": "Meta Business",
+          "description": "Facebook and Instagram advertising",
+          "category": "advertising",
+          "apiConnected": false,
+          "actions": ["create-campaign", "get-insights", "create-adset", "upload-creative"],
+          "documentation": "https://developers.facebook.com/docs/marketing-apis"
+        },
+        {
+          "id": "tiktok-ads",
+          "name": "TikTok Ads",
+          "description": "TikTok advertising platform",
+          "category": "advertising",
+          "apiConnected": false,
+          "actions": ["create-campaign", "get-reporting", "upload-video", "manage-audience"],
+          "documentation": "https://business-api.tiktok.com/portal/docs"
+        },
+        {
+          "id": "twitter-ads",
+          "name": "X (Twitter) Ads",
+          "description": "Twitter/X advertising platform",
+          "category": "advertising",
+          "apiConnected": false,
+          "actions": ["create-campaign", "get-analytics", "manage-targeting"],
+          "documentation": "https://developer.twitter.com/en/docs/twitter-ads-api"
+        },
+        {
+          "id": "linkedin-ads",
+          "name": "LinkedIn Ads",
+          "description": "B2B advertising on LinkedIn",
+          "category": "advertising",
+          "apiConnected": false,
+          "actions": ["create-campaign", "get-performance", "manage-audience"],
+          "documentation": "https://learn.microsoft.com/en-us/linkedin/marketing/"
+        }
+      ]
+    },
+    {
+      "id": "analytics",
+      "name": "Analytics & Insights",
+      "icon": "chart",
+      "tools": [
+        {
+          "id": "google-analytics",
+          "name": "Google Analytics 4",
+          "description": "Website and app analytics",
+          "category": "analytics",
+          "apiConnected": false,
+          "actions": ["get-report", "get-realtime", "get-conversions", "create-audience"],
+          "documentation": "https://developers.google.com/analytics/devguides/reporting/data/v1"
+        },
+        {
+          "id": "google-search-console",
+          "name": "Google Search Console",
+          "description": "Search performance and indexing data",
+          "category": "analytics",
+          "apiConnected": false,
+          "actions": ["get-performance", "get-indexing", "get-sitemaps", "inspect-url"],
+          "documentation": "https://developers.google.com/webmaster-tools"
+        },
+        {
+          "id": "meta-analytics",
+          "name": "Meta Analytics",
+          "description": "Facebook and Instagram insights",
+          "category": "analytics",
+          "apiConnected": false,
+          "actions": ["get-page-insights", "get-post-insights", "get-audience-insights"],
+          "documentation": "https://developers.facebook.com/docs/graph-api/reference/insights"
+        },
+        {
+          "id": "semrush",
+          "name": "SEMrush",
+          "description": "SEO and competitor research platform",
+          "category": "analytics",
+          "apiConnected": false,
+          "actions": ["keyword-research", "domain-analysis", "backlink-audit", "traffic-analysis"],
+          "documentation": "https://developers.semrush.com/api/"
+        },
+        {
+          "id": "ahrefs",
+          "name": "Ahrefs",
+          "description": "SEO toolset for backlinks and keyword research",
+          "category": "analytics",
+          "apiConnected": false,
+          "actions": ["site-audit", "backlink-check", "keyword-explorer", "content-explorer"],
+          "documentation": "https://app.ahrefs.com/api"
+        },
+        {
+          "id": "hotjar",
+          "name": "Hotjar",
+          "description": "User behavior analytics and heatmaps",
+          "category": "analytics",
+          "apiConnected": false,
+          "actions": ["get-heatmaps", "get-recordings", "get-surveys", "get-funnels"],
+          "documentation": "https://api.hotjar.com/"
+        }
+      ]
+    },
+    {
+      "id": "creative",
+      "name": "Creative & Design",
+      "icon": "palette",
+      "tools": [
+        {
+          "id": "figma",
+          "name": "Figma",
+          "description": "Collaborative design tool",
+          "category": "creative",
+          "apiConnected": false,
+          "actions": ["get-file", "create-prototype", "export-assets", "list-projects"],
+          "documentation": "https://www.figma.com/developers/api"
+        },
+        {
+          "id": "canva",
+          "name": "Canva",
+          "description": "Design platform for social media and presentations",
+          "category": "creative",
+          "apiConnected": false,
+          "actions": ["create-design", "upload-brand-kit", "autofill", "export-design"],
+          "documentation": "https://www.canva.com/developers/"
+        },
+        {
+          "id": "adobe-creative-cloud",
+          "name": "Adobe Creative Cloud",
+          "description": "Photoshop, Illustrator, and other Adobe tools",
+          "category": "creative",
+          "apiConnected": false,
+          "actions": ["photoshop-api", "illustrator-api", "pdf-services", "asset-management"],
+          "documentation": "https://developer.adobe.com/"
+        },
+        {
+          "id": "image-gen",
+          "name": "Image Generation (Nano Banana 2)",
+          "description": "AI image generation for creatives",
+          "category": "creative",
+          "apiConnected": false,
+          "actions": ["generate-image", "variations", "inpaint", "outpaint"],
+          "documentation": "https://docs.openai.com/images-api"
+        },
+        {
+          "id": "stock-photos",
+          "name": "Stock Photo APIs",
+          "description": "Access to Unsplash, Pexels, Shutterstock",
+          "category": "creative",
+          "apiConnected": false,
+          "actions": ["search-photos", "download-photo", "get-collections"],
+          "documentation": "https://unsplash.com/developers"
+        }
+      ]
+    },
+    {
+      "id": "communication",
+      "name": "Communication & Collaboration",
+      "icon": "message",
+      "tools": [
+        {
+          "id": "slack",
+          "name": "Slack",
+          "description": "Team communication and notifications",
+          "category": "communication",
+          "apiConnected": false,
+          "actions": ["send-message", "create-channel", "schedule-message", "upload-file"],
+          "documentation": "https://api.slack.com/"
+        },
+        {
+          "id": "zoom",
+          "name": "Zoom",
+          "description": "Video conferencing",
+          "category": "communication",
+          "apiConnected": false,
+          "actions": ["schedule-meeting", "get-recordings", "send-invite"],
+          "documentation": "https://marketplace.zoom.us/"
+        },
+        {
+          "id": "email",
+          "name": "Email (Gmail/SMTP)",
+          "description": "Email sending and management",
+          "category": "communication",
+          "apiConnected": false,
+          "actions": ["send-email", "schedule-email", "get-threads", "create-draft"],
+          "documentation": "https://developers.google.com/gmail/api"
+        }
+      ]
+    },
+    {
+      "id": "research",
+      "name": "Research & Intelligence",
+      "icon": "search",
+      "tools": [
+        {
+          "id": "web-search",
+          "name": "Web Search",
+          "description": "General web search for research",
+          "category": "research",
+          "apiConnected": true,
+          "actions": ["search", "get-top-results", "get-snippet"],
+          "documentation": "https://developers.google.com/custom-search"
+        },
+        {
+          "id": "social-listening",
+          "name": "Social Listening",
+          "description": "Monitor social media mentions and trends",
+          "category": "research",
+          "apiConnected": false,
+          "actions": ["monitor-mentions", "track-hashtags", "analyze-sentiment", "get-trends"],
+          "documentation": "https://brandwatch.com/developers/"
+        },
+        {
+          "id": "survey-tools",
+          "name": "Survey Tools",
+          "description": "Typeform, Google Forms, SurveyMonkey",
+          "category": "research",
+          "apiConnected": false,
+          "actions": ["create-survey", "get-responses", "analyze-results"],
+          "documentation": "https://developer.typeform.com/"
+        }
+      ]
+    },
+    {
+      "id": "content",
+      "name": "Content & Publishing",
+      "icon": "file-text",
+      "tools": [
+        {
+          "id": "wordpress",
+          "name": "WordPress",
+          "description": "CMS and website publishing",
+          "category": "content",
+          "apiConnected": false,
+          "actions": ["create-post", "update-page", "upload-media", "get-analytics"],
+          "documentation": "https://developer.wordpress.org/rest-api/"
+        },
+        {
+          "id": "webflow",
+          "name": "Webflow",
+          "description": "No-code website builder",
+          "category": "content",
+          "apiConnected": false,
+          "actions": ["publish-site", "update-content", "get-forms"],
+          "documentation": "https://developers.webflow.com/"
+        },
+        {
+          "id": "content-management",
+          "name": "Content Management",
+          "description": "Content storage and versioning",
+          "category": "content",
+          "apiConnected": true,
+          "actions": ["create-content", "update-content", "version-content", "publish-content"],
+          "documentation": ""
+        },
+        {
+          "id": "social",
+          "name": "Social Media (Scheduling)",
+          "description": "Schedule and publish social posts",
+          "category": "content",
+          "apiConnected": false,
+          "actions": ["schedule-post", "get-calendar", "publish-now", "get-analytics"],
+          "documentation": "https://developers.hootsuite.com/"
+        }
+      ]
+    },
+    {
+      "id": "document",
+      "name": "Document & Export",
+      "icon": "file",
+      "tools": [
+        {
+          "id": "document",
+          "name": "Document Generation",
+          "description": "Create PDFs, DOCX, and other documents",
+          "category": "document",
+          "apiConnected": true,
+          "actions": ["create-pdf", "create-docx", "create-pptx", "create-spreadsheet"],
+          "documentation": ""
+        },
+        {
+          "id": "e-signature",
+          "name": "E-Signature (DocuSign)",
+          "description": "Send and manage signed documents",
+          "category": "document",
+          "apiConnected": false,
+          "actions": ["send-for-signature", "get-signature-status", "download-signed"],
+          "documentation": "https://developers.docusign.com/"
+        }
+      ]
+    }
+  ],
+  "toolConnections": {
+    "google-ads": {
+      "status": "not-connected",
+      "accountId": null,
+      "lastSync": null
+    },
+    "meta-business": {
+      "status": "not-connected",
+      "accountId": null,
+      "lastSync": null
+    },
+    "tiktok-ads": {
+      "status": "not-connected",
+      "accountId": null,
+      "lastSync": null
+    },
+    "google-analytics": {
+      "status": "not-connected",
+      "accountId": null,
+      "lastSync": null
+    },
+    "figma": {
+      "status": "not-connected",
+      "accountId": null,
+      "lastSync": null
+    },
+    "slack": {
+      "status": "not-connected",
+      "workspace": null,
+      "lastSync": null
+    }
+  }
+}

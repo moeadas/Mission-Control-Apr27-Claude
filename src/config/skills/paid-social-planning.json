@@ -1,0 +1,160 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "paid-social-planning",
+  "name": "Paid Social Planning",
+  "description": "Plans paid social media campaigns across platforms including audience targeting, ad formats, budget allocation, bidding strategy, and creative testing frameworks.",
+  "category": "media",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time planning paid social campaigns, setting up audience targeting, defining ad structures, or creating testing frameworks for social advertising.",
+      "context": "You are a paid social specialist who plans and structures social advertising campaigns for maximum ROI. You understand platform-specific targeting, auction dynamics, creative best practices, and testing methodologies.",
+      "instructions": "## Paid Social Planning\n\n1. **Set Objectives** — Map business goals to platform objectives\n   - ✓ Done when: Objectives are measurable\n\n2. **Build Audiences** — Create targeting layers\n   - ✓ Done when: Audiences cover prospecting and retargeting\n\n3. **Platform Allocation** — Distribute budget by platform\n   - ✓ Done when: Allocation matches audience and objective\n\n4. **Ad Structure** — Design campaign hierarchy\n   - ✓ Done when: Structure supports testing and optimization\n\n5. **Creative Strategy** — Define formats and messaging\n   - ✓ Done when: Creative varies by audience and platform\n\n6. **Budget & Bidding** — Set budgets and bid strategies\n   - ✓ Done when: Bids align with efficiency targets\n\n7. **Testing Plan** — Design structured A/B tests\n   - ✓ Done when: Tests have clear hypotheses and metrics\n\n## Key Inputs\n- client_name: Client or brand name\n- platforms: Social ad platforms (Meta, TikTok, Snapchat, LinkedIn, X)\n- budget: Total paid social budget\n- campaign_objective: Campaign objective (awareness, traffic, conversions, leads)\n- target_audience: Target audience description\n\n## When Not to Use\nThis skill overlaps with: social-media-strategy, organic-social-planning. Use those instead when: you are managing ongoing social presence rather than planning a campaign\n\n`media` `planning` `paid-social-planning`",
+      "output_template": "## Paid Social Plan: {{client_name}}\n\n### Campaign Structure\n| Campaign | Objective | Platform | Budget | Duration |\n|----------|-----------|----------|--------|----------|\n| | | | | |\n\n### Audience Architecture\n| Ad Set | Targeting Type | Audience Size | Priority |\n|--------|---------------|---------------|----------|\n| Prospecting - Core | Interest / Demo | | High |\n| Prospecting - LAL | Lookalike 1-3% | | High |\n| Retargeting - Site | Custom - 30d visitors | | Medium |\n| Retargeting - Engaged | Custom - engagement | | Medium |\n\n### Budget Allocation\n| Platform | Budget | % | Objective | Est. CPA |\n|----------|--------|---|-----------|----------|\n| | | | | |\n\n### Creative Strategy\n| Format | Platforms | Variations | Message Angle |\n|--------|-----------|------------|---------------|\n| | | | |\n\n### Testing Framework\n| Test | Variable | Control | Variant | Budget | Duration |\n|------|----------|---------|---------|--------|----------|\n| | Creative / Audience / Placement | | | | 2 weeks min |"
+    }
+  },
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "platforms",
+      "type": "string",
+      "required": true,
+      "description": "Social ad platforms (Meta, TikTok, Snapchat, LinkedIn, X)"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Total paid social budget"
+    },
+    {
+      "name": "campaign_objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objective (awareness, traffic, conversions, leads)"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience description"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "platforms",
+      "type": "string",
+      "required": true,
+      "description": "Social ad platforms (Meta, TikTok, Snapchat, LinkedIn, X)"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Total paid social budget"
+    },
+    {
+      "name": "campaign_objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objective (awareness, traffic, conversions, leads)"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience description"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Set Objectives",
+        "action": "Map business goals to platform objectives",
+        "verify": "Objectives are measurable"
+      },
+      {
+        "step": 2,
+        "name": "Build Audiences",
+        "action": "Create targeting layers",
+        "verify": "Audiences cover prospecting and retargeting"
+      },
+      {
+        "step": 3,
+        "name": "Platform Allocation",
+        "action": "Distribute budget by platform",
+        "verify": "Allocation matches audience and objective"
+      },
+      {
+        "step": 4,
+        "name": "Ad Structure",
+        "action": "Design campaign hierarchy",
+        "verify": "Structure supports testing and optimization"
+      },
+      {
+        "step": 5,
+        "name": "Creative Strategy",
+        "action": "Define formats and messaging",
+        "verify": "Creative varies by audience and platform"
+      },
+      {
+        "step": 6,
+        "name": "Budget & Bidding",
+        "action": "Set budgets and bid strategies",
+        "verify": "Bids align with efficiency targets"
+      },
+      {
+        "step": 7,
+        "name": "Testing Plan",
+        "action": "Design structured A/B tests",
+        "verify": "Tests have clear hypotheses and metrics"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Plan a paid social campaign for a food delivery app targeting millennials in Dubai and Abu Dhabi with AED 100K monthly budget across Meta and TikTok.",
+      "output": "Meta (60%): prospecting with interest/LAL targeting, retargeting site visitors. TikTok (40%): spark ads with creator content. Creative testing: 3 video lengths x 2 hooks per platform. Bidding: cost cap at AED 25 CPA."
+    }
+  ],
+  "checklist": [
+    "Objectives are measurable",
+    "Audiences cover prospecting and retargeting",
+    "Allocation matches audience and objective",
+    "Structure supports testing and optimization",
+    "Creative varies by audience and platform",
+    "Bids align with efficiency targets",
+    "Tests have clear hypotheses and metrics"
+  ],
+  "tools": [
+    "analytics",
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "nova"
+  ],
+  "pipelines": [
+    "media-plan"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [],
+    "lastUpdated": "2026-03-30"
+  }
+}

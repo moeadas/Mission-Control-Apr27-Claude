@@ -1,0 +1,143 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "presentation-design",
+  "name": "Presentation Design",
+  "description": "Creates compelling, well-structured presentations for client meetings, pitches, status updates, and strategic recommendations that communicate clearly and build confidence.",
+  "category": "content",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time preparing a client presentation, creating a pitch deck, designing a status update, or building a strategic recommendations presentation.",
+      "context": "You are a presentation design specialist who creates clear, visually compelling slide decks. You structure information logically, design for the audience, and ensure the narrative flows from opening to call to action.",
+      "instructions": "## Presentation Design\n\n1. **Define message** — Identify the one key takeaway and audience\n   - ✓ Done when: Message is clear and actionable\n\n2. **Structure narrative** — Outline the logical flow of the presentation\n   - ✓ Done when: Narrative flows logically\n\n3. **Design slides** — Create each slide with one main idea per slide\n   - ✓ Done when: Each slide has a clear purpose\n\n4. **Apply branding** — Ensure consistent brand application\n   - ✓ Done when: Branding is consistent throughout\n\n## Key Inputs\n- purpose: Presentation type: client pitch, status update, strategic recommendation, internal briefing\n- audience: Who will see this presentation and their level of familiarity with the topic\n- key_message: The one key takeaway or action the presentation should drive\n- content: Data, strategy, or content to include in the presentation\n- brand_guidelines: Brand colors, fonts, and visual guidelines to follow",
+      "output_template": "## Presentation Outline\n\n### Slide Structure\n| Slide # | Title | Type | Key Message | Visual Approach |\n|---------|-------|------|------------|-----------------|\n| | | | | |\n\n### Narrative Arc\n1. [Opening hook]\n2. [Problem statement]\n3. [Key insight/data]\n4. [Recommendation]\n5. [Call to action]\n\n### Design Notes\n- [ ] Brand colors applied\n- [ ] Typography consistent\n- [ ] Visual approach defined"
+    }
+  },
+  "variables": [
+    {
+      "name": "purpose",
+      "type": "string",
+      "required": true,
+      "description": "Presentation type: client pitch, status update, strategic recommendation, internal briefing"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Who will see this presentation and their level of familiarity with the topic"
+    },
+    {
+      "name": "key_message",
+      "type": "string",
+      "required": true,
+      "description": "The one key takeaway or action the presentation should drive"
+    },
+    {
+      "name": "content",
+      "type": "string",
+      "required": false,
+      "description": "Data, strategy, or content to include in the presentation"
+    },
+    {
+      "name": "brand_guidelines",
+      "type": "string",
+      "required": false,
+      "description": "Brand colors, fonts, and visual guidelines to follow"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "purpose",
+      "type": "string",
+      "required": true,
+      "description": "Presentation type: client pitch, status update, strategic recommendation, internal briefing"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Who will see this presentation and their level of familiarity with the topic"
+    },
+    {
+      "name": "key_message",
+      "type": "string",
+      "required": true,
+      "description": "The one key takeaway or action the presentation should drive"
+    },
+    {
+      "name": "content",
+      "type": "string",
+      "required": false,
+      "description": "Data, strategy, or content to include in the presentation"
+    },
+    {
+      "name": "brand_guidelines",
+      "type": "string",
+      "required": false,
+      "description": "Brand colors, fonts, and visual guidelines to follow"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Define message",
+        "action": "Identify the one key takeaway and audience",
+        "verify": "Message is clear and actionable"
+      },
+      {
+        "step": 2,
+        "name": "Structure narrative",
+        "action": "Outline the logical flow of the presentation",
+        "verify": "Narrative flows logically"
+      },
+      {
+        "step": 3,
+        "name": "Design slides",
+        "action": "Create each slide with one main idea per slide",
+        "verify": "Each slide has a clear purpose"
+      },
+      {
+        "step": 4,
+        "name": "Apply branding",
+        "action": "Ensure consistent brand application",
+        "verify": "Branding is consistent throughout"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Purpose: Q1 performance review. Audience: Client CMO and VP of Marketing. Key message: Campaign outperformed benchmarks by 23% but we recommend shifting budget to video. Content: 3 months of performance data.",
+      "output": "12-slide deck: 1 title, 1 executive summary, 4 slides on channel performance, 3 slides on budget analysis, 1 competitive context, 2 slides with video recommendation, 1 next steps. Strong visual: performance vs. benchmark chart on slide 3 as the 'hook.'"
+    }
+  ],
+  "checklist": [
+    "Message is clear and actionable",
+    "Narrative flows logically",
+    "Each slide has a clear purpose",
+    "Branding is consistent throughout"
+  ],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "sage"
+  ],
+  "pipelines": [
+    "content-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "presentation",
+      "pptx",
+      "pitch",
+      "client-meeting",
+      "reporting"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

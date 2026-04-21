@@ -1,0 +1,173 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "ad-copy",
+  "name": "Ad Copywriting",
+  "description": "Creates compelling advertising copy for digital platforms. Covers platform-native formats, A/B variants, and compliance requirements.",
+  "category": "creative",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time creating advertising copy for digital ads, social media ads, display ads, or any paid advertising formats.",
+      "context": "You are a creative copywriter specializing in digital advertising with expertise in conversion-focused messaging and platform-native ad formats.",
+      "instructions": "## Ad Copywriting\n\n1. **Platform Research** — Understand platform specs and best practices\n   - ✓ Done when: Format requirements confirmed\n\n2. **Audience Insight** — Identify audience pain points and desires\n   - ✓ Done when: Messaging resonates with target\n\n3. **Offer Positioning** — Frame offer with clear value proposition\n   - ✓ Done when: Unique value is clear\n\n4. **CTA Development** — Create compelling action-oriented CTAs\n   - ✓ Done when: CTA drives specific action\n\n5. **Variant Creation** — Produce A/B test variations\n   - ✓ Done when: Variants test meaningful differences\n\n## Key Inputs\n- platform: Ad platform (Google, Meta, LinkedIn, TikTok, etc.)\n- target_audience: Target audience description\n- offer: Product or service being advertised\n- cta_text: Desired call-to-action text\n- client_name: Brand or client name\n- headline_limit: Max headline characters\n- desc_limit: Max description characters",
+      "output_template": "## Ad Copy: {{client_name}} - {{campaign_name}}\n\n### Campaign Overview\n| Element | Details |\n|---------|---------|\n| Platform | {{platform}} |\n| Audience | {{target_audience}} |\n| Offer | {{offer}} |\n| CTA | {{cta_text}} |\n\n### Primary Ad Set\n\n**Headline 1** (max {{headline_limit}} chars):\n[Headline text]\n\n**Headline 2** (max {{headline_limit}} chars):\n[Headline text]\n\n**Description** (max {{desc_limit}} chars):\n[Body copy]\n\n**CTA Button:** {{cta_text}}\n\n### Variant Set\n| Variant | Headline | Description | CTA |\n|---------|----------|-------------|-----|\n| A | | | |\n| B | | | |\n| C | | | |\n\n### Compliance Notes\n- [ ] No false urgency\n- [ ] Pricing claims verified\n- [ ] Disclaimers included where required"
+    }
+  },
+  "variables": [
+    {
+      "name": "platform",
+      "type": "string",
+      "required": true,
+      "description": "Ad platform (Google, Meta, LinkedIn, TikTok, etc.)"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience description"
+    },
+    {
+      "name": "offer",
+      "type": "string",
+      "required": true,
+      "description": "Product or service being advertised"
+    },
+    {
+      "name": "cta_text",
+      "type": "string",
+      "required": true,
+      "description": "Desired call-to-action text"
+    },
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand or client name"
+    },
+    {
+      "name": "headline_limit",
+      "type": "string",
+      "required": false,
+      "description": "Max headline characters"
+    },
+    {
+      "name": "desc_limit",
+      "type": "string",
+      "required": false,
+      "description": "Max description characters"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "platform",
+      "type": "string",
+      "required": true,
+      "description": "Ad platform (Google, Meta, LinkedIn, TikTok, etc.)"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience description"
+    },
+    {
+      "name": "offer",
+      "type": "string",
+      "required": true,
+      "description": "Product or service being advertised"
+    },
+    {
+      "name": "cta_text",
+      "type": "string",
+      "required": true,
+      "description": "Desired call-to-action text"
+    },
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand or client name"
+    },
+    {
+      "name": "headline_limit",
+      "type": "string",
+      "required": false,
+      "description": "Max headline characters"
+    },
+    {
+      "name": "desc_limit",
+      "type": "string",
+      "required": false,
+      "description": "Max description characters"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Platform Research",
+        "action": "Understand platform specs and best practices",
+        "verify": "Format requirements confirmed"
+      },
+      {
+        "step": 2,
+        "name": "Audience Insight",
+        "action": "Identify audience pain points and desires",
+        "verify": "Messaging resonates with target"
+      },
+      {
+        "step": 3,
+        "name": "Offer Positioning",
+        "action": "Frame offer with clear value proposition",
+        "verify": "Unique value is clear"
+      },
+      {
+        "step": 4,
+        "name": "CTA Development",
+        "action": "Create compelling action-oriented CTAs",
+        "verify": "CTA drives specific action"
+      },
+      {
+        "step": 5,
+        "name": "Variant Creation",
+        "action": "Produce A/B test variations",
+        "verify": "Variants test meaningful differences"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Create output for TechStart - a B2B SaaS company in fintech, targeting CFOs and Finance Directors in UAE",
+      "output": "Full deliverable with all sections filled with B2B fintech context, data-driven insights, and actionable recommendations"
+    }
+  ],
+  "checklist": [
+    "Format requirements confirmed",
+    "Messaging resonates with target",
+    "Unique value is clear",
+    "CTA drives specific action",
+    "Variants test meaningful differences"
+  ],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "echo"
+  ],
+  "pipelines": [
+    "ad-creative"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "advertising",
+      "copy",
+      "digital-ads",
+      "creative"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

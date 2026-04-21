@@ -1,0 +1,159 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "creative-strategy",
+  "name": "Creative Strategy",
+  "description": "Develops the overarching creative direction for campaigns and brands, defining the strategic foundation for all creative output including themes, tones, visual directions, and messaging frameworks.",
+  "category": "creative",
+  "difficulty": "advanced",
+  "freedom": "high",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time defining the creative direction for a brand or campaign — establishing themes, visual language, tone, messaging hierarchy, and the strategic rationale behind creative choices.",
+      "context": "You are a creative strategist who connects brand goals, audience insights, and market context to define a compelling creative direction that differentiates and resonates.",
+      "instructions": "## Creative Strategy\n\n1. **Brand & Market Research** — Audit brand, competitors, and market context\n   - ✓ Done when: Full picture of competitive landscape\n\n2. **Audience Deep-Dive** — Develop audience insights that will drive creative\n   - ✓ Done when: Insight is specific and actionable\n\n3. **Strategic Territory** — Define the white space and differentiating angle\n   - ✓ Done when: Strategy is ownable and defensible\n\n4. **Creative Direction** — Define theme, tone, visual direction, and messaging\n   - ✓ Done when: Direction is distinctive and resonant\n\n5. **Briefing** — Translate strategy into actionable creative brief\n   - ✓ Done when: Creative team has clear direction\n\n6. **Alignment** — Get client sign-off on creative strategy\n   - ✓ Done when: Strategy is approved before production\n\n## Key Inputs\n- client_name: Client or brand name\n- project_name: Name of the campaign or project\n- objective: Campaign or project objective\n- target_audience: Target audience description\n- market_context: Relevant market and competitive context",
+      "output_template": "## Creative Strategy: {{client_name}} - {{project_name}}\n\n### Strategic Foundation\n| Element | Insight |\n|---------|--------|\n| Brand position | |\n| Audience insight | |\n| Market gap | |\n| Strategic opportunity | |\n\n### Creative Territory\n**Theme name:**\n**Theme description:** [2-3 sentence description of the creative world]\n\n**Tone of voice:**\n- [ ] \n\n**Visual direction:**\n- Key visual motif:\n- Color direction:\n- Style references:\n- Imagery approach:\n\n### Messaging Framework\n| Level | Message | Purpose |\n|-------|--------|---------|\n| Primary | | |\n| Secondary | | |\n| Supporting | | |\n\n### Differentiating Factor\n**Why will this stand out?**\n\n**Proof points:**\n- \n\n### What This Is NOT\n[Creative guardrails — what to avoid]\n\n### Visual Direction\n| Element | Direction |\n|---------|-----------|\n| Photography style | |\n| Illustration/graphic | |\n| Typography | |\n| Color palette | |\n| Motion/animation | |\n| Layout approach | |\n\n### Channel Implications\n| Channel | How strategy manifests |\n|---------|---------------------|\n| | |\n\n### Deliverables from This Strategy\n- [ ] Creative brief\n- [ ] Mood boards\n- [ ] Copy guidelines\n- [ ] Visual guidelines"
+    }
+  },
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "project_name",
+      "type": "string",
+      "required": true,
+      "description": "Name of the campaign or project"
+    },
+    {
+      "name": "objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign or project objective"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience description"
+    },
+    {
+      "name": "market_context",
+      "type": "string",
+      "required": false,
+      "description": "Relevant market and competitive context"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "project_name",
+      "type": "string",
+      "required": true,
+      "description": "Name of the campaign or project"
+    },
+    {
+      "name": "objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign or project objective"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience description"
+    },
+    {
+      "name": "market_context",
+      "type": "string",
+      "required": false,
+      "description": "Relevant market and competitive context"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Brand & Market Research",
+        "action": "Audit brand, competitors, and market context",
+        "verify": "Full picture of competitive landscape"
+      },
+      {
+        "step": 2,
+        "name": "Audience Deep-Dive",
+        "action": "Develop audience insights that will drive creative",
+        "verify": "Insight is specific and actionable"
+      },
+      {
+        "step": 3,
+        "name": "Strategic Territory",
+        "action": "Define the white space and differentiating angle",
+        "verify": "Strategy is ownable and defensible"
+      },
+      {
+        "step": 4,
+        "name": "Creative Direction",
+        "action": "Define theme, tone, visual direction, and messaging",
+        "verify": "Direction is distinctive and resonant"
+      },
+      {
+        "step": 5,
+        "name": "Briefing",
+        "action": "Translate strategy into actionable creative brief",
+        "verify": "Creative team has clear direction"
+      },
+      {
+        "step": 6,
+        "name": "Alignment",
+        "action": "Get client sign-off on creative strategy",
+        "verify": "Strategy is approved before production"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Develop creative strategy for TechStart's Q2 campaign — B2B fintech, targeting CFOs, objective is pipeline growth. Competitors all look the same: blue, corporate, data-focused.",
+      "output": "Full creative strategy with territory, tone, visual direction, messaging framework, and creative brief"
+    }
+  ],
+  "checklist": [
+    "Full picture of competitive landscape",
+    "Insight is specific and actionable",
+    "Strategy is ownable and defensible",
+    "Direction is distinctive and resonant",
+    "Creative team has clear direction",
+    "Strategy is approved before production"
+  ],
+  "tools": [
+    "document",
+    "presentation",
+    "mood-board"
+  ],
+  "agents": [
+    "finn"
+  ],
+  "pipelines": [
+    "creative-development"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "creative",
+      "strategy",
+      "branding",
+      "campaign",
+      "direction"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

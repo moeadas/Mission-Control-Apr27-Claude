@@ -1,0 +1,161 @@
+{
+  "$schema": "/src/config/schemas/skill.schema.json",
+  "id": "value-proposition",
+  "name": "Value Proposition Development",
+  "description": "Develops clear value propositions that connect audience pain, differentiated benefit, proof, and offer logic into a message people can understand quickly.",
+  "category": "strategy",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "prompts": {
+    "en": {
+      "trigger": "Use this skillany time defining or refining value propositions, offer messaging, differentiators, homepage messaging, or campaign positioning.",
+      "context": "You are a positioning strategist writing value propositions that are specific, defensible, and audience-relevant. You avoid generic claims and tie value to real outcomes and proof.",
+      "instructions": "## Value Proposition Development\n\n1. **Define audience problem** — Define audience problem\n   - ✓ Done when: Define audience problem is completed to a high standard\n\n2. **Clarify offer and outcome** — Clarify offer and outcome\n   - ✓ Done when: Clarify offer and outcome is completed to a high standard\n\n3. **Identify differentiators** — Identify differentiators\n   - ✓ Done when: Identify differentiators is completed to a high standard\n\n4. **Write proposition and support points** — Write proposition and support points\n   - ✓ Done when: Write proposition and support points is completed to a high standard\n\n5. **Pressure-test clarity** — Pressure-test clarity\n   - ✓ Done when: Pressure-test clarity is completed to a high standard\n\n6. **Provide variants** — Provide variants\n   - ✓ Done when: Provide variants is completed to a high standard\n\n## Key Inputs\n- brand_name: Brand name\n- audience: Target audience\n- alternatives: Key competitors or alternatives\n- offering: Product or service\n- context: Market context",
+      "output_template": "## Value Proposition Framework\n\n### 1. Strategy Basis\n| Element | Definition |\n|---|---|\n| Audience | |\n| Core Problem / Desire | |\n| Offer | |\n| Primary Outcome | |\n| Differentiator | |\n\n### 2. Primary Value Proposition\n\n### 3. Supporting Proof Points\n- \n- \n- \n\n### 4. Alternate Variations\n- Homepage version:\n- Paid campaign version:\n- Short-form version:\n\n### 5. Messaging Risks To Avoid\n- \n- \n\n### 6. Recommended Usage Notes\n- Best placement:\n- Supporting assets needed:\n- Testing angle:"
+    }
+  },
+  "variables": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand name"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience"
+    },
+    {
+      "name": "alternatives",
+      "type": "string",
+      "required": false,
+      "description": "Key competitors or alternatives"
+    },
+    {
+      "name": "offering",
+      "type": "string",
+      "required": false,
+      "description": "Product or service"
+    },
+    {
+      "name": "context",
+      "type": "string",
+      "required": false,
+      "description": "Market context"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand name"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience"
+    },
+    {
+      "name": "alternatives",
+      "type": "string",
+      "required": false,
+      "description": "Key competitors or alternatives"
+    },
+    {
+      "name": "offering",
+      "type": "string",
+      "required": false,
+      "description": "Product or service"
+    },
+    {
+      "name": "context",
+      "type": "string",
+      "required": false,
+      "description": "Market context"
+    }
+  ],
+  "outputs": [],
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Define audience problem",
+        "action": "Define audience problem",
+        "verify": "Define audience problem is completed to a high standard"
+      },
+      {
+        "step": 2,
+        "name": "Clarify offer and outcome",
+        "action": "Clarify offer and outcome",
+        "verify": "Clarify offer and outcome is completed to a high standard"
+      },
+      {
+        "step": 3,
+        "name": "Identify differentiators",
+        "action": "Identify differentiators",
+        "verify": "Identify differentiators is completed to a high standard"
+      },
+      {
+        "step": 4,
+        "name": "Write proposition and support points",
+        "action": "Write proposition and support points",
+        "verify": "Write proposition and support points is completed to a high standard"
+      },
+      {
+        "step": 5,
+        "name": "Pressure-test clarity",
+        "action": "Pressure-test clarity",
+        "verify": "Pressure-test clarity is completed to a high standard"
+      },
+      {
+        "step": 6,
+        "name": "Provide variants",
+        "action": "Provide variants",
+        "verify": "Provide variants is completed to a high standard"
+      }
+    ]
+  },
+  "examples": [
+    {
+      "input": "Develop value proposition for a challenger brand in the crowded project management SaaS space.",
+      "output": "Complete value proposition with differentiation strategy and messaging framework."
+    },
+    {
+      "input": "Refresh value proposition for an established insurance brand targeting millennial customers.",
+      "output": "Modernized value proposition with customer insight-driven differentiation."
+    }
+  ],
+  "checklist": [
+    "Define audience problem is completed to a high standard",
+    "Clarify offer and outcome is completed to a high standard",
+    "Identify differentiators is completed to a high standard",
+    "Write proposition and support points is completed to a high standard",
+    "Pressure-test clarity is completed to a high standard",
+    "Provide variants is completed to a high standard"
+  ],
+  "tools": [
+    "document",
+    "presentation",
+    "## General"
+  ],
+  "agents": [
+    "maya"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "value-proposition",
+      "positioning",
+      "differentiation",
+      "brand-strategy",
+      "messaging"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

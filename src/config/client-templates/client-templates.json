@@ -1,0 +1,201 @@
+{
+  "clientTemplates": [
+    {
+      "id": "default",
+      "name": "New Client",
+      "description": "Standard template for new client onboarding",
+      "sections": [
+        {
+          "id": "basic-info",
+          "name": "Basic Information",
+          "order": 1,
+          "fields": [
+            { "id": "company-name", "label": "Company Name", "type": "text", "required": true },
+            { "id": "industry", "label": "Industry", "type": "text", "required": true },
+            { "id": "website", "label": "Website", "type": "url", "required": false },
+            { "id": "location", "label": "Headquarters Location", "type": "text", "required": false },
+            { "id": "founded", "label": "Founded Year", "type": "text", "required": false },
+            { "id": "company-size", "label": "Company Size", "type": "select", "options": ["1-10", "11-50", "51-200", "201-500", "501-1000", "1000+"], "required": false },
+            { "id": "annual-revenue", "label": "Annual Revenue Range", "type": "text", "required": false },
+            { "id": "tagline", "label": "Company Tagline", "type": "text", "required": false },
+            { "id": "description", "label": "Company Description", "type": "textarea", "required": false }
+          ]
+        },
+        {
+          "id": "brand-identity",
+          "name": "Brand Identity",
+          "order": 2,
+          "fields": [
+            { "id": "brand-voice", "label": "Brand Voice", "type": "textarea", "required": false, "placeholder": "Describe your brand's tone and personality..." },
+            { "id": "brand-values", "label": "Brand Values", "type": "textarea", "required": false, "placeholder": "List your core brand values..." },
+            { "id": "brand-mission", "label": "Mission Statement", "type": "textarea", "required": false },
+            { "id": "brand-vision", "label": "Vision Statement", "type": "textarea", "required": false },
+            { "id": "primary-color", "label": "Primary Brand Color", "type": "color", "required": false },
+            { "id": "secondary-color", "label": "Secondary Brand Color", "type": "color", "required": false },
+            { "id": "accent-color", "label": "Accent Brand Color", "type": "color", "required": false },
+            { "id": "typography", "label": "Typography Guidelines", "type": "textarea", "required": false },
+            { "id": "logo-assets", "label": "Logo & Assets URL", "type": "url", "required": false },
+            { "id": "brand-dos", "label": "Brand Do's", "type": "textarea", "required": false },
+            { "id": "brand-donts", "label": "Brand Don'ts", "type": "textarea", "required": false }
+          ]
+        },
+        {
+          "id": "target-audience",
+          "name": "Target Audiences",
+          "order": 3,
+          "fields": [
+            { "id": "primary-audience", "label": "Primary Audience Persona", "type": "textarea", "required": false, "placeholder": "Describe your ideal customer..." },
+            { "id": "secondary-audiences", "label": "Secondary Audience Personas", "type": "textarea", "required": false },
+            { "id": "audience-demographics", "label": "Demographics", "type": "textarea", "required": false },
+            { "id": "audience-psychographics", "label": "Psychographics", "type": "textarea", "required": false },
+            { "id": "audience-pain-points", "label": "Pain Points & Challenges", "type": "textarea", "required": false },
+            { "id": "audience-behaviors", "label": "Media Consumption & Behaviors", "type": "textarea", "required": false },
+            { "id": "audience-objections", "label": "Common Objections", "type": "textarea", "required": false }
+          ]
+        },
+        {
+          "id": "competitive-landscape",
+          "name": "Competitive Landscape",
+          "order": 4,
+          "fields": [
+            { "id": "direct-competitors", "label": "Direct Competitors", "type": "textarea", "required": false },
+            { "id": "indirect-competitors", "label": "Indirect Competitors", "type": "textarea", "required": false },
+            { "id": "competitive-advantages", "label": "Our Competitive Advantages", "type": "textarea", "required": false },
+            { "id": "competitive-threats", "label": "Competitive Threats", "type": "textarea", "required": false },
+            { "id": "market-positioning", "label": "Current Market Positioning", "type": "textarea", "required": false }
+          ]
+        },
+        {
+          "id": "business-goals",
+          "name": "Business Goals & KPIs",
+          "order": 5,
+          "fields": [
+            { "id": "primary-goals", "label": "Primary Business Goals", "type": "textarea", "required": false },
+            { "id": "kpis", "label": "Key Performance Indicators", "type": "textarea", "required": false },
+            { "id": "target-metrics", "label": "Target Metrics (6-12 months)", "type": "textarea", "required": false },
+            { "id": "revenue-targets", "label": "Revenue Targets", "type": "textarea", "required": false },
+            { "id": "market-share-goals", "label": "Market Share Goals", "type": "textarea", "required": false }
+          ]
+        },
+        {
+          "id": "marketing-history",
+          "name": "Marketing History",
+          "order": 6,
+          "fields": [
+            { "id": "current-channels", "label": "Current Marketing Channels", "type": "textarea", "required": false },
+            { "id": "previous-campaigns", "label": "Previous Campaign Highlights", "type": "textarea", "required": false },
+            { "id": "what-worked", "label": "What Has Worked", "type": "textarea", "required": false },
+            { "id": "what-hasnt-worked", "label": "What Hasn't Worked", "type": "textarea", "required": false },
+            { "id": "marketing-budget", "label": "Marketing Budget Range", "type": "text", "required": false },
+            { "id": "past-results", "label": "Past Results & Metrics", "type": "textarea", "required": false }
+          ]
+        },
+        {
+          "id": "stakeholders",
+          "name": "Key Stakeholders",
+          "order": 7,
+          "fields": [
+            { "id": "decision-makers", "label": "Decision Makers", "type": "textarea", "required": false },
+            { "id": "internal-contacts", "label": "Internal Marketing Contacts", "type": "textarea", "required": false },
+            { "id": "agencies", "label": "Current/Previous Agencies", "type": "textarea", "required": false },
+            { "id": "approval-process", "label": "Approval Process", "type": "textarea", "required": false }
+          ]
+        },
+        {
+          "id": "campaigns",
+          "name": "Active & Upcoming Campaigns",
+          "order": 8,
+          "fields": [
+            { "id": "active-campaigns", "label": "Active Campaigns", "type": "textarea", "required": false },
+            { "id": "upcoming-initiatives", "label": "Upcoming Initiatives", "type": "textarea", "required": false },
+            { "id": "seasonal-requirements", "label": "Seasonal/Promotional Requirements", "type": "textarea", "required": false },
+            { "id": "campaign-constraints", "label": "Constraints & Guidelines", "type": "textarea", "required": false }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ecommerce",
+      "name": "E-Commerce / Retail",
+      "description": "Template for e-commerce and retail brands",
+      "sections": [
+        {
+          "id": "ecommerce-basics",
+          "name": "E-Commerce Basics",
+          "order": 1,
+          "fields": [
+            { "id": "platform", "label": "E-Commerce Platform", "type": "select", "options": ["Shopify", "WooCommerce", "Magento", "BigCommerce", "Custom", "Other"], "required": false },
+            { "id": "product-categories", "label": "Main Product Categories", "type": "textarea", "required": false },
+            { "id": "avg-order-value", "label": "Average Order Value", "type": "text", "required": false },
+            { "id": "product-margin", "label": "Product Margin Range", "type": "text", "required": false },
+            { "id": "sku-count", "label": "Number of SKUs", "type": "text", "required": false }
+          ]
+        },
+        {
+          "id": "funnel-metrics",
+          "name": "Funnel Metrics",
+          "order": 2,
+          "fields": [
+            { "id": "conversion-rate", "label": "Current Conversion Rate", "type": "text", "required": false },
+            { "id": "cart-abandonment", "label": "Cart Abandonment Rate", "type": "text", "required": false },
+            { "id": "return-rate", "label": "Return Rate", "type": "text", "required": false },
+            { "id": "customer-ltv", "label": "Customer Lifetime Value", "type": "text", "required": false },
+            { "id": "cac", "label": "Current Customer Acquisition Cost", "type": "text", "required": false }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "saas",
+      "name": "SaaS / Technology",
+      "description": "Template for SaaS and technology companies",
+      "sections": [
+        {
+          "id": "saas-basics",
+          "name": "SaaS Metrics",
+          "order": 1,
+          "fields": [
+            { "id": "mrr", "label": "Monthly Recurring Revenue", "type": "text", "required": false },
+            { "id": "arr", "label": "Annual Recurring Revenue", "type": "text", "required": false },
+            { "id": "churn-rate", "label": "Monthly Churn Rate", "type": "text", "required": false },
+            { "id": "ltv", "label": "Customer Lifetime Value", "type": "text", "required": false },
+            { "id": "cac", "label": "Customer Acquisition Cost", "type": "text", "required": false },
+            { "id": "ltvcac-ratio", "label": "LTV:CAC Ratio", "type": "text", "required": false },
+            { "id": "payback-period", "label": "Payback Period (months)", "type": "text", "required": false }
+          ]
+        },
+        {
+          "id": "product",
+          "name": "Product Information",
+          "order": 2,
+          "fields": [
+            { "id": "pricing-tiers", "label": "Pricing Tiers", "type": "textarea", "required": false },
+            { "id": "free-trial", "label": "Free Trial Duration", "type": "text", "required": false },
+            { "id": "onboarding", "label": "Customer Onboarding Process", "type": "textarea", "required": false },
+            { "id": "key-features", "label": "Key Product Features", "type": "textarea", "required": false },
+            { "id": "competitors", "label": "Main Competitors", "type": "textarea", "required": false }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "healthcare",
+      "name": "Healthcare / Medical",
+      "description": "Template for healthcare and medical organizations",
+      "sections": [
+        {
+          "id": "compliance",
+          "name": "Compliance & Regulations",
+          "order": 1,
+          "fields": [
+            { "id": "hipaa-compliant", "label": "HIPAA Compliant", "type": "toggle", "required": false },
+            { "id": "fda-approved", "label": "FDA Approvals (if applicable)", "type": "textarea", "required": false },
+            { "id": "medical-claims", "label": "Allowed Medical Claims", "type": "textarea", "required": false },
+            { "id": "restricted-audiences", "label": "Restricted Audiences", "type": "textarea", "required": false },
+            { "id": "compliance-notes", "label": "Additional Compliance Notes", "type": "textarea", "required": false }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1408 @@
+{
+  "pipelines": [
+    {
+      "id": "content-calendar",
+      "name": "Content Calendar",
+      "description": "Generate a complete 30-day content calendar with posts, hooks, repurposed versions, hashtags, and visual briefs",
+      "version": "1.0",
+      "isDefault": true,
+      "estimatedDuration": "7-10 days",
+      "clientProfileFields": [
+        { "id": "brand_name", "label": "Brand Name", "type": "text", "required": true },
+        { "id": "niche", "label": "Industry/Niche", "type": "text", "required": true },
+        { "id": "audience_demographics", "label": "Audience Demographics", "type": "textarea", "required": true },
+        { "id": "audience_psychographics", "label": "Audience Psychographics", "type": "textarea", "required": true },
+        { "id": "pain_points", "label": "Top 3 Pain Points", "type": "textarea", "required": true },
+        { "id": "tone", "label": "Brand Voice/Tone", "type": "text", "required": true },
+        { "id": "platforms", "label": "Target Platforms", "type": "multiselect", "options": ["Instagram", "LinkedIn", "X", "TikTok", "Facebook"], "required": true },
+        { "id": "content_goal", "label": "Primary Goal", "type": "select", "options": ["awareness", "engagement", "lead-generation", "conversion"], "required": true },
+        { "id": "posting_frequency", "label": "Posts Per Platform Per Week", "type": "json", "required": true },
+        { "id": "product_service", "label": "Product/Service", "type": "textarea", "required": false },
+        { "id": "content_examples", "label": "Sample Posts for Voice Matching", "type": "textarea", "required": false },
+        { "id": "topics_to_avoid", "label": "Topics to Avoid", "type": "textarea", "required": false }
+      ],
+      "weeklyArc": "Week 1: Awareness & Pain Points → Week 2: Education & Trust → Week 3: Story & Authority → Week 4: Conversion Push",
+      "phases": [
+        {
+          "id": "intake",
+          "name": "Client Profile",
+          "color": "#4f8ef7",
+          "activities": [
+            {
+              "id": "collect-profile",
+              "name": "Collect Client Profile",
+              "description": "Gather all client information: brand, audience, tone, platforms, goals",
+              "assignedRole": "client-services",
+              "inputs": ["client-name", "brief"],
+              "outputs": ["client-profile"],
+              "checklist": [
+                "Brand name and niche confirmed",
+                "Audience demographics documented",
+                "Audience psychographics documented",
+                "Pain points identified (top 3)",
+                "Brand tone/voice defined",
+                "Target platforms selected",
+                "Content goal aligned"
+              ],
+              "prompts": {
+                "en": "Collect client profile following the schema. Ensure all required fields are completed before proceeding to Stage 1.",
+                "ar": "جمع ملف العميل وفقاً للمخطط. التأكد من إكمال جميع الحقول المطلوبة قبل الانتقال للمرحلة 1."
+              }
+            },
+            {
+              "id": "profile-review",
+              "name": "Profile Review & Approval",
+              "description": "Present profile to client for verification before generating content",
+              "assignedRole": "client-services",
+              "inputs": ["client-profile"],
+              "outputs": ["approved-profile"],
+              "checklist": [
+                "Client reviewed profile",
+                "Corrections noted",
+                "Profile approved"
+              ],
+              "prompts": {
+                "en": "Present the collected client profile for review. Confirm accuracy before proceeding.",
+                "ar": "عرض ملف العميل للمراجعة. تأكيد الدقة قبل المتابعة."
+              }
+            }
+          ]
+        },
+        {
+          "id": "ideas",
+          "name": "Content Ideas",
+          "color": "#9b6dff",
+          "activities": [
+            {
+              "id": "generate-ideas",
+              "name": "Generate 30 Content Ideas",
+              "description": "Create 30 strategic ideas across 5 pillars: Educational(8), Storytelling(6), Engagement(6), Authority(5), Promotional(5)",
+              "assignedRole": "content-strategist",
+              "inputs": ["approved-profile"],
+              "outputs": ["content-ideas"],
+              "checklist": [
+                "30 ideas generated across 5 pillars",
+                "Each idea tagged with platform + format",
+                "Difficulty level assigned",
+                "Trend-based ideas flagged if applicable"
+              ],
+              "prompts": {
+                "en": "Generate exactly 30 content ideas in 5 pillars following the content-calendar-generator stage 1 template. Inject {{brand_name}}, {{niche}}, {{audience_demographics}}, {{audience_psychographics}}, {{pain_points}}, {{tone}}, {{platforms}}, {{content_goal}}.",
+                "ar": "إنشاء 30 فكرة محتوى في 5 أعمدة وفقاً لقالب المرحلة 1. حقن بيانات العميل المناسبة."
+              },
+              "batching": { "batchSize": 1, "parallel": false }
+            },
+            {
+              "id": "select-ideas",
+              "name": "Select Ideas to Proceed",
+              "description": "Present ideas as kanban. User selects 15-30 ideas to continue with",
+              "assignedRole": "client-services",
+              "inputs": ["content-ideas"],
+              "outputs": ["selected-ideas"],
+              "checklist": [
+                "Ideas presented in kanban format",
+                "User selected ideas",
+                "Selection confirmed (15-30 range)"
+              ],
+              "prompts": {
+                "en": "Present ideas as a kanban with 5 columns (one per pillar). User selects 15-30 ideas to proceed.",
+                "ar": "عرض الأفكار كـ kanban بـ 5 أعمدة. يختار المستخدم 15-30 فكرة للمتابعة."
+              }
+            }
+          ]
+        },
+        {
+          "id": "hooks",
+          "name": "Hook Generation",
+          "color": "#00d4aa",
+          "activities": [
+            {
+              "id": "generate-hooks",
+              "name": "Generate Hooks per Idea",
+              "description": "For each selected idea, generate 8 hooks using psychological formulas: Curiosity Gap, Bold Contrarian, Pain-Point Mirror, Surprising Stat, Direct 'You', Story Opener, 'What If' Reframe, Social Proof",
+              "assignedRole": "copy",
+              "inputs": ["selected-ideas"],
+              "outputs": ["hooks"],
+              "checklist": [
+                "8 hooks generated per idea",
+                "Each hook under 20 words",
+                "Brand voice match verified",
+                "1 hook selected per idea by user"
+              ],
+              "prompts": {
+                "en": "For each selected idea, generate 8 hooks using the 8 formulas from content-calendar-generator stage 2. Inject {{brand_name}}, {{niche}}, {{tone}}. Each hook must be under 20 words.",
+                "ar": "لكل فكرة مختارة، إنشاء 8 خطافات باستخدام الـ 8 صيغ من المرحلة 2. حقن {{brand_name}}، {{niche}}، {{tone}}."
+              },
+              "batching": { "batchSize": 5, "parallel": false }
+            }
+          ]
+        },
+        {
+          "id": "drafting",
+          "name": "Post Drafting",
+          "color": "#ffd166",
+          "activities": [
+            {
+              "id": "draft-posts",
+              "name": "Draft Full Posts",
+              "description": "Write complete ready-to-publish posts. Route by pillar: Educational(3A), Storytelling(3B), Engagement(3C), Authority(3D), Promotional(3E)",
+              "assignedRole": "copy",
+              "inputs": ["selected-ideas", "hooks"],
+              "outputs": ["drafted-posts"],
+              "checklist": [
+                "Posts written per pillar framework",
+                "Platform formatting rules applied",
+                "Hook used as opener",
+                "CTA matched to audience temperature"
+              ],
+              "prompts": {
+                "en": "Write complete posts using stage 3 templates (3A-3E). Inject {{brand_name}}, {{niche}}, {{tone}}, {{content_goal}}. Apply platform formatting rules. Use selected hook as opener.",
+                "ar": "كتابة منشورات كاملة باستخدام قوالب المرحلة 3 (3A-3E). تطبيق قواعد تنسيق المنصات. استخدام الخطاف المحدد كافتتاحية."
+              },
+              "batching": { "batchSize": 5, "parallel": false }
+            },
+            {
+              "id": "review-posts",
+              "name": "Review & Adjust Posts",
+              "description": "User can regenerate, adjust tone (casual/professional/bold/friendly), or request translation",
+              "assignedRole": "client-services",
+              "inputs": ["drafted-posts"],
+              "outputs": ["approved-posts"],
+              "checklist": [
+                "Posts reviewed by user",
+                "Adjustments noted",
+                "Final versions approved"
+              ],
+              "prompts": {
+                "en": "Present drafted posts for review. Offer options: Regenerate, Adjust Tone, Translate.",
+                "ar": "عرض المسودات للمراجعة. خيارات: إعادة الإنشاء، تعديل النبرة، الترجمة."
+              }
+            }
+          ]
+        },
+        {
+          "id": "assembly",
+          "name": "Calendar Assembly",
+          "color": "#ff5fa0",
+          "activities": [
+            {
+              "id": "assemble-calendar",
+              "name": "Build 30-Day Calendar",
+              "description": "Arrange posts into strategic 30-day calendar following weekly arc. Respect posting frequency, distribute platforms evenly, avoid consecutive same-pillar days",
+              "assignedRole": "content-strategist",
+              "inputs": ["approved-posts", "approved-profile"],
+              "outputs": ["calendar"],
+              "checklist": [
+                "Week 1: Awareness & Pain Points",
+                "Week 2: Education & Trust",
+                "Week 3: Story & Authority",
+                "Week 4: Conversion Push",
+                "Day 15: Mid-month review note inserted",
+                "Posting frequency respected",
+                "Platform distribution even",
+                "No consecutive same-pillar days"
+              ],
+              "prompts": {
+                "en": "Build 30-day calendar following stage 4 template. Inject {{brand_name}}, {{niche}}, {{platforms}}, {{posting_frequency}}, {{content_goal}}, {{month_label}}. Apply weekly arc rules. Return JSON array.",
+                "ar": "بناء تقويم 30 يوم وفقاً لقالب المرحلة 4. تطبيق قواعد القوس الأسبوعي."
+              },
+              "batching": { "batchSize": 1, "parallel": false }
+            }
+          ]
+        },
+        {
+          "id": "repurposing",
+          "name": "Cross-Platform",
+          "color": "#38bdf8",
+          "activities": [
+            {
+              "id": "adapt-posts",
+              "name": "Adapt for All Platforms",
+              "description": "Generate native adaptations for all other platforms per post. Adapted versions must feel native, not copy-paste",
+              "assignedRole": "copy",
+              "inputs": ["approved-posts"],
+              "outputs": ["adapted-posts"],
+              "checklist": [
+                "All posts adapted per platform",
+                "Native formatting applied",
+                "what_changed explanation included"
+              ],
+              "prompts": {
+                "en": "Adapt posts for all client platforms following stage 5 template. Inject {{brand_name}}, {{niche}}, {{tone}}. Apply platform adaptation rules for Instagram, LinkedIn, X, TikTok, Facebook.",
+                "ar": "تكييف المنشورات لجميع منصات العميل وفقاً لقالب المرحلة 5."
+              },
+              "batching": { "batchSize": 5, "parallel": true }
+            }
+          ]
+        },
+        {
+          "id": "hashtags",
+          "name": "Hashtags & SEO",
+          "color": "#a78bfa",
+          "activities": [
+            {
+              "id": "generate-hashtags",
+              "name": "Generate Hashtags & Keywords",
+              "description": "Platform-specific hashtags: Instagram(20-30), LinkedIn(3-5), X(1-3), TikTok(4-6), Facebook(3-5). Plus 5 SEO keywords per post",
+              "assignedRole": "seo-specialist",
+              "inputs": ["approved-posts"],
+              "outputs": ["hashtags"],
+              "checklist": [
+                "Hashtags per platform rules",
+                "SEO keywords per post",
+                "Arabic hashtags if applicable"
+              ],
+              "prompts": {
+                "en": "Generate hashtags following stage 6 template. Inject {{niche}}, {{platforms}}. Apply hashtag rules by platform. Include SEO keywords.",
+                "ar": "إنشاء هاشتاقات وفقاً لقالب المرحلة 6. تطبيق قواعد الهاشتاقات حسب المنصة."
+              },
+              "batching": { "batchSize": 1, "parallel": true }
+            }
+          ]
+        },
+        {
+          "id": "visual",
+          "name": "Visual Briefs",
+          "color": "#f97316",
+          "activities": [
+            {
+              "id": "create-visual-briefs",
+              "name": "Create Visual Direction Briefs",
+              "description": "Designer-ready briefs under 80 words each. Include visual_brief, suggested_style, color_suggestions, text_on_image",
+              "assignedRole": "visual-producer",
+              "inputs": ["approved-posts"],
+              "outputs": ["visual-briefs"],
+              "checklist": [
+                "Brief under 80 words per post",
+                "Style, colors, text overlay specified",
+                "Platform-specific tailoring"
+              ],
+              "prompts": {
+                "en": "Create visual briefs following stage 7 template. Inject {{brand_name}}, {{niche}}, {{tone}}, {{platforms}}. Each brief under 80 words. Include visual_brief, suggested_style, color_suggestions, text_on_image.",
+                "ar": "إنشاء ملخصات بصرية وفقاً لقالب المرحلة 7. كل ملخص أقل من 80 كلمة."
+              },
+              "batching": { "batchSize": 1, "parallel": true }
+            }
+          ]
+        },
+        {
+          "id": "export",
+          "name": "Export & Delivery",
+          "color": "#22c55e",
+          "activities": [
+            {
+              "id": "export-calendar",
+              "name": "Export Calendar",
+              "description": "Export as PDF or XLSX with all sheets: Calendar, Full Posts, Repurposed Versions, Hashtags & Briefs",
+              "assignedRole": "content-strategist",
+              "inputs": ["calendar", "approved-posts", "adapted-posts", "hashtags", "visual-briefs"],
+              "outputs": ["exported-calendar"],
+              "checklist": [
+                "PDF export ready OR",
+                "XLSX export with 4 sheets",
+                "All content included"
+              ],
+              "prompts": {
+                "en": "Export calendar following stage 8 template. Option A: PDF with cover, TOC, calendar grid, post pages. Option B: XLSX with 4 sheets.",
+                "ar": "تصدير التقويم وفقاً لقالب المرحلة 8. الخيار أ: PDF. الخيار ب: XLSX."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "campaign-brief",
+      "name": "Campaign Brief",
+      "description": "Standard workflow for creating a complete campaign from client intake to approved strategy",
+      "version": "1.0",
+      "isDefault": true,
+      "estimatedDuration": "14 days",
+      "clientProfileFields": [
+        { "id": "brand_name", "label": "Brand Name", "type": "text", "required": true },
+        { "id": "industry", "label": "Industry", "type": "text", "required": true },
+        { "id": "product_service", "label": "Product/Service Description", "type": "textarea", "required": true },
+        { "id": "target_audience", "label": "Target Audience", "type": "textarea", "required": true },
+        { "id": "budget_range", "label": "Budget Range", "type": "text", "required": true },
+        { "id": "timeline", "label": "Campaign Timeline", "type": "text", "required": true },
+        { "id": "business_objectives", "label": "Business Objectives", "type": "textarea", "required": true },
+        { "id": "key_stakeholders", "label": "Key Stakeholders", "type": "text", "required": false }
+      ],
+      "phases": [
+        {
+          "id": "intake",
+          "name": "Intake & Discovery",
+          "color": "#4f8ef7",
+          "activities": [
+            {
+              "id": "intake-1",
+              "name": "Client Brief Collection",
+              "description": "Gather all client information, goals, and requirements",
+              "assignedRole": "client-services",
+              "inputs": ["client-questionnaire", "initial-brief"],
+              "outputs": ["collected-brief"],
+              "checklist": [
+                "Business objectives confirmed",
+                "Target audience defined",
+                "Budget range established",
+                "Timeline communicated",
+                "Key stakeholders identified"
+              ],
+              "prompts": {
+                "en": "Collect comprehensive client brief. Confirm business objectives, target audience, budget, timeline, and stakeholders.",
+                "ar": "جمع موجز العميل الشامل. تأكيد الأهداف، الجمهور المستهدف، الميزانية، الجدول الزمني."
+              }
+            },
+            {
+              "id": "intake-2",
+              "name": "Background Research",
+              "description": "Deep dive into client's business, market position, and competitive landscape",
+              "assignedRole": "research",
+              "inputs": ["collected-brief"],
+              "outputs": ["background-research-doc"],
+              "checklist": [
+                "Company history reviewed",
+                "Product/service offerings catalogued",
+                "Market position identified",
+                "Competitive landscape mapped",
+                "SWOT drafted"
+              ],
+              "prompts": {
+                "en": "Conduct background research on client. Include company history, market position, competitive landscape, SWOT analysis.",
+                "ar": "إجراء بحث أولي عن العميل. تشمل: تاريخ الشركة، الموقع في السوق، المشهد التنافسي، تحليل SWOT."
+              }
+            }
+          ]
+        },
+        {
+          "id": "strategy",
+          "name": "Strategy Development",
+          "color": "#9b6dff",
+          "activities": [
+            {
+              "id": "strategy-1",
+              "name": "Target Audience Deep Dive",
+              "description": "Create detailed audience personas and journey maps",
+              "assignedRole": "brand-strategist",
+              "inputs": ["collected-brief", "background-research-doc"],
+              "outputs": ["audience-personas", "journey-maps"],
+              "checklist": [
+                "Primary persona created with demographics",
+                "Secondary personas identified",
+                "Pain points mapped",
+                "Decision journey outlined",
+                "Touchpoint inventory completed"
+              ],
+              "prompts": {
+                "en": "Create detailed audience personas and customer journey maps. Inject {{target_audience}}, {{business_objectives}}.",
+                "ar": "إنشاء شخصيات جمهور مفصلة وخرائط رحلة العميل."
+              }
+            },
+            {
+              "id": "strategy-2",
+              "name": "Competitive Positioning",
+              "description": "Define unique positioning and differentiation strategy",
+              "assignedRole": "brand-strategist",
+              "inputs": ["background-research-doc", "audience-personas"],
+              "outputs": ["positioning-statement", "differentiation-strategy"],
+              "checklist": [
+                "Competitive landscape mapped",
+                "White space opportunities identified",
+                "Unique value proposition drafted",
+                "Messaging hierarchy created",
+                "Brand voice guidelines defined"
+              ],
+              "prompts": {
+                "en": "Define competitive positioning and differentiation. Inject {{industry}}, {{product_service}}, {{competitive_landscape}}.",
+                "ar": "تحديد الموقع التنافسي والتميز. حقن {{industry}}، {{product_service}}."
+              }
+            },
+            {
+              "id": "strategy-3",
+              "name": "Campaign Strategy",
+              "description": "Develop campaign concept, themes, and strategic framework",
+              "assignedRole": "brand-strategist",
+              "inputs": ["positioning-statement", "audience-personas"],
+              "outputs": ["campaign-strategy-doc", "kpis"],
+              "checklist": [
+                "Campaign theme/concept approved",
+                "Strategic framework documented",
+                "Channel strategy defined",
+                "KPIs and success metrics set",
+                "Budget allocation proposed"
+              ],
+              "prompts": {
+                "en": "Develop comprehensive campaign strategy. Include concept, themes, channel strategy, KPIs. Inject {{business_objectives}}, {{budget_range}}.",
+                "ar": "تطوير استراتيجية حملة شاملة. تشمل: المفهوم، الموضوعات، استراتيجية القنوات، مؤشرات الأداء."
+              }
+            }
+          ]
+        },
+        {
+          "id": "creative",
+          "name": "Creative Development",
+          "color": "#00d4aa",
+          "activities": [
+            {
+              "id": "creative-1",
+              "name": "Creative Direction",
+              "description": "Define visual and copy direction for the campaign",
+              "assignedRole": "creative-director",
+              "inputs": ["campaign-strategy-doc"],
+              "outputs": ["creative-brief", "visual-direction"],
+              "checklist": [
+                "Visual style guides created",
+                "Copy tone defined",
+                "Key messages approved",
+                "Platform requirements documented",
+                "Asset specifications outlined"
+              ],
+              "prompts": {
+                "en": "Define creative direction. Include visual style, copy tone, key messages, platform requirements, asset specs. Inject {{brand_name}}, {{tone}}.",
+                "ar": "تحديد الاتجاه الإبداعي. تشمل: الأسلوب البصري، نبرة النسخ، الرسائل الرئيسية."
+              }
+            },
+            {
+              "id": "creative-2",
+              "name": "Content Creation",
+              "description": "Produce all campaign copy and content",
+              "assignedRole": "copy",
+              "inputs": ["creative-brief"],
+              "outputs": ["campaign-copy", "content-calendar"],
+              "checklist": [
+                "All copy variants written",
+                "CTAs optimized",
+                "Hashtag strategy created",
+                "Content calendar approved",
+                "Legal review passed"
+              ],
+              "prompts": {
+                "en": "Produce all campaign copy. Inject {{campaign_theme}}, {{brand_voice}}, {{target_audience}}. Include all required fields per platform.",
+                "ar": "إنتاج جميع نسخ الحملة. حقن {{campaign_theme}}، {{brand_voice}}، {{target_audience}}."
+              }
+            },
+            {
+              "id": "creative-3",
+              "name": "Visual Production",
+              "description": "Create all visual assets per specifications",
+              "assignedRole": "visual-producer",
+              "inputs": ["visual-direction", "asset-specs"],
+              "outputs": ["creative-assets", "production-files"],
+              "checklist": [
+                "All visuals created per specs",
+                "A/B variants prepared",
+                "Accessibility compliance checked",
+                "File formats verified",
+                "Asset library organized"
+              ],
+              "prompts": {
+                "en": "Create all visual assets per specifications. Inject {{visual_direction}}, {{asset_specs}}. Ensure accessibility compliance.",
+                "ar": "إنشاء جميع الأصول البصرية. ضمان الامتثال للوصولية."
+              }
+            }
+          ]
+        },
+        {
+          "id": "review",
+          "name": "Review & Approval",
+          "color": "#ffd166",
+          "activities": [
+            {
+              "id": "review-1",
+              "name": "Internal QA",
+              "description": "Cross-functional review before client presentation",
+              "assignedRole": "traffic-manager",
+              "inputs": ["campaign-strategy-doc", "campaign-copy", "creative-assets"],
+              "outputs": ["qa-report", "revision-list"],
+              "checklist": [
+                "All deliverables complete",
+                "Brand compliance verified",
+                "Proofreading done",
+                "Technical specifications met",
+                "Revision notes addressed"
+              ],
+              "prompts": {
+                "en": "Conduct internal QA review. Check completeness, brand compliance, proofreading, technical specs.",
+                "ar": "إجراء مراجعة جودة داخلية. فحص الاكتمال، الامتثال للعلامة التجارية، التدقيق اللغوي."
+              }
+            },
+            {
+              "id": "review-2",
+              "name": "Client Presentation",
+              "description": "Present strategy and creative to client for approval",
+              "assignedRole": "client-services",
+              "inputs": ["approved-strategy", "creative-assets"],
+              "outputs": ["client-feedback", "approved-creative"],
+              "checklist": [
+                "Presentation deck prepared",
+                "Key talking points ready",
+                "Alternative concepts ready",
+                "Feedback mechanism established",
+                "Approval timeline confirmed"
+              ],
+              "prompts": {
+                "en": "Present campaign strategy and creative to client. Prepare deck, talking points, alternatives, feedback mechanism.",
+                "ar": "عرض استراتيجية الحملة والإبداع على العميل. تحضير العرض، نقاط الحديث، البدائل."
+              }
+            }
+          ]
+        },
+        {
+          "id": "delivery",
+          "name": "Production & Launch",
+          "color": "#ff5fa0",
+          "activities": [
+            {
+              "id": "delivery-1",
+              "name": "Media Planning",
+              "description": "Finalize media plan and channel strategy",
+              "assignedRole": "media-planner",
+              "inputs": ["approved-creative", "media-budget"],
+              "outputs": ["media-plan", "channel-schedule"],
+              "checklist": [
+                "Channel allocation finalized",
+                "Campaign timeline confirmed",
+                "Bidding strategy defined",
+                "Tracking implemented",
+                "Success metrics configured"
+              ],
+              "prompts": {
+                "en": "Finalize media plan. Inject {{budget_range}}, {{timeline}}, {{channel_strategy}}. Define channel allocation, bidding strategy, tracking.",
+                "ar": "تحديد الخطة الإعلامية النهائية. حقن {{budget_range}}، {{timeline}}."
+              }
+            },
+            {
+              "id": "delivery-2",
+              "name": "Campaign Launch",
+              "description": "Execute campaign launch across all channels",
+              "assignedRole": "media-planner",
+              "inputs": ["media-plan", "approved-creative"],
+              "outputs": ["launch-confirmation", "monitoring-dashboard"],
+              "checklist": [
+                "All assets uploaded",
+                "Campaigns live",
+                "Tracking verified",
+                "Stakeholders notified",
+                "Monitoring active"
+              ],
+              "prompts": {
+                "en": "Execute campaign launch. Verify all assets uploaded, campaigns live, tracking working, stakeholders notified.",
+                "ar": "تنفيذ إطلاق الحملة. التحقق من رفع جميع الأصول، عمل الحملات، عمل التتبع."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ad-creative",
+      "name": "Ad Creative Production",
+      "description": "End-to-end workflow for producing high-performance ad creatives with A/B testing",
+      "version": "1.0",
+      "isDefault": true,
+      "estimatedDuration": "7 days",
+      "clientProfileFields": [
+        { "id": "brand_name", "label": "Brand Name", "type": "text", "required": true },
+        { "id": "product_service", "label": "Product/Service", "type": "textarea", "required": true },
+        { "id": "campaign_objective", "label": "Campaign Objective", "type": "select", "options": ["awareness", "consideration", "conversion"], "required": true },
+        { "id": "target_audience", "label": "Target Audience", "type": "textarea", "required": true },
+        { "id": "primary_platform", "label": "Primary Platform", "type": "select", "options": ["Instagram", "Facebook", "Google", "LinkedIn", "TikTok"], "required": true },
+        { "id": "ad_formats", "label": "Required Ad Formats", "type": "multiselect", "options": ["Image", "Video", "Carousel", "Story", "Reel"], "required": true },
+        { "id": "budget", "label": "Ad Budget", "type": "text", "required": true }
+      ],
+      "phases": [
+        {
+          "id": "briefing",
+          "name": "Creative Briefing",
+          "color": "#4f8ef7",
+          "activities": [
+            {
+              "id": "briefing-1",
+              "name": "Audience & Objective Definition",
+              "description": "Define target audience and campaign objectives",
+              "assignedRole": "media-planner",
+              "inputs": ["campaign-brief", "previous-ad-data"],
+              "outputs": ["ad-brief", "targeting-spec"],
+              "checklist": [
+                "Campaign objective selected",
+                "Target audience detailed",
+                "Geographic targeting set",
+                "Age/gender parameters defined",
+                "Custom audience specified"
+              ],
+              "prompts": {
+                "en": "Define ad campaign brief. Inject {{campaign_objective}}, {{target_audience}}, {{primary_platform}}. Include targeting specs.",
+                "ar": "تحديد موجز حملة الإعلانات. حقن {{campaign_objective}}، {{target_audience}}."
+              }
+            }
+          ]
+        },
+        {
+          "id": "concepting",
+          "name": "Creative Concepting",
+          "color": "#9b6dff",
+          "activities": [
+            {
+              "id": "concepting-1",
+              "name": "Creative Concepts",
+              "description": "Develop multiple creative concepts for testing",
+              "assignedRole": "creative-director",
+              "inputs": ["ad-brief"],
+              "outputs": ["creative-concepts", "copy-angles"],
+              "checklist": [
+                "3+ distinct concepts created",
+                "Each concept has unique hook",
+                "Value proposition clear",
+                "CTA defined per concept",
+                "Visual approach specified"
+              ],
+              "prompts": {
+                "en": "Develop 3+ creative concepts. Inject {{product_service}}, {{campaign_objective}}, {{target_audience}}. Each concept needs unique hook, value prop, CTA, visual approach.",
+                "ar": "تطوير 3+ مفاهيم إبداعية. حقن {{product_service}}، {{campaign_objective}}."
+              }
+            }
+          ]
+        },
+        {
+          "id": "production",
+          "name": "Asset Production",
+          "color": "#00d4aa",
+          "activities": [
+            {
+              "id": "production-1",
+              "name": "Copy & Visual Pairing",
+              "description": "Create all copy variants and pair with visuals",
+              "assignedRole": "copy",
+              "inputs": ["creative-concepts", "visual-specs"],
+              "outputs": ["ad-variants"],
+              "checklist": [
+                "Headline variants written",
+                "Body copy optimized",
+                "CTA buttons varied",
+                "Visual pairings created",
+                "Format specs met per platform"
+              ],
+              "prompts": {
+                "en": "Create ad copy variants. Inject {{creative_concepts}}, {{primary_platform}}. Apply platform ad specs. Include headline, body, CTA.",
+                "ar": "إنشاء متغيرات نسخ الإعلانات. تطبيق مواصفات المنصة."
+              },
+              "batching": { "batchSize": 5, "parallel": false }
+            },
+            {
+              "id": "production-2",
+              "name": "Visual Production",
+              "description": "Create all visual assets",
+              "assignedRole": "visual-producer",
+              "inputs": ["ad-variants", "visual-specs"],
+              "outputs": ["ad-assets"],
+              "checklist": [
+                "All visuals created",
+                "A/B variants prepared",
+                "Platform specs met",
+                "Accessibility checked",
+                "Files organized"
+              ],
+              "prompts": {
+                "en": "Create all visual assets per specs. Inject {{ad_formats}}, {{visual_specs}}. Ensure platform specs met.",
+                "ar": "إنشاء جميع الأصول البصرية. ضمان استيفاء مواصفات المنصة."
+              }
+            }
+          ]
+        },
+        {
+          "id": "testing",
+          "name": "Testing & Optimization",
+          "color": "#ff5fa0",
+          "activities": [
+            {
+              "id": "testing-1",
+              "name": "A/B Test Setup",
+              "description": "Configure and launch A/B tests",
+              "assignedRole": "media-planner",
+              "inputs": ["ad-assets"],
+              "outputs": ["test-configured", "initial-results"],
+              "checklist": [
+                "Test split configured",
+                "Statistical significance target set",
+                "Test duration defined",
+                "Success metrics established",
+                "Monitoring dashboard ready"
+              ],
+              "prompts": {
+                "en": "Configure A/B tests. Define test split, significance target, duration, success metrics. Inject {{budget}}.",
+                "ar": "تكوين اختبارات A/B. تحديد انقسام الاختبار، هدف الأهمية، المدة."
+              }
+            },
+            {
+              "id": "testing-2",
+              "name": "Performance Analysis",
+              "description": "Analyze test results and scale winners",
+              "assignedRole": "performance",
+              "inputs": ["test-results"],
+              "outputs": ["winning-ads", "optimization-report"],
+              "checklist": [
+                "Statistical winners identified",
+                "Budget reallocated to winners",
+                "Underperformers paused",
+                "Scaling recommendations ready",
+                "Learnings documented"
+              ],
+              "prompts": {
+                "en": "Analyze A/B test results. Identify winners, reallocate budget, document learnings. Inject {{test_results}}.",
+                "ar": "تحليل نتائج اختبار A/B. تحديد الفائزين، إعادة تخصيص الميزانية."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "seo-audit",
+      "name": "SEO Audit & Strategy",
+      "description": "Comprehensive SEO audit with actionable recommendations",
+      "version": "1.0",
+      "isDefault": true,
+      "estimatedDuration": "10 days",
+      "clientProfileFields": [
+        { "id": "website_url", "label": "Website URL", "type": "text", "required": true },
+        { "id": "industry", "label": "Industry", "type": "text", "required": true },
+        { "id": "business_objectives", "label": "Business Objectives", "type": "textarea", "required": true },
+        { "id": "target_keywords", "label": "Target Keywords (if any)", "type": "textarea", "required": false },
+        { "id": "competitor_urls", "label": "Competitor URLs (optional)", "type": "textarea", "required": false },
+        { "id": "search_console_access", "label": "Search Console Access", "type": "checkbox", "required": false }
+      ],
+      "phases": [
+        {
+          "id": "discovery",
+          "name": "Discovery & Crawling",
+          "color": "#38bdf8",
+          "activities": [
+            {
+              "id": "discovery-1",
+              "name": "Technical SEO Audit",
+              "description": "Comprehensive technical crawl of the website",
+              "assignedRole": "research",
+              "inputs": ["website-url", "search-console-access"],
+              "outputs": ["technical-audit-report", "crawl-issues"],
+              "checklist": [
+                "Site crawl completed",
+                "Technical issues identified",
+                "Indexation status reviewed",
+                "Core Web Vitals checked",
+                "Mobile usability verified"
+              ],
+              "prompts": {
+                "en": "Conduct comprehensive technical SEO audit. Inject {{website_url}}. Check site crawl, technical issues, indexation, Core Web Vitals, mobile usability.",
+                "ar": "إجراء تدقيق SEO تقني شامل. فحص الزحف، المشاكل التقنية، مؤشرات Core Web."
+              }
+            },
+            {
+              "id": "discovery-2",
+              "name": "Keyword Research",
+              "description": "Identify valuable keyword opportunities",
+              "assignedRole": "research",
+              "inputs": ["technical-audit-report", "business-objectives"],
+              "outputs": ["keyword-map", "opportunity-report"],
+              "checklist": [
+                "Current rankings analyzed",
+                "Competitor keywords identified",
+                "Long-tail opportunities found",
+                "Search volume data compiled",
+                "Keyword difficulty assessed"
+              ],
+              "prompts": {
+                "en": "Conduct keyword research. Inject {{industry}}, {{target_keywords}}. Identify opportunities, analyze competition, assess difficulty.",
+                "ar": "إجراء بحث عن الكلمات المفتاحية. تحديد الفرص، تحليل المنافسة."
+              }
+            }
+          ]
+        },
+        {
+          "id": "analysis",
+          "name": "Content & Competitive Analysis",
+          "color": "#9b6dff",
+          "activities": [
+            {
+              "id": "analysis-1",
+              "name": "Content Audit",
+              "description": "Analyze existing content performance",
+              "assignedRole": "research",
+              "inputs": ["keyword-map", "content-list"],
+              "outputs": ["content-gaps", "content-performance"],
+              "checklist": [
+                "Top performing pages identified",
+                "Content gaps documented",
+                "Thin content flagged",
+                "Duplicate content checked",
+                "Content cannibalization found"
+              ],
+              "prompts": {
+                "en": "Audit existing content. Identify top pages, content gaps, thin content, duplicates, cannibalization. Inject {{website_url}}.",
+                "ar": "تدقيق المحتوى الموجود. تحديد أفضل الصفحات، فجوات المحتوى، المحتوى الرقيق."
+              }
+            },
+            {
+              "id": "analysis-2",
+              "name": "Competitive Analysis",
+              "description": "Deep dive into competitor strategies",
+              "assignedRole": "research",
+              "inputs": ["keyword-map", "competitor-list"],
+              "outputs": ["competitor-analysis", "backlink-profile"],
+              "checklist": [
+                "Top competitors identified",
+                "Competitor backlink profiles analyzed",
+                "Content strategies compared",
+                "Gap analysis completed",
+                "Opportunities mapped"
+              ],
+              "prompts": {
+                "en": "Analyze competitor SEO strategies. Inject {{competitor_urls}}. Compare backlinks, content strategies, identify gaps.",
+                "ar": "تحليل استراتيجيات SEO للمنافسين. مقارنة الملفات التقنية، استراتيجيات المحتوى."
+              }
+            }
+          ]
+        },
+        {
+          "id": "strategy",
+          "name": "Strategy Development",
+          "color": "#ffd166",
+          "activities": [
+            {
+              "id": "strategy-1",
+              "name": "SEO Strategy Document",
+              "description": "Create comprehensive SEO strategy",
+              "assignedRole": "brand-strategist",
+              "inputs": ["technical-audit-report", "keyword-map", "competitor-analysis"],
+              "outputs": ["seo-strategy-doc", "priority-matrix"],
+              "checklist": [
+                "Technical priorities ranked",
+                "Content recommendations ready",
+                "Link building strategy defined",
+                "Timeline proposed",
+                "Success metrics set"
+              ],
+              "prompts": {
+                "en": "Create comprehensive SEO strategy. Inject {{business_objectives}}, {{industry}}. Include technical priorities, content recommendations, link building, timeline.",
+                "ar": "إنشاء استراتيجية SEO شاملة. تشمل الأولويات التقنية، توصيات المحتوى، بناء الروابط."
+              }
+            }
+          ]
+        },
+        {
+          "id": "delivery",
+          "name": "Reporting & Handoff",
+          "color": "#ff5fa0",
+          "activities": [
+            {
+              "id": "delivery-1",
+              "name": "Final Report & Presentation",
+              "description": "Present findings and strategy to stakeholders",
+              "assignedRole": "client-services",
+              "inputs": ["seo-strategy-doc", "technical-audit-report"],
+              "outputs": ["executive-summary", "presentation-deck"],
+              "checklist": [
+                "Executive summary prepared",
+                "Full audit report compiled",
+                "Prioritized action items ready",
+                "Quick wins identified",
+                "Client training completed"
+              ],
+              "prompts": {
+                "en": "Prepare final SEO report and presentation. Include executive summary, full audit, prioritized actions, quick wins.",
+                "ar": "تحضير تقرير SEO النهائي والعروض. تشمل الملخص التنفيذي، التدقيق الكامل، الإجراءات ذات الأولوية."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "competitor-research",
+      "name": "Competitor Research Report",
+      "description": "Comprehensive competitive intelligence report",
+      "version": "1.0",
+      "isDefault": true,
+      "estimatedDuration": "5 days",
+      "clientProfileFields": [
+        { "id": "brand_name", "label": "Your Brand Name", "type": "text", "required": true },
+        { "id": "industry", "label": "Industry", "type": "text", "required": true },
+        { "id": "product_service", "label": "Product/Service", "type": "textarea", "required": true },
+        { "id": "competitor_names", "label": "Known Competitors", "type": "textarea", "required": false },
+        { "id": "research_focus", "label": "Research Focus Areas", "type": "multiselect", "options": ["marketing", "products", "pricing", "positioning", "digital-presence"], "required": true }
+      ],
+      "phases": [
+        {
+          "id": "identification",
+          "name": "Competitor Identification",
+          "color": "#4f8ef7",
+          "activities": [
+            {
+              "id": "id-1",
+              "name": "Competitor Mapping",
+              "description": "Identify all relevant competitors",
+              "assignedRole": "research",
+              "inputs": ["client-website", "industry"],
+              "outputs": ["competitor-list", "market-map"],
+              "checklist": [
+                "Direct competitors identified",
+                "Indirect competitors found",
+                "Market map created",
+                "Competitive set validated",
+                "Market share estimated"
+              ],
+              "prompts": {
+                "en": "Map all relevant competitors. Inject {{industry}}, {{product_service}}. Identify direct, indirect, map market share.",
+                "ar": "رسم خريطة جميع المنافسين المعنيين. تحديد المنافسين المباشرين وغير المباشرين."
+              }
+            }
+          ]
+        },
+        {
+          "id": "analysis",
+          "name": "Deep Analysis",
+          "color": "#9b6dff",
+          "activities": [
+            {
+              "id": "analysis-1",
+              "name": "Digital Presence Analysis",
+              "description": "Analyze competitor websites and digital presence",
+              "assignedRole": "research",
+              "inputs": ["competitor-list"],
+              "outputs": ["digital-presence-report", "website-analysis"],
+              "checklist": [
+                "Website UX reviewed",
+                "Content strategy analyzed",
+                "SEO performance compared",
+                "Social media presence mapped",
+                "Paid advertising identified"
+              ],
+              "prompts": {
+                "en": "Analyze competitor digital presence. Inject {{competitor_list}}. Review website UX, content, SEO, social, paid ads.",
+                "ar": "تحليل التواجد الرقمي للمنافسين. فحص موقع الويب، المحتوى، SEO، الاجتماعي."
+              }
+            },
+            {
+              "id": "analysis-2",
+              "name": "Marketing Strategy Analysis",
+              "description": "Deep dive into competitor marketing approaches",
+              "assignedRole": "research",
+              "inputs": ["digital-presence-report"],
+              "outputs": ["marketing-analysis", "swot-competitors"],
+              "checklist": [
+                "Positioning strategies compared",
+                "Messaging analyzed",
+                "Campaign approaches reviewed",
+                "Pricing strategies documented",
+                "SWOT analysis completed"
+              ],
+              "prompts": {
+                "en": "Analyze competitor marketing strategies. Inject {{research_focus}}. Compare positioning, messaging, campaigns, pricing. Complete SWOT.",
+                "ar": "تحليل استراتيجيات تسويق المنافسين. مقارنة المواقع، الرسائل، الحملات، التسعير. إكمال SWOT."
+              }
+            }
+          ]
+        },
+        {
+          "id": "delivery",
+          "name": "Reporting",
+          "color": "#00d4aa",
+          "activities": [
+            {
+              "id": "delivery-1",
+              "name": "Competitor Report",
+              "description": "Compile comprehensive competitor report",
+              "assignedRole": "brand-strategist",
+              "inputs": ["marketing-analysis", "swot-competitors"],
+              "outputs": ["competitor-report", "action-recommendations"],
+              "checklist": [
+                "Executive summary written",
+                "Detailed findings documented",
+                "Opportunities identified",
+                "Recommendations prioritized",
+                "Action plan created"
+              ],
+              "prompts": {
+                "en": "Compile comprehensive competitor report. Include executive summary, detailed findings, opportunities, prioritized recommendations, action plan. Inject {{brand_name}}.",
+                "ar": "تجميع تقرير شامل عن المنافسين. تشمل الملخص التنفيذي، النتائج التفصيلية، الفرص، التوصيات."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "media-plan",
+      "name": "Media Plan Development",
+      "description": "Create comprehensive media strategy and execution plan",
+      "version": "1.0",
+      "isDefault": true,
+      "estimatedDuration": "7 days",
+      "clientProfileFields": [
+        { "id": "brand_name", "label": "Brand Name", "type": "text", "required": true },
+        { "id": "campaign_objective", "label": "Campaign Objective", "type": "select", "options": ["awareness", "consideration", "conversion", "retention"], "required": true },
+        { "id": "target_audience", "label": "Target Audience", "type": "textarea", "required": true },
+        { "id": "budget", "label": "Total Media Budget", "type": "text", "required": true },
+        { "id": "campaign_duration", "label": "Campaign Duration", "type": "text", "required": true },
+        { "id": "key_dates", "label": "Key Dates/Events", "type": "textarea", "required": false },
+        { "id": "previous_campaigns", "label": "Previous Campaign Data (URLs or notes)", "type": "textarea", "required": false }
+      ],
+      "phases": [
+        {
+          "id": "briefing",
+          "name": "Media Briefing",
+          "color": "#4f8ef7",
+          "activities": [
+            {
+              "id": "briefing-1",
+              "name": "Objectives & Budget Analysis",
+              "description": "Define media objectives and budget parameters",
+              "assignedRole": "media-planner",
+              "inputs": ["campaign-brief", "historical-data"],
+              "outputs": ["media-objectives", "budget-parameters"],
+              "checklist": [
+                "Campaign objectives clarified",
+                "Budget range confirmed",
+                "Target metrics defined",
+                "Timeline established",
+                "KPIs agreed"
+              ],
+              "prompts": {
+                "en": "Analyze briefing and define media objectives. Inject {{campaign_objective}}, {{budget}}, {{campaign_duration}}. Clarify KPIs and timeline.",
+                "ar": "تحليل الموجز وتحديد الأهداف الإعلامية. توضيح مؤشرات الأداء والجدول الزمني."
+              }
+            }
+          ]
+        },
+        {
+          "id": "strategy",
+          "name": "Media Strategy",
+          "color": "#9b6dff",
+          "activities": [
+            {
+              "id": "strategy-1",
+              "name": "Audience Definition",
+              "description": "Define precise target audiences",
+              "assignedRole": "media-planner",
+              "inputs": ["media-objectives", "customer-data"],
+              "outputs": ["audience-personas", "targeting-spec"],
+              "checklist": [
+                "Primary audience defined",
+                "Secondary audiences identified",
+                "Audience size estimated",
+                "Media habits analyzed",
+                "Custom audience parameters set"
+              ],
+              "prompts": {
+                "en": "Define precise target audiences. Inject {{target_audience}}. Analyze media habits, set custom audience parameters.",
+                "ar": "تحديد الجماهير المستهدفة بدقة. تحليل عادات الوسائط، تحديد معايير الجمهور المخصص."
+              }
+            },
+            {
+              "id": "strategy-2",
+              "name": "Channel Strategy",
+              "description": "Develop channel mix and strategy",
+              "assignedRole": "media-planner",
+              "inputs": ["audience-personas", "budget-parameters"],
+              "outputs": ["channel-strategy", "channel-mix"],
+              "checklist": [
+                "Channel selection justified",
+                "Budget split by channel",
+                "Allocation rationale documented",
+                "Cross-channel strategy defined",
+                "Attribution approach selected"
+              ],
+              "prompts": {
+                "en": "Develop channel strategy. Inject {{target_audience}}, {{budget}}. Justify channel selection, define budget split, cross-channel strategy.",
+                "ar": "تطوير استراتيجية القنوات. تبرير اختيار القنوات، تحديد تقسيم الميزانية."
+              }
+            }
+          ]
+        },
+        {
+          "id": "planning",
+          "name": "Detailed Planning",
+          "color": "#00d4aa",
+          "activities": [
+            {
+              "id": "planning-1",
+              "name": "Campaign Calendar",
+              "description": "Create detailed campaign timeline",
+              "assignedRole": "media-planner",
+              "inputs": ["channel-strategy", "timeline"],
+              "outputs": ["campaign-calendar", "flight-schedule"],
+              "checklist": [
+                "Campaign dates confirmed",
+                "Flight schedule defined",
+                "Pacing strategy set",
+                "Key dates noted",
+                "Contingency time built"
+              ],
+              "prompts": {
+                "en": "Create campaign calendar. Inject {{campaign_duration}}, {{key_dates}}. Define flight schedule, pacing, contingency.",
+                "ar": "إنشاء تقويم الحملة. تحديد جدول الرحلة، استراتيجية الإيقاع."
+              }
+            },
+            {
+              "id": "planning-2",
+              "name": "Budget Breakdown",
+              "description": "Detailed budget allocation",
+              "assignedRole": "media-planner",
+              "inputs": ["channel-mix", "pricing-data"],
+              "outputs": ["budget-breakdown", "bid-strategy"],
+              "checklist": [
+                "Cost per channel calculated",
+                "Bid strategies defined",
+                "Expected CPM/CPA estimated",
+                "Total investment mapped",
+                "ROI projections made"
+              ],
+              "prompts": {
+                "en": "Create detailed budget breakdown. Inject {{channel_mix}}, {{budget}}. Calculate CPM/CPA, project ROI.",
+                "ar": "إنشاء تفصيل الميزانية. حساب CPM/CPA، توقع العائد على الاستثمار."
+              }
+            }
+          ]
+        },
+        {
+          "id": "delivery",
+          "name": "Documentation & Handoff",
+          "color": "#ffd166",
+          "activities": [
+            {
+              "id": "delivery-1",
+              "name": "Media Plan Document",
+              "description": "Compile final media plan",
+              "assignedRole": "media-planner",
+              "inputs": ["channel-strategy", "budget-breakdown", "campaign-calendar"],
+              "outputs": ["media-plan-document", "presentation-deck"],
+              "checklist": [
+                "Full media plan documented",
+                "Rationale clearly explained",
+                "Presentation prepared",
+                "Recommendations prioritized",
+                "Success metrics confirmed"
+              ],
+              "prompts": {
+                "en": "Compile final media plan document. Inject all inputs. Clearly explain rationale, prepare presentation, confirm success metrics. Inject {{brand_name}}.",
+                "ar": "تجميع وثيقة الخطة الإعلامية النهائية. توضيح التبرير، تحضير العرض، تأكيد مقاييس النجاح."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "strategy-brief",
+      "name": "Strategy Brief",
+      "description": "Structured workflow for producing a high-quality brand or campaign strategy brief with research, positioning, and recommendations",
+      "version": "1.0",
+      "isDefault": true,
+      "estimatedDuration": "5 days",
+      "clientProfileFields": [
+        { "id": "brand_name", "label": "Brand Name", "type": "text", "required": true },
+        { "id": "industry", "label": "Industry", "type": "text", "required": true },
+        { "id": "product_service", "label": "Product / Service", "type": "textarea", "required": true },
+        { "id": "target_audience", "label": "Target Audience", "type": "textarea", "required": true },
+        { "id": "business_objectives", "label": "Business Objectives", "type": "textarea", "required": true },
+        { "id": "competitive_landscape", "label": "Competitive Landscape", "type": "textarea", "required": false },
+        { "id": "tone", "label": "Brand Tone", "type": "text", "required": false }
+      ],
+      "phases": [
+        {
+          "id": "intake",
+          "name": "Brief Intake",
+          "color": "#4f8ef7",
+          "activities": [
+            {
+              "id": "intake-1",
+              "name": "Clarify Strategic Objective",
+              "description": "Synthesize the task into a sharp strategic problem statement and success criteria",
+              "assignedRole": "client-services",
+              "inputs": ["client-brief"],
+              "outputs": ["strategic-objective"],
+              "checklist": [
+                "Business objective clarified",
+                "Decision to be made is explicit",
+                "Client context summarized",
+                "Audience context confirmed"
+              ],
+              "prompts": {
+                "en": "Clarify the strategic objective for {{brand_name}} in {{industry}}. Summarize the client situation, the core decision to solve, and the success criteria.",
+                "ar": "توضيح الهدف الاستراتيجي للعميل وتحديد معايير النجاح."
+              }
+            }
+          ]
+        },
+        {
+          "id": "insight",
+          "name": "Insight & Research",
+          "color": "#38bdf8",
+          "activities": [
+            {
+              "id": "insight-1",
+              "name": "Audience and Market Insight",
+              "description": "Surface audience motivations, category dynamics, and commercial implications",
+              "assignedRole": "research",
+              "inputs": ["strategic-objective"],
+              "outputs": ["insight-summary"],
+              "checklist": [
+                "Audience motivations captured",
+                "Category signals identified",
+                "Competitive context reflected",
+                "Commercial implications stated"
+              ],
+              "prompts": {
+                "en": "Create an insight summary for {{brand_name}}. Use {{target_audience}}, {{business_objectives}}, and {{competitive_landscape}} to identify meaningful audience and market insights.",
+                "ar": "إنشاء ملخص رؤى للجمهور والسوق."
+              }
+            }
+          ]
+        },
+        {
+          "id": "strategy",
+          "name": "Strategic Development",
+          "color": "#9b6dff",
+          "activities": [
+            {
+              "id": "strategy-1",
+              "name": "Build Positioning Direction",
+              "description": "Develop the recommended strategic angle, message territory, and differentiation logic",
+              "assignedRole": "brand-strategist",
+              "inputs": ["strategic-objective", "insight-summary"],
+              "outputs": ["positioning-direction"],
+              "checklist": [
+                "Strategic opportunity framed",
+                "Positioning direction drafted",
+                "Messaging territory identified",
+                "Recommendations grounded in client context"
+              ],
+              "prompts": {
+                "en": "Build a strategic positioning direction for {{brand_name}} using {{product_service}}, {{target_audience}}, {{business_objectives}}, and {{competitive_landscape}}.",
+                "ar": "بناء اتجاه تموضع استراتيجي ورسائل رئيسية."
+              }
+            }
+          ]
+        },
+        {
+          "id": "qa",
+          "name": "QA & Finalization",
+          "color": "#ffd166",
+          "activities": [
+            {
+              "id": "qa-1",
+              "name": "Internal Strategic QA",
+              "description": "Check the strategy for logic, clarity, client relevance, and presentation readiness",
+              "assignedRole": "traffic-manager",
+              "inputs": ["positioning-direction"],
+              "outputs": ["qa-strategy-notes"],
+              "checklist": [
+                "Logic is coherent",
+                "Sections are client-ready",
+                "Recommendations are actionable",
+                "No unsupported claims"
+              ],
+              "prompts": {
+                "en": "Review the strategy output for clarity, logic, actionability, and client readiness for {{brand_name}}.",
+                "ar": "مراجعة الاستراتيجية للتأكد من الوضوح والجاهزية للعميل."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "client-brief",
+      "name": "Client Brief",
+      "description": "Structured intake workflow for turning client information into a usable agency brief with strategy-ready context",
+      "version": "1.0",
+      "isDefault": true,
+      "estimatedDuration": "3 days",
+      "clientProfileFields": [
+        { "id": "brand_name", "label": "Brand Name", "type": "text", "required": true },
+        { "id": "industry", "label": "Industry", "type": "text", "required": true },
+        { "id": "product_service", "label": "Products / Services", "type": "textarea", "required": true },
+        { "id": "target_audience", "label": "Target Audience", "type": "textarea", "required": true },
+        { "id": "business_objectives", "label": "Business Objectives", "type": "textarea", "required": true },
+        { "id": "tone", "label": "Tone of Voice", "type": "text", "required": false },
+        { "id": "competitive_landscape", "label": "Competitive Landscape", "type": "textarea", "required": false }
+      ],
+      "phases": [
+        {
+          "id": "discovery",
+          "name": "Discovery",
+          "color": "#4f8ef7",
+          "activities": [
+            {
+              "id": "discovery-1",
+              "name": "Client Context Consolidation",
+              "description": "Consolidate company, audience, offer, and objective details into a clear intake summary",
+              "assignedRole": "client-services",
+              "inputs": ["raw-client-inputs"],
+              "outputs": ["client-context-summary"],
+              "checklist": [
+                "Company overview summarized",
+                "Offer and audience clarified",
+                "Business objective stated",
+                "Open questions surfaced if needed"
+              ],
+              "prompts": {
+                "en": "Create a concise intake summary for {{brand_name}} using {{industry}}, {{product_service}}, {{target_audience}}, and {{business_objectives}}.",
+                "ar": "إنشاء ملخص استيعاب أولي للعميل."
+              }
+            }
+          ]
+        },
+        {
+          "id": "strategy",
+          "name": "Strategic Framing",
+          "color": "#9b6dff",
+          "activities": [
+            {
+              "id": "strategy-1",
+              "name": "Message and Priority Framing",
+              "description": "Translate intake notes into agency-ready messaging priorities and strategic watchouts",
+              "assignedRole": "brand-strategist",
+              "inputs": ["client-context-summary"],
+              "outputs": ["messaging-priorities"],
+              "checklist": [
+                "Messaging priorities set",
+                "Strategic risks noted",
+                "Differentiators surfaced",
+                "Tone and positioning aligned"
+              ],
+              "prompts": {
+                "en": "Frame the messaging priorities for {{brand_name}} using {{tone}}, {{competitive_landscape}}, and {{business_objectives}}.",
+                "ar": "صياغة أولويات الرسائل والاعتبارات الاستراتيجية."
+              }
+            }
+          ]
+        },
+        {
+          "id": "finalization",
+          "name": "Finalization",
+          "color": "#00d4aa",
+          "activities": [
+            {
+              "id": "finalization-1",
+              "name": "Agency Brief Finalization",
+              "description": "Package the intake and strategic framing into a clean client brief for downstream teams",
+              "assignedRole": "traffic-manager",
+              "inputs": ["client-context-summary", "messaging-priorities"],
+              "outputs": ["final-client-brief"],
+              "checklist": [
+                "Core business context documented",
+                "Audience and offer summarized",
+                "Messaging priorities included",
+                "Ready for strategy, creative, or media teams"
+              ],
+              "prompts": {
+                "en": "Finalize an agency-ready client brief for {{brand_name}} using the intake summary and messaging priorities.",
+                "ar": "إعداد موجز عميل نهائي جاهز للوكالة."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
