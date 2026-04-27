@@ -1,0 +1,6 @@
+- Competitive set is comprehensive
+- Estimates are sourced and reasonable
+- Channel data covers all major channels
+- SOV calculations are consistent
+- Creative analysis covers themes, formats, messaging
+- Opportunities are actionable

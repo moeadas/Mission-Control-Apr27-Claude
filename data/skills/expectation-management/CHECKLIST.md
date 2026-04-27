@@ -1,0 +1,4 @@
+- Gap is specific and quantified
+- Data is accurate and credible
+- Communication is timely and honest
+- Agreement is clear and signed off

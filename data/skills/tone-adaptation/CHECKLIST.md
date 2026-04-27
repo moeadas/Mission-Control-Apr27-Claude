@@ -1,0 +1,6 @@
+- Distinctive voice elements documented
+- Target tone parameters clearly defined
+- Tone delta documented element by element
+- Adapted copy reviewed for tone accuracy
+- Brand voice checklist passed
+- Rules documented and shared with copy team

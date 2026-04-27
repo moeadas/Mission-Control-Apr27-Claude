@@ -1,0 +1,6 @@
+- All accounts can be classified unambiguously
+- Model is financially sustainable
+- Handoffs are clear and objective
+- Cadences match tier value
+- Escalation paths are clear to all parties
+- Growth opportunities are systematically identified

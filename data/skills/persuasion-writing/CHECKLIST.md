@@ -1,0 +1,4 @@
+- Drivers are specific and accurate
+- Structure supports persuasion
+- Principles are credible
+- Decision is easy to make

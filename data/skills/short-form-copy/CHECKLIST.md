@@ -1,0 +1,6 @@
+- Define objective is completed to a high standard
+- Identify strongest angle is completed to a high standard
+- Generate distinct options is completed to a high standard
+- Tighten language is completed to a high standard
+- Match placement constraints is completed to a high standard
+- Recommend tests is completed to a high standard

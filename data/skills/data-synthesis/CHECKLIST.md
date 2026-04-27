@@ -1,0 +1,5 @@
+- Question is clear and answerable
+- Sources are accessible and relevant
+- Patterns are evidenced
+- Story is clear and evidenced
+- Recommendations are actionable

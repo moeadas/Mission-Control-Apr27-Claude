@@ -1,0 +1,95 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "media-brief",
+  "name": "Media Brief",
+  "description": "Creates structured media briefs that translate marketing objectives into clear, actionable direction for media planning teams or agency partners.",
+  "category": "media",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "campaign_name",
+      "type": "string",
+      "required": true,
+      "description": "Campaign or project name"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Total media budget"
+    },
+    {
+      "name": "timeline",
+      "type": "string",
+      "required": true,
+      "description": "Campaign start and end dates"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Primary target audience"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "campaign_name",
+      "type": "string",
+      "required": true,
+      "description": "Campaign or project name"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Total media budget"
+    },
+    {
+      "name": "timeline",
+      "type": "string",
+      "required": true,
+      "description": "Campaign start and end dates"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Primary target audience"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "analytics",
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "nova"
+  ],
+  "pipelines": [
+    "media-plan"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "media",
+      "planning",
+      "media-brief"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

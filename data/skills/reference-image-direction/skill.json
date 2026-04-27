@@ -1,0 +1,33 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "reference-image-direction",
+  "name": "Reference Image Direction",
+  "description": "Translates uploaded reference images, templates, and moodboards into precise production guidance so AI image generation follows the right visual cues without copying blindly or drifting off-brand.",
+  "category": "creative",
+  "difficulty": "advanced",
+  "freedom": "medium",
+  "variables": [],
+  "inputs": [],
+  "outputs": [],
+  "tools": [
+    "document",
+    "image-gen",
+    "figma"
+  ],
+  "agents": [
+    "lyra",
+    "finn"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "mission-control",
+    "tags": [
+      "references",
+      "visual-direction",
+      "templates",
+      "brand"
+    ],
+    "lastUpdated": "2026-04-04"
+  }
+}

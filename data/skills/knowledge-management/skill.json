@@ -1,0 +1,80 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "knowledge-management",
+  "name": "Knowledge Management",
+  "description": "Designs knowledge management systems that make information easier to find, maintain, govern, and reuse across teams.",
+  "category": "operations",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "knowledge_areas",
+      "type": "string",
+      "required": true,
+      "description": "Key knowledge domains in the agency: accounts, creative, media, ops"
+    },
+    {
+      "name": "current_gaps",
+      "type": "string",
+      "required": false,
+      "description": "Known gaps in institutional knowledge"
+    },
+    {
+      "name": "team_structure",
+      "type": "string",
+      "required": false,
+      "description": "Team structure and key individuals"
+    },
+    {
+      "name": "available_tools",
+      "type": "string",
+      "required": false,
+      "description": "Tools available: wiki, Notion, Confluence, shared drives"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "knowledge_areas",
+      "type": "string",
+      "required": true,
+      "description": "Key knowledge domains in the agency: accounts, creative, media, ops"
+    },
+    {
+      "name": "current_gaps",
+      "type": "string",
+      "required": false,
+      "description": "Known gaps in institutional knowledge"
+    },
+    {
+      "name": "team_structure",
+      "type": "string",
+      "required": false,
+      "description": "Team structure and key individuals"
+    },
+    {
+      "name": "available_tools",
+      "type": "string",
+      "required": false,
+      "description": "Tools available: wiki, Notion, Confluence, shared drives"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document"
+  ],
+  "agents": [],
+  "pipelines": [
+    "operations-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "knowledge-management",
+      "wiki",
+      "knowledge-base",
+      "agency-ops"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

@@ -1,0 +1,6 @@
+- Define process problem is completed to a high standard
+- Map current-state friction is completed to a high standard
+- Identify root causes is completed to a high standard
+- Redesign future state is completed to a high standard
+- Define metrics is completed to a high standard
+- Plan rollout is completed to a high standard

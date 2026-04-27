@@ -1,0 +1,96 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "color-theory",
+  "name": "Color Theory",
+  "description": "Applies color psychology, harmony principles, and visual hierarchy theory to create effective design that communicates brand personality, guides attention, and drives desired emotional responses.",
+  "category": "creative",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand the color system is for"
+    },
+    {
+      "name": "brand_personality",
+      "type": "string",
+      "required": true,
+      "description": "Brand personality traits"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": false,
+      "description": "Target audience"
+    },
+    {
+      "name": "use_case",
+      "type": "string",
+      "required": false,
+      "description": "Where the colors will be used"
+    },
+    {
+      "name": "existing_colors",
+      "type": "string",
+      "required": false,
+      "description": "Existing brand colors to consider"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand the color system is for"
+    },
+    {
+      "name": "brand_personality",
+      "type": "string",
+      "required": true,
+      "description": "Brand personality traits"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": false,
+      "description": "Target audience"
+    },
+    {
+      "name": "use_case",
+      "type": "string",
+      "required": false,
+      "description": "Where the colors will be used"
+    },
+    {
+      "name": "existing_colors",
+      "type": "string",
+      "required": false,
+      "description": "Existing brand colors to consider"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "finn",
+    "lyra"
+  ],
+  "pipelines": [
+    "creative"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "creative",
+      "design",
+      "color-theory",
+      "visual"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

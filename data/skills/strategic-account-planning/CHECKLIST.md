@@ -1,0 +1,6 @@
+- Account health scores documented
+- Client context documented and validated
+- At least 3 whitespace opportunities identified
+- Opportunities tied to client priorities
+- Goals reviewed by agency leadership
+- Roadmap presented and agreed with client

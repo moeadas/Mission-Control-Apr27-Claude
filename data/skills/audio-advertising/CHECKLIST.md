@@ -1,0 +1,5 @@
+- Platforms match audience listening behavior
+- Formats leverage audio's attention advantages
+- Targeting is precise and scalable
+- Creative leverages audio-specific best practices
+- Measurement covers listen-through and impact

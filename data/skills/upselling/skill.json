@@ -1,0 +1,94 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "upselling",
+  "name": "Upselling",
+  "description": "Identifies and executes strategic growth opportunities within existing client accounts — expanding scope, introducing new services, and deepening the agency's value to grow revenue without losing relationship quality.",
+  "category": "client-management",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "client",
+      "type": "string",
+      "required": true,
+      "description": "Client account name"
+    },
+    {
+      "name": "current_services",
+      "type": "string",
+      "required": true,
+      "description": "Services currently delivered to this client"
+    },
+    {
+      "name": "client_goals",
+      "type": "string",
+      "required": true,
+      "description": "Client's stated business goals and growth plans"
+    },
+    {
+      "name": "expansion_areas",
+      "type": "string",
+      "required": false,
+      "description": "Known areas where client could expand services"
+    },
+    {
+      "name": "relationship",
+      "type": "string",
+      "required": true,
+      "description": "Current relationship quality and trust level"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client",
+      "type": "string",
+      "required": true,
+      "description": "Client account name"
+    },
+    {
+      "name": "current_services",
+      "type": "string",
+      "required": true,
+      "description": "Services currently delivered to this client"
+    },
+    {
+      "name": "client_goals",
+      "type": "string",
+      "required": true,
+      "description": "Client's stated business goals and growth plans"
+    },
+    {
+      "name": "expansion_areas",
+      "type": "string",
+      "required": false,
+      "description": "Known areas where client could expand services"
+    },
+    {
+      "name": "relationship",
+      "type": "string",
+      "required": true,
+      "description": "Current relationship quality and trust level"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet",
+    "## Client Services"
+  ],
+  "agents": [
+    "sage"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "upselling",
+      "account-growth",
+      "revenue",
+      "client-management"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

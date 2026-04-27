@@ -1,0 +1,82 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "expectation-management",
+  "name": "Expectation Management",
+  "description": "Sets, communicates, and maintains realistic expectations with clients and stakeholders to prevent misunderstandings, build trust, and ensure successful campaign outcomes.",
+  "category": "client-management",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "stakeholder",
+      "type": "string",
+      "required": true,
+      "description": "Who has the expectation: client, manager, stakeholder"
+    },
+    {
+      "name": "current_expectation",
+      "type": "string",
+      "required": true,
+      "description": "What the stakeholder currently expects: timeline, budget, performance"
+    },
+    {
+      "name": "reality_constraints",
+      "type": "string",
+      "required": true,
+      "description": "What is realistic given constraints: data, budget, timeline, market conditions"
+    },
+    {
+      "name": "communication_context",
+      "type": "string",
+      "required": false,
+      "description": "Context for the conversation: initial project setup, mid-project update, post-mortem"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "stakeholder",
+      "type": "string",
+      "required": true,
+      "description": "Who has the expectation: client, manager, stakeholder"
+    },
+    {
+      "name": "current_expectation",
+      "type": "string",
+      "required": true,
+      "description": "What the stakeholder currently expects: timeline, budget, performance"
+    },
+    {
+      "name": "reality_constraints",
+      "type": "string",
+      "required": true,
+      "description": "What is realistic given constraints: data, budget, timeline, market conditions"
+    },
+    {
+      "name": "communication_context",
+      "type": "string",
+      "required": false,
+      "description": "Context for the conversation: initial project setup, mid-project update, post-mortem"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "sage"
+  ],
+  "pipelines": [
+    "client-management-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "expectation-management",
+      "client-management",
+      "communication",
+      "scope"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

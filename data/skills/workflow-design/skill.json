@@ -1,0 +1,71 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "workflow-design",
+  "name": "Workflow Design",
+  "description": "Designs efficient, repeatable workflows for agency processes including campaign launches, creative reviews, reporting, and client communication.",
+  "category": "operations",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "process_name",
+      "type": "string",
+      "required": true,
+      "description": "Name of the workflow/process"
+    },
+    {
+      "name": "current_state",
+      "type": "string",
+      "required": true,
+      "description": "How the process currently works"
+    },
+    {
+      "name": "workflow_goals",
+      "type": "string",
+      "required": false,
+      "description": "What the redesigned workflow should achieve"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "process_name",
+      "type": "string",
+      "required": true,
+      "description": "Name of the workflow/process"
+    },
+    {
+      "name": "current_state",
+      "type": "string",
+      "required": true,
+      "description": "How the process currently works"
+    },
+    {
+      "name": "workflow_goals",
+      "type": "string",
+      "required": false,
+      "description": "What the redesigned workflow should achieve"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "iris"
+  ],
+  "pipelines": [
+    "operations"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "operations",
+      "workflow",
+      "process-design",
+      "efficiency"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

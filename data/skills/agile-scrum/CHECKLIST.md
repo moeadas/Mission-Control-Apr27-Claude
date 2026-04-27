@@ -1,0 +1,5 @@
+- Each member understands their role
+- Items are estimated and ordered
+- Commitment matches team capacity
+- Blockers resolved within 24h
+- Action items from retro are tracked

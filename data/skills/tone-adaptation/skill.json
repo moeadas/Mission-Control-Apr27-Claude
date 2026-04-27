@@ -1,0 +1,93 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "tone-adaptation",
+  "name": "Tone Adaptation",
+  "description": "Adapts brand voice and communication tone across different platforms, audiences, contexts, and cultural moments — ensuring copy and messaging land right every time, whether professional, playful, urgent, or empathetic.",
+  "category": "content",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "original_copy",
+      "type": "string",
+      "required": true,
+      "description": "The original copy or content to be adapted"
+    },
+    {
+      "name": "source_brand",
+      "type": "string",
+      "required": true,
+      "description": "The brand voice and tone guidelines to adapt from"
+    },
+    {
+      "name": "target_context",
+      "type": "string",
+      "required": true,
+      "description": "The target platform, context, or cultural moment"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience and their tone expectations"
+    },
+    {
+      "name": "tone_shift",
+      "type": "string",
+      "required": false,
+      "description": "Specific tone direction — e.g., more playful, more formal, more urgent"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "original_copy",
+      "type": "string",
+      "required": true,
+      "description": "The original copy or content to be adapted"
+    },
+    {
+      "name": "source_brand",
+      "type": "string",
+      "required": true,
+      "description": "The brand voice and tone guidelines to adapt from"
+    },
+    {
+      "name": "target_context",
+      "type": "string",
+      "required": true,
+      "description": "The target platform, context, or cultural moment"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience and their tone expectations"
+    },
+    {
+      "name": "tone_shift",
+      "type": "string",
+      "required": false,
+      "description": "Specific tone direction — e.g., more playful, more formal, more urgent"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "## Creative"
+  ],
+  "agents": [
+    "echo"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "tone-of-voice",
+      "brand-voice",
+      "copywriting",
+      "content-adaptation"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

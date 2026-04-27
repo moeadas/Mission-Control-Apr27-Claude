@@ -1,0 +1,6 @@
+- Define audit scope is completed to a high standard
+- Review technical health is completed to a high standard
+- Review on-page optimization is completed to a high standard
+- Review content quality is completed to a high standard
+- Review authority/discoverability is completed to a high standard
+- Prioritize action plan is completed to a high standard

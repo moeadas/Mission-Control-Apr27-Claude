@@ -1,0 +1,4 @@
+- Most important findings are prioritized
+- Summary captures the key story
+- Writing is clear and concise
+- Recommendations follow from findings

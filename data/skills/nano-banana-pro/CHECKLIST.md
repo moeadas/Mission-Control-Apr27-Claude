@@ -1,0 +1,6 @@
+- Brand assets were checked before prompt generation
+- Reference hierarchy is explicit and enforced
+- On-image text is defined with placement and readability guidance
+- Negative prompting closes common brand and layout failure modes
+- Templates and references are treated as strict production inputs when provided
+- The final render is verified against brand fit and platform format

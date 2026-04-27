@@ -1,0 +1,6 @@
+- Define post role is completed to a high standard
+- Choose hook style is completed to a high standard
+- Build caption progression is completed to a high standard
+- Adjust for platform pacing is completed to a high standard
+- Add interaction design is completed to a high standard
+- Remove filler is completed to a high standard

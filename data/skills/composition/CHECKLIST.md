@@ -1,0 +1,5 @@
+- Viewer knows where to look first
+- Size, color, position establish priority
+- Layout feels stable and intentional
+- Flow is natural and guided
+- White space is used effectively

@@ -1,0 +1,6 @@
+- Data covers at least 12 months
+- Demand index is evidence-based
+- Cost indices reflect actual market data
+- All relevant cultural moments included
+- Pacing weights toward high-ROI periods
+- Contingency reserve is adequate

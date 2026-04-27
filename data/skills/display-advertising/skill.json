@@ -1,0 +1,95 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "display-advertising",
+  "name": "Display Advertising",
+  "description": "Plans, launches, and optimizes banner and display ad campaigns across programmatic networks, publisher sites, and retargeting platforms to build brand awareness and drive conversions.",
+  "category": "analytics",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "campaign_objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign goal: brand awareness, consideration, or conversion"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Targeting parameters: demographics, interests, behaviors, retargeting lists"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Campaign budget and spend pace"
+    },
+    {
+      "name": "duration",
+      "type": "string",
+      "required": false,
+      "description": "Campaign start and end dates"
+    },
+    {
+      "name": "key_metrics",
+      "type": "string",
+      "required": false,
+      "description": "Primary KPIs: CTR, CPM, VTR, CPA, ROAS"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "campaign_objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign goal: brand awareness, consideration, or conversion"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Targeting parameters: demographics, interests, behaviors, retargeting lists"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Campaign budget and spend pace"
+    },
+    {
+      "name": "duration",
+      "type": "string",
+      "required": false,
+      "description": "Campaign start and end dates"
+    },
+    {
+      "name": "key_metrics",
+      "type": "string",
+      "required": false,
+      "description": "Primary KPIs: CTR, CPM, VTR, CPA, ROAS"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "nova"
+  ],
+  "pipelines": [
+    "media-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "display-advertising",
+      "programmatic",
+      "banner-ads",
+      "retargeting"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

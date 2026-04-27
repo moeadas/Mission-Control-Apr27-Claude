@@ -1,0 +1,5 @@
+- All teams are accounted for
+- Dependencies are clear and documented
+- Cadence is realistic and agreed by all
+- Dependencies are tracked and on time
+- Conflicts are resolved fairly and quickly

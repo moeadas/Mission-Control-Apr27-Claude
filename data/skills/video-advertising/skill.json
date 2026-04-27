@@ -1,0 +1,95 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "video-advertising",
+  "name": "Video Advertising",
+  "description": "Develops video advertising concepts and channel-ready structures that align hook, story, visual rhythm, proof, and CTA with the placement objective.",
+  "category": "media",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objective: awareness, consideration, conversion"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Budget and duration"
+    },
+    {
+      "name": "concept",
+      "type": "string",
+      "required": false,
+      "description": "Video concept and message"
+    },
+    {
+      "name": "platforms",
+      "type": "string",
+      "required": false,
+      "description": "Target platforms"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objective: awareness, consideration, conversion"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Budget and duration"
+    },
+    {
+      "name": "concept",
+      "type": "string",
+      "required": false,
+      "description": "Video concept and message"
+    },
+    {
+      "name": "platforms",
+      "type": "string",
+      "required": false,
+      "description": "Target platforms"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet",
+    "## Operations"
+  ],
+  "agents": [
+    "nova"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "video-advertising",
+      "connected-tv",
+      "youtube",
+      "pre-roll",
+      "video-creative"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

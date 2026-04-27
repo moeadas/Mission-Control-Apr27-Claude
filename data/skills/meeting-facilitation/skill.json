@@ -1,0 +1,94 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "meeting-facilitation",
+  "name": "Meeting Facilitation",
+  "description": "Designs and runs meetings that move decisions forward, keep stakeholders aligned, and prevent wasted time.",
+  "category": "project-management",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "type",
+      "type": "string",
+      "required": true,
+      "description": "Type: kickoff, brainstorm, review, retrospective"
+    },
+    {
+      "name": "participants",
+      "type": "string",
+      "required": true,
+      "description": "List of participants and roles"
+    },
+    {
+      "name": "purpose",
+      "type": "string",
+      "required": true,
+      "description": "Meeting purpose and goals"
+    },
+    {
+      "name": "duration",
+      "type": "string",
+      "required": false,
+      "description": "Meeting duration"
+    },
+    {
+      "name": "topics",
+      "type": "string",
+      "required": false,
+      "description": "Key topics to cover"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "type",
+      "type": "string",
+      "required": true,
+      "description": "Type: kickoff, brainstorm, review, retrospective"
+    },
+    {
+      "name": "participants",
+      "type": "string",
+      "required": true,
+      "description": "List of participants and roles"
+    },
+    {
+      "name": "purpose",
+      "type": "string",
+      "required": true,
+      "description": "Meeting purpose and goals"
+    },
+    {
+      "name": "duration",
+      "type": "string",
+      "required": false,
+      "description": "Meeting duration"
+    },
+    {
+      "name": "topics",
+      "type": "string",
+      "required": false,
+      "description": "Key topics to cover"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "presentation"
+  ],
+  "agents": [
+    "iris"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "facilitation",
+      "meetings",
+      "workshops",
+      "brainstorm",
+      "retrospective"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

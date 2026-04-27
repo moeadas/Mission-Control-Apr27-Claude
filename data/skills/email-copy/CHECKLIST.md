@@ -1,0 +1,8 @@
+- Identify email job is completed to a high standard
+- Clarify audience state is completed to a high standard
+- Choose message angle is completed to a high standard
+- Create subject lines is completed to a high standard
+- Write scannable body is completed to a high standard
+- Tune CTA is completed to a high standard
+- Check sequence logic is completed to a high standard
+- QA tone is completed to a high standard

@@ -1,0 +1,5 @@
+- Change is logged with all required details
+- Impact is quantified, not just described
+- Decision is documented and communicated
+- All stakeholders have updated information
+- Change is tracked and delivered

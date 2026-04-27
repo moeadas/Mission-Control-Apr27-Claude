@@ -1,0 +1,83 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "operations-management",
+  "name": "Operations Management",
+  "description": "Creates operating systems for teams so work runs predictably, accountably, and efficiently across people, processes, and priorities.",
+  "category": "operations",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "current_state",
+      "type": "string",
+      "required": true,
+      "description": "Description of current operational processes and performance"
+    },
+    {
+      "name": "operational_goals",
+      "type": "string",
+      "required": true,
+      "description": "What the operations team is trying to achieve"
+    },
+    {
+      "name": "pain_points",
+      "type": "string",
+      "required": false,
+      "description": "Known operational pain points or inefficiencies"
+    },
+    {
+      "name": "resources",
+      "type": "string",
+      "required": false,
+      "description": "Available resources: team size, tools, budget"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "current_state",
+      "type": "string",
+      "required": true,
+      "description": "Description of current operational processes and performance"
+    },
+    {
+      "name": "operational_goals",
+      "type": "string",
+      "required": true,
+      "description": "What the operations team is trying to achieve"
+    },
+    {
+      "name": "pain_points",
+      "type": "string",
+      "required": false,
+      "description": "Known operational pain points or inefficiencies"
+    },
+    {
+      "name": "resources",
+      "type": "string",
+      "required": false,
+      "description": "Available resources: team size, tools, budget"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "iris"
+  ],
+  "pipelines": [
+    "operations-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "operations-management",
+      "workflow",
+      "process-improvement",
+      "agency-ops"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

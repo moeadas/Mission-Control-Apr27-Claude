@@ -1,0 +1,6 @@
+- Calendar supports key business objectives
+- Cadence is realistic and consistent
+- Themes are coherent and varied
+- Calendar is complete with no major gaps
+- Every piece has a clear owner
+- Calendar stays on track

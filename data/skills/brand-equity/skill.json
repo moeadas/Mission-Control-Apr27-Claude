@@ -1,0 +1,84 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "brand-equity",
+  "name": "Brand Equity Measurement",
+  "description": "Assesses brand equity through awareness, associations, trust, distinctiveness, and memory structures, then turns findings into strategic implications.",
+  "category": "research",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand being measured"
+    },
+    {
+      "name": "competitors",
+      "type": "string",
+      "required": false,
+      "description": "Key competitors to compare against"
+    },
+    {
+      "name": "time_period",
+      "type": "string",
+      "required": false,
+      "description": "Time period for analysis"
+    },
+    {
+      "name": "data_sources",
+      "type": "string",
+      "required": false,
+      "description": "Available data sources (surveys, social, sales)"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand being measured"
+    },
+    {
+      "name": "competitors",
+      "type": "string",
+      "required": false,
+      "description": "Key competitors to compare against"
+    },
+    {
+      "name": "time_period",
+      "type": "string",
+      "required": false,
+      "description": "Time period for analysis"
+    },
+    {
+      "name": "data_sources",
+      "type": "string",
+      "required": false,
+      "description": "Available data sources (surveys, social, sales)"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "atlas"
+  ],
+  "pipelines": [
+    "brand-research"
+  ],
+  "metadata": {
+    "version": "1.1",
+    "author": "agency",
+    "tags": [
+      "brand",
+      "research",
+      "brand-equity",
+      "awareness",
+      "loyalty"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

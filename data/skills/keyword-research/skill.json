@@ -1,0 +1,95 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "keyword-research",
+  "name": "Keyword Research",
+  "description": "Builds keyword strategy around intent, topic clusters, competition, and conversion value rather than just listing terms.",
+  "category": "research",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "seed_keywords",
+      "type": "string",
+      "required": true,
+      "description": "Starting keywords or topics"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience description"
+    },
+    {
+      "name": "geo",
+      "type": "string",
+      "required": false,
+      "description": "Geographic focus for search"
+    },
+    {
+      "name": "content_type",
+      "type": "string",
+      "required": false,
+      "description": "Type of content being planned"
+    },
+    {
+      "name": "objective",
+      "type": "string",
+      "required": false,
+      "description": "Business objective (awareness, leads, sales)"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "seed_keywords",
+      "type": "string",
+      "required": true,
+      "description": "Starting keywords or topics"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience description"
+    },
+    {
+      "name": "geo",
+      "type": "string",
+      "required": false,
+      "description": "Geographic focus for search"
+    },
+    {
+      "name": "content_type",
+      "type": "string",
+      "required": false,
+      "description": "Type of content being planned"
+    },
+    {
+      "name": "objective",
+      "type": "string",
+      "required": false,
+      "description": "Business objective (awareness, leads, sales)"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet",
+    "seo-tools"
+  ],
+  "agents": [
+    "atlas"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "keyword-research",
+      "seo",
+      "content-strategy",
+      "search",
+      "sem"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

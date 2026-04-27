@@ -1,0 +1,4 @@
+- Data story is clear and answerable
+- Chart type matches data and story
+- Visual is readable and accurate
+- Context helps audience understand significance

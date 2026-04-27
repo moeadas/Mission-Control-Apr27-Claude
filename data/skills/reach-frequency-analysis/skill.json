@@ -1,0 +1,95 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "reach-frequency-analysis",
+  "name": "Reach & Frequency Analysis",
+  "description": "Analyzes and models reach and frequency metrics to determine optimal exposure levels for campaign effectiveness without oversaturation or wasted impressions.",
+  "category": "media",
+  "difficulty": "advanced",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience description and estimated size"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Total media budget"
+    },
+    {
+      "name": "campaign_duration",
+      "type": "string",
+      "required": true,
+      "description": "Campaign duration in weeks or months"
+    },
+    {
+      "name": "channels",
+      "type": "string",
+      "required": true,
+      "description": "Media channels being planned"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience description and estimated size"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Total media budget"
+    },
+    {
+      "name": "campaign_duration",
+      "type": "string",
+      "required": true,
+      "description": "Campaign duration in weeks or months"
+    },
+    {
+      "name": "channels",
+      "type": "string",
+      "required": true,
+      "description": "Media channels being planned"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "analytics",
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "nova"
+  ],
+  "pipelines": [
+    "media-plan"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "media",
+      "planning",
+      "reach-frequency-analysis"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

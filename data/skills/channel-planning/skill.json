@@ -1,0 +1,108 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "channel-planning",
+  "name": "Channel Planning",
+  "description": "Develops strategic channel plans that align media placement with audience behavior, campaign goals, and budget constraints across digital and traditional channels.",
+  "category": "media",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "industry",
+      "type": "string",
+      "required": true,
+      "description": "Industry sector"
+    },
+    {
+      "name": "campaign_objective",
+      "type": "string",
+      "required": true,
+      "description": "Primary campaign objective (awareness, consideration, conversion)"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience segments with demographics"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Total campaign budget"
+    },
+    {
+      "name": "timeline",
+      "type": "string",
+      "required": false,
+      "description": "Campaign timeline and key dates"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "industry",
+      "type": "string",
+      "required": true,
+      "description": "Industry sector"
+    },
+    {
+      "name": "campaign_objective",
+      "type": "string",
+      "required": true,
+      "description": "Primary campaign objective (awareness, consideration, conversion)"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience segments with demographics"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Total campaign budget"
+    },
+    {
+      "name": "timeline",
+      "type": "string",
+      "required": false,
+      "description": "Campaign timeline and key dates"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "analytics",
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "nova"
+  ],
+  "pipelines": [
+    "media-plan"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "media",
+      "channel-planning",
+      "media-planning",
+      "campaign"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

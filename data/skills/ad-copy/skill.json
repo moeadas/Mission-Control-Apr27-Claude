@@ -1,0 +1,118 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "ad-copy",
+  "name": "Ad Copywriting",
+  "description": "Creates compelling advertising copy for digital platforms. Covers platform-native formats, A/B variants, and compliance requirements.",
+  "category": "creative",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "platform",
+      "type": "string",
+      "required": true,
+      "description": "Ad platform (Google, Meta, LinkedIn, TikTok, etc.)"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience description"
+    },
+    {
+      "name": "offer",
+      "type": "string",
+      "required": true,
+      "description": "Product or service being advertised"
+    },
+    {
+      "name": "cta_text",
+      "type": "string",
+      "required": true,
+      "description": "Desired call-to-action text"
+    },
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand or client name"
+    },
+    {
+      "name": "headline_limit",
+      "type": "string",
+      "required": false,
+      "description": "Max headline characters"
+    },
+    {
+      "name": "desc_limit",
+      "type": "string",
+      "required": false,
+      "description": "Max description characters"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "platform",
+      "type": "string",
+      "required": true,
+      "description": "Ad platform (Google, Meta, LinkedIn, TikTok, etc.)"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience description"
+    },
+    {
+      "name": "offer",
+      "type": "string",
+      "required": true,
+      "description": "Product or service being advertised"
+    },
+    {
+      "name": "cta_text",
+      "type": "string",
+      "required": true,
+      "description": "Desired call-to-action text"
+    },
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand or client name"
+    },
+    {
+      "name": "headline_limit",
+      "type": "string",
+      "required": false,
+      "description": "Max headline characters"
+    },
+    {
+      "name": "desc_limit",
+      "type": "string",
+      "required": false,
+      "description": "Max description characters"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "echo"
+  ],
+  "pipelines": [
+    "ad-creative"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "advertising",
+      "copy",
+      "digital-ads",
+      "creative"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

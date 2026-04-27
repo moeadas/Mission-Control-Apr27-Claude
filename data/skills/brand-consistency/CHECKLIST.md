@@ -1,0 +1,5 @@
+- Guidelines are current and accessible
+- All visual elements match guidelines
+- Copy sounds like the brand
+- Message aligns with brand positioning
+- Fixes are clear and actionable

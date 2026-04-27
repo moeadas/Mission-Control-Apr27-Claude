@@ -1,0 +1,80 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "tool-integration",
+  "name": "Tool Integration",
+  "description": "Connects, configures, and optimizes the agency's tools and platforms — from creative production workflows to analytics stacks — ensuring technology serves the work rather than slowing it down.",
+  "category": "operations",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "tools",
+      "type": "string",
+      "required": true,
+      "description": "List of tools involved in the integration"
+    },
+    {
+      "name": "current_workflow",
+      "type": "string",
+      "required": true,
+      "description": "Current problematic workflow with manual steps"
+    },
+    {
+      "name": "goal",
+      "type": "string",
+      "required": true,
+      "description": "What the integration should achieve"
+    },
+    {
+      "name": "constraints",
+      "type": "string",
+      "required": false,
+      "description": "Budget, technical constraints, or platform limitations"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "tools",
+      "type": "string",
+      "required": true,
+      "description": "List of tools involved in the integration"
+    },
+    {
+      "name": "current_workflow",
+      "type": "string",
+      "required": true,
+      "description": "Current problematic workflow with manual steps"
+    },
+    {
+      "name": "goal",
+      "type": "string",
+      "required": true,
+      "description": "What the integration should achieve"
+    },
+    {
+      "name": "constraints",
+      "type": "string",
+      "required": false,
+      "description": "Budget, technical constraints, or platform limitations"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "iris"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "tools",
+      "integration",
+      "automation",
+      "operations"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

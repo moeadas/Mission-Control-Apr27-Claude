@@ -1,0 +1,92 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "escalation-management",
+  "name": "Escalation Management",
+  "description": "Handles and escalates project issues appropriately to ensure problems are resolved by the right people at the right time without unnecessary delays or micromanagement.",
+  "category": "project-management",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "issue",
+      "type": "string",
+      "required": true,
+      "description": "Description of the issue requiring escalation"
+    },
+    {
+      "name": "impact",
+      "type": "string",
+      "required": true,
+      "description": "Impact on timeline, budget, quality, or client relationship"
+    },
+    {
+      "name": "options_considered",
+      "type": "string",
+      "required": false,
+      "description": "Options already considered and why they didn't work"
+    },
+    {
+      "name": "recommendation",
+      "type": "string",
+      "required": false,
+      "description": "What you recommend as the path forward"
+    },
+    {
+      "name": "escalation_path",
+      "type": "string",
+      "required": false,
+      "description": "Who the issue should be escalated to"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "issue",
+      "type": "string",
+      "required": true,
+      "description": "Description of the issue requiring escalation"
+    },
+    {
+      "name": "impact",
+      "type": "string",
+      "required": true,
+      "description": "Impact on timeline, budget, quality, or client relationship"
+    },
+    {
+      "name": "options_considered",
+      "type": "string",
+      "required": false,
+      "description": "Options already considered and why they didn't work"
+    },
+    {
+      "name": "recommendation",
+      "type": "string",
+      "required": false,
+      "description": "What you recommend as the path forward"
+    },
+    {
+      "name": "escalation_path",
+      "type": "string",
+      "required": false,
+      "description": "Who the issue should be escalated to"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document"
+  ],
+  "agents": [],
+  "pipelines": [
+    "project-management-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "escalation-management",
+      "project-management",
+      "risk-management",
+      "leadership"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

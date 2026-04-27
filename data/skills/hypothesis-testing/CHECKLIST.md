@@ -1,0 +1,6 @@
+- Define outcome and metric is completed to a high standard
+- Identify bottleneck is completed to a high standard
+- Write causal hypothesis is completed to a high standard
+- Specify test design is completed to a high standard
+- Identify risks is completed to a high standard
+- Define decision paths is completed to a high standard

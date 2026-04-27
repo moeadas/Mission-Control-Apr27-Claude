@@ -1,0 +1,6 @@
+- Tasks are discrete and estimable
+- Dependencies are logical
+- Estimates are realistic
+- Schedule is achievable
+- Critical path is clear
+- Schedule is committed

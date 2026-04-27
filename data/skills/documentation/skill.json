@@ -1,0 +1,82 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "documentation",
+  "name": "Documentation",
+  "description": "Creates practical documentation systems, playbooks, and reference materials that improve consistency, onboarding speed, and operational clarity.",
+  "category": "operations",
+  "difficulty": "beginner",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "document_type",
+      "type": "string",
+      "required": true,
+      "description": "Type of document: playbook, process guide, how-to, knowledge base article"
+    },
+    {
+      "name": "purpose",
+      "type": "string",
+      "required": true,
+      "description": "What this documentation is meant to accomplish"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Who will use this documentation"
+    },
+    {
+      "name": "existing_content",
+      "type": "string",
+      "required": false,
+      "description": "Existing documentation or content to build upon"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "document_type",
+      "type": "string",
+      "required": true,
+      "description": "Type of document: playbook, process guide, how-to, knowledge base article"
+    },
+    {
+      "name": "purpose",
+      "type": "string",
+      "required": true,
+      "description": "What this documentation is meant to accomplish"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Who will use this documentation"
+    },
+    {
+      "name": "existing_content",
+      "type": "string",
+      "required": false,
+      "description": "Existing documentation or content to build upon"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "iris"
+  ],
+  "pipelines": [
+    "operations-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "documentation",
+      "knowledge-base",
+      "playbook",
+      "process-doc"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

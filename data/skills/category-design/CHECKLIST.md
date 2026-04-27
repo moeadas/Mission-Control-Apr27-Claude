@@ -1,0 +1,5 @@
+- Opportunity is real and sized
+- Category is clear and ownable
+- Brand is positioned as category leader
+- Market understands the category value
+- Category is defensible

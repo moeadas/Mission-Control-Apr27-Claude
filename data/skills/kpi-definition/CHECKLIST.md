@@ -1,0 +1,6 @@
+- Every KPI connects to a business outcome
+- Hierarchy avoids conflicting metrics
+- Targets are ambitious but realistic
+- Model matches campaign complexity
+- Reports serve different audience needs
+- Triggers are clear and actionable

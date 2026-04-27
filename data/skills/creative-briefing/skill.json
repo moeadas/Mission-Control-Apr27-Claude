@@ -1,0 +1,94 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "creative-briefing",
+  "name": "Creative Briefing",
+  "description": "Writes clear, actionable creative briefs that translate strategy into specific creative requirements for designers, copywriters, and production teams.",
+  "category": "creative",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "project_name",
+      "type": "string",
+      "required": true,
+      "description": "Campaign or project name"
+    },
+    {
+      "name": "deliverable_name",
+      "type": "string",
+      "required": true,
+      "description": "Specific deliverable being briefed"
+    },
+    {
+      "name": "deliverables",
+      "type": "string",
+      "required": true,
+      "description": "Full list of deliverables and specs"
+    },
+    {
+      "name": "strategy_summary",
+      "type": "string",
+      "required": false,
+      "description": "Summary of creative strategy guiding this work"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "project_name",
+      "type": "string",
+      "required": true,
+      "description": "Campaign or project name"
+    },
+    {
+      "name": "deliverable_name",
+      "type": "string",
+      "required": true,
+      "description": "Specific deliverable being briefed"
+    },
+    {
+      "name": "deliverables",
+      "type": "string",
+      "required": true,
+      "description": "Full list of deliverables and specs"
+    },
+    {
+      "name": "strategy_summary",
+      "type": "string",
+      "required": false,
+      "description": "Summary of creative strategy guiding this work"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "finn"
+  ],
+  "pipelines": [
+    "creative-development"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "creative",
+      "briefing",
+      "design",
+      "production"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

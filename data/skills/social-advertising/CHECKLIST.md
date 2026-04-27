@@ -1,0 +1,4 @@
+- Platform aligns with target audience
+- Audience is specific and large enough
+- Creative is optimized for platform
+- Optimizations are grounded in data

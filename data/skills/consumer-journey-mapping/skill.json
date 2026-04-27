@@ -1,0 +1,78 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "consumer-journey-mapping",
+  "name": "Consumer Journey Mapping",
+  "description": "Maps the complete customer decision journey from initial awareness through purchase and loyalty — identifying touchpoints, barriers, moments of truth, and opportunities to influence the decision.",
+  "category": "strategy",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand being mapped"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience segment"
+    },
+    {
+      "name": "journey_scope",
+      "type": "string",
+      "required": false,
+      "description": "Scope of the journey (e.g., awareness to purchase)"
+    },
+    {
+      "name": "existing_research",
+      "type": "string",
+      "required": false,
+      "description": "Existing journey or customer research"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand being mapped"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience segment"
+    },
+    {
+      "name": "journey_scope",
+      "type": "string",
+      "required": false,
+      "description": "Scope of the journey (e.g., awareness to purchase)"
+    },
+    {
+      "name": "existing_research",
+      "type": "string",
+      "required": false,
+      "description": "Existing journey or customer research"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "maya"
+  ],
+  "pipelines": [
+    "strategy"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [],
+    "lastUpdated": "2026-03-30"
+  }
+}

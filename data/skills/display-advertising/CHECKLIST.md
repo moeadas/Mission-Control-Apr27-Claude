@@ -1,0 +1,4 @@
+- Strategy aligns with business goals
+- Targeting and placements are correct
+- Campaign is live and serving
+- Optimizations are data-driven

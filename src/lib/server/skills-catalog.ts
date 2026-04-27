@@ -1,246 +1,117 @@
-import { readFile, readdir } from 'node:fs/promises'
-import path from 'node:path'
+/**
+ * Server-side skill catalog. This module is a thin compatibility shim around
+ * the canonical registry at `@/lib/skills/registry`.
+ *
+ * Historical callers (chat route, autonomous-task, task-execution, /api/skills)
+ * import:
+ *   - loadConfigSkillCategories
+ *   - loadConfigSkillMap
+ *   - mergeDbSkillsWithConfig
+ *
+ * They keep working, but everything now reads from `data/skills/<id>/`.
+ *
+ * If a Supabase row exists for a skill id, that row's name/description/prompts/
+ * checklist/examples override the on-disk skill. The on-disk skill always
+ * provides the structural fallback so a thin DB row never strips out the
+ * agent's full instructions.
+ */
 
-type ConfigSkillStub = {
-  id: string
-  name: string
-  description?: string
+import {
+  invalidateSkillRegistry,
+  loadSkill,
+  loadSkillCategories,
+  loadSkillMap,
+  loadSkillsByIds,
+  loadSkillsForAgent,
+  renderSkillForPrompt,
+  renderSkillsForPrompt,
+  type SkillCategory,
+} from '@/lib/skills/registry'
+import type { Skill, SkillExample, SkillVariable } from '@/lib/skill-schema'
+
+export type EnrichedSkillDefinition = Skill & { inputs: any[]; outputs: any[]; workflow: { steps: any[] } }
+export type EnrichedSkillCategory = SkillCategory
+
+export {
+  loadSkillCategories as loadConfigSkillCategories,
+  loadSkillMap as loadConfigSkillMap,
+  loadSkill as loadCanonicalSkill,
+  loadSkillsByIds,
+  loadSkillsForAgent,
+  invalidateSkillRegistry,
+  renderSkillForPrompt,
+  renderSkillsForPrompt,
 }
 
-type ConfigCategoryStub = {
-  id: string
-  name: string
-  skills?: ConfigSkillStub[]
+function asArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : []
 }
 
-export type EnrichedSkillDefinition = {
-  id: string
-  name: string
-  description: string
-  category: string
-  difficulty: string
-  freedom: string
-  prompts: {
-    en: {
-      trigger: string
-      context: string
-      instructions: string
-      output_template: string
-    }
-  }
-  variables: any[]
-  inputs: any[]
-  outputs: any[]
-  workflow: { steps: any[] }
-  tools: string[]
-  agents: string[]
-  pipelines: string[]
-  checklist: string[]
-  examples: any[]
-  metadata: Record<string, any>
-}
+function dbRowToSkill(row: any, base: Skill | undefined): Skill {
+  const promptsEn = row.prompts?.en && typeof row.prompts.en === 'object' ? row.prompts.en : null
+  const id = row.id
+  const fallbackPrompts = base?.prompts.en || { trigger: '', context: '', instructions: '', output_template: '' }
 
-export type EnrichedSkillCategory = {
-  id: string
-  name: string
-  skills: EnrichedSkillDefinition[]
-}
-
-const CATEGORY_NAMES: Record<string, string> = {
-  strategy: 'Strategy & Planning',
-  creative: 'Creative & Copy',
-  media: 'Media & Advertising',
-  research: 'Research & Analytics',
-  operations: 'Operations & Workflow',
-  'client-services': 'Client Services',
-  content: 'Content Production',
-}
-
-function buildFallbackSkill(skill: ConfigSkillStub, category: ConfigCategoryStub): EnrichedSkillDefinition {
-  return {
-    id: skill.id,
-    name: skill.name || skill.id,
-    description: skill.description || '',
-    category: category.id,
-    difficulty: 'intermediate',
-    freedom: 'medium',
+  const skill: Skill = {
+    id,
+    name: row.name || base?.name || id,
+    description: row.description || base?.description || '',
+    category: row.category || base?.category || 'operations',
+    difficulty: (row.metadata?.difficulty as Skill['difficulty']) || base?.difficulty || 'intermediate',
+    freedom: (row.metadata?.freedom as Skill['freedom']) || base?.freedom || 'medium',
     prompts: {
       en: {
-        trigger: '',
-        context: '',
-        instructions: '',
-        output_template: '',
+        trigger: promptsEn?.trigger || fallbackPrompts.trigger,
+        context: promptsEn?.context || fallbackPrompts.context,
+        instructions: promptsEn?.instructions || fallbackPrompts.instructions,
+        output_template: promptsEn?.output_template || fallbackPrompts.output_template,
       },
     },
-    variables: [],
-    inputs: [],
-    outputs: [],
-    workflow: { steps: [] },
-    tools: [],
-    agents: [],
-    pipelines: [],
-    checklist: [],
-    examples: [],
+    variables: (row.metadata?.variables as SkillVariable[]) || base?.variables || [],
+    inputs: row.metadata?.inputs || base?.inputs || [],
+    outputs: row.metadata?.outputs || base?.outputs || [],
+    workflow: row.metadata?.workflow || base?.workflow,
+    examples: (row.examples as SkillExample[]) || base?.examples || [],
+    checklist: Array.isArray(row.checklist) && row.checklist.length ? row.checklist : base?.checklist || [],
+    tools: row.metadata?.tools || base?.tools || [],
+    agents: row.metadata?.agents || base?.agents || [],
+    pipelines: row.metadata?.pipelines || base?.pipelines || [],
     metadata: {
-      author: 'Mission Control',
-      version: '1.0',
-      lastUpdated: new Date().toISOString().split('T')[0],
-      difficulty: 'intermediate',
-      freedom: 'medium',
+      ...(base?.metadata || { version: '1.0', author: 'mission-control', tags: [], lastUpdated: '' }),
+      ...(row.metadata || {}),
     },
   }
+
+  return skill
 }
 
-async function loadConfigSkillDefinition(skill: ConfigSkillStub, category: ConfigCategoryStub): Promise<EnrichedSkillDefinition> {
-  try {
-    const filePath = path.join(process.cwd(), 'src', 'config', 'skills', `${skill.id}.json`)
-    const fullSkill = JSON.parse(await readFile(filePath, 'utf8'))
-    return {
-      id: fullSkill.id || skill.id,
-      name: fullSkill.name || skill.name || skill.id,
-      description: fullSkill.description || skill.description || '',
-      category: fullSkill.category || category.id,
-      difficulty: fullSkill.difficulty || fullSkill.metadata?.difficulty || 'intermediate',
-      freedom: fullSkill.freedom || fullSkill.metadata?.freedom || 'medium',
-      prompts: fullSkill.prompts || {
-        en: {
-          trigger: '',
-          context: '',
-          instructions: '',
-          output_template: '',
-        },
-      },
-      variables: fullSkill.variables || [],
-      inputs: fullSkill.inputs || [],
-      outputs: fullSkill.outputs || [],
-      workflow: fullSkill.workflow || { steps: [] },
-      tools: fullSkill.tools || [],
-      agents: fullSkill.agents || [],
-      pipelines: fullSkill.pipelines || [],
-      checklist: Array.isArray(fullSkill.checklist) ? fullSkill.checklist : [],
-      examples: Array.isArray(fullSkill.examples) ? fullSkill.examples : [],
-      metadata: fullSkill.metadata || {},
-    }
-  } catch {
-    return buildFallbackSkill(skill, category)
+/**
+ * Merge Supabase-backed skill rows with the canonical filesystem registry.
+ *
+ * - Every canonical skill on disk is included by default.
+ * - DB rows override metadata/prompts/checklist for matching ids.
+ * - DB-only skills (rows with no on-disk folder) are added as new entries.
+ */
+export async function mergeDbSkillsWithConfig(rows: any[] | null | undefined): Promise<SkillCategory[]> {
+  const canonicalById = await loadSkillMap()
+  const merged = new Map<string, Skill>(canonicalById)
+
+  for (const row of asArray<any>(rows)) {
+    if (!row?.id) continue
+    const base = merged.get(row.id)
+    merged.set(row.id, dbRowToSkill(row, base))
   }
-}
 
-export async function loadConfigSkillCategories(): Promise<EnrichedSkillCategory[]> {
-  const skillsDir = path.join(process.cwd(), 'src', 'config', 'skills')
-  const files = await readdir(skillsDir)
-  const skillFiles = files.filter((file) => file.endsWith('.json') && file !== 'skills-library.json')
-  const loadedSkills = await Promise.all(
-    skillFiles.map(async (file) => {
-      const filePath = path.join(skillsDir, file)
-      const fullSkill = JSON.parse(await readFile(filePath, 'utf8'))
-      const categoryId = fullSkill.category || 'operations'
-      const category: ConfigCategoryStub = {
-        id: categoryId,
-        name: CATEGORY_NAMES[categoryId] || categoryId,
-      }
-      const stub: ConfigSkillStub = {
-        id: fullSkill.id || file.replace(/\.json$/, ''),
-        name: fullSkill.name || file.replace(/\.json$/, ''),
-        description: fullSkill.description || '',
-      }
-      return loadConfigSkillDefinition(stub, category)
-    })
-  )
-
-  const grouped = new Map<string, EnrichedSkillCategory>()
-  for (const skill of loadedSkills) {
-    const categoryId = skill.category || 'operations'
-    if (!grouped.has(categoryId)) {
-      grouped.set(categoryId, {
-        id: categoryId,
-        name: CATEGORY_NAMES[categoryId] || categoryId,
-        skills: [],
-      })
+  const grouped = new Map<string, SkillCategory>()
+  for (const skill of merged.values()) {
+    const id = skill.category || 'operations'
+    if (!grouped.has(id)) {
+      grouped.set(id, { id, name: id, skills: [] })
     }
-    grouped.get(categoryId)?.skills.push(skill)
+    grouped.get(id)!.skills.push(skill)
   }
 
   return Array.from(grouped.values())
-    .map((category) => ({
-      ...category,
-      skills: category.skills.sort((a, b) => a.name.localeCompare(b.name)),
-    }))
-    .sort((a, b) => a.name.localeCompare(b.name))
-}
-
-export async function loadConfigSkillMap(): Promise<Map<string, EnrichedSkillDefinition>> {
-  const categories = await loadConfigSkillCategories()
-  return new Map(categories.flatMap((category) => category.skills.map((skill) => [skill.id, skill] as const)))
-}
-
-export async function mergeDbSkillsWithConfig(rows: any[] | null | undefined): Promise<EnrichedSkillCategory[]> {
-  const configCategories = await loadConfigSkillCategories()
-  const configSkillMap = new Map(configCategories.flatMap((category) => category.skills.map((skill) => [skill.id, skill] as const)))
-  const dbRows = Array.isArray(rows) ? rows : []
-
-  const categories = new Map<string, EnrichedSkillCategory>()
-
-  for (const category of configCategories) {
-    categories.set(category.id, {
-      id: category.id,
-      name: category.name,
-      skills: [],
-    })
-  }
-
-  for (const row of dbRows) {
-    const configSkill = configSkillMap.get(row.id)
-    const categoryId = row.category || configSkill?.category || 'operations'
-    if (!categories.has(categoryId)) {
-      categories.set(categoryId, {
-        id: categoryId,
-        name: categoryId,
-        skills: [],
-      })
-    }
-
-    categories.get(categoryId)?.skills.push({
-      id: row.id,
-      name: row.name || configSkill?.name || row.id,
-      description: row.description || configSkill?.description || '',
-      category: categoryId,
-      difficulty: row.metadata?.difficulty || configSkill?.difficulty || 'intermediate',
-      freedom: row.metadata?.freedom || configSkill?.freedom || 'medium',
-      prompts: row.prompts || configSkill?.prompts || {
-        en: {
-          trigger: '',
-          context: '',
-          instructions: '',
-          output_template: '',
-        },
-      },
-      variables: row.metadata?.variables || configSkill?.variables || [],
-      inputs: row.metadata?.inputs || configSkill?.inputs || [],
-      outputs: row.metadata?.outputs || configSkill?.outputs || [],
-      workflow: row.metadata?.workflow || configSkill?.workflow || { steps: [] },
-      tools: row.metadata?.tools || configSkill?.tools || [],
-      agents: row.metadata?.agents || configSkill?.agents || [],
-      pipelines: row.metadata?.pipelines || configSkill?.pipelines || [],
-      checklist: Array.isArray(row.checklist) && row.checklist.length ? row.checklist : configSkill?.checklist || [],
-      examples: Array.isArray(row.examples) && row.examples.length ? row.examples : configSkill?.examples || [],
-      metadata: {
-        ...(configSkill?.metadata || {}),
-        ...(row.metadata || {}),
-      },
-    })
-  }
-
-  for (const category of configCategories) {
-    for (const skill of category.skills) {
-      const existingSkills = categories.get(category.id)?.skills || []
-      if (!existingSkills.some((entry) => entry.id === skill.id)) {
-        categories.get(category.id)?.skills.push(skill)
-      }
-    }
-  }
-
-  return Array.from(categories.values())
     .map((category) => ({
       ...category,
       skills: category.skills.sort((a, b) => a.name.localeCompare(b.name)),

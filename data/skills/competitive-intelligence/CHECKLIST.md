@@ -1,0 +1,6 @@
+- Program is sustainable and targeted
+- All key sources covered
+- Data is captured consistently
+- Analysis is objective and evidence-based
+- Report is timely and decision-relevant
+- Intelligence drives action

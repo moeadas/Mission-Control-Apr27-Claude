@@ -1,0 +1,6 @@
+- Copy direction is clear
+- Copy will resonate with target
+- Each version is optimized for its format
+- Variants test real hypotheses
+- Copy is compliant and approved
+- All copy is proofed and ready for trafficking

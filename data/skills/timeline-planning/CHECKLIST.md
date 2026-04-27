@@ -1,0 +1,6 @@
+- Full scope confirmed with project lead
+- Critical dependencies documented
+- Estimates include buffer for revisions
+- Critical path identified and highlighted
+- Contingency reviewed by project manager
+- Timeline approved by client and creative lead

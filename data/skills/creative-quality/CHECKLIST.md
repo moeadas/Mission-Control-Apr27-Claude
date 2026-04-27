@@ -1,0 +1,6 @@
+- Know what success looks like
+- Seen and understood completely
+- All requirements met
+- Creative team knows exactly what to fix
+- Decision is clear and documented
+- Team and client (if applicable) informed

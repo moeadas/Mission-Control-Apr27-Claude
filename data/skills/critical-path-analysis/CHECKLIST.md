@@ -1,0 +1,6 @@
+- Tasks are comprehensive
+- Dependencies are correct
+- Forward pass is correct
+- Backward pass is correct
+- Critical path is correctly identified
+- Compression options are feasible

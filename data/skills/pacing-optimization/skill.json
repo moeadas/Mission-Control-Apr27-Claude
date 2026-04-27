@@ -1,0 +1,83 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "pacing-optimization",
+  "name": "Pacing Optimization",
+  "description": "Optimizes campaign pacing and spend delivery to ensure budget is spent efficiently throughout the campaign period, avoiding early burnout or underdelivery.",
+  "category": "analytics",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "campaign_name",
+      "type": "string",
+      "required": true,
+      "description": "Campaign being analyzed"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Total campaign budget"
+    },
+    {
+      "name": "flight_dates",
+      "type": "string",
+      "required": true,
+      "description": "Campaign start and end dates"
+    },
+    {
+      "name": "delivery_target",
+      "type": "string",
+      "required": false,
+      "description": "Expected delivery target (e.g., 100% spend)"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "campaign_name",
+      "type": "string",
+      "required": true,
+      "description": "Campaign being analyzed"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Total campaign budget"
+    },
+    {
+      "name": "flight_dates",
+      "type": "string",
+      "required": true,
+      "description": "Campaign start and end dates"
+    },
+    {
+      "name": "delivery_target",
+      "type": "string",
+      "required": false,
+      "description": "Expected delivery target (e.g., 100% spend)"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "analytics",
+    "ad-platform"
+  ],
+  "agents": [],
+  "pipelines": [
+    "optimization"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "analytics",
+      "pacing",
+      "budget",
+      "optimization",
+      "media"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

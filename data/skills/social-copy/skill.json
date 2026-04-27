@@ -1,0 +1,95 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "social-copy",
+  "name": "Social Media Copy",
+  "description": "Creates social-first copy that balances hook strength, platform behavior, clarity, and conversion or engagement goals.",
+  "category": "content",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "platform",
+      "type": "string",
+      "required": true,
+      "description": "Target platform: LinkedIn, Instagram, X, TikTok, Facebook, Pinterest"
+    },
+    {
+      "name": "goal",
+      "type": "string",
+      "required": true,
+      "description": "Goal: brand awareness, engagement, website traffic, lead generation"
+    },
+    {
+      "name": "message",
+      "type": "string",
+      "required": true,
+      "description": "Core message or content to communicate"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": false,
+      "description": "Target audience on this platform"
+    },
+    {
+      "name": "hashtags",
+      "type": "string",
+      "required": false,
+      "description": "Hashtags to include (or note: no hashtags for X/TikTok)"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "platform",
+      "type": "string",
+      "required": true,
+      "description": "Target platform: LinkedIn, Instagram, X, TikTok, Facebook, Pinterest"
+    },
+    {
+      "name": "goal",
+      "type": "string",
+      "required": true,
+      "description": "Goal: brand awareness, engagement, website traffic, lead generation"
+    },
+    {
+      "name": "message",
+      "type": "string",
+      "required": true,
+      "description": "Core message or content to communicate"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": false,
+      "description": "Target audience on this platform"
+    },
+    {
+      "name": "hashtags",
+      "type": "string",
+      "required": false,
+      "description": "Hashtags to include (or note: no hashtags for X/TikTok)"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "echo"
+  ],
+  "pipelines": [
+    "content-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "social-copy",
+      "social-media",
+      "linkedin",
+      "instagram",
+      "copywriting"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

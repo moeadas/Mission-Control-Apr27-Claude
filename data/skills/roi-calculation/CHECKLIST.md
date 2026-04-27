@@ -1,0 +1,7 @@
+- Scope is clear and agreed
+- Costs are complete and accurate
+- Attribution model is appropriate
+- Values are justified and consistent
+- Math is correct and documented
+- Confidence range is understood
+- Stakeholders understand and can act on findings

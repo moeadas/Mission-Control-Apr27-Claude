@@ -1,0 +1,4 @@
+- Action is specific and measurable
+- Objection is handled in the copy
+- Urgency is credible
+- CTA removes ambiguity

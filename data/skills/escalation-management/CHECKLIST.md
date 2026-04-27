@@ -1,0 +1,4 @@
+- Escalation is the right move
+- Brief is clear and complete
+- Right person, right information
+- Issue is resolved and learnings are captured

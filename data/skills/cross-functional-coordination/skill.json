@@ -1,0 +1,83 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "cross-functional-coordination",
+  "name": "Cross-Functional Coordination",
+  "description": "Manages work and communication across different teams, departments, and disciplines — ensuring alignment, avoiding duplicated effort, and keeping interdependent workstreams synchronized.",
+  "category": "project-management",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "teams",
+      "type": "string",
+      "required": true,
+      "description": "Teams or departments involved"
+    },
+    {
+      "name": "project_scope",
+      "type": "string",
+      "required": true,
+      "description": "Project scope requiring coordination"
+    },
+    {
+      "name": "dependencies",
+      "type": "string",
+      "required": false,
+      "description": "Key inter-team dependencies"
+    },
+    {
+      "name": "cadence",
+      "type": "string",
+      "required": false,
+      "description": "Communication cadence"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "teams",
+      "type": "string",
+      "required": true,
+      "description": "Teams or departments involved"
+    },
+    {
+      "name": "project_scope",
+      "type": "string",
+      "required": true,
+      "description": "Project scope requiring coordination"
+    },
+    {
+      "name": "dependencies",
+      "type": "string",
+      "required": false,
+      "description": "Key inter-team dependencies"
+    },
+    {
+      "name": "cadence",
+      "type": "string",
+      "required": false,
+      "description": "Communication cadence"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "iris"
+  ],
+  "pipelines": [
+    "project-management"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "project-management",
+      "coordination",
+      "cross-functional",
+      "communication"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

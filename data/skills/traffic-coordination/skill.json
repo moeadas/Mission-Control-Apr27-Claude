@@ -1,0 +1,81 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "traffic-coordination",
+  "name": "Traffic Coordination",
+  "description": "Manages the flow of creative work through the agency's production pipeline — routing jobs to the right teams at the right time, managing priorities, preventing bottlenecks, and keeping creative projects moving from brief to delivery.",
+  "category": "project-management",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "briefs",
+      "type": "string",
+      "required": true,
+      "description": "List of incoming briefs requiring creative production"
+    },
+    {
+      "name": "team_capacity",
+      "type": "string",
+      "required": true,
+      "description": "Current team availability and workload"
+    },
+    {
+      "name": "pipeline_status",
+      "type": "string",
+      "required": false,
+      "description": "Current status of ongoing jobs in the pipeline"
+    },
+    {
+      "name": "priority_conflicts",
+      "type": "string",
+      "required": false,
+      "description": "Any competing priorities or deadline conflicts"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "briefs",
+      "type": "string",
+      "required": true,
+      "description": "List of incoming briefs requiring creative production"
+    },
+    {
+      "name": "team_capacity",
+      "type": "string",
+      "required": true,
+      "description": "Current team availability and workload"
+    },
+    {
+      "name": "pipeline_status",
+      "type": "string",
+      "required": false,
+      "description": "Current status of ongoing jobs in the pipeline"
+    },
+    {
+      "name": "priority_conflicts",
+      "type": "string",
+      "required": false,
+      "description": "Any competing priorities or deadline conflicts"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "piper"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "traffic",
+      "production-management",
+      "creative-operations",
+      "project-management"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

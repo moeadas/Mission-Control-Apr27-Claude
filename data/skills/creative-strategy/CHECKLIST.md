@@ -1,0 +1,6 @@
+- Full picture of competitive landscape
+- Insight is specific and actionable
+- Strategy is ownable and defensible
+- Direction is distinctive and resonant
+- Creative team has clear direction
+- Strategy is approved before production

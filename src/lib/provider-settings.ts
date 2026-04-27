@@ -65,6 +65,19 @@ export const THINKING_DELIVERABLE_TYPES = new Set([
   'kpi-forecast',
 ])
 
+export const CONTENT_GENERATION_DELIVERABLE_TYPES = new Set([
+  'content-calendar',
+  'campaign-copy',
+  'short-form-copy',
+  'email-campaign',
+  'blog-article',
+  'website-copy',
+  'video-script',
+  'presentation',
+  'pr-comms',
+  'brand-guidelines',
+])
+
 export function normalizeProviderSettings(input?: Partial<ProviderSettings> | null): ProviderSettings {
   return {
     routing: {
@@ -167,11 +180,18 @@ export function resolveTaskRuntime(input: {
 }) {
   const settings = normalizeProviderSettings(input.settings)
   const runtimeMode = settings.routing.runtimeMode || 'fast'
+  const contentFirst =
+    input.deliverableType && CONTENT_GENERATION_DELIVERABLE_TYPES.has(input.deliverableType)
   const prefersThinkingModel =
     runtimeMode === 'thinking' ||
     (runtimeMode !== 'compare' && settings.routing.useGeminiForThinking && isThinkingDeliverableType(input.deliverableType))
 
   let provider: AIProvider =
+    contentFirst && providerIsConfigured(settings, 'ollama')
+      ? 'ollama'
+      : contentFirst && providerIsConfigured(settings, 'gemini')
+        ? 'gemini'
+      :
     runtimeMode === 'compare' && providerIsConfigured(settings, settings.routing.primaryProvider)
       ? settings.routing.primaryProvider
       : prefersThinkingModel && providerIsConfigured(settings, 'gemini')
@@ -190,7 +210,12 @@ export function resolveTaskRuntime(input: {
 
   return {
     provider,
-    model: resolveProviderModel(settings, provider, input.requestedModel),
+    model:
+      contentFirst && provider === 'ollama'
+        ? 'minimax-m2.7:cloud'
+        : contentFirst && provider === 'gemini'
+          ? 'gemini-2.5-pro'
+          : resolveProviderModel(settings, provider, input.requestedModel),
   }
 }
 
@@ -221,7 +246,12 @@ export function resolveFallbackRuntime(input: {
 
   return {
     provider: fallbackProvider,
-    model: resolveProviderModel(settings, fallbackProvider, input.requestedModel),
+    model:
+      fallbackProvider === 'ollama'
+        ? 'minimax-m2.7:cloud'
+        : fallbackProvider === 'gemini'
+          ? 'gemini-2.5-pro'
+          : resolveProviderModel(settings, fallbackProvider, input.requestedModel),
   }
 }
 

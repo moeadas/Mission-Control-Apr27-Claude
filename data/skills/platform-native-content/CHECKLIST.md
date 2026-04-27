@@ -1,0 +1,6 @@
+- Identify source idea is completed to a high standard
+- Clarify platform roles is completed to a high standard
+- Rewrite hook/body/CTA by platform is completed to a high standard
+- Adjust tone and pacing is completed to a high standard
+- Remove generic copy is completed to a high standard
+- Add execution notes is completed to a high standard

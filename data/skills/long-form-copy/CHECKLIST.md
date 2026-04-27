@@ -1,0 +1,4 @@
+- Structure supports the goal
+- Writing is clear and persuasive
+- Proof is specific and credible
+- CTA is specific and action-oriented

@@ -1,0 +1,7 @@
+- Context is relevant and current
+- Objectives are SMART and tied to business goals
+- Audience is specific enough for media targeting
+- Budget is realistic for objectives and channels
+- Channel direction matches audience and objectives
+- Creative timeline aligns with media timeline
+- Measurement framework covers all objectives

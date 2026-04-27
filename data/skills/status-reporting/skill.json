@@ -1,0 +1,95 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "status-reporting",
+  "name": "Status Reporting",
+  "description": "Creates clear, structured progress reports that communicate project or campaign status to stakeholders, highlighting achievements, risks, and next steps.",
+  "category": "project-management",
+  "difficulty": "beginner",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "reporting_period",
+      "type": "string",
+      "required": true,
+      "description": "Time period covered: week of, month of, Q1 2026"
+    },
+    {
+      "name": "project_campaign",
+      "type": "string",
+      "required": true,
+      "description": "Name of the project or campaign being reported on"
+    },
+    {
+      "name": "metrics",
+      "type": "string",
+      "required": false,
+      "description": "Key performance metrics and their current values"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": false,
+      "description": "Who will receive this report"
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "required": false,
+      "description": "Overall status: on track, at risk, or off track"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "reporting_period",
+      "type": "string",
+      "required": true,
+      "description": "Time period covered: week of, month of, Q1 2026"
+    },
+    {
+      "name": "project_campaign",
+      "type": "string",
+      "required": true,
+      "description": "Name of the project or campaign being reported on"
+    },
+    {
+      "name": "metrics",
+      "type": "string",
+      "required": false,
+      "description": "Key performance metrics and their current values"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": false,
+      "description": "Who will receive this report"
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "required": false,
+      "description": "Overall status: on track, at risk, or off track"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "iris"
+  ],
+  "pipelines": [
+    "reporting-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "status-reporting",
+      "project-management",
+      "reporting",
+      "client-updates"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

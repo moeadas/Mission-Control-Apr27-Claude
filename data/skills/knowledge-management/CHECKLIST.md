@@ -1,0 +1,6 @@
+- Define knowledge problem is completed to a high standard
+- Map domains and users is completed to a high standard
+- Define information structure is completed to a high standard
+- Assign ownership is completed to a high standard
+- Create governance rules is completed to a high standard
+- Optimize retrieval is completed to a high standard

@@ -1,0 +1,80 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "quality-assurance",
+  "name": "Quality Assurance",
+  "description": "Creates QA systems that detect defects early, define clear quality standards, and reduce avoidable errors before work reaches clients or end users.",
+  "category": "operations",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "deliverable",
+      "type": "string",
+      "required": true,
+      "description": "Deliverable being reviewed: type, format, client"
+    },
+    {
+      "name": "quality_standards",
+      "type": "string",
+      "required": false,
+      "description": "Quality standards to apply: brand guidelines, client specs"
+    },
+    {
+      "name": "reviewers",
+      "type": "string",
+      "required": false,
+      "description": "Who will review the deliverable"
+    },
+    {
+      "name": "deadline",
+      "type": "string",
+      "required": false,
+      "description": "Delivery deadline"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "deliverable",
+      "type": "string",
+      "required": true,
+      "description": "Deliverable being reviewed: type, format, client"
+    },
+    {
+      "name": "quality_standards",
+      "type": "string",
+      "required": false,
+      "description": "Quality standards to apply: brand guidelines, client specs"
+    },
+    {
+      "name": "reviewers",
+      "type": "string",
+      "required": false,
+      "description": "Who will review the deliverable"
+    },
+    {
+      "name": "deadline",
+      "type": "string",
+      "required": false,
+      "description": "Delivery deadline"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document"
+  ],
+  "agents": [],
+  "pipelines": [
+    "operations-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "quality-assurance",
+      "qa",
+      "creative-quality",
+      "process"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

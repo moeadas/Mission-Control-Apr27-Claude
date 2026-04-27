@@ -1,0 +1,6 @@
+- Baseline is accurate and documented
+- Friction points are evidenced
+- Hypotheses are specific and falsifiable
+- Highest priority items are clear
+- Tests are statistically valid
+- Conversion rate is improving

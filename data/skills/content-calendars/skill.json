@@ -1,0 +1,95 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "content-calendars",
+  "name": "Content Calendar Management",
+  "description": "Plans, schedules, and manages content across multiple platforms and channels — ensuring consistent publishing cadence, brand alignment, and optimal timing for each platform and audience.",
+  "category": "content",
+  "difficulty": "beginner",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand being planned"
+    },
+    {
+      "name": "platforms",
+      "type": "string",
+      "required": true,
+      "description": "Platforms to publish on"
+    },
+    {
+      "name": "publishing_cadence",
+      "type": "string",
+      "required": false,
+      "description": "Publishing frequency per platform"
+    },
+    {
+      "name": "campaigns",
+      "type": "string",
+      "required": false,
+      "description": "Upcoming campaigns to align with"
+    },
+    {
+      "name": "content_themes",
+      "type": "string",
+      "required": false,
+      "description": "Content themes for the period"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand being planned"
+    },
+    {
+      "name": "platforms",
+      "type": "string",
+      "required": true,
+      "description": "Platforms to publish on"
+    },
+    {
+      "name": "publishing_cadence",
+      "type": "string",
+      "required": false,
+      "description": "Publishing frequency per platform"
+    },
+    {
+      "name": "campaigns",
+      "type": "string",
+      "required": false,
+      "description": "Upcoming campaigns to align with"
+    },
+    {
+      "name": "content_themes",
+      "type": "string",
+      "required": false,
+      "description": "Content themes for the period"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "echo"
+  ],
+  "pipelines": [
+    "content"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "content",
+      "social-media",
+      "planning",
+      "calendar"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

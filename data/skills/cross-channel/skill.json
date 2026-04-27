@@ -1,0 +1,105 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "cross-channel",
+  "name": "Cross-Channel Planning",
+  "description": "Coordinates messaging, creative strategy, and media tactics across multiple marketing channels to create a unified, synergistic campaign that reinforces the brand message at every touchpoint.",
+  "category": "strategy",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "campaign_name",
+      "type": "string",
+      "required": true,
+      "description": "Campaign name"
+    },
+    {
+      "name": "campaign_objective",
+      "type": "string",
+      "required": true,
+      "description": "Primary campaign objective"
+    },
+    {
+      "name": "channels",
+      "type": "string",
+      "required": true,
+      "description": "Channels involved in the campaign"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": false,
+      "description": "Target audience"
+    },
+    {
+      "name": "timeline",
+      "type": "string",
+      "required": false,
+      "description": "Campaign timeline"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": false,
+      "description": "Campaign budget"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "campaign_name",
+      "type": "string",
+      "required": true,
+      "description": "Campaign name"
+    },
+    {
+      "name": "campaign_objective",
+      "type": "string",
+      "required": true,
+      "description": "Primary campaign objective"
+    },
+    {
+      "name": "channels",
+      "type": "string",
+      "required": true,
+      "description": "Channels involved in the campaign"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": false,
+      "description": "Target audience"
+    },
+    {
+      "name": "timeline",
+      "type": "string",
+      "required": false,
+      "description": "Campaign timeline"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": false,
+      "description": "Campaign budget"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [],
+  "pipelines": [
+    "media-strategy"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "strategy",
+      "cross-channel",
+      "integrated-marketing",
+      "planning"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

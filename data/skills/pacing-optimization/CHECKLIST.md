@@ -1,0 +1,6 @@
+- Variance is quantified
+- Future trajectory is clear
+- Root cause is understood
+- Changes are logical and sufficient
+- Changes are tracked
+- Pacing is improving

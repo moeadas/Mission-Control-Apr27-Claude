@@ -1,0 +1,83 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "predictive-analytics",
+  "name": "Predictive Analytics",
+  "description": "Uses historical data, statistical modeling, and machine learning to forecast future advertising performance, audience behavior, and campaign outcomes.",
+  "category": "analytics",
+  "difficulty": "advanced",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "prediction_target",
+      "type": "string",
+      "required": true,
+      "description": "What to forecast: ROAS, conversions, impressions, CPA, churn rate"
+    },
+    {
+      "name": "time_horizon",
+      "type": "string",
+      "required": true,
+      "description": "Forecast period: next week, 30 days, next quarter"
+    },
+    {
+      "name": "historical_data",
+      "type": "string",
+      "required": true,
+      "description": "Historical performance data (minimum 12 periods recommended)"
+    },
+    {
+      "name": "features",
+      "type": "string",
+      "required": false,
+      "description": "Additional predictive features: spend, seasonality, creative changes, competitive activity"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "prediction_target",
+      "type": "string",
+      "required": true,
+      "description": "What to forecast: ROAS, conversions, impressions, CPA, churn rate"
+    },
+    {
+      "name": "time_horizon",
+      "type": "string",
+      "required": true,
+      "description": "Forecast period: next week, 30 days, next quarter"
+    },
+    {
+      "name": "historical_data",
+      "type": "string",
+      "required": true,
+      "description": "Historical performance data (minimum 12 periods recommended)"
+    },
+    {
+      "name": "features",
+      "type": "string",
+      "required": false,
+      "description": "Additional predictive features: spend, seasonality, creative changes, competitive activity"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "dex"
+  ],
+  "pipelines": [
+    "analytics-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "predictive",
+      "forecasting",
+      "machine-learning",
+      "analytics"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

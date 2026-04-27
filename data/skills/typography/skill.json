@@ -1,0 +1,93 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "typography",
+  "name": "Typography",
+  "description": "Provides expert typography selection and usage guidance — matching typefaces to brand personality, optimizing readability, creating type hierarchies, and ensuring typographic decisions support rather than undermine creative work.",
+  "category": "creative",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "brand",
+      "type": "string",
+      "required": true,
+      "description": "Brand or project requiring typography guidance"
+    },
+    {
+      "name": "current_fonts",
+      "type": "string",
+      "required": false,
+      "description": "Typefaces currently in use or under consideration"
+    },
+    {
+      "name": "platforms",
+      "type": "string",
+      "required": true,
+      "description": "Where typography will be used — print, web, social, OOH, etc."
+    },
+    {
+      "name": "personality",
+      "type": "string",
+      "required": true,
+      "description": "Brand personality traits that should inform typeface selection"
+    },
+    {
+      "name": "readability",
+      "type": "string",
+      "required": false,
+      "description": "Special readability requirements — accessibility standards, small sizes, etc."
+    }
+  ],
+  "inputs": [
+    {
+      "name": "brand",
+      "type": "string",
+      "required": true,
+      "description": "Brand or project requiring typography guidance"
+    },
+    {
+      "name": "current_fonts",
+      "type": "string",
+      "required": false,
+      "description": "Typefaces currently in use or under consideration"
+    },
+    {
+      "name": "platforms",
+      "type": "string",
+      "required": true,
+      "description": "Where typography will be used — print, web, social, OOH, etc."
+    },
+    {
+      "name": "personality",
+      "type": "string",
+      "required": true,
+      "description": "Brand personality traits that should inform typeface selection"
+    },
+    {
+      "name": "readability",
+      "type": "string",
+      "required": false,
+      "description": "Special readability requirements — accessibility standards, small sizes, etc."
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "finn",
+    "lyra"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "typography",
+      "design",
+      "brand-identity",
+      "typeface"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

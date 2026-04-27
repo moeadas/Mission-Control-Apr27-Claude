@@ -1,0 +1,6 @@
+- Define meeting purpose is completed to a high standard
+- Choose attendees is completed to a high standard
+- Structure agenda around decisions is completed to a high standard
+- Prepare facilitation moves is completed to a high standard
+- Guide discussion and close is completed to a high standard
+- Document outcomes is completed to a high standard

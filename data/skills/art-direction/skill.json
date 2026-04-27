@@ -1,0 +1,106 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "art-direction",
+  "name": "Art Direction",
+  "description": "Establishes visual direction for campaigns including mood boards, color palettes, typography, and technical specifications.",
+  "category": "creative",
+  "difficulty": "advanced",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand being directed"
+    },
+    {
+      "name": "campaign_name",
+      "type": "string",
+      "required": true,
+      "description": "Campaign or project name"
+    },
+    {
+      "name": "campaign_objectives",
+      "type": "string",
+      "required": true,
+      "description": "Campaign goals and KPIs"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Primary and secondary audiences"
+    },
+    {
+      "name": "creative_vibe",
+      "type": "string",
+      "required": true,
+      "description": "Desired mood and aesthetic"
+    },
+    {
+      "name": "deliverables",
+      "type": "string",
+      "required": false,
+      "description": "List of required assets"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand being directed"
+    },
+    {
+      "name": "campaign_name",
+      "type": "string",
+      "required": true,
+      "description": "Campaign or project name"
+    },
+    {
+      "name": "campaign_objectives",
+      "type": "string",
+      "required": true,
+      "description": "Campaign goals and KPIs"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Primary and secondary audiences"
+    },
+    {
+      "name": "creative_vibe",
+      "type": "string",
+      "required": true,
+      "description": "Desired mood and aesthetic"
+    },
+    {
+      "name": "deliverables",
+      "type": "string",
+      "required": false,
+      "description": "List of required assets"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "presentation",
+    "document"
+  ],
+  "agents": [
+    "finn",
+    "lyra"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "art-direction",
+      "creative",
+      "visual",
+      "branding"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

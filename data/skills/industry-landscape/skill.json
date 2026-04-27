@@ -1,0 +1,95 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "industry-landscape",
+  "name": "Industry Landscape Mapping",
+  "description": "Maps the industry landscape so teams understand category structure, forces, competitor positions, and strategic opportunities before acting.",
+  "category": "research",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "industry",
+      "type": "string",
+      "required": true,
+      "description": "Industry to map"
+    },
+    {
+      "name": "scope",
+      "type": "string",
+      "required": false,
+      "description": "Geographic and segment scope"
+    },
+    {
+      "name": "focus",
+      "type": "string",
+      "required": false,
+      "description": "Specific focus areas or questions"
+    },
+    {
+      "name": "geography",
+      "type": "string",
+      "required": false,
+      "description": "Geographic focus: global, regional, country"
+    },
+    {
+      "name": "horizon",
+      "type": "string",
+      "required": false,
+      "description": "Time horizon: current, 3-year, 5-year"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "industry",
+      "type": "string",
+      "required": true,
+      "description": "Industry to map"
+    },
+    {
+      "name": "scope",
+      "type": "string",
+      "required": false,
+      "description": "Geographic and segment scope"
+    },
+    {
+      "name": "focus",
+      "type": "string",
+      "required": false,
+      "description": "Specific focus areas or questions"
+    },
+    {
+      "name": "geography",
+      "type": "string",
+      "required": false,
+      "description": "Geographic focus: global, regional, country"
+    },
+    {
+      "name": "horizon",
+      "type": "string",
+      "required": false,
+      "description": "Time horizon: current, 3-year, 5-year"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet",
+    "presentation"
+  ],
+  "agents": [
+    "atlas"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "industry-analysis",
+      "market-research",
+      "ecosystem",
+      "competitive-intelligence",
+      "mapping"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

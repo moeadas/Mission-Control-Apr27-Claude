@@ -1,0 +1,5 @@
+- Objectives are specific and measurable
+- Historical data informs allocation decisions
+- Expectations are realistic and evidenced
+- Allocation aligns with objectives
+- Reserve allows for optimization

@@ -1,0 +1,4 @@
+- Data is current and accurate
+- Change is statistically meaningful
+- Cause is identified
+- Recommendation is proportionate to trend

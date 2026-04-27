@@ -1,0 +1,71 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "resource-allocation",
+  "name": "Resource Allocation",
+  "description": "Optimizes the allocation of team resources across projects and tasks, balancing workloads, skills, and priorities to maximize utilization and delivery.",
+  "category": "operations",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "projects",
+      "type": "string",
+      "required": true,
+      "description": "Projects requiring resources"
+    },
+    {
+      "name": "team_members",
+      "type": "string",
+      "required": true,
+      "description": "Available team members and their skills"
+    },
+    {
+      "name": "time_period",
+      "type": "string",
+      "required": false,
+      "description": "Time period for allocation"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "projects",
+      "type": "string",
+      "required": true,
+      "description": "Projects requiring resources"
+    },
+    {
+      "name": "team_members",
+      "type": "string",
+      "required": true,
+      "description": "Available team members and their skills"
+    },
+    {
+      "name": "time_period",
+      "type": "string",
+      "required": false,
+      "description": "Time period for allocation"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "project-management-tool"
+  ],
+  "agents": [
+    "piper"
+  ],
+  "pipelines": [
+    "operations"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "operations",
+      "resource-management",
+      "planning",
+      "capacity"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

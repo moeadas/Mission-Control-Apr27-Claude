@@ -1,0 +1,91 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "brand-strategy",
+  "name": "brand-strategy",
+  "description": "Develops brand positioning, architecture, and long-term strategic direction. Use when clients need brand strategy, positioning framework, brand architecture, or strategic brand planning.",
+  "category": "strategy",
+  "difficulty": "advanced",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "industry",
+      "type": "string",
+      "required": true,
+      "description": "Industry sector"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Primary target audience"
+    },
+    {
+      "name": "competitors",
+      "type": "string",
+      "required": false,
+      "description": "Main competitors (comma separated)"
+    },
+    {
+      "name": "current_perception",
+      "type": "string",
+      "required": false,
+      "description": "How brand is currently perceived"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "industry",
+      "type": "string",
+      "required": true,
+      "description": "Industry sector"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Primary target audience"
+    },
+    {
+      "name": "competitors",
+      "type": "string",
+      "required": false,
+      "description": "Main competitors (comma separated)"
+    },
+    {
+      "name": "current_perception",
+      "type": "string",
+      "required": false,
+      "description": "How brand is currently perceived"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "web-search",
+    "document",
+    "presentation"
+  ],
+  "agents": [
+    "maya"
+  ],
+  "pipelines": [
+    "campaign-brief"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [],
+    "lastUpdated": "2026-03-30"
+  }
+}

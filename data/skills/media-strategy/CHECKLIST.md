@@ -1,0 +1,7 @@
+- Clarify objective is completed to a high standard
+- Map audience behavior is completed to a high standard
+- Define channel roles is completed to a high standard
+- Build budget logic is completed to a high standard
+- Show channel interplay is completed to a high standard
+- Define measurement is completed to a high standard
+- Pressure-test strategy is completed to a high standard

@@ -1,0 +1,83 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "concept-testing",
+  "name": "Concept Testing",
+  "description": "Tests creative concepts with target audiences before full production to validate ideas, identify strengths and weaknesses, and reduce the risk of launching creative that doesn't resonate.",
+  "category": "research",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "concepts",
+      "type": "string",
+      "required": true,
+      "description": "Concepts to be tested"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience for testing"
+    },
+    {
+      "name": "test_method",
+      "type": "string",
+      "required": false,
+      "description": "Testing method (survey, focus group, interview)"
+    },
+    {
+      "name": "sample_size",
+      "type": "string",
+      "required": false,
+      "description": "Number of participants"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "concepts",
+      "type": "string",
+      "required": true,
+      "description": "Concepts to be tested"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience for testing"
+    },
+    {
+      "name": "test_method",
+      "type": "string",
+      "required": false,
+      "description": "Testing method (survey, focus group, interview)"
+    },
+    {
+      "name": "sample_size",
+      "type": "string",
+      "required": false,
+      "description": "Number of participants"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "finn"
+  ],
+  "pipelines": [
+    "research"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "research",
+      "concept-testing",
+      "creative",
+      "validation"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

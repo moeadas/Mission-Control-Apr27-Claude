@@ -1,0 +1,85 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "creative-concept-development",
+  "name": "Creative Concept Development",
+  "description": "Generates and develops compelling creative concepts for campaigns and brands, producing distinct, ownable ideas that can be expressed across channels and formats.",
+  "category": "creative",
+  "difficulty": "advanced",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "brief_summary",
+      "type": "string",
+      "required": true,
+      "description": "Summary of the creative brief and objectives"
+    },
+    {
+      "name": "strategy_summary",
+      "type": "string",
+      "required": false,
+      "description": "Creative strategy and strategic territory"
+    },
+    {
+      "name": "num_concepts",
+      "type": "string",
+      "required": false,
+      "description": "Number of distinct concepts to develop"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "brief_summary",
+      "type": "string",
+      "required": true,
+      "description": "Summary of the creative brief and objectives"
+    },
+    {
+      "name": "strategy_summary",
+      "type": "string",
+      "required": false,
+      "description": "Creative strategy and strategic territory"
+    },
+    {
+      "name": "num_concepts",
+      "type": "string",
+      "required": false,
+      "description": "Number of distinct concepts to develop"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "presentation",
+    "mood-board"
+  ],
+  "agents": [
+    "finn"
+  ],
+  "pipelines": [
+    "creative-development"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "creative",
+      "concepts",
+      "ideation",
+      "campaign",
+      "branding"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

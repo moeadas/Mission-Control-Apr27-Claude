@@ -1,0 +1,88 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "media-strategy",
+  "name": "Media Strategy",
+  "description": "Builds integrated media strategies that connect audience insight, channel roles, budget logic, measurement, and competitive context into a defensible media plan.",
+  "category": "media",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "objectives",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objectives (awareness, consideration, conversion)"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience segments"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Total media budget"
+    },
+    {
+      "name": "timeline",
+      "type": "string",
+      "required": false,
+      "description": "Campaign timeline"
+    },
+    {
+      "name": "channels",
+      "type": "string",
+      "required": false,
+      "description": "Channels under consideration"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "objectives",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objectives (awareness, consideration, conversion)"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience segments"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Total media budget"
+    },
+    {
+      "name": "timeline",
+      "type": "string",
+      "required": false,
+      "description": "Campaign timeline"
+    },
+    {
+      "name": "channels",
+      "type": "string",
+      "required": false,
+      "description": "Channels under consideration"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "nova"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [],
+    "lastUpdated": "2026-03-30"
+  }
+}

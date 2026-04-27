@@ -1,0 +1,6 @@
+- Full account snapshot completed
+- At least 3 client business triggers identified
+- At least 2 solid opportunities identified
+- ROI or value proposition clearly articulated
+- Timing reviewed with account lead
+- Proposal reviewed by agency leadership

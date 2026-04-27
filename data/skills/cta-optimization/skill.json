@@ -1,0 +1,84 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "cta-optimization",
+  "name": "CTA Optimization",
+  "description": "Creates, tests, and optimizes calls-to-action across formats and channels — finding the words, design, placement, and format that drive the highest click and conversion rates.",
+  "category": "creative",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "placement",
+      "type": "string",
+      "required": true,
+      "description": "Where the CTA will appear"
+    },
+    {
+      "name": "current_cta",
+      "type": "string",
+      "required": false,
+      "description": "Current CTA in use"
+    },
+    {
+      "name": "conversion_goal",
+      "type": "string",
+      "required": true,
+      "description": "What the CTA should achieve"
+    },
+    {
+      "name": "traffic_volume",
+      "type": "string",
+      "required": false,
+      "description": "Traffic volume for statistical significance calculation"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "placement",
+      "type": "string",
+      "required": true,
+      "description": "Where the CTA will appear"
+    },
+    {
+      "name": "current_cta",
+      "type": "string",
+      "required": false,
+      "description": "Current CTA in use"
+    },
+    {
+      "name": "conversion_goal",
+      "type": "string",
+      "required": true,
+      "description": "What the CTA should achieve"
+    },
+    {
+      "name": "traffic_volume",
+      "type": "string",
+      "required": false,
+      "description": "Traffic volume for statistical significance calculation"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "echo"
+  ],
+  "pipelines": [
+    "creative"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "creative",
+      "copywriting",
+      "CTA",
+      "optimization",
+      "conversion"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

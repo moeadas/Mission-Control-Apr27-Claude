@@ -1,0 +1,4 @@
+- Message is clear and actionable
+- Narrative flows logically
+- Each slide has a clear purpose
+- Branding is consistent throughout

@@ -1,0 +1,4 @@
+- Segments are properly activated
+- Deal IDs are correctly configured
+- Budget will pace evenly
+- Optimization improves media efficiency

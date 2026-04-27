@@ -1,0 +1,96 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "negotiation",
+  "name": "Negotiation",
+  "description": "Prepares for and executes client negotiations across pricing, scope, timelines, and terms. Uses structured frameworks to achieve win-win outcomes while protecting agency interests.",
+  "category": "business-development",
+  "difficulty": "advanced",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "topic",
+      "type": "string",
+      "required": true,
+      "description": "Main subject of the negotiation"
+    },
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or counterparty name"
+    },
+    {
+      "name": "client_position",
+      "type": "string",
+      "required": true,
+      "description": "Client's known or assumed position and constraints"
+    },
+    {
+      "name": "agency_position",
+      "type": "string",
+      "required": true,
+      "description": "Agency's desired outcome and hard limits"
+    },
+    {
+      "name": "priority_weighting",
+      "type": "string",
+      "required": false,
+      "description": "Which elements matter most to each party"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "topic",
+      "type": "string",
+      "required": true,
+      "description": "Main subject of the negotiation"
+    },
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or counterparty name"
+    },
+    {
+      "name": "client_position",
+      "type": "string",
+      "required": true,
+      "description": "Client's known or assumed position and constraints"
+    },
+    {
+      "name": "agency_position",
+      "type": "string",
+      "required": true,
+      "description": "Agency's desired outcome and hard limits"
+    },
+    {
+      "name": "priority_weighting",
+      "type": "string",
+      "required": false,
+      "description": "Which elements matter most to each party"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet",
+    "## Client Management"
+  ],
+  "agents": [
+    "sage"
+  ],
+  "pipelines": [
+    "biz-dev"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "business-development",
+      "negotiation",
+      "pricing",
+      "contracts"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

@@ -1,0 +1,6 @@
+- Complete picture of demands
+- Value is quantified where possible
+- Urgency is realistic
+- Priorities are clear and justified
+- Decisions are documented
+- Everyone understands priorities

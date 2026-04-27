@@ -1,0 +1,6 @@
+- Define audience problem is completed to a high standard
+- Clarify offer and outcome is completed to a high standard
+- Identify differentiators is completed to a high standard
+- Write proposition and support points is completed to a high standard
+- Pressure-test clarity is completed to a high standard
+- Provide variants is completed to a high standard

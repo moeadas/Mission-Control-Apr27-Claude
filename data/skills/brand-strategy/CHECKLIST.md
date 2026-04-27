@@ -1,0 +1,5 @@
+- Understand the market context and client's starting point
+- Positioning is distinct and defensible
+- Architecture supports business structure
+- Personality is consistent and appropriate
+- Roadmap is realistic and measurable

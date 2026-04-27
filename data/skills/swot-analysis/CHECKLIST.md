@@ -1,0 +1,5 @@
+- Scope is clear and bounded
+- Analysis is evidence-based, not assumed
+- External factors are current and relevant
+- Insights go beyond the quadrant labels
+- Priorities are specific and actionable

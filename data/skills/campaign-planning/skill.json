@@ -1,0 +1,133 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "campaign-planning",
+  "name": "campaign-planning",
+  "description": "Plans advertising campaigns from brief to execution. Use when creating campaign strategies, media plans, budget allocation, or campaign timelines.",
+  "category": "media",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client brand name"
+    },
+    {
+      "name": "campaign_name",
+      "type": "string",
+      "required": true,
+      "description": "Name of this campaign"
+    },
+    {
+      "name": "industry",
+      "type": "string",
+      "required": true,
+      "description": "Industry sector"
+    },
+    {
+      "name": "objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objective (awareness, consideration, conversion)"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience description"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Total campaign budget"
+    },
+    {
+      "name": "timeline",
+      "type": "string",
+      "required": true,
+      "description": "Campaign duration and key dates"
+    },
+    {
+      "name": "competitors",
+      "type": "string",
+      "required": false,
+      "description": "Main competitors to consider"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client brand name"
+    },
+    {
+      "name": "campaign_name",
+      "type": "string",
+      "required": true,
+      "description": "Name of this campaign"
+    },
+    {
+      "name": "industry",
+      "type": "string",
+      "required": true,
+      "description": "Industry sector"
+    },
+    {
+      "name": "objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objective (awareness, consideration, conversion)"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience description"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Total campaign budget"
+    },
+    {
+      "name": "timeline",
+      "type": "string",
+      "required": true,
+      "description": "Campaign duration and key dates"
+    },
+    {
+      "name": "competitors",
+      "type": "string",
+      "required": false,
+      "description": "Main competitors to consider"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "presentation",
+    "analytics"
+  ],
+  "agents": [
+    "maya"
+  ],
+  "pipelines": [
+    "media-plan",
+    "campaign-brief"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "campaign",
+      "media",
+      "planning",
+      "advertising"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

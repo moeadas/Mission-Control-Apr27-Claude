@@ -1,0 +1,83 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "client-offboarding",
+  "name": "Client Offboarding",
+  "description": "Manages the professional and structured conclusion of client engagements, including handoffs, final deliverables, knowledge transfer, and archival.",
+  "category": "client-services",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client brand or company name"
+    },
+    {
+      "name": "exit_reason",
+      "type": "string",
+      "required": true,
+      "description": "Reason for ending the engagement"
+    },
+    {
+      "name": "end_date",
+      "type": "string",
+      "required": true,
+      "description": "Final working date with client"
+    },
+    {
+      "name": "outstanding_work",
+      "type": "string",
+      "required": false,
+      "description": "List of active deliverables needing completion"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client brand or company name"
+    },
+    {
+      "name": "exit_reason",
+      "type": "string",
+      "required": true,
+      "description": "Reason for ending the engagement"
+    },
+    {
+      "name": "end_date",
+      "type": "string",
+      "required": true,
+      "description": "Final working date with client"
+    },
+    {
+      "name": "outstanding_work",
+      "type": "string",
+      "required": false,
+      "description": "List of active deliverables needing completion"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet",
+    "presentation"
+  ],
+  "agents": [],
+  "pipelines": [
+    "client-close"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "client-services",
+      "offboarding",
+      "exit",
+      "knowledge-transfer",
+      "handover"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

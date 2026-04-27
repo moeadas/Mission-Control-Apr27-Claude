@@ -1,0 +1,5 @@
+- Format requirements confirmed
+- Messaging resonates with target
+- Unique value is clear
+- CTA drives specific action
+- Variants test meaningful differences

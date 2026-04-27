@@ -1,0 +1,83 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "deadline-management",
+  "name": "Deadline Management",
+  "description": "Ensures timely delivery of all project work by tracking deadlines, anticipating delays, escalating risks, and keeping teams accountable to commitments without micromanaging.",
+  "category": "project-management",
+  "difficulty": "intermediate",
+  "freedom": "low",
+  "variables": [
+    {
+      "name": "project_name",
+      "type": "string",
+      "required": true,
+      "description": "Project being managed"
+    },
+    {
+      "name": "deadlines",
+      "type": "string",
+      "required": false,
+      "description": "List of all deliverables and deadlines"
+    },
+    {
+      "name": "current_progress",
+      "type": "string",
+      "required": false,
+      "description": "Current progress on deliverables"
+    },
+    {
+      "name": "at_risk_items",
+      "type": "string",
+      "required": false,
+      "description": "Items currently at risk"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "project_name",
+      "type": "string",
+      "required": true,
+      "description": "Project being managed"
+    },
+    {
+      "name": "deadlines",
+      "type": "string",
+      "required": false,
+      "description": "List of all deliverables and deadlines"
+    },
+    {
+      "name": "current_progress",
+      "type": "string",
+      "required": false,
+      "description": "Current progress on deliverables"
+    },
+    {
+      "name": "at_risk_items",
+      "type": "string",
+      "required": false,
+      "description": "Items currently at risk"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "piper"
+  ],
+  "pipelines": [
+    "project-management"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "project-management",
+      "deadlines",
+      "delivery",
+      "tracking"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

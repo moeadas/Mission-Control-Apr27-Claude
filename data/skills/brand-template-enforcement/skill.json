@@ -1,0 +1,32 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "brand-template-enforcement",
+  "name": "Brand Template Enforcement",
+  "description": "Applies strict template and brand-system rules to generated artwork so logos, type zones, palette, safe areas, and visual hierarchy remain compliant across outputs.",
+  "category": "creative",
+  "difficulty": "advanced",
+  "freedom": "low",
+  "variables": [],
+  "inputs": [],
+  "outputs": [],
+  "tools": [
+    "document",
+    "figma"
+  ],
+  "agents": [
+    "lyra",
+    "finn"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "mission-control",
+    "tags": [
+      "templates",
+      "brand",
+      "compliance",
+      "visual-production"
+    ],
+    "lastUpdated": "2026-04-04"
+  }
+}

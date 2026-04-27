@@ -1,0 +1,90 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "audience-persona-creation",
+  "name": "Audience Persona Creation",
+  "description": "Creates detailed marketing personas including demographics, psychographics, behaviors, pain points, and content preferences.",
+  "category": "research",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "persona_name",
+      "type": "string",
+      "required": true,
+      "description": "Persona name or archetype"
+    },
+    {
+      "name": "industry",
+      "type": "string",
+      "required": true,
+      "description": "Industry or market context"
+    },
+    {
+      "name": "research_sources",
+      "type": "string",
+      "required": true,
+      "description": "Data sources for persona development"
+    },
+    {
+      "name": "age_range",
+      "type": "string",
+      "required": false,
+      "description": "Target age range"
+    },
+    {
+      "name": "primary_channel",
+      "type": "string",
+      "required": false,
+      "description": "Primary discovery channel"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "persona_name",
+      "type": "string",
+      "required": true,
+      "description": "Persona name or archetype"
+    },
+    {
+      "name": "industry",
+      "type": "string",
+      "required": true,
+      "description": "Industry or market context"
+    },
+    {
+      "name": "research_sources",
+      "type": "string",
+      "required": true,
+      "description": "Data sources for persona development"
+    },
+    {
+      "name": "age_range",
+      "type": "string",
+      "required": false,
+      "description": "Target age range"
+    },
+    {
+      "name": "primary_channel",
+      "type": "string",
+      "required": false,
+      "description": "Primary discovery channel"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "presentation"
+  ],
+  "agents": [
+    "maya"
+  ],
+  "pipelines": [
+    "content-calendar"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [],
+    "lastUpdated": "2026-03-30"
+  }
+}

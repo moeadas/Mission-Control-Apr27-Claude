@@ -1,0 +1,71 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "porter-five-forces",
+  "name": "Porter's Five Forces Analysis",
+  "description": "Applies Porter's Five Forces framework to analyze industry structure and profitability, identifying the forces that shape competitive rivalry and market attractiveness.",
+  "category": "strategy",
+  "difficulty": "advanced",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "industry_name",
+      "type": "string",
+      "required": true,
+      "description": "Industry being analyzed"
+    },
+    {
+      "name": "market_segment",
+      "type": "string",
+      "required": false,
+      "description": "Specific market segment focus"
+    },
+    {
+      "name": "geography",
+      "type": "string",
+      "required": false,
+      "description": "Geographic scope of analysis"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "industry_name",
+      "type": "string",
+      "required": true,
+      "description": "Industry being analyzed"
+    },
+    {
+      "name": "market_segment",
+      "type": "string",
+      "required": false,
+      "description": "Specific market segment focus"
+    },
+    {
+      "name": "geography",
+      "type": "string",
+      "required": false,
+      "description": "Geographic scope of analysis"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "maya"
+  ],
+  "pipelines": [
+    "strategy"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "strategy",
+      "porter-five-forces",
+      "industry-analysis",
+      "market-research"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

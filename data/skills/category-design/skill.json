@@ -1,0 +1,84 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "category-design",
+  "name": "Category Design",
+  "description": "Creates or reshapes product categories to establish market leadership, differentiate from competitors, and command category-defining positioning that makes competing within it inherently advantageous.",
+  "category": "strategy",
+  "difficulty": "advanced",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand seeking category leadership"
+    },
+    {
+      "name": "current_market",
+      "type": "string",
+      "required": true,
+      "description": "Current market context"
+    },
+    {
+      "name": "category_opportunity",
+      "type": "string",
+      "required": true,
+      "description": "The category opportunity being pursued"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": false,
+      "description": "Primary target audience for category"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand seeking category leadership"
+    },
+    {
+      "name": "current_market",
+      "type": "string",
+      "required": true,
+      "description": "Current market context"
+    },
+    {
+      "name": "category_opportunity",
+      "type": "string",
+      "required": true,
+      "description": "The category opportunity being pursued"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": false,
+      "description": "Primary target audience for category"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet",
+    "presentation"
+  ],
+  "agents": [
+    "maya"
+  ],
+  "pipelines": [
+    "strategy"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "strategy",
+      "category-design",
+      "positioning",
+      "innovation"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

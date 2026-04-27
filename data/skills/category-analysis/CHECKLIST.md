@@ -1,0 +1,5 @@
+- Category boundaries are clear and defensible
+- Structure type is correctly identified
+- Players are accurately characterized
+- Trends are current and evidenced
+- Opportunities are real and ownable

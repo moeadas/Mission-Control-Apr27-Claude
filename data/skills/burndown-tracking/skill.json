@@ -1,0 +1,95 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "burndown-tracking",
+  "name": "Burndown Tracking",
+  "description": "Monitors sprint progress using burndown charts to track remaining work versus ideal progress, identifying risks to delivery and enabling data-driven scope and timeline decisions.",
+  "category": "project-management",
+  "difficulty": "beginner",
+  "freedom": "low",
+  "variables": [
+    {
+      "name": "sprint_goal",
+      "type": "string",
+      "required": true,
+      "description": "Sprint goal or name"
+    },
+    {
+      "name": "total_story_points",
+      "type": "string",
+      "required": true,
+      "description": "Total story points committed"
+    },
+    {
+      "name": "sprint_length",
+      "type": "string",
+      "required": false,
+      "description": "Sprint length in days or weeks"
+    },
+    {
+      "name": "daily_updates",
+      "type": "string",
+      "required": false,
+      "description": "Daily progress updates"
+    },
+    {
+      "name": "sprint_name",
+      "type": "string",
+      "required": false,
+      "description": "Sprint name/number"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "sprint_goal",
+      "type": "string",
+      "required": true,
+      "description": "Sprint goal or name"
+    },
+    {
+      "name": "total_story_points",
+      "type": "string",
+      "required": true,
+      "description": "Total story points committed"
+    },
+    {
+      "name": "sprint_length",
+      "type": "string",
+      "required": false,
+      "description": "Sprint length in days or weeks"
+    },
+    {
+      "name": "daily_updates",
+      "type": "string",
+      "required": false,
+      "description": "Daily progress updates"
+    },
+    {
+      "name": "sprint_name",
+      "type": "string",
+      "required": false,
+      "description": "Sprint name/number"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "piper"
+  ],
+  "pipelines": [
+    "agile-sprint"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "project-management",
+      "agile",
+      "sprint",
+      "burndown"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

@@ -1,0 +1,5 @@
+- Research is current and relevant
+- Demographics are specific and actionable
+- Psychographics feel human and real
+- Behaviors are observable and measurable
+- Pain points are specific to role/context

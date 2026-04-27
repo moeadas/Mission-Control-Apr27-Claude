@@ -1,0 +1,94 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "survey-design",
+  "name": "Survey Design",
+  "description": "Creates effective surveys and questionnaires to gather quantitative and qualitative data from target audiences for advertising research and consumer insights.",
+  "category": "research",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "research_objective",
+      "type": "string",
+      "required": true,
+      "description": "Primary goal of the survey research"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target respondent profile: demographics, behaviors, criteria"
+    },
+    {
+      "name": "survey_type",
+      "type": "string",
+      "required": false,
+      "description": "Survey delivery method: online panel, phone, in-person, email"
+    },
+    {
+      "name": "sample_size",
+      "type": "string",
+      "required": false,
+      "description": "Required sample size or target completion number"
+    },
+    {
+      "name": "key_questions",
+      "type": "string",
+      "required": false,
+      "description": "Core questions the survey must answer"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "research_objective",
+      "type": "string",
+      "required": true,
+      "description": "Primary goal of the survey research"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target respondent profile: demographics, behaviors, criteria"
+    },
+    {
+      "name": "survey_type",
+      "type": "string",
+      "required": false,
+      "description": "Survey delivery method: online panel, phone, in-person, email"
+    },
+    {
+      "name": "sample_size",
+      "type": "string",
+      "required": false,
+      "description": "Required sample size or target completion number"
+    },
+    {
+      "name": "key_questions",
+      "type": "string",
+      "required": false,
+      "description": "Core questions the survey must answer"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "atlas"
+  ],
+  "pipelines": [
+    "research-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "survey",
+      "research",
+      "questionnaire",
+      "consumer-insights"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

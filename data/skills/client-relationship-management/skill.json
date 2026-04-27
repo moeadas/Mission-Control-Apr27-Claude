@@ -1,0 +1,86 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "client-relationship-management",
+  "name": "Client Relationship Management",
+  "description": "Builds and maintains strong, long-term client relationships through regular communication, satisfaction tracking, upsell identification, and proactive issue management.",
+  "category": "client-services",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client brand or company name"
+    },
+    {
+      "name": "health_status",
+      "type": "string",
+      "required": true,
+      "description": "Current relationship health rating"
+    },
+    {
+      "name": "renewal_date",
+      "type": "string",
+      "required": false,
+      "description": "Contract renewal or expiry date"
+    },
+    {
+      "name": "performance_summary",
+      "type": "string",
+      "required": false,
+      "description": "Recent campaign or account performance summary"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client brand or company name"
+    },
+    {
+      "name": "health_status",
+      "type": "string",
+      "required": true,
+      "description": "Current relationship health rating"
+    },
+    {
+      "name": "renewal_date",
+      "type": "string",
+      "required": false,
+      "description": "Contract renewal or expiry date"
+    },
+    {
+      "name": "performance_summary",
+      "type": "string",
+      "required": false,
+      "description": "Recent campaign or account performance summary"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet",
+    "crm",
+    "## Content"
+  ],
+  "agents": [
+    "sage"
+  ],
+  "pipelines": [
+    "account-management"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "client-services",
+      "crm",
+      "relationship",
+      "retention",
+      "upsell"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

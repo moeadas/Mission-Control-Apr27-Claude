@@ -1,0 +1,5 @@
+- Core creative is clear and ownable
+- Requirements are accurate and current
+- Adaptations are platform-native
+- Core message is preserved everywhere
+- All versions are documented

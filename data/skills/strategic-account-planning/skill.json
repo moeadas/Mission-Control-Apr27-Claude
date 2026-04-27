@@ -1,0 +1,93 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "strategic-account-planning",
+  "name": "Strategic Account Planning",
+  "description": "Develops long-term strategic plans for key client accounts — uncovering growth opportunities, deepening relationships, and positioning the agency as an indispensable creative partner rather than just a vendor.",
+  "category": "client-management",
+  "difficulty": "advanced",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "client",
+      "type": "string",
+      "required": true,
+      "description": "Client account name"
+    },
+    {
+      "name": "current_scope",
+      "type": "string",
+      "required": true,
+      "description": "Current services and scope delivered to this client"
+    },
+    {
+      "name": "business_context",
+      "type": "string",
+      "required": true,
+      "description": "Client's business strategy, market, and competitive landscape"
+    },
+    {
+      "name": "relationship_health",
+      "type": "string",
+      "required": true,
+      "description": "Current state of the agency-client relationship"
+    },
+    {
+      "name": "growth_objectives",
+      "type": "string",
+      "required": true,
+      "description": "Agency's growth goals for this account"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client",
+      "type": "string",
+      "required": true,
+      "description": "Client account name"
+    },
+    {
+      "name": "current_scope",
+      "type": "string",
+      "required": true,
+      "description": "Current services and scope delivered to this client"
+    },
+    {
+      "name": "business_context",
+      "type": "string",
+      "required": true,
+      "description": "Client's business strategy, market, and competitive landscape"
+    },
+    {
+      "name": "relationship_health",
+      "type": "string",
+      "required": true,
+      "description": "Current state of the agency-client relationship"
+    },
+    {
+      "name": "growth_objectives",
+      "type": "string",
+      "required": true,
+      "description": "Agency's growth goals for this account"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "sage"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "account-planning",
+      "strategy",
+      "client-management",
+      "growth"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

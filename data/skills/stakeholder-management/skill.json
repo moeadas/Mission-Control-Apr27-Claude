@@ -1,0 +1,88 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "stakeholder-management",
+  "name": "Stakeholder Management",
+  "description": "Actively manages client and internal stakeholder relationships throughout a project lifecycle — balancing competing priorities, navigating politics, and keeping all parties aligned and invested in project success.",
+  "category": "client-management",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "project",
+      "type": "string",
+      "required": true,
+      "description": "Project with complex stakeholder dynamics"
+    },
+    {
+      "name": "stakeholders",
+      "type": "string",
+      "required": true,
+      "description": "List of stakeholders with their roles and organizational positions"
+    },
+    {
+      "name": "dynamics",
+      "type": "string",
+      "required": false,
+      "description": "Known interpersonal dynamics, conflicts, or competing priorities"
+    },
+    {
+      "name": "complexity",
+      "type": "string",
+      "required": true,
+      "description": "Project complexity level and number of parties involved"
+    },
+    {
+      "name": "strategic_importance",
+      "type": "string",
+      "required": false,
+      "description": "How strategically important this client/account is to the agency"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "project",
+      "type": "string",
+      "required": true,
+      "description": "Project with complex stakeholder dynamics"
+    },
+    {
+      "name": "stakeholders",
+      "type": "string",
+      "required": true,
+      "description": "List of stakeholders with their roles and organizational positions"
+    },
+    {
+      "name": "dynamics",
+      "type": "string",
+      "required": false,
+      "description": "Known interpersonal dynamics, conflicts, or competing priorities"
+    },
+    {
+      "name": "complexity",
+      "type": "string",
+      "required": true,
+      "description": "Project complexity level and number of parties involved"
+    },
+    {
+      "name": "strategic_importance",
+      "type": "string",
+      "required": false,
+      "description": "How strategically important this client/account is to the agency"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "piper"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [],
+    "lastUpdated": "2026-03-30"
+  }
+}

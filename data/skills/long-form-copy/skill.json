@@ -1,0 +1,94 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "long-form-copy",
+  "name": "Long-Form Copy",
+  "description": "Writes extended, persuasive copy for landing pages, articles, whitepapers, and brand content that builds trust, communicates value, and drives conversions.",
+  "category": "content",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "format",
+      "type": "string",
+      "required": true,
+      "description": "Format: landing page, article, case study, whitepaper, pillar page"
+    },
+    {
+      "name": "goal",
+      "type": "string",
+      "required": true,
+      "description": "Goal: conversion, engagement, education, lead generation"
+    },
+    {
+      "name": "product_service",
+      "type": "string",
+      "required": true,
+      "description": "Product, service, or brand being promoted"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience and their knowledge level"
+    },
+    {
+      "name": "key_points",
+      "type": "string",
+      "required": false,
+      "description": "Key messages, benefits, or points to cover"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "format",
+      "type": "string",
+      "required": true,
+      "description": "Format: landing page, article, case study, whitepaper, pillar page"
+    },
+    {
+      "name": "goal",
+      "type": "string",
+      "required": true,
+      "description": "Goal: conversion, engagement, education, lead generation"
+    },
+    {
+      "name": "product_service",
+      "type": "string",
+      "required": true,
+      "description": "Product, service, or brand being promoted"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience and their knowledge level"
+    },
+    {
+      "name": "key_points",
+      "type": "string",
+      "required": false,
+      "description": "Key messages, benefits, or points to cover"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "echo"
+  ],
+  "pipelines": [
+    "content-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "long-form-copy",
+      "copywriting",
+      "landing-page",
+      "content-writing"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

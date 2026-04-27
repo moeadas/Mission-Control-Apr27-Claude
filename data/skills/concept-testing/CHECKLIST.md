@@ -1,0 +1,6 @@
+- Objectives are clear and actionable
+- Concepts are distinct enough to compare
+- Instrument captures decision-relevant data
+- Participants are representative
+- Analysis is objective and evidenced
+- Recommendation is clear and evidenced

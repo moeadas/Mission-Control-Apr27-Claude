@@ -1,0 +1,80 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "stakeholder-mapping",
+  "name": "Stakeholder Mapping",
+  "description": "Identifies and analyzes all key stakeholders for a project, account, or initiative — mapping their influence, interests, relationships, and strategic importance to inform engagement and communication strategies.",
+  "category": "client-management",
+  "difficulty": "beginner",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "initiative",
+      "type": "string",
+      "required": true,
+      "description": "Project, account, or initiative requiring stakeholder mapping"
+    },
+    {
+      "name": "known_stakeholders",
+      "type": "string",
+      "required": true,
+      "description": "Stakeholders already known or identified"
+    },
+    {
+      "name": "org_structure",
+      "type": "string",
+      "required": false,
+      "description": "Known organizational structure or reporting lines"
+    },
+    {
+      "name": "objective",
+      "type": "string",
+      "required": true,
+      "description": "What the initiative aims to achieve"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "initiative",
+      "type": "string",
+      "required": true,
+      "description": "Project, account, or initiative requiring stakeholder mapping"
+    },
+    {
+      "name": "known_stakeholders",
+      "type": "string",
+      "required": true,
+      "description": "Stakeholders already known or identified"
+    },
+    {
+      "name": "org_structure",
+      "type": "string",
+      "required": false,
+      "description": "Known organizational structure or reporting lines"
+    },
+    {
+      "name": "objective",
+      "type": "string",
+      "required": true,
+      "description": "What the initiative aims to achieve"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "sage"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "stakeholders",
+      "mapping",
+      "analysis",
+      "client-management"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

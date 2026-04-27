@@ -1,0 +1,5 @@
+- Stages are comprehensive and logical
+- Touchpoints are complete
+- Barriers are evidenced
+- Moments are correctly prioritized
+- Opportunities are specific and actionable

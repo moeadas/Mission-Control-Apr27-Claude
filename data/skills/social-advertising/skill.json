@@ -1,0 +1,94 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "social-advertising",
+  "name": "Social Advertising",
+  "description": "Plans and executes paid advertising campaigns across social media platforms including Meta, LinkedIn, TikTok, and X to reach target audiences with relevant messaging.",
+  "category": "analytics",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "platforms",
+      "type": "string",
+      "required": true,
+      "description": "Social platforms to advertise on: Meta, LinkedIn, TikTok, X, Pinterest, etc."
+    },
+    {
+      "name": "campaign_objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign goal: brand awareness, reach, engagement, lead generation, conversions"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Audience targeting parameters: demographics, interests, custom audiences"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Campaign budget and spend schedule"
+    },
+    {
+      "name": "creative_formats",
+      "type": "string",
+      "required": false,
+      "description": "Ad formats to use: feed, stories, reels, carousel, lead forms"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "platforms",
+      "type": "string",
+      "required": true,
+      "description": "Social platforms to advertise on: Meta, LinkedIn, TikTok, X, Pinterest, etc."
+    },
+    {
+      "name": "campaign_objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign goal: brand awareness, reach, engagement, lead generation, conversions"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Audience targeting parameters: demographics, interests, custom audiences"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Campaign budget and spend schedule"
+    },
+    {
+      "name": "creative_formats",
+      "type": "string",
+      "required": false,
+      "description": "Ad formats to use: feed, stories, reels, carousel, lead forms"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [],
+  "pipelines": [
+    "media-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "social-advertising",
+      "facebook-ads",
+      "meta-ads",
+      "linkedin-ads",
+      "tiktok-ads"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

@@ -1,0 +1,6 @@
+- Brief is aligned with overall strategy
+- Specs are complete and unambiguous
+- Direction is inspiring and actionable
+- Team knows boundaries
+- Team has everything needed
+- Creative team is aligned on direction

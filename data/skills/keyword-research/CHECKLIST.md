@@ -1,0 +1,6 @@
+- Define research goal is completed to a high standard
+- Identify seed topics is completed to a high standard
+- Expand by intent is completed to a high standard
+- Evaluate opportunity is completed to a high standard
+- Cluster into page targets is completed to a high standard
+- Prioritize actions is completed to a high standard

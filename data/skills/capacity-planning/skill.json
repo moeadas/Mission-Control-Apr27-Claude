@@ -1,0 +1,82 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "capacity-planning",
+  "name": "Capacity Planning",
+  "description": "Plans team capacity against demand so work can be staffed realistically, bottlenecks can be anticipated, and tradeoffs can be made early.",
+  "category": "project-management",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "team_name",
+      "type": "string",
+      "required": true,
+      "description": "Team or department name"
+    },
+    {
+      "name": "planning_period",
+      "type": "string",
+      "required": true,
+      "description": "Planning period (e.g., Q3 2026, Next sprint)"
+    },
+    {
+      "name": "committed_work",
+      "type": "string",
+      "required": false,
+      "description": "Committed projects and deliverables"
+    },
+    {
+      "name": "available_hours",
+      "type": "string",
+      "required": false,
+      "description": "Available hours per team member"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "team_name",
+      "type": "string",
+      "required": true,
+      "description": "Team or department name"
+    },
+    {
+      "name": "planning_period",
+      "type": "string",
+      "required": true,
+      "description": "Planning period (e.g., Q3 2026, Next sprint)"
+    },
+    {
+      "name": "committed_work",
+      "type": "string",
+      "required": false,
+      "description": "Committed projects and deliverables"
+    },
+    {
+      "name": "available_hours",
+      "type": "string",
+      "required": false,
+      "description": "Available hours per team member"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "piper"
+  ],
+  "pipelines": [
+    "resource-planning"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "project-management",
+      "resource-management",
+      "capacity"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

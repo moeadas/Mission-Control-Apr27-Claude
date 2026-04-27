@@ -1,0 +1,6 @@
+- Define narrative objective is completed to a high standard
+- Identify emotional arc is completed to a high standard
+- Sequence story beats is completed to a high standard
+- Specify focal points and transitions is completed to a high standard
+- Align with strategic CTA is completed to a high standard
+- Add production notes is completed to a high standard

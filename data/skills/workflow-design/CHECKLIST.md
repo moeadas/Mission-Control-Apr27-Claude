@@ -1,0 +1,7 @@
+- Current state is understood
+- Root causes understood
+- Workflow is efficient and realistic
+- Clear ownership
+- Document is clear and usable
+- Workflow works in practice
+- Team can execute the workflow

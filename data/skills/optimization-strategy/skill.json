@@ -1,0 +1,95 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "optimization-strategy",
+  "name": "Optimization Strategy",
+  "description": "Designs optimization strategies that identify what to test, what to scale, and how to improve performance systematically over time.",
+  "category": "media",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "performance",
+      "type": "string",
+      "required": true,
+      "description": "Current performance data"
+    },
+    {
+      "name": "channels",
+      "type": "string",
+      "required": true,
+      "description": "Channels to optimize"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": false,
+      "description": "Optimization budget"
+    },
+    {
+      "name": "constraints",
+      "type": "string",
+      "required": false,
+      "description": "Technical or business constraints"
+    },
+    {
+      "name": "timeline",
+      "type": "string",
+      "required": false,
+      "description": "Optimization timeline"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "performance",
+      "type": "string",
+      "required": true,
+      "description": "Current performance data"
+    },
+    {
+      "name": "channels",
+      "type": "string",
+      "required": true,
+      "description": "Channels to optimize"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": false,
+      "description": "Optimization budget"
+    },
+    {
+      "name": "constraints",
+      "type": "string",
+      "required": false,
+      "description": "Technical or business constraints"
+    },
+    {
+      "name": "timeline",
+      "type": "string",
+      "required": false,
+      "description": "Optimization timeline"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet",
+    "analytics"
+  ],
+  "agents": [
+    "dex"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "optimization",
+      "performance",
+      "testing",
+      "roas",
+      "conversion"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

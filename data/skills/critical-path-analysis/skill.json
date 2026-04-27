@@ -1,0 +1,83 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "critical-path-analysis",
+  "name": "Critical Path Analysis",
+  "description": "Identifies the longest sequence of dependent tasks in a project — the critical path — to determine the minimum possible project duration and which tasks have zero float (cannot slip without delaying the project).",
+  "category": "project-management",
+  "difficulty": "intermediate",
+  "freedom": "low",
+  "variables": [
+    {
+      "name": "project_name",
+      "type": "string",
+      "required": true,
+      "description": "Project being analyzed"
+    },
+    {
+      "name": "task_list",
+      "type": "string",
+      "required": true,
+      "description": "List of project tasks"
+    },
+    {
+      "name": "dependencies",
+      "type": "string",
+      "required": false,
+      "description": "Task dependencies"
+    },
+    {
+      "name": "constraints",
+      "type": "string",
+      "required": false,
+      "description": "Project constraints"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "project_name",
+      "type": "string",
+      "required": true,
+      "description": "Project being analyzed"
+    },
+    {
+      "name": "task_list",
+      "type": "string",
+      "required": true,
+      "description": "List of project tasks"
+    },
+    {
+      "name": "dependencies",
+      "type": "string",
+      "required": false,
+      "description": "Task dependencies"
+    },
+    {
+      "name": "constraints",
+      "type": "string",
+      "required": false,
+      "description": "Project constraints"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "piper"
+  ],
+  "pipelines": [
+    "project-management"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "project-management",
+      "critical-path",
+      "scheduling",
+      "planning"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

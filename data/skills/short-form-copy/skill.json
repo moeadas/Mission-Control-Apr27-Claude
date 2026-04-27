@@ -1,0 +1,95 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "short-form-copy",
+  "name": "Short-Form Copy",
+  "description": "Writes concise high-impact copy for ads, captions, hooks, promos, and tightly constrained placements where every word must earn attention.",
+  "category": "content",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "format",
+      "type": "string",
+      "required": true,
+      "description": "Format: headline, tagline, social post, ad copy, CTA, display ad copy"
+    },
+    {
+      "name": "product_service",
+      "type": "string",
+      "required": true,
+      "description": "Product, service, or brand the copy is for"
+    },
+    {
+      "name": "key_benefit",
+      "type": "string",
+      "required": true,
+      "description": "Primary benefit or message to communicate"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": false,
+      "description": "Target audience"
+    },
+    {
+      "name": "tone",
+      "type": "string",
+      "required": false,
+      "description": "Tone: urgent, playful, serious, authoritative, warm"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "format",
+      "type": "string",
+      "required": true,
+      "description": "Format: headline, tagline, social post, ad copy, CTA, display ad copy"
+    },
+    {
+      "name": "product_service",
+      "type": "string",
+      "required": true,
+      "description": "Product, service, or brand the copy is for"
+    },
+    {
+      "name": "key_benefit",
+      "type": "string",
+      "required": true,
+      "description": "Primary benefit or message to communicate"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": false,
+      "description": "Target audience"
+    },
+    {
+      "name": "tone",
+      "type": "string",
+      "required": false,
+      "description": "Tone: urgent, playful, serious, authoritative, warm"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "echo"
+  ],
+  "pipelines": [
+    "content-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "short-form-copy",
+      "copywriting",
+      "headlines",
+      "ads",
+      "social-copy"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

@@ -1,0 +1,95 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "ott-connected-tv",
+  "name": "OTT & Connected TV Planning",
+  "description": "Plans advertising campaigns across OTT (Over-The-Top) and Connected TV platforms, including inventory selection, targeting, measurement, and integration with broader media plans.",
+  "category": "media",
+  "difficulty": "advanced",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "market",
+      "type": "string",
+      "required": true,
+      "description": "Geographic market"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "CTV/OTT budget"
+    },
+    {
+      "name": "campaign_objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objective"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "market",
+      "type": "string",
+      "required": true,
+      "description": "Geographic market"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "CTV/OTT budget"
+    },
+    {
+      "name": "campaign_objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objective"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "analytics",
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "nova"
+  ],
+  "pipelines": [
+    "media-plan"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "media",
+      "planning",
+      "ott-connected-tv"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

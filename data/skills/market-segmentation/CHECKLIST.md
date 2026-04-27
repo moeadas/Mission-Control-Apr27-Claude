@@ -1,0 +1,6 @@
+- Define segmentation goal is completed to a high standard
+- Identify segment dimensions is completed to a high standard
+- Build segment profiles is completed to a high standard
+- Compare segment value is completed to a high standard
+- Prioritize segments is completed to a high standard
+- Explain strategic shifts is completed to a high standard

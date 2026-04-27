@@ -1,0 +1,6 @@
+- Personality traits documented
+- Hierarchy reviewed by creative director
+- Licensing confirmed
+- Scale tested on actual content
+- Accessibility standards met
+- Guide reviewed by design lead

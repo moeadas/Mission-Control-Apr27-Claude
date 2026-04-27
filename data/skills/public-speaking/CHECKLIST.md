@@ -1,0 +1,6 @@
+- Define audience and takeaway is completed to a high standard
+- Build talk structure is completed to a high standard
+- Identify emphasis moments is completed to a high standard
+- Prepare transitions and Q&A is completed to a high standard
+- Tune delivery is completed to a high standard
+- Rehearse performance is completed to a high standard

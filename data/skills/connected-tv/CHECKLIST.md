@@ -1,0 +1,6 @@
+- Objective is measurable
+- Platforms reach the target audience
+- Targeting is specific and achievable
+- Budget is realistic for the selected mix
+- Creative specs match platform requirements
+- Optimization is data-driven

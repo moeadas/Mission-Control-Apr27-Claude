@@ -1,0 +1,5 @@
+- Current performance is documented
+- Options are varied and logical
+- Test is statistically valid
+- Results are statistically significant
+- Winner is live and monitored

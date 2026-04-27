@@ -1,0 +1,78 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "cohort-analysis",
+  "name": "Cohort Analysis",
+  "description": "Compares user groups (cohorts) over time to understand retention patterns, lifetime value differences, and the long-term impact of acquisition channels and campaigns on customer behavior.",
+  "category": "analytics",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "cohort_dimension",
+      "type": "string",
+      "required": true,
+      "description": "Dimension for cohort grouping (e.g., acquisition date, source)"
+    },
+    {
+      "name": "metrics",
+      "type": "string",
+      "required": true,
+      "description": "Metrics to analyze per cohort (e.g., retention, revenue)"
+    },
+    {
+      "name": "time_period",
+      "type": "string",
+      "required": false,
+      "description": "Time period for analysis"
+    },
+    {
+      "name": "data_sources",
+      "type": "string",
+      "required": false,
+      "description": "Data sources available for analysis"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "cohort_dimension",
+      "type": "string",
+      "required": true,
+      "description": "Dimension for cohort grouping (e.g., acquisition date, source)"
+    },
+    {
+      "name": "metrics",
+      "type": "string",
+      "required": true,
+      "description": "Metrics to analyze per cohort (e.g., retention, revenue)"
+    },
+    {
+      "name": "time_period",
+      "type": "string",
+      "required": false,
+      "description": "Time period for analysis"
+    },
+    {
+      "name": "data_sources",
+      "type": "string",
+      "required": false,
+      "description": "Data sources available for analysis"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "dex"
+  ],
+  "pipelines": [
+    "analytics"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [],
+    "lastUpdated": "2026-03-30"
+  }
+}

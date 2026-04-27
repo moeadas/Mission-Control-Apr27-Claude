@@ -1,0 +1,113 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "campaign-copywriting",
+  "name": "Campaign Copywriting",
+  "description": "Creates all written components for advertising campaigns across formats and platforms, including headlines, body copy, CTAs, display ads, and platform-native variations.",
+  "category": "creative",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "campaign_name",
+      "type": "string",
+      "required": true,
+      "description": "Name of the campaign"
+    },
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "platforms",
+      "type": "string",
+      "required": true,
+      "description": "Platforms requiring copy"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience description"
+    },
+    {
+      "name": "primary_message",
+      "type": "string",
+      "required": true,
+      "description": "Core message or offer to communicate"
+    },
+    {
+      "name": "cta_text",
+      "type": "string",
+      "required": true,
+      "description": "Call-to-action text or button label"
+    },
+    {
+      "name": "tone",
+      "type": "string",
+      "required": false,
+      "description": "Tone of voice for the copy"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "campaign_name",
+      "type": "string",
+      "required": true,
+      "description": "Name of the campaign"
+    },
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "platforms",
+      "type": "string",
+      "required": true,
+      "description": "Platforms requiring copy"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience description"
+    },
+    {
+      "name": "primary_message",
+      "type": "string",
+      "required": true,
+      "description": "Core message or offer to communicate"
+    },
+    {
+      "name": "cta_text",
+      "type": "string",
+      "required": true,
+      "description": "Call-to-action text or button label"
+    },
+    {
+      "name": "tone",
+      "type": "string",
+      "required": false,
+      "description": "Tone of voice for the copy"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "echo"
+  ],
+  "pipelines": [
+    "ad-creative"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [],
+    "lastUpdated": "2026-03-30"
+  }
+}

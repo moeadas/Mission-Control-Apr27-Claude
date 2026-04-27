@@ -1,0 +1,4 @@
+- Benchmarks are current and comparable
+- Data is accurate and aligned in time period
+- Gaps are quantified and contextualized
+- Recommendations are specific and actionable

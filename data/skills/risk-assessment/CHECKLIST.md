@@ -1,0 +1,6 @@
+- Define scope is completed to a high standard
+- Identify plausible risks is completed to a high standard
+- Estimate impact and likelihood is completed to a high standard
+- Prioritize active risks is completed to a high standard
+- Define mitigation and contingencies is completed to a high standard
+- Assign ownership is completed to a high standard

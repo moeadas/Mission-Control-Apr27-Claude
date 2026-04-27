@@ -1,0 +1,94 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "connected-tv",
+  "name": "Connected TV Advertising",
+  "description": "Plans, executes, and optimizes advertising campaigns on connected TV (CTV) platforms — including streaming services like YouTube TV, Hulu, Roku, and other OTT platforms — to reach audiences in a premium, engaged viewing environment.",
+  "category": "creative",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "campaign_objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objective (brand awareness, consideration, conversions)"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience definition"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Campaign budget"
+    },
+    {
+      "name": "platforms",
+      "type": "string",
+      "required": false,
+      "description": "CTV platforms to use"
+    },
+    {
+      "name": "creative_assets",
+      "type": "string",
+      "required": false,
+      "description": "Available creative assets"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "campaign_objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objective (brand awareness, consideration, conversions)"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience definition"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Campaign budget"
+    },
+    {
+      "name": "platforms",
+      "type": "string",
+      "required": false,
+      "description": "CTV platforms to use"
+    },
+    {
+      "name": "creative_assets",
+      "type": "string",
+      "required": false,
+      "description": "Available creative assets"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [],
+  "pipelines": [
+    "video-advertising"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "advertising",
+      "CTV",
+      "OTT",
+      "streaming",
+      "video"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

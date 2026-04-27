@@ -1,0 +1,5 @@
+- All stages are identified and sequenced
+- Bottleneck is clearly identified
+- Cause is specific and actionable
+- Both timeframes are addressed
+- Throughput improves

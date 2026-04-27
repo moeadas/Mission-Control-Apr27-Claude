@@ -1,0 +1,96 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "go-to-market-strategy",
+  "name": "Go-to-Market Strategy",
+  "description": "Builds go-to-market strategies that connect audience, positioning, offer, channels, sales motion, and rollout sequencing into one practical launch plan.",
+  "category": "strategy",
+  "difficulty": "advanced",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "product_service",
+      "type": "string",
+      "required": true,
+      "description": "Product or service being brought to market"
+    },
+    {
+      "name": "industry",
+      "type": "string",
+      "required": true,
+      "description": "Target industry or market"
+    },
+    {
+      "name": "target_markets",
+      "type": "string",
+      "required": false,
+      "description": "Geographic or segment markets to prioritize"
+    },
+    {
+      "name": "competitive_context",
+      "type": "string",
+      "required": false,
+      "description": "Key competitors and competitive dynamics"
+    },
+    {
+      "name": "launch_timeline",
+      "type": "string",
+      "required": false,
+      "description": "Expected launch date and key milestones"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "product_service",
+      "type": "string",
+      "required": true,
+      "description": "Product or service being brought to market"
+    },
+    {
+      "name": "industry",
+      "type": "string",
+      "required": true,
+      "description": "Target industry or market"
+    },
+    {
+      "name": "target_markets",
+      "type": "string",
+      "required": false,
+      "description": "Geographic or segment markets to prioritize"
+    },
+    {
+      "name": "competitive_context",
+      "type": "string",
+      "required": false,
+      "description": "Key competitors and competitive dynamics"
+    },
+    {
+      "name": "launch_timeline",
+      "type": "string",
+      "required": false,
+      "description": "Expected launch date and key milestones"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "maya"
+  ],
+  "pipelines": [
+    "strategy-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "go-to-market",
+      "gtm",
+      "market-entry",
+      "launch",
+      "strategy"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

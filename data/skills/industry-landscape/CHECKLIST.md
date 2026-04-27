@@ -1,0 +1,5 @@
+- Define strategic question is completed to a high standard
+- Describe category structure is completed to a high standard
+- Identify shaping forces is completed to a high standard
+- Compare player positions is completed to a high standard
+- Translate implications is completed to a high standard

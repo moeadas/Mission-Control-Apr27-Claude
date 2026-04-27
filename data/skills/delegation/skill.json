@@ -1,0 +1,92 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "delegation",
+  "name": "Delegation",
+  "description": "Builds delegation plans that move work effectively without losing clarity, accountability, or quality.",
+  "category": "project-management",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "task",
+      "type": "string",
+      "required": true,
+      "description": "Description of the task to delegate"
+    },
+    {
+      "name": "team_members",
+      "type": "string",
+      "required": true,
+      "description": "Available team members with their skills and capacity"
+    },
+    {
+      "name": "deadline",
+      "type": "string",
+      "required": true,
+      "description": "Deadline for the delegated task"
+    },
+    {
+      "name": "success_criteria",
+      "type": "string",
+      "required": false,
+      "description": "Clear definition of what success looks like"
+    },
+    {
+      "name": "context",
+      "type": "string",
+      "required": false,
+      "description": "Background and strategic context for the task"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "task",
+      "type": "string",
+      "required": true,
+      "description": "Description of the task to delegate"
+    },
+    {
+      "name": "team_members",
+      "type": "string",
+      "required": true,
+      "description": "Available team members with their skills and capacity"
+    },
+    {
+      "name": "deadline",
+      "type": "string",
+      "required": true,
+      "description": "Deadline for the delegated task"
+    },
+    {
+      "name": "success_criteria",
+      "type": "string",
+      "required": false,
+      "description": "Clear definition of what success looks like"
+    },
+    {
+      "name": "context",
+      "type": "string",
+      "required": false,
+      "description": "Background and strategic context for the task"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document"
+  ],
+  "agents": [],
+  "pipelines": [
+    "project-management-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "delegation",
+      "project-management",
+      "team-management",
+      "leadership"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

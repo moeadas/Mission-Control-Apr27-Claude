@@ -1,0 +1,5 @@
+- Structural constraints are explicit
+- No off-brand substitutions slip in
+- The design remains usable
+- The asset is platform-ready
+- The brand identity remains intact

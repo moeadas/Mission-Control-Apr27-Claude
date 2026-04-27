@@ -1,0 +1,5 @@
+- Question is answerable and relevant
+- Data is current and representative
+- Patterns are evidenced
+- Insights are true, relevant, and ownable
+- Application is specific and actionable

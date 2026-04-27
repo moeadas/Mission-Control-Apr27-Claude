@@ -1,0 +1,78 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "conversion-optimization",
+  "name": "Conversion Optimization",
+  "description": "Improves conversion rates across the marketing funnel by identifying drop-off points, testing hypotheses, and implementing changes that turn more visitors into leads and customers.",
+  "category": "analytics",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "page_or_flow",
+      "type": "string",
+      "required": true,
+      "description": "Page or flow being optimized"
+    },
+    {
+      "name": "current_conversion_rate",
+      "type": "string",
+      "required": false,
+      "description": "Current conversion rate"
+    },
+    {
+      "name": "traffic_volume",
+      "type": "string",
+      "required": false,
+      "description": "Monthly or weekly traffic volume"
+    },
+    {
+      "name": "funnel_stage",
+      "type": "string",
+      "required": false,
+      "description": "Funnel stage being optimized"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "page_or_flow",
+      "type": "string",
+      "required": true,
+      "description": "Page or flow being optimized"
+    },
+    {
+      "name": "current_conversion_rate",
+      "type": "string",
+      "required": false,
+      "description": "Current conversion rate"
+    },
+    {
+      "name": "traffic_volume",
+      "type": "string",
+      "required": false,
+      "description": "Monthly or weekly traffic volume"
+    },
+    {
+      "name": "funnel_stage",
+      "type": "string",
+      "required": false,
+      "description": "Funnel stage being optimized"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "dex"
+  ],
+  "pipelines": [
+    "analytics"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [],
+    "lastUpdated": "2026-03-30"
+  }
+}

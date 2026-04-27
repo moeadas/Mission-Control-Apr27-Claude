@@ -1,0 +1,6 @@
+- Funnel is complete
+- Drop-off rates are accurate
+- Causes are evidenced
+- Hypotheses are specific and testable
+- Priority is clear
+- Recommendations are actionable

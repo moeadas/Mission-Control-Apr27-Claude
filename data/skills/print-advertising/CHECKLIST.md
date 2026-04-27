@@ -1,0 +1,5 @@
+- Publications reach target audience
+- Data is current and verified
+- Formats match budget and impact goals
+- Placements maximize visibility
+- Schedule aligns with campaign timing

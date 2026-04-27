@@ -1,0 +1,7 @@
+- Define objective is completed to a high standard
+- Clarify problem and objections is completed to a high standard
+- Build message hierarchy is completed to a high standard
+- Write sections by role is completed to a high standard
+- Strengthen proof is completed to a high standard
+- Tune CTAs is completed to a high standard
+- Review scanability is completed to a high standard

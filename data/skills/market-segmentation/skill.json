@@ -1,0 +1,94 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "market-segmentation",
+  "name": "Market Segmentation",
+  "description": "Builds practical market segmentation frameworks that help teams prioritize the right audiences, offers, and go-to-market motions.",
+  "category": "strategy",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "industry",
+      "type": "string",
+      "required": true,
+      "description": "Industry or market being segmented"
+    },
+    {
+      "name": "objective",
+      "type": "string",
+      "required": true,
+      "description": "Business objective driving segmentation"
+    },
+    {
+      "name": "data",
+      "type": "string",
+      "required": false,
+      "description": "Available customer data and research"
+    },
+    {
+      "name": "geo",
+      "type": "string",
+      "required": false,
+      "description": "Geographic scope"
+    },
+    {
+      "name": "customer_type",
+      "type": "string",
+      "required": false,
+      "description": "B2B, B2C, or both"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "industry",
+      "type": "string",
+      "required": true,
+      "description": "Industry or market being segmented"
+    },
+    {
+      "name": "objective",
+      "type": "string",
+      "required": true,
+      "description": "Business objective driving segmentation"
+    },
+    {
+      "name": "data",
+      "type": "string",
+      "required": false,
+      "description": "Available customer data and research"
+    },
+    {
+      "name": "geo",
+      "type": "string",
+      "required": false,
+      "description": "Geographic scope"
+    },
+    {
+      "name": "customer_type",
+      "type": "string",
+      "required": false,
+      "description": "B2B, B2C, or both"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "maya"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "segmentation",
+      "targeting",
+      "market-strategy",
+      "audience",
+      "personas"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

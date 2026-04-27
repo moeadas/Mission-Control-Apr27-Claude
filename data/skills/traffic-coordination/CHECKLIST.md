@@ -1,0 +1,6 @@
+- All briefs logged within 24 hours of receipt
+- Capacity reviewed daily
+- All jobs routed with start and due dates
+- Pipeline reviewed and updated twice daily
+- Priority conflicts escalated to project lead
+- Learnings documented and shared monthly

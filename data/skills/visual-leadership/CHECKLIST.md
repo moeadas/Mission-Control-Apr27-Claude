@@ -1,0 +1,6 @@
+- Define visual job is completed to a high standard
+- Establish aesthetic pillars is completed to a high standard
+- Translate into standards is completed to a high standard
+- Define review criteria is completed to a high standard
+- Give directional feedback is completed to a high standard
+- Keep standards current is completed to a high standard

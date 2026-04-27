@@ -1,0 +1,83 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "contract-discussion",
+  "name": "Contract Discussion",
+  "description": "Facilitates structured contract discussions with prospective or existing clients, covering scope definition, pricing, terms, and mutual expectations to land agreements clearly.",
+  "category": "business-development",
+  "difficulty": "advanced",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Prospective or existing client name"
+    },
+    {
+      "name": "scope_summary",
+      "type": "string",
+      "required": true,
+      "description": "Proposed deliverables and scope of work"
+    },
+    {
+      "name": "pricing_structure",
+      "type": "string",
+      "required": true,
+      "description": "Proposed fees, billing structure, and payment terms"
+    },
+    {
+      "name": "contract_duration",
+      "type": "string",
+      "required": false,
+      "description": "Contract length and renewal terms"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Prospective or existing client name"
+    },
+    {
+      "name": "scope_summary",
+      "type": "string",
+      "required": true,
+      "description": "Proposed deliverables and scope of work"
+    },
+    {
+      "name": "pricing_structure",
+      "type": "string",
+      "required": true,
+      "description": "Proposed fees, billing structure, and payment terms"
+    },
+    {
+      "name": "contract_duration",
+      "type": "string",
+      "required": false,
+      "description": "Contract length and renewal terms"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "sage"
+  ],
+  "pipelines": [
+    "biz-dev"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "business-development",
+      "contracts",
+      "negotiation",
+      "sales"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

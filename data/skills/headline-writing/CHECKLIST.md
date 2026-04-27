@@ -1,0 +1,6 @@
+- Define headline job is completed to a high standard
+- Clarify offer and audience tension is completed to a high standard
+- Generate angle families is completed to a high standard
+- Filter weak options is completed to a high standard
+- Tune for channel is completed to a high standard
+- Rank with rationale is completed to a high standard

@@ -1,0 +1,6 @@
+- Define decision context is completed to a high standard
+- Sort raw inputs is completed to a high standard
+- Separate observations from insights is completed to a high standard
+- Surface tensions is completed to a high standard
+- Translate implications is completed to a high standard
+- Recommend actions is completed to a high standard

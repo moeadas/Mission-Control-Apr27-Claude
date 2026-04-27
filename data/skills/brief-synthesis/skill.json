@@ -1,0 +1,81 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "brief-synthesis",
+  "name": "Brief Synthesis",
+  "description": "Transforms raw client briefs, meeting notes, and scattered inputs into clear, structured creative or campaign briefs that the team can execute against.",
+  "category": "strategy",
+  "difficulty": "beginner",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "deliverable_type",
+      "type": "string",
+      "required": true,
+      "description": "Type of deliverable (campaign, creative, content, etc.)"
+    },
+    {
+      "name": "raw_inputs",
+      "type": "string",
+      "required": true,
+      "description": "Summary of all raw inputs to synthesize"
+    },
+    {
+      "name": "timeline",
+      "type": "string",
+      "required": false,
+      "description": "Project timeline and key dates"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "deliverable_type",
+      "type": "string",
+      "required": true,
+      "description": "Type of deliverable (campaign, creative, content, etc.)"
+    },
+    {
+      "name": "raw_inputs",
+      "type": "string",
+      "required": true,
+      "description": "Summary of all raw inputs to synthesize"
+    },
+    {
+      "name": "timeline",
+      "type": "string",
+      "required": false,
+      "description": "Project timeline and key dates"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [],
+  "pipelines": [
+    "campaign-brief"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "strategy",
+      "briefing",
+      "planning",
+      "client-services"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

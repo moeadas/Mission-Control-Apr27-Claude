@@ -1,0 +1,5 @@
+- Define system problem is completed to a high standard
+- Identify foundations is completed to a high standard
+- Define shared components is completed to a high standard
+- Specify governance is completed to a high standard
+- Flag adoption risks is completed to a high standard

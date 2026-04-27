@@ -1,0 +1,106 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "audience-research",
+  "name": "Audience Research",
+  "description": "Conducts comprehensive audience research with key findings, segment profiles, behavioral patterns, and actionable recommendations.",
+  "category": "research",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "research_objective",
+      "type": "string",
+      "required": true,
+      "description": "Primary research question"
+    },
+    {
+      "name": "methodology",
+      "type": "string",
+      "required": true,
+      "description": "Research methodology (survey, focus groups, etc.)"
+    },
+    {
+      "name": "sample_size",
+      "type": "string",
+      "required": true,
+      "description": "Sample size and demographics"
+    },
+    {
+      "name": "sources",
+      "type": "string",
+      "required": true,
+      "description": "Primary and secondary data sources"
+    },
+    {
+      "name": "existing_data",
+      "type": "string",
+      "required": false,
+      "description": "Existing data to validate against"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "research_objective",
+      "type": "string",
+      "required": true,
+      "description": "Primary research question"
+    },
+    {
+      "name": "methodology",
+      "type": "string",
+      "required": true,
+      "description": "Research methodology (survey, focus groups, etc.)"
+    },
+    {
+      "name": "sample_size",
+      "type": "string",
+      "required": true,
+      "description": "Sample size and demographics"
+    },
+    {
+      "name": "sources",
+      "type": "string",
+      "required": true,
+      "description": "Primary and secondary data sources"
+    },
+    {
+      "name": "existing_data",
+      "type": "string",
+      "required": false,
+      "description": "Existing data to validate against"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "analytics",
+    "web-search"
+  ],
+  "agents": [
+    "atlas"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "research",
+      "audience",
+      "insights",
+      "market-research"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

@@ -1,0 +1,6 @@
+- You understand their likely position and pressures
+- Strategy is clear and team-aligned
+- Conversation starts collaboratively
+- Making progress toward objectives without conceding too much
+- Both parties aligned on what was agreed
+- Future negotiations informed by this experience

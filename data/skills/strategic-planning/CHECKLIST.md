@@ -1,0 +1,7 @@
+- Diagnosis validated with available data
+- Challenge statement approved by brand lead
+- Positioning tested against competitive set
+- Audiences grounded in real insights
+- Framework resonates with creative and strategic teams
+- Imperatives are specific and measurable
+- Metrics approved by client

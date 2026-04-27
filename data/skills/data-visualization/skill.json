@@ -1,0 +1,83 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "data-visualization",
+  "name": "Data Visualization",
+  "description": "Transforms complex datasets into clear, compelling visual formats such as charts, graphs, and dashboards that drive actionable insights for advertising campaigns.",
+  "category": "analytics",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "data",
+      "type": "string",
+      "required": true,
+      "description": "Raw data to visualize (table, CSV format, or dataset summary)"
+    },
+    {
+      "name": "chart_type",
+      "type": "string",
+      "required": true,
+      "description": "Type of chart: line, bar, pie, scatter, heatmap, area"
+    },
+    {
+      "name": "context",
+      "type": "string",
+      "required": false,
+      "description": "Business context or question the visualization answers"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": false,
+      "description": "Who will view this: client, executive, internal team"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "data",
+      "type": "string",
+      "required": true,
+      "description": "Raw data to visualize (table, CSV format, or dataset summary)"
+    },
+    {
+      "name": "chart_type",
+      "type": "string",
+      "required": true,
+      "description": "Type of chart: line, bar, pie, scatter, heatmap, area"
+    },
+    {
+      "name": "context",
+      "type": "string",
+      "required": false,
+      "description": "Business context or question the visualization answers"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": false,
+      "description": "Who will view this: client, executive, internal team"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "atlas"
+  ],
+  "pipelines": [
+    "analytics-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "data-viz",
+      "reporting",
+      "analytics",
+      "dashboards"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

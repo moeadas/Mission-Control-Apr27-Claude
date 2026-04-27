@@ -1,0 +1,83 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "seo-research",
+  "name": "SEO Research",
+  "description": "Conducts in-depth research to inform search engine optimization strategies, including competitor analysis, SERP feature identification, and content opportunity mapping.",
+  "category": "research",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "target_keywords",
+      "type": "string",
+      "required": true,
+      "description": "Primary keywords or topics to research"
+    },
+    {
+      "name": "website_url",
+      "type": "string",
+      "required": false,
+      "description": "Client website URL for position tracking"
+    },
+    {
+      "name": "competitors",
+      "type": "string",
+      "required": false,
+      "description": "Known competitor URLs to analyze"
+    },
+    {
+      "name": "research_focus",
+      "type": "string",
+      "required": false,
+      "description": "Primary focus: content, technical, links, or comprehensive"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "target_keywords",
+      "type": "string",
+      "required": true,
+      "description": "Primary keywords or topics to research"
+    },
+    {
+      "name": "website_url",
+      "type": "string",
+      "required": false,
+      "description": "Client website URL for position tracking"
+    },
+    {
+      "name": "competitors",
+      "type": "string",
+      "required": false,
+      "description": "Known competitor URLs to analyze"
+    },
+    {
+      "name": "research_focus",
+      "type": "string",
+      "required": false,
+      "description": "Primary focus: content, technical, links, or comprehensive"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "atlas"
+  ],
+  "pipelines": [
+    "seo-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "seo",
+      "search",
+      "content-research",
+      "competitive-analysis"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

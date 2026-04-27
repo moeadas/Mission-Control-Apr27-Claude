@@ -1,0 +1,82 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "change-control",
+  "name": "Change Control",
+  "description": "Manages changes to project scope and requirements in a structured way — evaluating impact, getting approvals, and ensuring changes are communicated and implemented without derailing delivery.",
+  "category": "project-management",
+  "difficulty": "intermediate",
+  "freedom": "low",
+  "variables": [
+    {
+      "name": "change_description",
+      "type": "string",
+      "required": true,
+      "description": "Description of the change being requested"
+    },
+    {
+      "name": "requestor",
+      "type": "string",
+      "required": true,
+      "description": "Person or party requesting the change"
+    },
+    {
+      "name": "project_status",
+      "type": "string",
+      "required": false,
+      "description": "Current status of the project"
+    },
+    {
+      "name": "impact_assessment",
+      "type": "string",
+      "required": false,
+      "description": "Initial impact assessment of the change"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "change_description",
+      "type": "string",
+      "required": true,
+      "description": "Description of the change being requested"
+    },
+    {
+      "name": "requestor",
+      "type": "string",
+      "required": true,
+      "description": "Person or party requesting the change"
+    },
+    {
+      "name": "project_status",
+      "type": "string",
+      "required": false,
+      "description": "Current status of the project"
+    },
+    {
+      "name": "impact_assessment",
+      "type": "string",
+      "required": false,
+      "description": "Initial impact assessment of the change"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "piper"
+  ],
+  "pipelines": [
+    "project-management"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "project-management",
+      "change-control",
+      "scope-management"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

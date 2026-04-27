@@ -1,0 +1,6 @@
+- Define project and phase model is completed to a high standard
+- Break phases into deliverables is completed to a high standard
+- Define gate criteria is completed to a high standard
+- Specify approvals and controls is completed to a high standard
+- Surface risks and bottlenecks is completed to a high standard
+- Define monitoring is completed to a high standard

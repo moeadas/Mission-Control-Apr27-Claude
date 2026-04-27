@@ -1,0 +1,70 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "rapport-building",
+  "name": "Rapport Building",
+  "description": "Builds intentional relationship plans that increase trust, openness, and long-term partnership quality with clients and stakeholders.",
+  "category": "client-management",
+  "difficulty": "beginner",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "stakeholder",
+      "type": "string",
+      "required": true,
+      "description": "Client or stakeholder name and role"
+    },
+    {
+      "name": "relationship_stage",
+      "type": "string",
+      "required": false,
+      "description": "Current stage of the relationship: new, established, strained"
+    },
+    {
+      "name": "context",
+      "type": "string",
+      "required": false,
+      "description": "Context: upcoming meeting, project kickoff, ongoing partnership"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "stakeholder",
+      "type": "string",
+      "required": true,
+      "description": "Client or stakeholder name and role"
+    },
+    {
+      "name": "relationship_stage",
+      "type": "string",
+      "required": false,
+      "description": "Current stage of the relationship: new, established, strained"
+    },
+    {
+      "name": "context",
+      "type": "string",
+      "required": false,
+      "description": "Context: upcoming meeting, project kickoff, ongoing partnership"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "sage"
+  ],
+  "pipelines": [
+    "client-management-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "rapport-building",
+      "client-relations",
+      "relationship-management",
+      "trust"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

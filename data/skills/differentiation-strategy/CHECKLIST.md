@@ -1,0 +1,7 @@
+- Category dynamics are clear
+- Owned positions are identified
+- Differentiators are authentic and credible
+- White space is real and defensible
+- Position is clear, ownable, and credible
+- Claims can be substantiated
+- Differentiation is consistent across touchpoints

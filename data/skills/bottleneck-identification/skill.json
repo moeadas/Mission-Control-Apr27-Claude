@@ -1,0 +1,71 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "bottleneck-identification",
+  "name": "Bottleneck Identification",
+  "description": "Identifies and resolves blockages in creative, production, and campaign workflows to keep projects moving and deadlines on track.",
+  "category": "operations",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "process_name",
+      "type": "string",
+      "required": true,
+      "description": "Name of the workflow or process"
+    },
+    {
+      "name": "current_blockers",
+      "type": "string",
+      "required": false,
+      "description": "Description of current blockers or delays"
+    },
+    {
+      "name": "timeline_impact",
+      "type": "string",
+      "required": false,
+      "description": "How the bottleneck is affecting the timeline"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "process_name",
+      "type": "string",
+      "required": true,
+      "description": "Name of the workflow or process"
+    },
+    {
+      "name": "current_blockers",
+      "type": "string",
+      "required": false,
+      "description": "Description of current blockers or delays"
+    },
+    {
+      "name": "timeline_impact",
+      "type": "string",
+      "required": false,
+      "description": "How the bottleneck is affecting the timeline"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "iris"
+  ],
+  "pipelines": [
+    "project-management"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "operations",
+      "workflow",
+      "project-management",
+      "efficiency"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

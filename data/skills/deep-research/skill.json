@@ -1,0 +1,84 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "deep-research",
+  "name": "Deep Research",
+  "description": "Runs a multi-layer research workflow for high-stakes strategy questions by combining market evidence, audience insight, competitor patterns, online signal gathering, confidence scoring, and decision-ready synthesis.",
+  "category": "research",
+  "difficulty": "advanced",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "objective",
+      "type": "string",
+      "required": true,
+      "description": "Business question and decision objective"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": false,
+      "description": "Audience or customer segment in focus"
+    },
+    {
+      "name": "market",
+      "type": "string",
+      "required": false,
+      "description": "Market, category, or niche context"
+    },
+    {
+      "name": "offer",
+      "type": "string",
+      "required": false,
+      "description": "Product, service, or offer being researched"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "objective",
+      "type": "string",
+      "required": true,
+      "description": "Business question and decision objective"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": false,
+      "description": "Audience or customer segment in focus"
+    },
+    {
+      "name": "market",
+      "type": "string",
+      "required": false,
+      "description": "Market, category, or niche context"
+    },
+    {
+      "name": "offer",
+      "type": "string",
+      "required": false,
+      "description": "Product, service, or offer being researched"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "web-search",
+    "document",
+    "spreadsheet",
+    "analytics"
+  ],
+  "agents": [
+    "atlas"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "mission-control",
+    "tags": [
+      "deep-research",
+      "strategy",
+      "audience-insight",
+      "messaging",
+      "market-analysis"
+    ],
+    "lastUpdated": "2026-04-07"
+  }
+}

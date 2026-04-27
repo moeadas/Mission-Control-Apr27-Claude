@@ -1,0 +1,90 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "funnel-analysis",
+  "name": "Funnel Analysis",
+  "description": "Analyzes user behavior through conversion funnels to identify where users drop off, understand why they leave, and recommend changes that improve conversion rates at each stage.",
+  "category": "analytics",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "funnel_name",
+      "type": "string",
+      "required": true,
+      "description": "Name of the funnel"
+    },
+    {
+      "name": "funnel_stages",
+      "type": "string",
+      "required": true,
+      "description": "Funnel stages to analyze"
+    },
+    {
+      "name": "traffic_source",
+      "type": "string",
+      "required": false,
+      "description": "Traffic source or campaign"
+    },
+    {
+      "name": "time_period",
+      "type": "string",
+      "required": false,
+      "description": "Time period for analysis"
+    },
+    {
+      "name": "device_segments",
+      "type": "string",
+      "required": false,
+      "description": "Device segments to analyze"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "funnel_name",
+      "type": "string",
+      "required": true,
+      "description": "Name of the funnel"
+    },
+    {
+      "name": "funnel_stages",
+      "type": "string",
+      "required": true,
+      "description": "Funnel stages to analyze"
+    },
+    {
+      "name": "traffic_source",
+      "type": "string",
+      "required": false,
+      "description": "Traffic source or campaign"
+    },
+    {
+      "name": "time_period",
+      "type": "string",
+      "required": false,
+      "description": "Time period for analysis"
+    },
+    {
+      "name": "device_segments",
+      "type": "string",
+      "required": false,
+      "description": "Device segments to analyze"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "dex"
+  ],
+  "pipelines": [
+    "analytics"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [],
+    "lastUpdated": "2026-03-30"
+  }
+}

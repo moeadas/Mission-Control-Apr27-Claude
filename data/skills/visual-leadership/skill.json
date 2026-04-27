@@ -1,0 +1,95 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "visual-leadership",
+  "name": "Visual Leadership",
+  "description": "Guides visual direction, standards, and review criteria so creative teams can produce stronger, more consistent work aligned with brand strategy.",
+  "category": "creative",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand name"
+    },
+    {
+      "name": "strategy",
+      "type": "string",
+      "required": true,
+      "description": "Brand strategy and positioning"
+    },
+    {
+      "name": "aesthetic",
+      "type": "string",
+      "required": false,
+      "description": "Current visual aesthetic"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": false,
+      "description": "Target audience"
+    },
+    {
+      "name": "competition",
+      "type": "string",
+      "required": false,
+      "description": "Competitive visual landscape"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand name"
+    },
+    {
+      "name": "strategy",
+      "type": "string",
+      "required": true,
+      "description": "Brand strategy and positioning"
+    },
+    {
+      "name": "aesthetic",
+      "type": "string",
+      "required": false,
+      "description": "Current visual aesthetic"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": false,
+      "description": "Target audience"
+    },
+    {
+      "name": "competition",
+      "type": "string",
+      "required": false,
+      "description": "Competitive visual landscape"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "presentation"
+  ],
+  "agents": [
+    "finn",
+    "lyra"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "visual-leadership",
+      "creative-direction",
+      "brand-standards",
+      "aesthetics",
+      "design"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

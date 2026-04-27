@@ -1,0 +1,6 @@
+- Define objective and placement is completed to a high standard
+- Select angle is completed to a high standard
+- Build scene structure is completed to a high standard
+- Adapt pacing is completed to a high standard
+- Specify production needs is completed to a high standard
+- Define test variations is completed to a high standard

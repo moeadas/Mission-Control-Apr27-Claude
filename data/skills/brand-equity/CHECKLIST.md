@@ -1,0 +1,5 @@
+- Define equity question is completed to a high standard
+- Assess equity dimensions is completed to a high standard
+- Review associations is completed to a high standard
+- Identify strengths and weak spots is completed to a high standard
+- Translate into strategic implications is completed to a high standard

@@ -1,0 +1,6 @@
+- Define business question is completed to a high standard
+- Describe market context is completed to a high standard
+- Identify competitors and substitutes is completed to a high standard
+- Surface audience demand signals is completed to a high standard
+- Analyze trends and constraints is completed to a high standard
+- Translate into decisions is completed to a high standard

@@ -1,0 +1,5 @@
+- Targeting serves the stated objective
+- Audiences are specific and reachable
+- Platform selection is data-informed
+- Parameters are specific but not restrictive
+- Exclusions do not harm reach

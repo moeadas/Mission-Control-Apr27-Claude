@@ -1,0 +1,5 @@
+- Brand DNA is understood and respected
+- Direction serves business goals
+- Mood board is cohesive and directional
+- Framework is actionable for designers
+- Specs are clear to all producers

@@ -1,0 +1,6 @@
+- Clear picture of who can do what
+- Demand is quantified
+- Gaps are quantified and prioritized
+- Best fit achieved
+- Conflicts are resolved fairly
+- No one is over- or under-utilized

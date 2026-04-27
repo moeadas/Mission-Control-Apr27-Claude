@@ -1,0 +1,94 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "direct-response-copy",
+  "name": "Direct Response Copy",
+  "description": "Writes copy designed to generate immediate action from audiences, using persuasion techniques, urgency, and clear calls-to-action to drive conversions in advertising.",
+  "category": "content",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "offer",
+      "type": "string",
+      "required": true,
+      "description": "Product, service, or promotion being advertised"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Who the copy is written for"
+    },
+    {
+      "name": "primary_objection",
+      "type": "string",
+      "required": false,
+      "description": "Main reason people wouldn't take action (price, trust, timing)"
+    },
+    {
+      "name": "desired_action",
+      "type": "string",
+      "required": true,
+      "description": "The one action you want the reader to take"
+    },
+    {
+      "name": "urgency_element",
+      "type": "string",
+      "required": false,
+      "description": "Urgency or scarcity element to include"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "offer",
+      "type": "string",
+      "required": true,
+      "description": "Product, service, or promotion being advertised"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Who the copy is written for"
+    },
+    {
+      "name": "primary_objection",
+      "type": "string",
+      "required": false,
+      "description": "Main reason people wouldn't take action (price, trust, timing)"
+    },
+    {
+      "name": "desired_action",
+      "type": "string",
+      "required": true,
+      "description": "The one action you want the reader to take"
+    },
+    {
+      "name": "urgency_element",
+      "type": "string",
+      "required": false,
+      "description": "Urgency or scarcity element to include"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "echo"
+  ],
+  "pipelines": [
+    "content-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "direct-response",
+      "copywriting",
+      "conversion",
+      "advertising"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

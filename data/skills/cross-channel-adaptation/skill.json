@@ -1,0 +1,96 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "cross-channel-adaptation",
+  "name": "Cross-Channel Adaptation",
+  "description": "Adapts creative assets, copy, and messaging across different platforms and formats — ensuring creative remains effective and on-brand while being optimized for each channel's unique requirements and audience behavior.",
+  "category": "creative",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "campaign_name",
+      "type": "string",
+      "required": true,
+      "description": "Campaign name"
+    },
+    {
+      "name": "core_creative",
+      "type": "string",
+      "required": true,
+      "description": "Core creative concept or message"
+    },
+    {
+      "name": "channels",
+      "type": "string",
+      "required": true,
+      "description": "Channels to adapt for"
+    },
+    {
+      "name": "brand_guidelines",
+      "type": "string",
+      "required": false,
+      "description": "Brand guidelines to follow"
+    },
+    {
+      "name": "campaign_message",
+      "type": "string",
+      "required": false,
+      "description": "Primary campaign message"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "campaign_name",
+      "type": "string",
+      "required": true,
+      "description": "Campaign name"
+    },
+    {
+      "name": "core_creative",
+      "type": "string",
+      "required": true,
+      "description": "Core creative concept or message"
+    },
+    {
+      "name": "channels",
+      "type": "string",
+      "required": true,
+      "description": "Channels to adapt for"
+    },
+    {
+      "name": "brand_guidelines",
+      "type": "string",
+      "required": false,
+      "description": "Brand guidelines to follow"
+    },
+    {
+      "name": "campaign_message",
+      "type": "string",
+      "required": false,
+      "description": "Primary campaign message"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "finn",
+    "lyra"
+  ],
+  "pipelines": [
+    "creative"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "creative",
+      "cross-channel",
+      "adaptation",
+      "multi-platform"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "performance-analysis",
+  "name": "Performance Analysis",
+  "description": "Analyzes campaign and account performance data across platforms, identifying insights, trends, anomalies, and optimization opportunities.",
+  "category": "analytics",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "account_name",
+      "type": "string",
+      "required": true,
+      "description": "Account or campaign name"
+    },
+    {
+      "name": "date_range",
+      "type": "string",
+      "required": true,
+      "description": "Analysis date range"
+    },
+    {
+      "name": "platforms",
+      "type": "string",
+      "required": false,
+      "description": "Platforms included in analysis"
+    },
+    {
+      "name": "benchmarks",
+      "type": "string",
+      "required": false,
+      "description": "Benchmark or target metrics"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "account_name",
+      "type": "string",
+      "required": true,
+      "description": "Account or campaign name"
+    },
+    {
+      "name": "date_range",
+      "type": "string",
+      "required": true,
+      "description": "Analysis date range"
+    },
+    {
+      "name": "platforms",
+      "type": "string",
+      "required": false,
+      "description": "Platforms included in analysis"
+    },
+    {
+      "name": "benchmarks",
+      "type": "string",
+      "required": false,
+      "description": "Benchmark or target metrics"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "analytics",
+    "document"
+  ],
+  "agents": [
+    "dex"
+  ],
+  "pipelines": [
+    "reporting"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "analytics",
+      "performance",
+      "reporting",
+      "optimization"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

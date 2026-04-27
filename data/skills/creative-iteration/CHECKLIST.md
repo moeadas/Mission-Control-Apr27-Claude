@@ -1,0 +1,6 @@
+- Complete picture of all opinions
+- Common themes are clear
+- Team knows what matters most
+- Direction is specific and unambiguous
+- Original vision intact
+- Clear audit trail

@@ -1,0 +1,6 @@
+- Clear picture of current state
+- Client feels heard and valued
+- Issues resolved or actively managed
+- Opportunities are genuine, not pushy
+- Team has up-to-date context
+- Renewal conversation well-briefed

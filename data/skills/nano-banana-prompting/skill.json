@@ -1,0 +1,106 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "nano-banana-prompting",
+  "name": "Nano Banana Prompting",
+  "description": "Builds high-control image-generation prompts for Nano Banana-style artwork workflows, with strong composition, reference handling, and brand-safe visual direction.",
+  "category": "creative",
+  "difficulty": "advanced",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "objective",
+      "type": "string",
+      "required": true,
+      "description": "What the artwork needs to achieve"
+    },
+    {
+      "name": "platform",
+      "type": "string",
+      "required": true,
+      "description": "Channel or placement"
+    },
+    {
+      "name": "aspect_ratio",
+      "type": "string",
+      "required": true,
+      "description": "Required format"
+    },
+    {
+      "name": "brand_kit",
+      "type": "string",
+      "required": false,
+      "description": "Brand colors, fonts, templates, and style rules"
+    },
+    {
+      "name": "reference_assets",
+      "type": "string",
+      "required": false,
+      "description": "Uploaded references or examples"
+    },
+    {
+      "name": "product_or_topic",
+      "type": "string",
+      "required": false,
+      "description": "Subject matter to depict"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "objective",
+      "type": "string",
+      "required": true,
+      "description": "What the artwork needs to achieve"
+    },
+    {
+      "name": "platform",
+      "type": "string",
+      "required": true,
+      "description": "Channel or placement"
+    },
+    {
+      "name": "aspect_ratio",
+      "type": "string",
+      "required": true,
+      "description": "Required format"
+    },
+    {
+      "name": "brand_kit",
+      "type": "string",
+      "required": false,
+      "description": "Brand colors, fonts, templates, and style rules"
+    },
+    {
+      "name": "reference_assets",
+      "type": "string",
+      "required": false,
+      "description": "Uploaded references or examples"
+    },
+    {
+      "name": "product_or_topic",
+      "type": "string",
+      "required": false,
+      "description": "Subject matter to depict"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "image-gen",
+    "figma"
+  ],
+  "agents": [
+    "lyra"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "mission-control",
+    "tags": [
+      "nano-banana",
+      "image-generation",
+      "prompting",
+      "brand-safe"
+    ],
+    "lastUpdated": "2026-04-04"
+  }
+}

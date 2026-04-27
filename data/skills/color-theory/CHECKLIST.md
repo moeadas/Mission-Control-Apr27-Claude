@@ -1,0 +1,5 @@
+- Colors chosen fit the brand's emotional goals
+- Harmony is visually effective
+- Palette is balanced and usable
+- All combinations are accessible
+- Rules are clear and consistent

@@ -1,0 +1,94 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "persuasion-writing",
+  "name": "Persuasion Writing",
+  "description": "Applies psychological principles and persuasion techniques to write copy that influences decisions and drives action, using frameworks like AIDA, PAS, and emotional drivers.",
+  "category": "content",
+  "difficulty": "advanced",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "goal",
+      "type": "string",
+      "required": true,
+      "description": "Desired action: purchase, sign-up, click, download"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience and their current mindset"
+    },
+    {
+      "name": "objections",
+      "type": "string",
+      "required": false,
+      "description": "Primary objections or barriers to action"
+    },
+    {
+      "name": "emotional_drivers",
+      "type": "string",
+      "required": false,
+      "description": "Key emotional drivers: fear, belonging, status, achievement"
+    },
+    {
+      "name": "framework",
+      "type": "string",
+      "required": false,
+      "description": "Persuasion framework: AIDA, PAS, Problem-Agitate-Solve, Hero's Journey"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "goal",
+      "type": "string",
+      "required": true,
+      "description": "Desired action: purchase, sign-up, click, download"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience and their current mindset"
+    },
+    {
+      "name": "objections",
+      "type": "string",
+      "required": false,
+      "description": "Primary objections or barriers to action"
+    },
+    {
+      "name": "emotional_drivers",
+      "type": "string",
+      "required": false,
+      "description": "Key emotional drivers: fear, belonging, status, achievement"
+    },
+    {
+      "name": "framework",
+      "type": "string",
+      "required": false,
+      "description": "Persuasion framework: AIDA, PAS, Problem-Agitate-Solve, Hero's Journey"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "echo"
+  ],
+  "pipelines": [
+    "content-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "persuasion-writing",
+      "copywriting",
+      "conversion",
+      "psychology"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

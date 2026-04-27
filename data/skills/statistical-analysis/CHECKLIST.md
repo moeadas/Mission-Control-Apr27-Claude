@@ -1,0 +1,5 @@
+- Question is specific and answerable
+- Data meets assumptions of selected test
+- Test statistics are correctly computed
+- Interpretation is accurate and nuanced
+- Recommendations are grounded in data

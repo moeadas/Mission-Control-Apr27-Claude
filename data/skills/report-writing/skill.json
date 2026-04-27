@@ -1,0 +1,94 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "report-writing",
+  "name": "Research Report Writing",
+  "description": "Communicates research findings clearly and persuasively through well-structured reports that translate complex data into actionable strategic insights for advertising and marketing audiences.",
+  "category": "content",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "report_type",
+      "type": "string",
+      "required": true,
+      "description": "Type of report: research findings, campaign performance, market intelligence, strategic review"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Who will read this report"
+    },
+    {
+      "name": "key_findings",
+      "type": "string",
+      "required": true,
+      "description": "Main findings or insights to communicate"
+    },
+    {
+      "name": "data_metrics",
+      "type": "string",
+      "required": false,
+      "description": "Data, metrics, and statistics to include"
+    },
+    {
+      "name": "objective",
+      "type": "string",
+      "required": false,
+      "description": "What decision or action this report should drive"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "report_type",
+      "type": "string",
+      "required": true,
+      "description": "Type of report: research findings, campaign performance, market intelligence, strategic review"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Who will read this report"
+    },
+    {
+      "name": "key_findings",
+      "type": "string",
+      "required": true,
+      "description": "Main findings or insights to communicate"
+    },
+    {
+      "name": "data_metrics",
+      "type": "string",
+      "required": false,
+      "description": "Data, metrics, and statistics to include"
+    },
+    {
+      "name": "objective",
+      "type": "string",
+      "required": false,
+      "description": "What decision or action this report should drive"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "atlas"
+  ],
+  "pipelines": [
+    "content-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "report-writing",
+      "research",
+      "client-deliverable",
+      "content"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

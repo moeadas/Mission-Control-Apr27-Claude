@@ -1,0 +1,6 @@
+- Locations match audience flow patterns
+- Formats match creative and budget
+- Sites are data-justified
+- Specs are production-ready
+- Programmatic adds targeting value
+- Integration is measurable

@@ -1,0 +1,84 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "brand-guidelines",
+  "name": "Brand Guidelines",
+  "description": "Creates and maintains comprehensive brand standards including logo usage, color palette, typography, imagery style, voice and tone, and messaging frameworks to ensure consistency across all touchpoints.",
+  "category": "creative",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand being documented"
+    },
+    {
+      "name": "existing_materials",
+      "type": "string",
+      "required": false,
+      "description": "Existing brand materials to audit"
+    },
+    {
+      "name": "target_audiences",
+      "type": "string",
+      "required": false,
+      "description": "Key target audience segments"
+    },
+    {
+      "name": "competitors",
+      "type": "string",
+      "required": false,
+      "description": "Key competitors in the market"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand being documented"
+    },
+    {
+      "name": "existing_materials",
+      "type": "string",
+      "required": false,
+      "description": "Existing brand materials to audit"
+    },
+    {
+      "name": "target_audiences",
+      "type": "string",
+      "required": false,
+      "description": "Key target audience segments"
+    },
+    {
+      "name": "competitors",
+      "type": "string",
+      "required": false,
+      "description": "Key competitors in the market"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet",
+    "presentation"
+  ],
+  "agents": [
+    "finn"
+  ],
+  "pipelines": [
+    "brand-strategy"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "creative",
+      "brand",
+      "guidelines",
+      "identity"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

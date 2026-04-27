@@ -1,0 +1,97 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "creative-strategy",
+  "name": "Creative Strategy",
+  "description": "Develops the overarching creative direction for campaigns and brands, defining the strategic foundation for all creative output including themes, tones, visual directions, and messaging frameworks.",
+  "category": "creative",
+  "difficulty": "advanced",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "project_name",
+      "type": "string",
+      "required": true,
+      "description": "Name of the campaign or project"
+    },
+    {
+      "name": "objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign or project objective"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience description"
+    },
+    {
+      "name": "market_context",
+      "type": "string",
+      "required": false,
+      "description": "Relevant market and competitive context"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "project_name",
+      "type": "string",
+      "required": true,
+      "description": "Name of the campaign or project"
+    },
+    {
+      "name": "objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign or project objective"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience description"
+    },
+    {
+      "name": "market_context",
+      "type": "string",
+      "required": false,
+      "description": "Relevant market and competitive context"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "presentation",
+    "mood-board"
+  ],
+  "agents": [
+    "finn"
+  ],
+  "pipelines": [
+    "creative-development"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "creative",
+      "strategy",
+      "branding",
+      "campaign",
+      "direction"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

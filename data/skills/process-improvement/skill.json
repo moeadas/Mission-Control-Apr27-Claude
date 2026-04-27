@@ -1,0 +1,82 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "process-improvement",
+  "name": "Process Improvement",
+  "description": "Improves processes by identifying friction, redesigning flow, and defining measurable changes that increase speed, quality, or reliability.",
+  "category": "operations",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "process",
+      "type": "string",
+      "required": true,
+      "description": "The process or workflow to improve"
+    },
+    {
+      "name": "current_pain_points",
+      "type": "string",
+      "required": true,
+      "description": "Known pain points or inefficiencies in the current process"
+    },
+    {
+      "name": "performance_data",
+      "type": "string",
+      "required": false,
+      "description": "Current cycle time, error rates, throughput data"
+    },
+    {
+      "name": "improvement_goal",
+      "type": "string",
+      "required": false,
+      "description": "Target improvement: cycle time reduction, cost savings, quality improvement"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "process",
+      "type": "string",
+      "required": true,
+      "description": "The process or workflow to improve"
+    },
+    {
+      "name": "current_pain_points",
+      "type": "string",
+      "required": true,
+      "description": "Known pain points or inefficiencies in the current process"
+    },
+    {
+      "name": "performance_data",
+      "type": "string",
+      "required": false,
+      "description": "Current cycle time, error rates, throughput data"
+    },
+    {
+      "name": "improvement_goal",
+      "type": "string",
+      "required": false,
+      "description": "Target improvement: cycle time reduction, cost savings, quality improvement"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [],
+  "pipelines": [
+    "operations-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "process-improvement",
+      "lean",
+      "workflow",
+      "efficiency",
+      "agency-ops"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

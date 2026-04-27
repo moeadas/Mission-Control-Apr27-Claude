@@ -1,0 +1,5 @@
+- Objective is specific and measurable
+- Data is complete and reliable
+- Model validated on holdout data
+- Confidence intervals are realistic
+- Recommendations are actionable

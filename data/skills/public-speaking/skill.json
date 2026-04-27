@@ -1,0 +1,94 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "public-speaking",
+  "name": "Public Speaking",
+  "description": "Prepares speakers to deliver clear, persuasive, and audience-aware presentations with stronger message structure, confidence, and delivery control.",
+  "category": "content",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "occasion",
+      "type": "string",
+      "required": true,
+      "description": "Type of speaking engagement: client pitch, keynote, internal, panel"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Who will be in the audience and their level of knowledge"
+    },
+    {
+      "name": "key_message",
+      "type": "string",
+      "required": true,
+      "description": "The main message or takeaway"
+    },
+    {
+      "name": "duration",
+      "type": "string",
+      "required": false,
+      "description": "Time available for the presentation"
+    },
+    {
+      "name": "materials",
+      "type": "string",
+      "required": false,
+      "description": "Available slides, data, or other materials"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "occasion",
+      "type": "string",
+      "required": true,
+      "description": "Type of speaking engagement: client pitch, keynote, internal, panel"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Who will be in the audience and their level of knowledge"
+    },
+    {
+      "name": "key_message",
+      "type": "string",
+      "required": true,
+      "description": "The main message or takeaway"
+    },
+    {
+      "name": "duration",
+      "type": "string",
+      "required": false,
+      "description": "Time available for the presentation"
+    },
+    {
+      "name": "materials",
+      "type": "string",
+      "required": false,
+      "description": "Available slides, data, or other materials"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "sage"
+  ],
+  "pipelines": [
+    "content-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "public-speaking",
+      "presentation",
+      "pitch",
+      "keynote"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

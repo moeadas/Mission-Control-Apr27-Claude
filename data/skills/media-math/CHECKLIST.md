@@ -1,0 +1,6 @@
+- Metrics are consistent and accurate
+- Efficiency compared against benchmarks
+- Reach estimates are conservative
+- Frequency is within effective range
+- Budget ties to desired outcomes
+- Numbers are internally consistent

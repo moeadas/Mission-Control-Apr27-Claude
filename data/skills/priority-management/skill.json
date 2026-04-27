@@ -1,0 +1,84 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "priority-management",
+  "name": "Priority Management",
+  "description": "Establishes and manages work prioritization frameworks to ensure the most important work gets done first and team effort is aligned with highest-value activities.",
+  "category": "operations",
+  "difficulty": "beginner",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "team_project",
+      "type": "string",
+      "required": true,
+      "description": "Team, project, or account"
+    },
+    {
+      "name": "work_items",
+      "type": "string",
+      "required": true,
+      "description": "List of work items to prioritize"
+    },
+    {
+      "name": "priority_criteria",
+      "type": "string",
+      "required": false,
+      "description": "Criteria to use for prioritization"
+    },
+    {
+      "name": "framework",
+      "type": "string",
+      "required": false,
+      "description": "Prioritization framework to use"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "team_project",
+      "type": "string",
+      "required": true,
+      "description": "Team, project, or account"
+    },
+    {
+      "name": "work_items",
+      "type": "string",
+      "required": true,
+      "description": "List of work items to prioritize"
+    },
+    {
+      "name": "priority_criteria",
+      "type": "string",
+      "required": false,
+      "description": "Criteria to use for prioritization"
+    },
+    {
+      "name": "framework",
+      "type": "string",
+      "required": false,
+      "description": "Prioritization framework to use"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "document",
+    "project-management-tool"
+  ],
+  "agents": [
+    "iris"
+  ],
+  "pipelines": [
+    "operations"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "operations",
+      "priorities",
+      "productivity",
+      "planning"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

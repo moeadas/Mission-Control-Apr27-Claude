@@ -1,0 +1,72 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "workflow-optimization",
+  "name": "Workflow Optimization",
+  "description": "Analyzes and optimizes existing workflows to eliminate bottlenecks, reduce waste, improve speed, and increase quality in repeatable agency processes.",
+  "category": "operations",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "workflow_name",
+      "type": "string",
+      "required": true,
+      "description": "Workflow to optimize"
+    },
+    {
+      "name": "problems",
+      "type": "string",
+      "required": true,
+      "description": "Problems or symptoms observed"
+    },
+    {
+      "name": "targets",
+      "type": "string",
+      "required": false,
+      "description": "Performance targets"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "workflow_name",
+      "type": "string",
+      "required": true,
+      "description": "Workflow to optimize"
+    },
+    {
+      "name": "problems",
+      "type": "string",
+      "required": true,
+      "description": "Problems or symptoms observed"
+    },
+    {
+      "name": "targets",
+      "type": "string",
+      "required": false,
+      "description": "Performance targets"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet",
+    "## Project Management"
+  ],
+  "agents": [
+    "piper"
+  ],
+  "pipelines": [
+    "operations"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "operations",
+      "workflow",
+      "optimization",
+      "process-improvement"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

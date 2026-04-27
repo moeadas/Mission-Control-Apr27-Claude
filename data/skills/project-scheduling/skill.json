@@ -1,0 +1,96 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "project-scheduling",
+  "name": "Project Scheduling",
+  "description": "Creates and manages project schedules, including task breakdown, dependencies, timelines, resource allocation, and critical path identification.",
+  "category": "operations",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "project_name",
+      "type": "string",
+      "required": true,
+      "description": "Project name"
+    },
+    {
+      "name": "start_date",
+      "type": "string",
+      "required": true,
+      "description": "Project start date"
+    },
+    {
+      "name": "end_date",
+      "type": "string",
+      "required": true,
+      "description": "Project end date or deadline"
+    },
+    {
+      "name": "milestones",
+      "type": "string",
+      "required": false,
+      "description": "Key milestones to include"
+    },
+    {
+      "name": "team_members",
+      "type": "string",
+      "required": false,
+      "description": "Team members available"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "project_name",
+      "type": "string",
+      "required": true,
+      "description": "Project name"
+    },
+    {
+      "name": "start_date",
+      "type": "string",
+      "required": true,
+      "description": "Project start date"
+    },
+    {
+      "name": "end_date",
+      "type": "string",
+      "required": true,
+      "description": "Project end date or deadline"
+    },
+    {
+      "name": "milestones",
+      "type": "string",
+      "required": false,
+      "description": "Key milestones to include"
+    },
+    {
+      "name": "team_members",
+      "type": "string",
+      "required": false,
+      "description": "Team members available"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "document",
+    "project-management-tool"
+  ],
+  "agents": [
+    "piper"
+  ],
+  "pipelines": [
+    "project-management"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "operations",
+      "project-management",
+      "scheduling",
+      "planning"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

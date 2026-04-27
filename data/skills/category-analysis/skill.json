@@ -1,0 +1,83 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "category-analysis",
+  "name": "Category Analysis",
+  "description": "Analyzes product and service categories to understand market structure, competitive dynamics, key players, trends, and opportunities for positioning and growth.",
+  "category": "research",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "category_name",
+      "type": "string",
+      "required": true,
+      "description": "Category being analyzed"
+    },
+    {
+      "name": "geography",
+      "type": "string",
+      "required": false,
+      "description": "Geographic scope of analysis"
+    },
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": false,
+      "description": "Brand context for the analysis"
+    },
+    {
+      "name": "competitors",
+      "type": "string",
+      "required": false,
+      "description": "Key competitors to focus on"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "category_name",
+      "type": "string",
+      "required": true,
+      "description": "Category being analyzed"
+    },
+    {
+      "name": "geography",
+      "type": "string",
+      "required": false,
+      "description": "Geographic scope of analysis"
+    },
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": false,
+      "description": "Brand context for the analysis"
+    },
+    {
+      "name": "competitors",
+      "type": "string",
+      "required": false,
+      "description": "Key competitors to focus on"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "atlas"
+  ],
+  "pipelines": [
+    "market-research"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "research",
+      "market-analysis",
+      "category",
+      "competitive"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

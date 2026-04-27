@@ -1,0 +1,5 @@
+- Journey reflects actual customer behavior
+- Data is complete and accurate
+- Model choice is justified
+- Scores are calculated consistently
+- Recommendations are data-supported

@@ -1,0 +1,6 @@
+- Metric is specific, measurable, and aligned to business goals
+- Segment is large enough to reach significance
+- Hypothesis is specific and falsifiable
+- Only one element differs between variants
+- Sample size is statistically valid
+- Duration accounts for full business cycles

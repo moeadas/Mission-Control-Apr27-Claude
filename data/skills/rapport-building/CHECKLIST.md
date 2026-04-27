@@ -1,0 +1,6 @@
+- Clarify relationship context is completed to a high standard
+- Map stakeholder priorities is completed to a high standard
+- Identify authentic common ground is completed to a high standard
+- Define reliability behaviors is completed to a high standard
+- Plan trust-building conversations is completed to a high standard
+- Capture maintenance signals is completed to a high standard

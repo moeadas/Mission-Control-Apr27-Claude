@@ -1,0 +1,7 @@
+- Full picture of positioning battlefield
+- Insight is specific and actionable
+- Opportunity is real and ownable
+- Position is specific, ownable, and credible
+- Brand can substantiate the claim
+- All channels can express the position
+- Position resonates and is approved

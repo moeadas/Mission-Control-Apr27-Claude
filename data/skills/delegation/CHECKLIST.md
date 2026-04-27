@@ -1,0 +1,6 @@
+- Define delegated outcome is completed to a high standard
+- Clarify boundaries is completed to a high standard
+- Match work to capability is completed to a high standard
+- Define success and checkpoints is completed to a high standard
+- Support without taking work back is completed to a high standard
+- Review and improve delegation is completed to a high standard

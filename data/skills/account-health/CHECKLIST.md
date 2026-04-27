@@ -1,0 +1,5 @@
+- Revenue and renewal timeline confirmed
+- NPS and sentiment data gathered
+- Communication patterns understood
+- Performance gaps identified
+- Risk level determined

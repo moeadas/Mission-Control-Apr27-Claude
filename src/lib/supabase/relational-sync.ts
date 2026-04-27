@@ -308,8 +308,8 @@ async function buildSkillRows(agencyId: string) {
       examples: skill.examples || [],
       metadata: {
         ...(skill.metadata || {}),
-        difficulty: skill.difficulty || skill.metadata?.difficulty || 'intermediate',
-        freedom: skill.freedom || skill.metadata?.freedom || 'medium',
+        difficulty: skill.difficulty || 'intermediate',
+        freedom: skill.freedom || 'medium',
         variables: skill.variables || [],
         inputs: skill.inputs || [],
         outputs: skill.outputs || [],

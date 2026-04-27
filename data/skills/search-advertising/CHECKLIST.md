@@ -1,0 +1,4 @@
+- Structure supports relevance
+- Ads are specific and have clear CTAs
+- Tracking is accurate and reliable
+- Optimizations are data-driven

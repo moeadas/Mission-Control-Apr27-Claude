@@ -1,0 +1,96 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "client-onboarding",
+  "name": "Client Onboarding",
+  "description": "Guides new clients through a structured onboarding process, covering discovery, access setup, kickoff, and initial alignment to ensure a smooth and professional start to the engagement.",
+  "category": "client-services",
+  "difficulty": "beginner",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client brand or company name"
+    },
+    {
+      "name": "industry",
+      "type": "string",
+      "required": true,
+      "description": "Client's industry or vertical"
+    },
+    {
+      "name": "key_stakeholders",
+      "type": "string",
+      "required": true,
+      "description": "Key client contacts and their roles"
+    },
+    {
+      "name": "scope_summary",
+      "type": "string",
+      "required": true,
+      "description": "Summary of contracted scope of work"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": false,
+      "description": "Agreed media budget and retainer fee"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client brand or company name"
+    },
+    {
+      "name": "industry",
+      "type": "string",
+      "required": true,
+      "description": "Client's industry or vertical"
+    },
+    {
+      "name": "key_stakeholders",
+      "type": "string",
+      "required": true,
+      "description": "Key client contacts and their roles"
+    },
+    {
+      "name": "scope_summary",
+      "type": "string",
+      "required": true,
+      "description": "Summary of contracted scope of work"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": false,
+      "description": "Agreed media budget and retainer fee"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet",
+    "calendar"
+  ],
+  "agents": [
+    "sage"
+  ],
+  "pipelines": [
+    "client-setup"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "client-services",
+      "onboarding",
+      "account-setup",
+      "kickoff"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

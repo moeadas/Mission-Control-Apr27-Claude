@@ -1,0 +1,5 @@
+- Questions to be answered are clear
+- KPIs are measurable and available
+- All data sources are accessible
+- Layout answers key stakeholder questions
+- Dashboard answers stakeholder questions

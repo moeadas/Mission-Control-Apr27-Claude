@@ -1,0 +1,88 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "stakeholder-communication",
+  "name": "Stakeholder Communication",
+  "description": "Plans and executes clear, structured communication with project stakeholders — from status updates and executive briefings to crisis comms and client presentations that keep everyone informed and aligned.",
+  "category": "client-management",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "project",
+      "type": "string",
+      "required": true,
+      "description": "Project or initiative requiring stakeholder communication"
+    },
+    {
+      "name": "stakeholders",
+      "type": "string",
+      "required": true,
+      "description": "List of stakeholders with their roles and levels of influence"
+    },
+    {
+      "name": "message",
+      "type": "string",
+      "required": true,
+      "description": "Core message or update to be communicated"
+    },
+    {
+      "name": "goal",
+      "type": "string",
+      "required": true,
+      "description": "What the communication should achieve"
+    },
+    {
+      "name": "relationship",
+      "type": "string",
+      "required": false,
+      "description": "Client relationship context — high-trust, sensitive, at-risk, etc."
+    }
+  ],
+  "inputs": [
+    {
+      "name": "project",
+      "type": "string",
+      "required": true,
+      "description": "Project or initiative requiring stakeholder communication"
+    },
+    {
+      "name": "stakeholders",
+      "type": "string",
+      "required": true,
+      "description": "List of stakeholders with their roles and levels of influence"
+    },
+    {
+      "name": "message",
+      "type": "string",
+      "required": true,
+      "description": "Core message or update to be communicated"
+    },
+    {
+      "name": "goal",
+      "type": "string",
+      "required": true,
+      "description": "What the communication should achieve"
+    },
+    {
+      "name": "relationship",
+      "type": "string",
+      "required": false,
+      "description": "Client relationship context — high-trust, sensitive, at-risk, etc."
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "iris"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [],
+    "lastUpdated": "2026-03-30"
+  }
+}

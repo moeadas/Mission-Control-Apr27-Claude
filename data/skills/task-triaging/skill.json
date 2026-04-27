@@ -1,0 +1,72 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "task-triaging",
+  "name": "Task Triaging",
+  "description": "Rapidly assesses and categorizes incoming tasks by urgency and importance, determining what to handle immediately, what to schedule, and what to defer or delegate.",
+  "category": "operations",
+  "difficulty": "beginner",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "date",
+      "type": "string",
+      "required": true,
+      "description": "Triage session date"
+    },
+    {
+      "name": "incoming_tasks",
+      "type": "string",
+      "required": true,
+      "description": "List of tasks/requests to triage"
+    },
+    {
+      "name": "current_workload",
+      "type": "string",
+      "required": false,
+      "description": "Current workload of team"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "date",
+      "type": "string",
+      "required": true,
+      "description": "Triage session date"
+    },
+    {
+      "name": "incoming_tasks",
+      "type": "string",
+      "required": true,
+      "description": "List of tasks/requests to triage"
+    },
+    {
+      "name": "current_workload",
+      "type": "string",
+      "required": false,
+      "description": "Current workload of team"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "document",
+    "task-management-tool"
+  ],
+  "agents": [
+    "iris"
+  ],
+  "pipelines": [
+    "operations"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "operations",
+      "triaging",
+      "productivity",
+      "task-management"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

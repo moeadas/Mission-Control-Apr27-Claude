@@ -1,0 +1,6 @@
+- Clarify demand is completed to a high standard
+- Map available capacity is completed to a high standard
+- Identify bottlenecks is completed to a high standard
+- Recommend tradeoffs is completed to a high standard
+- Stress-test plan is completed to a high standard
+- Set review cadence is completed to a high standard

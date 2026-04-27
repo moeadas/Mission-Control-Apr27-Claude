@@ -1,0 +1,6 @@
+- Data is complete and accurate
+- Context is established
+- Trends are statistically meaningful
+- Anomalies are investigated, not assumed
+- Actionable segments identified
+- Recommendations are specific and prioritized

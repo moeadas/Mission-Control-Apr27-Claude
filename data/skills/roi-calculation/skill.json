@@ -1,0 +1,84 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "roi-calculation",
+  "name": "ROI Calculation",
+  "description": "Calculates return on investment for campaigns and marketing activities, connecting spend to business outcomes and attributing value appropriately.",
+  "category": "analytics",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "campaign_name",
+      "type": "string",
+      "required": true,
+      "description": "Campaign or period being analyzed"
+    },
+    {
+      "name": "costs",
+      "type": "string",
+      "required": true,
+      "description": "Costs to include in ROI calculation"
+    },
+    {
+      "name": "revenue_source",
+      "type": "string",
+      "required": true,
+      "description": "Source of conversion/revenue data"
+    },
+    {
+      "name": "attribution_model",
+      "type": "string",
+      "required": false,
+      "description": "Attribution model to apply"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "campaign_name",
+      "type": "string",
+      "required": true,
+      "description": "Campaign or period being analyzed"
+    },
+    {
+      "name": "costs",
+      "type": "string",
+      "required": true,
+      "description": "Costs to include in ROI calculation"
+    },
+    {
+      "name": "revenue_source",
+      "type": "string",
+      "required": true,
+      "description": "Source of conversion/revenue data"
+    },
+    {
+      "name": "attribution_model",
+      "type": "string",
+      "required": false,
+      "description": "Attribution model to apply"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "analytics",
+    "document"
+  ],
+  "agents": [
+    "dex"
+  ],
+  "pipelines": [
+    "reporting"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "analytics",
+      "roi",
+      "reporting",
+      "attribution"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

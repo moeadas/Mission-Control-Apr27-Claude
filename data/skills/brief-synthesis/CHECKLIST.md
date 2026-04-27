@@ -1,0 +1,6 @@
+- All relevant materials in hand
+- Gaps are documented
+- Brief is complete and unambiguous
+- Brief is clear, complete, and actionable
+- Client approves the brief
+- Team has everything needed to start

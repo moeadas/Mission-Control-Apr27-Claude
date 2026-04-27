@@ -1,0 +1,6 @@
+- Proposal reflects client needs and agency value
+- Both parties understand and agree on each point
+- No ambiguity on key commercial terms
+- Objections resolved or escalated appropriately
+- Contract matches agreed terms exactly
+- Contract signed by both parties

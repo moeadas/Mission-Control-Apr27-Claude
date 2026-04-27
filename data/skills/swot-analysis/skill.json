@@ -1,0 +1,71 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "swot-analysis",
+  "name": "SWOT Analysis",
+  "description": "Conducts structured SWOT (Strengths, Weaknesses, Opportunities, Threats) analysis to inform strategic planning, brand reviews, and business decisions.",
+  "category": "strategy",
+  "difficulty": "beginner",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "subject_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand, product, or business being analyzed"
+    },
+    {
+      "name": "analysis_scope",
+      "type": "string",
+      "required": true,
+      "description": "Scope and time horizon of the analysis"
+    },
+    {
+      "name": "perspective",
+      "type": "string",
+      "required": false,
+      "description": "Whose viewpoint this represents"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "subject_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand, product, or business being analyzed"
+    },
+    {
+      "name": "analysis_scope",
+      "type": "string",
+      "required": true,
+      "description": "Scope and time horizon of the analysis"
+    },
+    {
+      "name": "perspective",
+      "type": "string",
+      "required": false,
+      "description": "Whose viewpoint this represents"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "maya"
+  ],
+  "pipelines": [
+    "strategy"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "strategy",
+      "swot",
+      "planning",
+      "analysis"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

@@ -1,0 +1,6 @@
+- Full picture of current brand state
+- Core identity is clear and defensible
+- System is comprehensive and usable
+- Verbal system is specific and examples given
+- Guidelines are actionable for each channel
+- Document is clear, usable, and maintainable

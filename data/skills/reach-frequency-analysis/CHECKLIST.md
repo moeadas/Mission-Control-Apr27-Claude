@@ -1,0 +1,8 @@
+- Parameters are realistic and complete
+- Goals are evidence-based for the objective type
+- Curves follow realistic diminishing returns
+- Distribution identifies waste and under-exposure
+- Effective reach maximized vs. total reach
+- Overlap is quantified and addressed
+- Scenarios show clear reach/frequency trade-offs
+- Caps reduce waste without limiting effective reach

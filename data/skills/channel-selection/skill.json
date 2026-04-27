@@ -1,0 +1,105 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "channel-selection",
+  "name": "Channel Selection",
+  "description": "Chooses the optimal mix of marketing and media channels based on audience behavior, campaign objectives, budget, and channel effectiveness — building the foundation for media strategy.",
+  "category": "strategy",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "campaign_name",
+      "type": "string",
+      "required": true,
+      "description": "Campaign or initiative name"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience definition"
+    },
+    {
+      "name": "objectives",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objectives"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": false,
+      "description": "Available budget"
+    },
+    {
+      "name": "time_period",
+      "type": "string",
+      "required": false,
+      "description": "Campaign time period"
+    },
+    {
+      "name": "available_channels",
+      "type": "string",
+      "required": false,
+      "description": "Channels being considered"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "campaign_name",
+      "type": "string",
+      "required": true,
+      "description": "Campaign or initiative name"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience definition"
+    },
+    {
+      "name": "objectives",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objectives"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": false,
+      "description": "Available budget"
+    },
+    {
+      "name": "time_period",
+      "type": "string",
+      "required": false,
+      "description": "Campaign time period"
+    },
+    {
+      "name": "available_channels",
+      "type": "string",
+      "required": false,
+      "description": "Channels being considered"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [],
+  "pipelines": [
+    "media-strategy"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "media",
+      "channel-selection",
+      "strategy",
+      "planning"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

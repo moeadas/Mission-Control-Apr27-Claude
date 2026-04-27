@@ -1,0 +1,83 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "platform-native-content",
+  "name": "Platform-Native Content",
+  "description": "Adapts ideas into platform-native content so each channel feels built for its audience, behavior, and format rather than copied and pasted.",
+  "category": "content",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "platform",
+      "type": "string",
+      "required": true,
+      "description": "Target platform: Instagram, TikTok, LinkedIn, X, Facebook, YouTube, Pinterest"
+    },
+    {
+      "name": "content_message",
+      "type": "string",
+      "required": true,
+      "description": "Core message or content theme"
+    },
+    {
+      "name": "content_type",
+      "type": "string",
+      "required": false,
+      "description": "Content type: post, story, reel, thread, carousel, live"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": false,
+      "description": "Target audience on this platform"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "platform",
+      "type": "string",
+      "required": true,
+      "description": "Target platform: Instagram, TikTok, LinkedIn, X, Facebook, YouTube, Pinterest"
+    },
+    {
+      "name": "content_message",
+      "type": "string",
+      "required": true,
+      "description": "Core message or content theme"
+    },
+    {
+      "name": "content_type",
+      "type": "string",
+      "required": false,
+      "description": "Content type: post, story, reel, thread, carousel, live"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": false,
+      "description": "Target audience on this platform"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "echo"
+  ],
+  "pipelines": [
+    "content-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "platform-native",
+      "social-media",
+      "content-creation",
+      "tiktok",
+      "instagram"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

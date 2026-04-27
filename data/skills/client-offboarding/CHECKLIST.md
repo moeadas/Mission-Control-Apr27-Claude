@@ -1,0 +1,8 @@
+- Timeline agreed with client
+- All deliverables signed off
+- Report is complete and accurate
+- Client confirms receipt of all assets
+- Document is thorough and actionable
+- All financial items settled
+- Relationship preserved positively
+- Everything is organized and retrievable

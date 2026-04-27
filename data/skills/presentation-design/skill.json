@@ -1,0 +1,95 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "presentation-design",
+  "name": "Presentation Design",
+  "description": "Creates compelling, well-structured presentations for client meetings, pitches, status updates, and strategic recommendations that communicate clearly and build confidence.",
+  "category": "content",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "purpose",
+      "type": "string",
+      "required": true,
+      "description": "Presentation type: client pitch, status update, strategic recommendation, internal briefing"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Who will see this presentation and their level of familiarity with the topic"
+    },
+    {
+      "name": "key_message",
+      "type": "string",
+      "required": true,
+      "description": "The one key takeaway or action the presentation should drive"
+    },
+    {
+      "name": "content",
+      "type": "string",
+      "required": false,
+      "description": "Data, strategy, or content to include in the presentation"
+    },
+    {
+      "name": "brand_guidelines",
+      "type": "string",
+      "required": false,
+      "description": "Brand colors, fonts, and visual guidelines to follow"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "purpose",
+      "type": "string",
+      "required": true,
+      "description": "Presentation type: client pitch, status update, strategic recommendation, internal briefing"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Who will see this presentation and their level of familiarity with the topic"
+    },
+    {
+      "name": "key_message",
+      "type": "string",
+      "required": true,
+      "description": "The one key takeaway or action the presentation should drive"
+    },
+    {
+      "name": "content",
+      "type": "string",
+      "required": false,
+      "description": "Data, strategy, or content to include in the presentation"
+    },
+    {
+      "name": "brand_guidelines",
+      "type": "string",
+      "required": false,
+      "description": "Brand colors, fonts, and visual guidelines to follow"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "sage"
+  ],
+  "pipelines": [
+    "content-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "presentation",
+      "pptx",
+      "pitch",
+      "client-meeting",
+      "reporting"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

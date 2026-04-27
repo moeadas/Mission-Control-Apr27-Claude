@@ -1,0 +1,83 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "design-systems",
+  "name": "Design Systems",
+  "description": "Creates and evaluates design systems that improve consistency, speed, scalability, and UI quality across products and campaigns.",
+  "category": "creative",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "brand",
+      "type": "string",
+      "required": true,
+      "description": "Brand this design system is for"
+    },
+    {
+      "name": "scope",
+      "type": "string",
+      "required": false,
+      "description": "Scope: full system, digital only, ad templates, social templates"
+    },
+    {
+      "name": "existing_assets",
+      "type": "string",
+      "required": false,
+      "description": "Existing brand assets: logos, colors, typography, guidelines"
+    },
+    {
+      "name": "key_platforms",
+      "type": "string",
+      "required": false,
+      "description": "Key platforms: Google Ads, Meta, display, website, print"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "brand",
+      "type": "string",
+      "required": true,
+      "description": "Brand this design system is for"
+    },
+    {
+      "name": "scope",
+      "type": "string",
+      "required": false,
+      "description": "Scope: full system, digital only, ad templates, social templates"
+    },
+    {
+      "name": "existing_assets",
+      "type": "string",
+      "required": false,
+      "description": "Existing brand assets: logos, colors, typography, guidelines"
+    },
+    {
+      "name": "key_platforms",
+      "type": "string",
+      "required": false,
+      "description": "Key platforms: Google Ads, Meta, display, website, print"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "finn",
+    "lyra"
+  ],
+  "pipelines": [
+    "creative-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "design-systems",
+      "brand-consistency",
+      "creative",
+      "component-library"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

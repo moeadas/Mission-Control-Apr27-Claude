@@ -1,0 +1,95 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "kpi-definition",
+  "name": "KPI Definition",
+  "description": "Defines and structures Key Performance Indicators for media campaigns, establishing measurement frameworks with targets, benchmarks, and reporting cadences for every level of the media plan.",
+  "category": "media",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "industry",
+      "type": "string",
+      "required": true,
+      "description": "Industry for benchmarks"
+    },
+    {
+      "name": "campaign_objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objective"
+    },
+    {
+      "name": "channels",
+      "type": "string",
+      "required": true,
+      "description": "Active media channels"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": false,
+      "description": "Campaign budget for efficiency targets"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "industry",
+      "type": "string",
+      "required": true,
+      "description": "Industry for benchmarks"
+    },
+    {
+      "name": "campaign_objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objective"
+    },
+    {
+      "name": "channels",
+      "type": "string",
+      "required": true,
+      "description": "Active media channels"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": false,
+      "description": "Campaign budget for efficiency targets"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "analytics",
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "nova"
+  ],
+  "pipelines": [
+    "media-plan"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "media",
+      "planning",
+      "kpi-definition"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

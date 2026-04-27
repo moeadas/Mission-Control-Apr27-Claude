@@ -1,0 +1,5 @@
+- All stakeholders named and categorized
+- Channel and frequency defined per stakeholder
+- Messages aligned with client objectives
+- Calendar reviewed by project lead
+- All communications reviewed by account lead

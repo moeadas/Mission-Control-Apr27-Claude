@@ -1,0 +1,95 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "visual-storytelling",
+  "name": "Visual Storytelling",
+  "description": "Builds visual storytelling systems that align narrative, composition, sequence, and emotional progression with the campaign or brand objective.",
+  "category": "creative",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "story",
+      "type": "string",
+      "required": true,
+      "description": "The story or narrative to tell"
+    },
+    {
+      "name": "brand",
+      "type": "string",
+      "required": true,
+      "description": "Brand context"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": false,
+      "description": "Target audience"
+    },
+    {
+      "name": "emotion",
+      "type": "string",
+      "required": false,
+      "description": "Emotional response to evoke"
+    },
+    {
+      "name": "context",
+      "type": "string",
+      "required": false,
+      "description": "Where visuals will be used"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "story",
+      "type": "string",
+      "required": true,
+      "description": "The story or narrative to tell"
+    },
+    {
+      "name": "brand",
+      "type": "string",
+      "required": true,
+      "description": "Brand context"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": false,
+      "description": "Target audience"
+    },
+    {
+      "name": "emotion",
+      "type": "string",
+      "required": false,
+      "description": "Emotional response to evoke"
+    },
+    {
+      "name": "context",
+      "type": "string",
+      "required": false,
+      "description": "Where visuals will be used"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "## Media"
+  ],
+  "agents": [
+    "finn",
+    "lyra"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "visual-storytelling",
+      "imagery",
+      "mood-board",
+      "creative-direction",
+      "campaign"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

@@ -1,0 +1,4 @@
+- Channel habits are understood
+- Assessment is evidence-based
+- Mix is coherent and achievable
+- Attribution approach is clear

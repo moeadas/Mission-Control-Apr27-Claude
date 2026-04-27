@@ -1,0 +1,5 @@
+- Current state is clear and documented
+- Strategy aligns with business objectives
+- Changes are evidence-based
+- Budget pacing is healthy
+- Bidding improves over time

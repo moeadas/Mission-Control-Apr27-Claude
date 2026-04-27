@@ -1,0 +1,5 @@
+- Clarify constrained resource is completed to a high standard
+- Map current allocation is completed to a high standard
+- Identify impactful reallocations is completed to a high standard
+- Compare options is completed to a high standard
+- Recommend plan is completed to a high standard

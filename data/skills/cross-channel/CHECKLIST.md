@@ -1,0 +1,5 @@
+- Objective is clear and measurable
+- Each channel has a defined job
+- Core message is unified
+- Channels reinforce each other over time
+- Attribution approach is agreed

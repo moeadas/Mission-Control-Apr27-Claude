@@ -1,0 +1,71 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "risk-assessment",
+  "name": "Risk Assessment",
+  "description": "Assesses strategic, delivery, operational, or campaign risks so teams can plan mitigation before issues become expensive problems.",
+  "category": "project-management",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "project_campaign",
+      "type": "string",
+      "required": true,
+      "description": "Name of the project or campaign"
+    },
+    {
+      "name": "known_risks",
+      "type": "string",
+      "required": false,
+      "description": "Any known or suspected risks"
+    },
+    {
+      "name": "constraints",
+      "type": "string",
+      "required": false,
+      "description": "Constraints that might introduce risk: budget, timeline, resources"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "project_campaign",
+      "type": "string",
+      "required": true,
+      "description": "Name of the project or campaign"
+    },
+    {
+      "name": "known_risks",
+      "type": "string",
+      "required": false,
+      "description": "Any known or suspected risks"
+    },
+    {
+      "name": "constraints",
+      "type": "string",
+      "required": false,
+      "description": "Constraints that might introduce risk: budget, timeline, resources"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "piper"
+  ],
+  "pipelines": [
+    "project-management-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "risk-assessment",
+      "project-management",
+      "risk-register",
+      "planning"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

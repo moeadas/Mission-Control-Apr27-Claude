@@ -1,0 +1,4 @@
+- Baseline is realistic and committed
+- Chart reflects current state
+- Causes are understood
+- Sprint goal is achievable

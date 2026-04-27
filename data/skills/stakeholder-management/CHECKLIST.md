@@ -1,0 +1,6 @@
+- All stakeholders profiled with at least goals and concerns
+- Health ratings reviewed with account lead
+- At least one mitigation approach per conflict
+- Strategies align with stakeholder personalities and goals
+- Touchpoint schedule integrated with project timeline
+- Decision log reviewed at each project milestone

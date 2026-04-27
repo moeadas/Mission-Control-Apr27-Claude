@@ -5,6 +5,7 @@ import { sanitizePromptProfile, sanitizePromptValue } from '@/lib/server/prompt-
 import { validateDeliverableQuality } from '@/lib/output-quality'
 import { executeCreativeAssetTask } from '@/lib/server/creative-asset-engine'
 import { executeAutomatedContentCalendar } from '@/lib/server/content-calendar-engine'
+import { CONTENT_GENERATION_DELIVERABLE_TYPES, normalizeProviderSettings, resolveFallbackRuntime } from '@/lib/provider-settings'
 
 interface RuntimeAgent {
   id: string
@@ -45,12 +46,16 @@ interface ClientProfileMap {
 }
 
 interface SkillRef {
+  id: string
   name: string
   description?: string
+  trigger?: string
+  context?: string
   instructions?: string
   outputTemplate?: string
   checklist?: string[]
   workflowSteps?: Array<{ step?: number; name?: string; action?: string; verify?: string }>
+  tags?: string[]
 }
 
 interface ExecutionHooks {
@@ -153,59 +158,272 @@ function buildSkillLookup(skillCategories: any[]) {
   for (const category of skillCategories || []) {
     for (const skill of category.skills || []) {
       skillLookup.set(skill.id, {
+        id: skill.id,
         name: skill.name,
         description: skill.description,
+        trigger: skill.prompts?.en?.trigger || '',
+        context: skill.prompts?.en?.context || '',
         instructions: skill.prompts?.en?.instructions || '',
         outputTemplate: skill.prompts?.en?.output_template || '',
         checklist: Array.isArray(skill.checklist) ? skill.checklist : [],
         workflowSteps: Array.isArray(skill.workflow?.steps) ? skill.workflow.steps : [],
+        tags: Array.isArray(skill.metadata?.tags) ? skill.metadata.tags : [],
       })
     }
   }
   return skillLookup
 }
 
-function agentSkillsContext(agent: RuntimeAgent, skillLookup: Map<string, SkillRef>) {
-  return agentSkillsContextFromIds(agent, skillLookup, agent.skills || [])
+/**
+ * Resolve the agent's available skills (intersected with the channeling
+ * plan's per-agent selected skills) into full SkillRef objects, preserving
+ * the user-defined ordering.
+ */
+function resolveAgentSkillRefs(
+  agent: RuntimeAgent,
+  skillLookup: Map<string, SkillRef>,
+  selectedSkillIds: string[]
+): SkillRef[] {
+  const allowed = new Set((selectedSkillIds || []).filter(Boolean))
+  const ids = (agent.skills || []).filter((skillId) => (allowed.size ? allowed.has(skillId) : true))
+  const refs: SkillRef[] = []
+  for (const id of ids) {
+    const ref = skillLookup.get(id)
+    if (ref) refs.push(ref)
+    else refs.push({ id, name: id }) // gracefully handle missing skill metadata
+  }
+  return refs
 }
 
-function agentSkillsContextFromIds(agent: RuntimeAgent, skillLookup: Map<string, SkillRef>, selectedSkillIds: string[]) {
-  const assignedSkills = (agent.skills || [])
-    .filter((skillId) => !selectedSkillIds.length || selectedSkillIds.includes(skillId))
-    .map((skillId) => ({ id: skillId, ...(skillLookup.get(skillId) || { name: skillId }) }))
-    .slice(0, 4)
+/**
+ * Score a skill's relevance to a specific pipeline activity. We tokenise the
+ * activity name + description + assignedRole and reward overlap with the
+ * skill id, name, tags, trigger, and (lightly) instructions. The top scorer
+ * becomes the activity's "primary skill" — its full instructions are injected.
+ */
+function scoreSkillForActivity(skill: SkillRef, activity: PipelineActivity, deliverableType?: DeliverableType): number {
+  const haystack = [
+    skill.id,
+    skill.name,
+    (skill.tags || []).join(' '),
+    skill.description || '',
+    skill.trigger || '',
+    (skill.instructions || '').slice(0, 600),
+  ]
+    .join(' ')
+    .toLowerCase()
 
+  const needle = [activity.name, activity.description, activity.assignedRole].filter(Boolean).join(' ').toLowerCase()
+  if (!needle.trim()) return 0
+
+  const tokens = needle
+    .replace(/[^a-z0-9\s-]/g, ' ')
+    .split(/\s+/)
+    .filter((token) => token.length >= 4)
+
+  let score = 0
+  for (const token of tokens) {
+    if (haystack.includes(token)) score += 2
+  }
+  if (deliverableType && haystack.includes(deliverableType.replace(/-/g, ' '))) score += 5
+  if (activity.assignedRole && skill.tags?.includes(activity.assignedRole)) score += 3
+  return score
+}
+
+function pickPrimarySkillForActivity(
+  skills: SkillRef[],
+  activity: PipelineActivity,
+  deliverableType?: DeliverableType
+): SkillRef | null {
+  if (!skills.length) return null
+  let best: { skill: SkillRef; score: number } | null = null
+  for (const skill of skills) {
+    const score = scoreSkillForActivity(skill, activity, deliverableType)
+    if (!best || score > best.score) best = { skill, score }
+  }
+  return best && best.score > 0 ? best.skill : skills[0]
+}
+
+function scoreSkillForDeliverable(skill: SkillRef, deliverableType: DeliverableType, request: string): number {
+  const haystack = [
+    skill.id,
+    skill.name,
+    (skill.tags || []).join(' '),
+    skill.description || '',
+    skill.trigger || '',
+    (skill.instructions || '').slice(0, 600),
+  ]
+    .join(' ')
+    .toLowerCase()
+
+  let score = 0
+  if (haystack.includes(deliverableType.replace(/-/g, ' '))) score += 6
+  if (haystack.includes(deliverableType)) score += 4
+
+  const requestTokens = request
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, ' ')
+    .split(/\s+/)
+    .filter((token) => token.length >= 4)
+    .slice(0, 16)
+  for (const token of requestTokens) {
+    if (haystack.includes(token)) score += 1
+  }
+  return score
+}
+
+function pickPrimarySkillForLead(
+  skills: SkillRef[],
+  deliverableType: DeliverableType,
+  request: string
+): SkillRef | null {
+  if (!skills.length) return null
+  let best: { skill: SkillRef; score: number } | null = null
+  for (const skill of skills) {
+    const score = scoreSkillForDeliverable(skill, deliverableType, request)
+    if (!best || score > best.score) best = { skill, score }
+  }
+  return best && best.score > 0 ? best.skill : skills[0]
+}
+
+function renderPrimarySkillBlock(skill: SkillRef): string {
+  const lines: string[] = [`### Primary skill in use: ${skill.name} (${skill.id})`]
+  if (skill.description) lines.push(skill.description)
+  if (skill.context) {
+    lines.push('Context for this skill:')
+    lines.push(truncate(skill.context, 600))
+  }
+  if (skill.instructions) {
+    lines.push('Skill instructions (follow these step-by-step):')
+    lines.push(truncate(skill.instructions, 1800))
+  }
+  if (skill.workflowSteps?.length) {
+    lines.push('Workflow steps:')
+    for (const step of skill.workflowSteps.slice(0, 8)) {
+      const name = step.name || `Step ${step.step || '?'}`
+      const action = step.action ? ` — ${step.action}` : ''
+      const verify = step.verify ? ` (verify: ${step.verify})` : ''
+      lines.push(`- ${name}${action}${verify}`)
+    }
+  }
+  if (skill.checklist?.length) {
+    lines.push('Skill checklist (must satisfy before returning output):')
+    for (const item of skill.checklist.slice(0, 8)) lines.push(`- ${item}`)
+  }
+  if (skill.outputTemplate) {
+    lines.push('Output template (mirror this structure):')
+    lines.push(truncate(skill.outputTemplate, 900))
+  }
+  return lines.join('\n')
+}
+
+function renderSecondarySkillBlock(skills: SkillRef[]): string {
+  if (!skills.length) return ''
+  const lines: string[] = ['Other available skills (use selectively, do not duplicate the primary):']
+  for (const skill of skills.slice(0, 3)) {
+    const headline = `- ${skill.name} (${skill.id})${skill.description ? `: ${skill.description}` : ''}`
+    lines.push(headline)
+    if (skill.checklist?.length) {
+      lines.push(`  Key checks: ${skill.checklist.slice(0, 3).join(' | ')}`)
+    }
+  }
+  return lines.join('\n')
+}
+
+function buildSkillContextForActivity(
+  agent: RuntimeAgent,
+  skillLookup: Map<string, SkillRef>,
+  selectedSkillIds: string[],
+  activity: PipelineActivity,
+  deliverableType?: DeliverableType
+): { context: string; primarySkillId: string | null } {
+  const skills = resolveAgentSkillRefs(agent, skillLookup, selectedSkillIds)
+  const primary = pickPrimarySkillForActivity(skills, activity, deliverableType)
   const tools = (agent.tools || []).slice(0, 8)
 
-  const parts = []
-  parts.push(
-    assignedSkills.length
-      ? assignedSkills
-          .map((skill) =>
-            [
-              `- ${skill.name}${skill.description ? `: ${skill.description}` : ''}`,
-              skill.instructions ? `  Instructions: ${truncate(skill.instructions, 420)}` : '',
-              skill.outputTemplate ? `  Output template: ${truncate(skill.outputTemplate, 220)}` : '',
-              skill.checklist?.length ? `  Checklist: ${skill.checklist.slice(0, 4).join(' | ')}` : '',
-              skill.workflowSteps?.length
-                ? `  Workflow: ${skill.workflowSteps
-                    .slice(0, 3)
-                    .map((step) => step.name || step.action || `Step ${step.step || '?'}`)
-                    .join(' -> ')}`
-                : '',
-            ]
-              .filter(Boolean)
-              .join('\n')
-          )
-          .join('\n\n')
-      : 'No explicit skills assigned.'
-  )
-
+  const parts: string[] = []
+  if (primary) {
+    parts.push(renderPrimarySkillBlock(primary))
+    const secondary = skills.filter((skill) => skill.id !== primary.id)
+    const secondaryBlock = renderSecondarySkillBlock(secondary)
+    if (secondaryBlock) parts.push(secondaryBlock)
+  } else {
+    parts.push('No agent-specific skills assigned for this activity. Rely on the agent role description and the activity instructions.')
+  }
   if (tools.length) {
     parts.push(`Available tools:\n- ${tools.join('\n- ')}`)
   }
+  return { context: parts.join('\n\n'), primarySkillId: primary?.id || null }
+}
 
-  return parts.join('\n\n')
+function buildSkillContextForLead(
+  agent: RuntimeAgent,
+  skillLookup: Map<string, SkillRef>,
+  selectedSkillIds: string[],
+  deliverableType: DeliverableType,
+  request: string
+): { context: string; primarySkillId: string | null; outputTemplate?: string } {
+  const skills = resolveAgentSkillRefs(agent, skillLookup, selectedSkillIds)
+  const primary = pickPrimarySkillForLead(skills, deliverableType, request)
+  const tools = (agent.tools || []).slice(0, 8)
+
+  const parts: string[] = []
+  if (primary) {
+    parts.push(renderPrimarySkillBlock(primary))
+    const secondary = skills.filter((skill) => skill.id !== primary.id)
+    const secondaryBlock = renderSecondarySkillBlock(secondary)
+    if (secondaryBlock) parts.push(secondaryBlock)
+  } else {
+    parts.push('No primary skill resolved for the lead pass. Use general agent expertise.')
+  }
+  if (tools.length) {
+    parts.push(`Available tools:\n- ${tools.join('\n- ')}`)
+  }
+  return { context: parts.join('\n\n'), primarySkillId: primary?.id || null, outputTemplate: primary?.outputTemplate }
+}
+
+function buildSkillContextForSupport(
+  agent: RuntimeAgent,
+  skillLookup: Map<string, SkillRef>,
+  selectedSkillIds: string[],
+  deliverableType: DeliverableType,
+  request: string
+): { context: string; primarySkillId: string | null } {
+  const skills = resolveAgentSkillRefs(agent, skillLookup, selectedSkillIds)
+  const primary = pickPrimarySkillForLead(skills, deliverableType, request)
+  const tools = (agent.tools || []).slice(0, 8)
+
+  const parts: string[] = []
+  if (primary) {
+    parts.push(renderPrimarySkillBlock(primary))
+    const secondary = skills.filter((skill) => skill.id !== primary.id)
+    const secondaryBlock = renderSecondarySkillBlock(secondary)
+    if (secondaryBlock) parts.push(secondaryBlock)
+  } else {
+    parts.push('No primary skill resolved. Provide general specialist input based on agent role.')
+  }
+  if (tools.length) {
+    parts.push(`Available tools:\n- ${tools.join('\n- ')}`)
+  }
+  return { context: parts.join('\n\n'), primarySkillId: primary?.id || null }
+}
+
+/**
+ * Backwards-compatible: kept so existing creative-asset / content-calendar
+ * call sites that built the agent skill block via this helper still work
+ * during the broader migration. Internally now delegates to the per-activity
+ * builder using a synthetic "general execution" activity so the new resolver
+ * still picks a primary skill.
+ */
+function agentSkillsContextFromIds(agent: RuntimeAgent, skillLookup: Map<string, SkillRef>, selectedSkillIds: string[]): string {
+  const { context } = buildSkillContextForLead(
+    agent,
+    skillLookup,
+    selectedSkillIds,
+    'general-task',
+    `${agent.role || 'specialist'} execution`
+  )
+  return context
 }
 
 function isProviderAvailable(provider: AIProvider | undefined, input: { geminiApiKey?: string; ollamaBaseUrl?: string }) {
@@ -218,6 +436,65 @@ function resolveAgentRuntime(agent: RuntimeAgent, fallback: { provider: AIProvid
   const provider = agent.provider && isProviderAvailable(agent.provider, fallback) ? agent.provider : fallback.provider
   const model = agent.model && provider === agent.provider ? agent.model : fallback.model
   return { provider, model }
+}
+
+async function generateContentFirstText(input: {
+  deliverableType?: DeliverableType
+  provider: AIProvider
+  model: string
+  temperature: number
+  maxTokens: number
+  messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>
+  ollamaBaseUrl?: string
+  ollamaContextWindow?: number
+  geminiApiKey?: string
+  providerSettings?: ProviderSettings
+}) {
+  const isContentTask = input.deliverableType && CONTENT_GENERATION_DELIVERABLE_TYPES.has(input.deliverableType)
+  const normalizedSettings = normalizeProviderSettings(input.providerSettings)
+
+  const primaryRuntime = isContentTask
+    ? {
+        provider: normalizedSettings.ollama.enabled !== false ? ('ollama' as AIProvider) : ('gemini' as AIProvider),
+        model: normalizedSettings.ollama.enabled !== false ? 'minimax-m2.7:cloud' : 'gemini-2.5-pro',
+      }
+    : { provider: input.provider, model: input.model }
+
+  try {
+    return await generateText({
+      provider: primaryRuntime.provider,
+      model: primaryRuntime.model,
+      temperature: input.temperature,
+      maxTokens: input.maxTokens,
+      messages: input.messages,
+      ollamaBaseUrl: input.ollamaBaseUrl,
+      ollamaContextWindow: input.ollamaContextWindow,
+      geminiApiKey: input.geminiApiKey,
+      timeoutMs: isContentTask && primaryRuntime.provider === 'ollama' ? 30000 : undefined,
+    })
+  } catch (error) {
+    if (!isContentTask) throw error
+
+    const fallbackRuntime = resolveFallbackRuntime({
+      settings: normalizedSettings,
+      currentProvider: primaryRuntime.provider,
+      requestedModel: primaryRuntime.provider === 'ollama' ? 'gemini-2.5-pro' : 'minimax-m2.7:cloud',
+    })
+
+    if (!fallbackRuntime) throw error
+
+    return await generateText({
+      provider: fallbackRuntime.provider,
+      model: fallbackRuntime.model,
+      temperature: input.temperature,
+      maxTokens: input.maxTokens,
+      messages: input.messages,
+      ollamaBaseUrl: input.ollamaBaseUrl,
+      ollamaContextWindow: input.ollamaContextWindow,
+      geminiApiKey: input.geminiApiKey,
+      timeoutMs: fallbackRuntime.provider === 'gemini' ? 45000 : 30000,
+    })
+  }
 }
 
 function getAgentForRole(agents: RuntimeAgent[], role: string | undefined, fallbackAgentId?: string) {
@@ -325,6 +602,7 @@ function buildActivityPrompt(input: {
   previousOutputs: Record<string, string>
   qualityChecklist: string[]
   skillContext: string
+  primarySkillId?: string | null
 }) {
   const pipelinePrompt = interpolateTemplate(
     input.activity.prompts?.en || input.activity.description || `Complete the activity "${input.activity.name}".`,
@@ -340,7 +618,10 @@ function buildActivityPrompt(input: {
     input.activity.description ? `Activity goal: ${input.activity.description}` : '',
     `Original task request: ${truncate(input.request, 280)}`,
     input.clientContext ? `Client context:\n${truncate(input.clientContext, 700)}` : '',
-    `Assigned skills and tools:\n${input.skillContext}`,
+    `--- Skill activation ---\n${input.skillContext}\n--- end skill activation ---`,
+    input.primarySkillId
+      ? `When you start, explicitly follow the workflow and checklist of the primary skill above (${input.primarySkillId}). The output for this activity must satisfy that skill's checklist.`
+      : '',
     Object.keys(input.previousOutputs).length
       ? `Previous pipeline outputs available for handoff:\n${summarizeOutputs(input.previousOutputs)}`
       : 'This is an early activity. No prior phase outputs yet.',
@@ -366,6 +647,7 @@ function buildSupportPrompt(input: {
   pipeline: PipelineLike | null
   qualityChecklist: string[]
   skillContext: string
+  primarySkillId?: string | null
 }) {
   return [
     input.agent.systemPrompt || `You are ${input.agent.name}, ${input.agent.role}.`,
@@ -376,7 +658,10 @@ function buildSupportPrompt(input: {
     input.pipeline
       ? `Relevant pipeline: ${input.pipeline.name}\nPhases:\n${(input.pipeline.phases || []).slice(0, 5).map((phase) => `- ${phase.name}`).join('\n')}`
       : '',
-    `Assigned skills and tools:\n${input.skillContext}`,
+    `--- Skill activation ---\n${input.skillContext}\n--- end skill activation ---`,
+    input.primarySkillId
+      ? `Anchor your specialist input on the primary skill above (${input.primarySkillId}). Use its workflow as scaffolding for what to surface.`
+      : '',
     `Quality checkpoints:\n- ${input.qualityChecklist.join('\n- ')}`,
     'Return a concise specialist handoff with these sections only:',
     '## Specialist Angle',
@@ -398,13 +683,18 @@ function buildLeadPrompt(input: {
   pipeline: PipelineLike | null
   qualityChecklist: string[]
   skillContext: string
+  primarySkillId?: string | null
+  primarySkillOutputTemplate?: string | null
   supportHandoffs: ArtifactExecutionStep[]
   pipelineOutputs: Record<string, string>
 }) {
   return [
     input.agent.systemPrompt || `You are ${input.agent.name}, ${input.agent.role}.`,
     `You are the lead agent responsible for producing the final deliverable.`,
-    `Assigned skills and tools:\n${input.skillContext}`,
+    `--- Skill activation ---\n${input.skillContext}\n--- end skill activation ---`,
+    input.primarySkillId
+      ? `The primary skill for this final pass is "${input.primarySkillId}". Treat its workflow and checklist as the authoritative structure for the deliverable. The output template above (if present) is the structural backbone — mirror its sections.`
+      : '',
     input.clientContext ? `Client context:\n${truncate(input.clientContext, 700)}` : '',
     input.pipeline
       ? `Pipeline in use: ${input.pipeline.name}\nPhase sequence:\n${(input.pipeline.phases || []).slice(0, 5).map((phase) => `- ${phase.name}`).join('\n')}`
@@ -427,6 +717,7 @@ function buildLeadPrompt(input: {
 
 async function runPipelineExecution(input: {
   request: string
+  deliverableType: DeliverableType
   provider: AIProvider
   model: string
   ollamaBaseUrl?: string
@@ -440,6 +731,7 @@ async function runPipelineExecution(input: {
   skillLookup: Map<string, SkillRef>
   selectedSkillsByAgent?: Record<string, string[]>
   maxTokens: number
+  providerSettings?: ProviderSettings
   hooks?: ExecutionHooks
 }) {
   const executionSteps: ArtifactExecutionStep[] = []
@@ -458,7 +750,13 @@ async function runPipelineExecution(input: {
       if (!assignedAgent) continue
 
       const selectedSkills = input.selectedSkillsByAgent?.[assignedAgent.id] || assignedAgent.skills || []
-      const skillContext = agentSkillsContextFromIds(assignedAgent, input.skillLookup, selectedSkills)
+      const { context: skillContext, primarySkillId } = buildSkillContextForActivity(
+        assignedAgent,
+        input.skillLookup,
+        selectedSkills,
+        activity,
+        input.deliverableType
+      )
       const runtime = resolveAgentRuntime(assignedAgent, input)
       const inFlightProgress = Math.max(8, Math.round(((completedActivities + 0.35) / totalActivities) * 85))
       await input.hooks?.onActivityStart?.({
@@ -475,7 +773,8 @@ async function runPipelineExecution(input: {
             request: input.request,
             previousOutputs: outputRegister,
           })
-        : await generateText({
+        : await generateContentFirstText({
+            deliverableType: input.deliverableType,
             provider: runtime.provider,
             model: runtime.model,
             temperature: 0.45,
@@ -488,6 +787,7 @@ async function runPipelineExecution(input: {
                   request: input.request,
                   clientContext: input.clientContext,
                   clientProfile: input.clientProfile,
+                  primarySkillId,
                   pipeline: input.pipeline,
                   phase,
                   activity,
@@ -500,6 +800,7 @@ async function runPipelineExecution(input: {
             ollamaBaseUrl: input.ollamaBaseUrl,
             ollamaContextWindow: input.ollamaContextWindow,
             geminiApiKey: input.geminiApiKey,
+            providerSettings: input.providerSettings,
           })
 
       for (const outputId of activity.outputs || []) {
@@ -579,7 +880,8 @@ export async function executeAutonomousTask(input: {
         const agent = agentMap.get(agentId) || agentMap.get('iris')
         if (!agent) throw new Error(`Agent ${agentId} is unavailable.`)
         const runtime = resolveAgentRuntime(agent, input)
-        const text = await generateText({
+        const text = await generateContentFirstText({
+          deliverableType: input.deliverableType,
           provider: runtime.provider,
           model: runtime.model,
           temperature,
@@ -597,6 +899,7 @@ export async function executeAutonomousTask(input: {
           ollamaBaseUrl: input.ollamaBaseUrl,
           ollamaContextWindow: input.ollamaContextWindow,
           geminiApiKey: input.geminiApiKey,
+          providerSettings: input.providerSettings,
         })
         return { text, provider: runtime.provider, model: runtime.model }
       },
@@ -627,7 +930,8 @@ export async function executeAutonomousTask(input: {
         const agent = agentMap.get(agentId) || agentMap.get('iris')
         if (!agent) throw new Error(`Agent ${agentId} is unavailable.`)
         const runtime = resolveAgentRuntime(agent, input)
-        const text = await generateText({
+        const text = await generateContentFirstText({
+          deliverableType: input.deliverableType,
           provider: runtime.provider,
           model: runtime.model,
           temperature,
@@ -645,6 +949,7 @@ export async function executeAutonomousTask(input: {
           ollamaBaseUrl: input.ollamaBaseUrl,
           ollamaContextWindow: input.ollamaContextWindow,
           geminiApiKey: input.geminiApiKey,
+          providerSettings: input.providerSettings,
         })
         return { text, provider: runtime.provider, model: runtime.model }
       },
@@ -662,6 +967,7 @@ export async function executeAutonomousTask(input: {
   if (input.pipeline?.phases?.length) {
     const pipelineRun = await runPipelineExecution({
       request: input.request,
+      deliverableType: input.deliverableType,
       provider: input.provider,
       model: input.model,
       ollamaBaseUrl: input.ollamaBaseUrl,
@@ -675,6 +981,7 @@ export async function executeAutonomousTask(input: {
       skillLookup,
       selectedSkillsByAgent: input.selectedSkillsByAgent,
       maxTokens: input.maxTokens,
+      providerSettings: input.providerSettings,
       hooks: input.hooks,
     })
     executionSteps.push(...pipelineRun.executionSteps)
@@ -685,9 +992,16 @@ export async function executeAutonomousTask(input: {
       if (!agent) continue
 
       const selectedSkills = input.selectedSkillsByAgent?.[agent.id] || agent.skills || []
-      const skillContext = agentSkillsContextFromIds(agent, skillLookup, selectedSkills)
+      const { context: skillContext, primarySkillId: supportPrimarySkillId } = buildSkillContextForSupport(
+        agent,
+        skillLookup,
+        selectedSkills,
+        input.deliverableType,
+        input.request
+      )
       const runtime = resolveAgentRuntime(agent, input)
-      const summary = await generateText({
+      const summary = await generateContentFirstText({
+        deliverableType: input.deliverableType,
         provider: runtime.provider,
         model: runtime.model,
         temperature: 0.45,
@@ -703,12 +1017,14 @@ export async function executeAutonomousTask(input: {
               pipeline: input.pipeline,
               qualityChecklist: input.qualityChecklist,
               skillContext,
+              primarySkillId: supportPrimarySkillId,
             }),
           },
         ],
         ollamaBaseUrl: input.ollamaBaseUrl,
         ollamaContextWindow: input.ollamaContextWindow,
         geminiApiKey: input.geminiApiKey,
+        providerSettings: input.providerSettings,
       })
 
       executionSteps.push({
@@ -729,10 +1045,15 @@ export async function executeAutonomousTask(input: {
     role: 'Operations Lead',
   }
   const leadSelectedSkills = input.selectedSkillsByAgent?.[leadAgent.id] || leadAgent.skills || []
-  const leadSkillContext = agentSkillsContextFromIds(leadAgent, skillLookup, leadSelectedSkills)
+  const {
+    context: leadSkillContext,
+    primarySkillId: leadPrimarySkillId,
+    outputTemplate: leadPrimarySkillOutputTemplate,
+  } = buildSkillContextForLead(leadAgent, skillLookup, leadSelectedSkills, input.deliverableType, input.request)
   const leadRuntime = resolveAgentRuntime(leadAgent, input)
 
-  let response = await generateText({
+  let response = await generateContentFirstText({
+    deliverableType: input.deliverableType,
     provider: leadRuntime.provider,
     model: leadRuntime.model,
     temperature: input.temperature,
@@ -749,6 +1070,8 @@ export async function executeAutonomousTask(input: {
           pipeline: input.pipeline,
           qualityChecklist: input.qualityChecklist,
           skillContext: leadSkillContext,
+          primarySkillId: leadPrimarySkillId,
+          primarySkillOutputTemplate: leadPrimarySkillOutputTemplate,
           supportHandoffs: executionSteps,
           pipelineOutputs,
         }),
@@ -757,10 +1080,12 @@ export async function executeAutonomousTask(input: {
     ollamaBaseUrl: input.ollamaBaseUrl,
     ollamaContextWindow: input.ollamaContextWindow,
     geminiApiKey: input.geminiApiKey,
+    providerSettings: input.providerSettings,
   })
 
   if (isInvalidFinalDeliverable(response)) {
-    response = await generateText({
+    response = await generateContentFirstText({
+      deliverableType: input.deliverableType,
       provider: leadRuntime.provider,
       model: leadRuntime.model,
       temperature: Math.min(input.temperature, 0.45),
@@ -778,6 +1103,8 @@ export async function executeAutonomousTask(input: {
               pipeline: input.pipeline,
               qualityChecklist: input.qualityChecklist,
               skillContext: leadSkillContext,
+          primarySkillId: leadPrimarySkillId,
+          primarySkillOutputTemplate: leadPrimarySkillOutputTemplate,
               supportHandoffs: executionSteps,
               pipelineOutputs,
             }),
@@ -790,6 +1117,7 @@ export async function executeAutonomousTask(input: {
       ollamaBaseUrl: input.ollamaBaseUrl,
       ollamaContextWindow: input.ollamaContextWindow,
       geminiApiKey: input.geminiApiKey,
+      providerSettings: input.providerSettings,
     })
   }
 
@@ -809,7 +1137,8 @@ export async function executeAutonomousTask(input: {
   let qualityResult = validateDeliverableQuality(input.deliverableType, response, input.request)
 
   if (!qualityResult.ok) {
-    const repaired = await generateText({
+    const repaired = await generateContentFirstText({
+      deliverableType: input.deliverableType,
       provider: leadRuntime.provider,
       model: leadRuntime.model,
       temperature: Math.min(input.temperature, 0.45),
@@ -827,6 +1156,8 @@ export async function executeAutonomousTask(input: {
               pipeline: input.pipeline,
               qualityChecklist: input.qualityChecklist,
               skillContext: leadSkillContext,
+          primarySkillId: leadPrimarySkillId,
+          primarySkillOutputTemplate: leadPrimarySkillOutputTemplate,
               supportHandoffs: executionSteps,
               pipelineOutputs,
             }),
@@ -842,6 +1173,7 @@ export async function executeAutonomousTask(input: {
       ollamaBaseUrl: input.ollamaBaseUrl,
       ollamaContextWindow: input.ollamaContextWindow,
       geminiApiKey: input.geminiApiKey,
+      providerSettings: input.providerSettings,
     })
 
     const repairedQuality = validateDeliverableQuality(input.deliverableType, repaired, input.request)

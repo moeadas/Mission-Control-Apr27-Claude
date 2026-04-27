@@ -1,0 +1,7 @@
+- Define offer and objective is completed to a high standard
+- Segment audience is completed to a high standard
+- Clarify positioning is completed to a high standard
+- Build messaging hierarchy is completed to a high standard
+- Design channel and sales motion is completed to a high standard
+- Sequence rollout is completed to a high standard
+- Define metrics and risks is completed to a high standard

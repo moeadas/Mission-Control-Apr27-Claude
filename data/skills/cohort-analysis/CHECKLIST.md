@@ -1,0 +1,5 @@
+- Dimension is meaningful for the business question
+- Metrics are measurable and comparable
+- Tables are accurate and comparable
+- Insights are evidenced
+- Recommendations are specific and prioritized

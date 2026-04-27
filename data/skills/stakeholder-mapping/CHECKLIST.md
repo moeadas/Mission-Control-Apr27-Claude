@@ -1,0 +1,5 @@
+- All known stakeholders documented with titles and roles
+- All stakeholders placed with clear justification
+- At least 2 potential hidden stakeholders identified
+- Key relationship dynamics noted
+- Tier assignments reviewed with account lead

@@ -1,0 +1,5 @@
+- Inputs are separated by purpose
+- Non-negotiables are explicit
+- Inspiration is useful without becoming copying
+- Production has one coherent direction
+- The next agent can generate confidently

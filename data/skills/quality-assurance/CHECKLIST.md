@@ -1,0 +1,6 @@
+- Define quality standard is completed to a high standard
+- Identify defect entry points is completed to a high standard
+- Design checkpoints and ownership is completed to a high standard
+- Separate blocker severity is completed to a high standard
+- Build feedback loops is completed to a high standard
+- Keep QA practical is completed to a high standard

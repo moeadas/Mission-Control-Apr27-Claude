@@ -1,0 +1,8 @@
+- Data is complete and consistent across channels
+- Multi-touch attribution applied, not just last-click
+- Benchmarks are relevant to industry and market
+- Saturation curves are evidence-based
+- Overlap is quantified and addressable
+- Projections are conservative and defensible
+- Recommendations are actionable and phased
+- Tests have clear success metrics and timelines

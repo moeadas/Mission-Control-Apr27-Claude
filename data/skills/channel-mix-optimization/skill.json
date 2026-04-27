@@ -1,0 +1,108 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "channel-mix-optimization",
+  "name": "Channel Mix Optimization",
+  "description": "Optimizes the allocation of budget and effort across marketing channels to maximize reach, engagement, and ROI based on performance data, attribution insights, and audience behavior.",
+  "category": "media",
+  "difficulty": "advanced",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "current_channels",
+      "type": "string",
+      "required": true,
+      "description": "Active marketing channels"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Total media budget"
+    },
+    {
+      "name": "performance_period",
+      "type": "string",
+      "required": true,
+      "description": "Data period being analyzed"
+    },
+    {
+      "name": "primary_kpi",
+      "type": "string",
+      "required": true,
+      "description": "Primary optimization KPI (ROAS, CPA, etc.)"
+    },
+    {
+      "name": "attribution_model",
+      "type": "string",
+      "required": false,
+      "description": "Attribution model in use (last-click, linear, data-driven)"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "current_channels",
+      "type": "string",
+      "required": true,
+      "description": "Active marketing channels"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Total media budget"
+    },
+    {
+      "name": "performance_period",
+      "type": "string",
+      "required": true,
+      "description": "Data period being analyzed"
+    },
+    {
+      "name": "primary_kpi",
+      "type": "string",
+      "required": true,
+      "description": "Primary optimization KPI (ROAS, CPA, etc.)"
+    },
+    {
+      "name": "attribution_model",
+      "type": "string",
+      "required": false,
+      "description": "Attribution model in use (last-click, linear, data-driven)"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "analytics",
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "nova"
+  ],
+  "pipelines": [
+    "media-plan"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "media",
+      "optimization",
+      "channel-mix",
+      "performance"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

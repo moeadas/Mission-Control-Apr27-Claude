@@ -1,0 +1,82 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "headline-writing",
+  "name": "Headline Writing",
+  "description": "Creates sharp headlines, hooks, and title systems that increase attention, clarity, and click-through without becoming vague or gimmicky.",
+  "category": "content",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "content_type",
+      "type": "string",
+      "required": true,
+      "description": "Type of content: paid ad, organic article, landing page, email subject, social post"
+    },
+    {
+      "name": "core_benefit",
+      "type": "string",
+      "required": true,
+      "description": "The core benefit or insight the headline should communicate"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": false,
+      "description": "Target audience"
+    },
+    {
+      "name": "platform",
+      "type": "string",
+      "required": false,
+      "description": "Platform or placement constraints (character limits, etc.)"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "content_type",
+      "type": "string",
+      "required": true,
+      "description": "Type of content: paid ad, organic article, landing page, email subject, social post"
+    },
+    {
+      "name": "core_benefit",
+      "type": "string",
+      "required": true,
+      "description": "The core benefit or insight the headline should communicate"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": false,
+      "description": "Target audience"
+    },
+    {
+      "name": "platform",
+      "type": "string",
+      "required": false,
+      "description": "Platform or placement constraints (character limits, etc.)"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "echo"
+  ],
+  "pipelines": [
+    "content-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "headline-writing",
+      "copywriting",
+      "titles",
+      "advertising"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

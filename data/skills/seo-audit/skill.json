@@ -1,0 +1,23 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "seo-audit",
+  "name": "seo-audit",
+  "description": "Runs a structured SEO audit covering technical issues, on-page quality, content gaps, internal linking, authority signals, and prioritized next actions.",
+  "category": "general",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [],
+  "inputs": [],
+  "outputs": [],
+  "tools": [],
+  "agents": [
+    "atlas"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "lastUpdated": "2026-03-30",
+    "author": "agency",
+    "tags": []
+  }
+}

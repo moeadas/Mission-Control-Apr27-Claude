@@ -1,0 +1,95 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "hypothesis-testing",
+  "name": "Hypothesis Testing",
+  "description": "Creates strong test hypotheses with clear variables, expected outcomes, decision criteria, and business logic.",
+  "category": "research",
+  "difficulty": "advanced",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "question",
+      "type": "string",
+      "required": true,
+      "description": "The business question to answer"
+    },
+    {
+      "name": "variable",
+      "type": "string",
+      "required": true,
+      "description": "Variable being tested"
+    },
+    {
+      "name": "metric",
+      "type": "string",
+      "required": true,
+      "description": "Primary success metric"
+    },
+    {
+      "name": "sample",
+      "type": "string",
+      "required": false,
+      "description": "Expected sample size or traffic"
+    },
+    {
+      "name": "duration",
+      "type": "string",
+      "required": false,
+      "description": "Proposed test duration"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "question",
+      "type": "string",
+      "required": true,
+      "description": "The business question to answer"
+    },
+    {
+      "name": "variable",
+      "type": "string",
+      "required": true,
+      "description": "Variable being tested"
+    },
+    {
+      "name": "metric",
+      "type": "string",
+      "required": true,
+      "description": "Primary success metric"
+    },
+    {
+      "name": "sample",
+      "type": "string",
+      "required": false,
+      "description": "Expected sample size or traffic"
+    },
+    {
+      "name": "duration",
+      "type": "string",
+      "required": false,
+      "description": "Proposed test duration"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet",
+    "statistics"
+  ],
+  "agents": [
+    "atlas"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "hypothesis-testing",
+      "ab-testing",
+      "statistics",
+      "experimentation",
+      "data"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "differentiation-strategy",
+  "name": "Differentiation Strategy",
+  "description": "Develops a unique, ownable market position that creates competitive advantage — identifying what makes a brand meaningfully different and communicating it consistently across all touchpoints.",
+  "category": "strategy",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand being differentiated"
+    },
+    {
+      "name": "category",
+      "type": "string",
+      "required": true,
+      "description": "Competitive category"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Primary target audience"
+    },
+    {
+      "name": "competitors",
+      "type": "string",
+      "required": false,
+      "description": "Key competitors"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand being differentiated"
+    },
+    {
+      "name": "category",
+      "type": "string",
+      "required": true,
+      "description": "Competitive category"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Primary target audience"
+    },
+    {
+      "name": "competitors",
+      "type": "string",
+      "required": false,
+      "description": "Key competitors"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "maya"
+  ],
+  "pipelines": [
+    "strategy"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "strategy",
+      "differentiation",
+      "positioning",
+      "competitive"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

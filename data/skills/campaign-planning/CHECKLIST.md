@@ -1,0 +1,6 @@
+- All brief elements understood and documented
+- Segments are distinct and actionable
+- Channel selection justified by data
+- Budget supports campaign objectives
+- Timeline is realistic and achievable
+- KPIs are specific and trackable

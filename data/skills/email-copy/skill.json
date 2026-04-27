@@ -1,0 +1,89 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "email-copy",
+  "name": "Email Copywriting",
+  "description": "Writes high-converting email campaigns, sequences, and newsletters with sharp positioning, strong subject lines, and clear funnel intent.",
+  "category": "content",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "email_goal",
+      "type": "string",
+      "required": true,
+      "description": "Goal of the email: nurture leads, promote offer, deliver news, re-engage inactive subscribers"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience segment and their relationship to the brand"
+    },
+    {
+      "name": "offer_message",
+      "type": "string",
+      "required": true,
+      "description": "The core message, offer, or content of the email"
+    },
+    {
+      "name": "tone",
+      "type": "string",
+      "required": false,
+      "description": "Tone of voice: formal, casual, urgent, warm, professional"
+    },
+    {
+      "name": "cta",
+      "type": "string",
+      "required": false,
+      "description": "Primary call-to-action: what you want the reader to do"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "email_goal",
+      "type": "string",
+      "required": true,
+      "description": "Goal of the email: nurture leads, promote offer, deliver news, re-engage inactive subscribers"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience segment and their relationship to the brand"
+    },
+    {
+      "name": "offer_message",
+      "type": "string",
+      "required": true,
+      "description": "The core message, offer, or content of the email"
+    },
+    {
+      "name": "tone",
+      "type": "string",
+      "required": false,
+      "description": "Tone of voice: formal, casual, urgent, warm, professional"
+    },
+    {
+      "name": "cta",
+      "type": "string",
+      "required": false,
+      "description": "Primary call-to-action: what you want the reader to do"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "echo"
+  ],
+  "pipelines": [
+    "content-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [],
+    "lastUpdated": "2026-03-30"
+  }
+}

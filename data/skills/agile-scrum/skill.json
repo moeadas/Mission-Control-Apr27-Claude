@@ -1,0 +1,105 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "agile-scrum",
+  "name": "Agile / Scrum Framework",
+  "description": "Implements agile/Scrum workflows including sprint planning, ceremonies, velocity tracking, and continuous improvement.",
+  "category": "operations",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "team_name",
+      "type": "string",
+      "required": true,
+      "description": "Name of the team or project"
+    },
+    {
+      "name": "team_size",
+      "type": "string",
+      "required": true,
+      "description": "Number of team members"
+    },
+    {
+      "name": "team_roles",
+      "type": "string",
+      "required": true,
+      "description": "Team roles and assignments"
+    },
+    {
+      "name": "sprint_length",
+      "type": "string",
+      "required": true,
+      "description": "Sprint duration in weeks"
+    },
+    {
+      "name": "velocity",
+      "type": "string",
+      "required": false,
+      "description": "Historical velocity in story points"
+    },
+    {
+      "name": "working_days",
+      "type": "string",
+      "required": false,
+      "description": "Working days per week"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "team_name",
+      "type": "string",
+      "required": true,
+      "description": "Name of the team or project"
+    },
+    {
+      "name": "team_size",
+      "type": "string",
+      "required": true,
+      "description": "Number of team members"
+    },
+    {
+      "name": "team_roles",
+      "type": "string",
+      "required": true,
+      "description": "Team roles and assignments"
+    },
+    {
+      "name": "sprint_length",
+      "type": "string",
+      "required": true,
+      "description": "Sprint duration in weeks"
+    },
+    {
+      "name": "velocity",
+      "type": "string",
+      "required": false,
+      "description": "Historical velocity in story points"
+    },
+    {
+      "name": "working_days",
+      "type": "string",
+      "required": false,
+      "description": "Working days per week"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "piper"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "agile",
+      "scrum",
+      "project-management",
+      "delivery"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

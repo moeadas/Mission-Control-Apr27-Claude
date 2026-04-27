@@ -1,0 +1,71 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "scope-management",
+  "name": "Scope Management",
+  "description": "Defines, protects, and evolves project scope so teams can control delivery quality, resource use, and client expectations without creating unnecessary friction.",
+  "category": "client-management",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "current_scope",
+      "type": "string",
+      "required": true,
+      "description": "Current agreed project scope"
+    },
+    {
+      "name": "change_request",
+      "type": "string",
+      "required": true,
+      "description": "The new request or change being evaluated"
+    },
+    {
+      "name": "contract_terms",
+      "type": "string",
+      "required": false,
+      "description": "Contract terms related to scope changes"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "current_scope",
+      "type": "string",
+      "required": true,
+      "description": "Current agreed project scope"
+    },
+    {
+      "name": "change_request",
+      "type": "string",
+      "required": true,
+      "description": "The new request or change being evaluated"
+    },
+    {
+      "name": "contract_terms",
+      "type": "string",
+      "required": false,
+      "description": "Contract terms related to scope changes"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "piper",
+    "sage"
+  ],
+  "pipelines": [
+    "client-management-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "scope-management",
+      "change-control",
+      "project-management",
+      "client-management"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

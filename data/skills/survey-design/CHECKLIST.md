@@ -1,0 +1,4 @@
+- Objectives are measurable
+- Questions are clear and unbiased
+- Survey is navigable and not fatiguing
+- No errors or confusing items

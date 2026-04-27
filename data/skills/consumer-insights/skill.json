@@ -1,0 +1,83 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "consumer-insights",
+  "name": "Consumer Insights",
+  "description": "Discovers meaningful patterns in consumer behavior, attitudes, and motivations to generate actionable insights that inform brand strategy, creative development, and marketing decisions.",
+  "category": "research",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "research_question",
+      "type": "string",
+      "required": true,
+      "description": "The consumer question to answer"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience being studied"
+    },
+    {
+      "name": "data_sources",
+      "type": "string",
+      "required": false,
+      "description": "Available data sources"
+    },
+    {
+      "name": "brand_context",
+      "type": "string",
+      "required": false,
+      "description": "Brand context for the research"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "research_question",
+      "type": "string",
+      "required": true,
+      "description": "The consumer question to answer"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience being studied"
+    },
+    {
+      "name": "data_sources",
+      "type": "string",
+      "required": false,
+      "description": "Available data sources"
+    },
+    {
+      "name": "brand_context",
+      "type": "string",
+      "required": false,
+      "description": "Brand context for the research"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "atlas"
+  ],
+  "pipelines": [
+    "research"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "research",
+      "consumer-insights",
+      "behavior",
+      "strategy"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

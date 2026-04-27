@@ -1,0 +1,107 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "dashboard-creation",
+  "name": "Dashboard Creation",
+  "description": "Builds performance dashboards that consolidate metrics from multiple sources into clear, actionable views — enabling real-time visibility into campaign performance, ROAS, and business KPIs.",
+  "category": "analytics",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "dashboard_name",
+      "type": "string",
+      "required": true,
+      "description": "Name of the dashboard"
+    },
+    {
+      "name": "dashboard_purpose",
+      "type": "string",
+      "required": true,
+      "description": "Purpose of the dashboard"
+    },
+    {
+      "name": "stakeholders",
+      "type": "string",
+      "required": false,
+      "description": "Who will use this dashboard"
+    },
+    {
+      "name": "kpis",
+      "type": "string",
+      "required": false,
+      "description": "Key metrics to include"
+    },
+    {
+      "name": "data_sources",
+      "type": "string",
+      "required": false,
+      "description": "Data sources for the dashboard"
+    },
+    {
+      "name": "tools",
+      "type": "string",
+      "required": false,
+      "description": "Dashboard tools available (Tableau, Looker, etc.)"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "dashboard_name",
+      "type": "string",
+      "required": true,
+      "description": "Name of the dashboard"
+    },
+    {
+      "name": "dashboard_purpose",
+      "type": "string",
+      "required": true,
+      "description": "Purpose of the dashboard"
+    },
+    {
+      "name": "stakeholders",
+      "type": "string",
+      "required": false,
+      "description": "Who will use this dashboard"
+    },
+    {
+      "name": "kpis",
+      "type": "string",
+      "required": false,
+      "description": "Key metrics to include"
+    },
+    {
+      "name": "data_sources",
+      "type": "string",
+      "required": false,
+      "description": "Data sources for the dashboard"
+    },
+    {
+      "name": "tools",
+      "type": "string",
+      "required": false,
+      "description": "Dashboard tools available (Tableau, Looker, etc.)"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "dex"
+  ],
+  "pipelines": [
+    "analytics"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "analytics",
+      "dashboard",
+      "reporting",
+      "data"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

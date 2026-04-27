@@ -1,0 +1,94 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "insight-mining",
+  "name": "Insight Mining",
+  "description": "Extracts strategic insights from qualitative or quantitative inputs by separating observations, patterns, tensions, and implications.",
+  "category": "strategy",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "sources",
+      "type": "string",
+      "required": true,
+      "description": "Data and research sources to analyze"
+    },
+    {
+      "name": "question",
+      "type": "string",
+      "required": true,
+      "description": "Primary research question"
+    },
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand or client context"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": false,
+      "description": "Target audience for insights"
+    },
+    {
+      "name": "objective",
+      "type": "string",
+      "required": false,
+      "description": "Business objective driving this analysis"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "sources",
+      "type": "string",
+      "required": true,
+      "description": "Data and research sources to analyze"
+    },
+    {
+      "name": "question",
+      "type": "string",
+      "required": true,
+      "description": "Primary research question"
+    },
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand or client context"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": false,
+      "description": "Target audience for insights"
+    },
+    {
+      "name": "objective",
+      "type": "string",
+      "required": false,
+      "description": "Business objective driving this analysis"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "maya"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "insights",
+      "research",
+      "synthesis",
+      "strategy",
+      "data"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

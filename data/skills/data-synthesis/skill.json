@@ -1,0 +1,83 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "data-synthesis",
+  "name": "Data Synthesis",
+  "description": "Combines and synthesizes data from multiple sources — analytics, surveys, CRM, social, media platforms — into a coherent narrative that drives actionable marketing decisions.",
+  "category": "research",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "decision",
+      "type": "string",
+      "required": true,
+      "description": "Business decision the data should inform"
+    },
+    {
+      "name": "data_sources",
+      "type": "string",
+      "required": true,
+      "description": "Data sources to be synthesized"
+    },
+    {
+      "name": "time_period",
+      "type": "string",
+      "required": false,
+      "description": "Time period covered"
+    },
+    {
+      "name": "key_questions",
+      "type": "string",
+      "required": false,
+      "description": "Key questions the synthesis should answer"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "decision",
+      "type": "string",
+      "required": true,
+      "description": "Business decision the data should inform"
+    },
+    {
+      "name": "data_sources",
+      "type": "string",
+      "required": true,
+      "description": "Data sources to be synthesized"
+    },
+    {
+      "name": "time_period",
+      "type": "string",
+      "required": false,
+      "description": "Time period covered"
+    },
+    {
+      "name": "key_questions",
+      "type": "string",
+      "required": false,
+      "description": "Key questions the synthesis should answer"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "atlas"
+  ],
+  "pipelines": [
+    "analytics"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "research",
+      "data-synthesis",
+      "analytics",
+      "insights"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

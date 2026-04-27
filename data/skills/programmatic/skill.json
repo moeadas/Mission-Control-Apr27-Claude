@@ -1,0 +1,94 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "programmatic",
+  "name": "Programmatic Advertising",
+  "description": "Plans and executes automated media buying across programmatic platforms including DV360, Trade Desk, and Xandr to reach target audiences efficiently through real-time bidding.",
+  "category": "analytics",
+  "difficulty": "advanced",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "campaign_goal",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objective: awareness, consideration, or conversion"
+    },
+    {
+      "name": "audience_segments",
+      "type": "string",
+      "required": true,
+      "description": "Target audience segments: first-party data, third-party segments, lookalike models"
+    },
+    {
+      "name": "inventory_type",
+      "type": "string",
+      "required": true,
+      "description": "Inventory source: PMP, open exchange, programmatic guaranteed"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Campaign budget and bid strategy"
+    },
+    {
+      "name": "dsp_platform",
+      "type": "string",
+      "required": false,
+      "description": "Platform: DV360, Trade Desk, Xandr, or other DSP"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "campaign_goal",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objective: awareness, consideration, or conversion"
+    },
+    {
+      "name": "audience_segments",
+      "type": "string",
+      "required": true,
+      "description": "Target audience segments: first-party data, third-party segments, lookalike models"
+    },
+    {
+      "name": "inventory_type",
+      "type": "string",
+      "required": true,
+      "description": "Inventory source: PMP, open exchange, programmatic guaranteed"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Campaign budget and bid strategy"
+    },
+    {
+      "name": "dsp_platform",
+      "type": "string",
+      "required": false,
+      "description": "Platform: DV360, Trade Desk, Xandr, or other DSP"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [],
+  "pipelines": [
+    "media-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "programmatic",
+      "dv360",
+      "trade-desk",
+      "rtb",
+      "dsp"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

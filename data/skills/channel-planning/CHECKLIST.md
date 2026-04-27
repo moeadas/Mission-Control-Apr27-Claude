@@ -1,0 +1,8 @@
+- Each objective has a clear KPI
+- Data supports channel relevance
+- Scoring is consistent and evidence-based
+- Whitespace opportunities identified
+- Selection ties directly to objectives and audience
+- Allocation is defensible with benchmarks
+- Channels work as an integrated system
+- Success is measurable and reportable

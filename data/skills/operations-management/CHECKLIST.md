@@ -1,0 +1,6 @@
+- Define operating problem is completed to a high standard
+- Map workflow and bottlenecks is completed to a high standard
+- Design rhythms and ownership is completed to a high standard
+- Clarify tracking and escalation is completed to a high standard
+- Define health indicators is completed to a high standard
+- Keep system lightweight is completed to a high standard

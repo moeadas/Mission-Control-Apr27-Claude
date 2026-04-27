@@ -1,0 +1,95 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "seasonality-modeling",
+  "name": "Seasonality Modeling",
+  "description": "Models seasonal media spending patterns, audience behavior shifts, and demand fluctuations to optimize campaign timing and budget pacing across the calendar year.",
+  "category": "media",
+  "difficulty": "advanced",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "industry",
+      "type": "string",
+      "required": true,
+      "description": "Industry for category benchmarks"
+    },
+    {
+      "name": "market",
+      "type": "string",
+      "required": true,
+      "description": "Geographic market"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Annual media budget"
+    },
+    {
+      "name": "key_periods",
+      "type": "string",
+      "required": false,
+      "description": "Key seasonal periods to consider"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "industry",
+      "type": "string",
+      "required": true,
+      "description": "Industry for category benchmarks"
+    },
+    {
+      "name": "market",
+      "type": "string",
+      "required": true,
+      "description": "Geographic market"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Annual media budget"
+    },
+    {
+      "name": "key_periods",
+      "type": "string",
+      "required": false,
+      "description": "Key seasonal periods to consider"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "analytics",
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [
+    "nova"
+  ],
+  "pipelines": [
+    "media-plan"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "media",
+      "planning",
+      "seasonality-modeling"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

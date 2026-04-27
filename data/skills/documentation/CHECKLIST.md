@@ -1,0 +1,6 @@
+- Define purpose and audience is completed to a high standard
+- Gather source information is completed to a high standard
+- Design usable structure is completed to a high standard
+- Write instructions and examples is completed to a high standard
+- Add ownership and cadence is completed to a high standard
+- Validate for low-context users is completed to a high standard

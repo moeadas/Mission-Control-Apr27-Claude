@@ -1,0 +1,7 @@
+- The research question is decision-linked
+- Multiple evidence streams are considered
+- Observed facts and inferences are separated
+- Audience value drivers are clearly defined
+- Buying barriers are translated into messaging implications
+- Recommendations are practical and prioritized
+- Confidence level and uncertainty are stated

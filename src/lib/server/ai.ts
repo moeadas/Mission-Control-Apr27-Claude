@@ -197,8 +197,9 @@ export async function generateText(input: {
   ollamaBaseUrl?: string
   ollamaContextWindow?: number
   geminiApiKey?: string
+  timeoutMs?: number
 }) {
-  const timeoutMs = input.provider === 'gemini' ? 45000 : 90000
+  const timeoutMs = input.timeoutMs || (input.provider === 'gemini' ? 45000 : 90000)
   const createAbortSignal = () => AbortSignal.timeout(timeoutMs)
 
   if (input.provider === 'gemini') {

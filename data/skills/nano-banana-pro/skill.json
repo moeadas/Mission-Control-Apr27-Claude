@@ -1,0 +1,152 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "nano-banana-pro",
+  "name": "Nano Banana Pro",
+  "description": "Runs production-grade Nano Banana Pro image generation and editing workflows with strict brand compliance, reference-image handling, layout fidelity, text rendering guidance, and packaged prompt templates.",
+  "category": "creative",
+  "difficulty": "advanced",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "objective",
+      "type": "string",
+      "required": true,
+      "description": "What the visual needs to achieve"
+    },
+    {
+      "name": "platform",
+      "type": "string",
+      "required": true,
+      "description": "Placement channel such as Instagram or Facebook"
+    },
+    {
+      "name": "aspect_ratio",
+      "type": "string",
+      "required": true,
+      "description": "Required format"
+    },
+    {
+      "name": "brand_kit",
+      "type": "string",
+      "required": false,
+      "description": "Brand colors, fonts, templates, and style rules"
+    },
+    {
+      "name": "reference_assets",
+      "type": "string",
+      "required": false,
+      "description": "Reference images or approved inspirations"
+    },
+    {
+      "name": "template_assets",
+      "type": "string",
+      "required": false,
+      "description": "Layout or composition templates that must be followed"
+    },
+    {
+      "name": "overlay_text",
+      "type": "string",
+      "required": false,
+      "description": "Headline or copy that must appear on the image"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "objective",
+      "type": "string",
+      "required": true,
+      "description": "What the visual needs to achieve"
+    },
+    {
+      "name": "platform",
+      "type": "string",
+      "required": true,
+      "description": "Placement channel such as Instagram or Facebook"
+    },
+    {
+      "name": "aspect_ratio",
+      "type": "string",
+      "required": true,
+      "description": "Required format"
+    },
+    {
+      "name": "brand_kit",
+      "type": "string",
+      "required": false,
+      "description": "Brand colors, fonts, templates, and style rules"
+    },
+    {
+      "name": "reference_assets",
+      "type": "string",
+      "required": false,
+      "description": "Reference images or approved inspirations"
+    },
+    {
+      "name": "template_assets",
+      "type": "string",
+      "required": false,
+      "description": "Layout or composition templates that must be followed"
+    },
+    {
+      "name": "overlay_text",
+      "type": "string",
+      "required": false,
+      "description": "Headline or copy that must appear on the image"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "image-gen",
+    "figma"
+  ],
+  "agents": [
+    "lyra"
+  ],
+  "pipelines": [
+    "creative-asset"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "mission-control",
+    "tags": [
+      "nano-banana",
+      "image-generation",
+      "brand-safe",
+      "packaged-skill"
+    ],
+    "lastUpdated": "2026-04-05",
+    "bundle": {
+      "type": "package",
+      "entry": "SKILL.md",
+      "packageDir": "data/skill-packages/nano-banana-pro",
+      "files": [
+        {
+          "relativePath": "SKILL.md",
+          "role": "skill",
+          "size": 0
+        },
+        {
+          "relativePath": "README.md",
+          "role": "readme",
+          "size": 0
+        },
+        {
+          "relativePath": "references/BRAND_COMPLIANCE.md",
+          "role": "reference",
+          "size": 0
+        },
+        {
+          "relativePath": "references/PROMPT_TEMPLATES.md",
+          "role": "reference",
+          "size": 0
+        },
+        {
+          "relativePath": "scripts/generate_image.py",
+          "role": "script",
+          "size": 0
+        }
+      ]
+    }
+  }
+}

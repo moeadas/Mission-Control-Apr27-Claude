@@ -1,0 +1,84 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "trend-analysis",
+  "name": "Trend Analysis",
+  "description": "Identifies, monitors, and interprets emerging and declining patterns in advertising performance, consumer behavior, and market dynamics to inform strategic decisions.",
+  "category": "research",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "metrics",
+      "type": "string",
+      "required": true,
+      "description": "Key performance metrics to analyze (ROAS, CTR, CPA, impressions, etc.)"
+    },
+    {
+      "name": "time_range",
+      "type": "string",
+      "required": true,
+      "description": "Time period for analysis: last 3 months, past year, 2-year trend"
+    },
+    {
+      "name": "granularity",
+      "type": "string",
+      "required": false,
+      "description": "Data frequency: daily, weekly, monthly (default: monthly)"
+    },
+    {
+      "name": "industry_context",
+      "type": "string",
+      "required": false,
+      "description": "Any known market events, seasonality, or competitive activity during the period"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "metrics",
+      "type": "string",
+      "required": true,
+      "description": "Key performance metrics to analyze (ROAS, CTR, CPA, impressions, etc.)"
+    },
+    {
+      "name": "time_range",
+      "type": "string",
+      "required": true,
+      "description": "Time period for analysis: last 3 months, past year, 2-year trend"
+    },
+    {
+      "name": "granularity",
+      "type": "string",
+      "required": false,
+      "description": "Data frequency: daily, weekly, monthly (default: monthly)"
+    },
+    {
+      "name": "industry_context",
+      "type": "string",
+      "required": false,
+      "description": "Any known market events, seasonality, or competitive activity during the period"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "document",
+    "## Strategy"
+  ],
+  "agents": [
+    "maya"
+  ],
+  "pipelines": [
+    "analytics-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "trends",
+      "time-series",
+      "analytics",
+      "performance"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

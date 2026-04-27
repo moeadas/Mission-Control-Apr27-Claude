@@ -1,0 +1,104 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "account-health",
+  "name": "Account Health Check",
+  "description": "Reviews client account health across revenue, satisfaction, engagement, and performance. Generates health scores and recommended actions.",
+  "category": "client-services",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "account_name",
+      "type": "string",
+      "required": true,
+      "description": "Client account name"
+    },
+    {
+      "name": "industry",
+      "type": "string",
+      "required": true,
+      "description": "Client industry"
+    },
+    {
+      "name": "current_revenue",
+      "type": "string",
+      "required": true,
+      "description": "Current annual revenue from account"
+    },
+    {
+      "name": "renewal_date",
+      "type": "string",
+      "required": true,
+      "description": "Contract renewal or expiry date"
+    },
+    {
+      "name": "nps_score",
+      "type": "string",
+      "required": false,
+      "description": "Most recent NPS score"
+    },
+    {
+      "name": "competitors",
+      "type": "string",
+      "required": false,
+      "description": "Known competing agencies"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "account_name",
+      "type": "string",
+      "required": true,
+      "description": "Client account name"
+    },
+    {
+      "name": "industry",
+      "type": "string",
+      "required": true,
+      "description": "Client industry"
+    },
+    {
+      "name": "current_revenue",
+      "type": "string",
+      "required": true,
+      "description": "Current annual revenue from account"
+    },
+    {
+      "name": "renewal_date",
+      "type": "string",
+      "required": true,
+      "description": "Contract renewal or expiry date"
+    },
+    {
+      "name": "nps_score",
+      "type": "string",
+      "required": false,
+      "description": "Most recent NPS score"
+    },
+    {
+      "name": "competitors",
+      "type": "string",
+      "required": false,
+      "description": "Known competing agencies"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "analytics"
+  ],
+  "agents": [
+    "sage"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "account-management",
+      "client-health",
+      "retention"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

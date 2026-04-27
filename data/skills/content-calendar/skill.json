@@ -1,0 +1,94 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "content-calendar",
+  "name": "content-calendar",
+  "description": "Builds strategic multi-platform content calendars that align themes, cadence, campaign moments, and channel-native formats with business goals.",
+  "category": "content",
+  "difficulty": "beginner",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "platforms",
+      "type": "string",
+      "required": true,
+      "description": "Social platforms (Instagram, LinkedIn, Twitter, etc)"
+    },
+    {
+      "name": "frequency",
+      "type": "string",
+      "required": true,
+      "description": "Posts per week per platform"
+    },
+    {
+      "name": "objectives",
+      "type": "string",
+      "required": true,
+      "description": "Content goals (awareness, engagement, leads)"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Primary audience"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "platforms",
+      "type": "string",
+      "required": true,
+      "description": "Social platforms (Instagram, LinkedIn, Twitter, etc)"
+    },
+    {
+      "name": "frequency",
+      "type": "string",
+      "required": true,
+      "description": "Posts per week per platform"
+    },
+    {
+      "name": "objectives",
+      "type": "string",
+      "required": true,
+      "description": "Content goals (awareness, engagement, leads)"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Primary audience"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "document",
+    "presentation"
+  ],
+  "agents": [],
+  "pipelines": [
+    "content-calendar"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "content",
+      "social media",
+      "planning",
+      "editorial"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

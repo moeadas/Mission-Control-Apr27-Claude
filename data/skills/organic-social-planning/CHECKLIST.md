@@ -1,0 +1,7 @@
+- Baseline performance is documented
+- Selection is evidence-based
+- Pillars cover brand, audience, and culture
+- Formats match platform best practices
+- Cadence is realistic for available resources
+- Response times and escalation defined
+- Tactics are platform-specific and current

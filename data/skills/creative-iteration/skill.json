@@ -1,0 +1,85 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "creative-iteration",
+  "name": "Creative Iteration",
+  "description": "Manages the creative review and iteration process, synthesizing feedback from clients and stakeholders into clear direction for designers and copywriters.",
+  "category": "creative",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "project_name",
+      "type": "string",
+      "required": true,
+      "description": "Project or campaign name"
+    },
+    {
+      "name": "current_work",
+      "type": "string",
+      "required": true,
+      "description": "Description of current creative state"
+    },
+    {
+      "name": "stakeholders",
+      "type": "string",
+      "required": true,
+      "description": "List of stakeholders who provided feedback"
+    },
+    {
+      "name": "current_version",
+      "type": "string",
+      "required": false,
+      "description": "Current version number or identifier"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "project_name",
+      "type": "string",
+      "required": true,
+      "description": "Project or campaign name"
+    },
+    {
+      "name": "current_work",
+      "type": "string",
+      "required": true,
+      "description": "Description of current creative state"
+    },
+    {
+      "name": "stakeholders",
+      "type": "string",
+      "required": true,
+      "description": "List of stakeholders who provided feedback"
+    },
+    {
+      "name": "current_version",
+      "type": "string",
+      "required": false,
+      "description": "Current version number or identifier"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "finn",
+    "lyra"
+  ],
+  "pipelines": [
+    "creative-review"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "creative",
+      "iteration",
+      "review",
+      "feedback",
+      "project-management"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

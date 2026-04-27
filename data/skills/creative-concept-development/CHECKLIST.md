@@ -1,0 +1,7 @@
+- Concepts are strategically grounded
+- Enough variety to make a real choice
+- Each concept is distinctive and ownable
+- Concepts are adaptable and flexible
+- Recommendation is justified
+- Client can make an informed choice
+- Direction is clear for production

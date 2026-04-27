@@ -1,0 +1,6 @@
+- Personality is distinctive and authentic
+- Voice is ownable and differentiable from competitors
+- Tone variations are clear and practical
+- Rules are specific enough to be useful
+- Examples show voice in real copy situations
+- Audit identifies gaps and inconsistencies

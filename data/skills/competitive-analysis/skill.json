@@ -1,0 +1,84 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "competitive-analysis",
+  "name": "Competitive Analysis",
+  "description": "Analyzes competitors' strategies, positioning, products, pricing, and marketing to inform strategic decisions and identify opportunities for differentiation.",
+  "category": "strategy",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Your brand or client name"
+    },
+    {
+      "name": "market",
+      "type": "string",
+      "required": true,
+      "description": "Market or category being analyzed"
+    },
+    {
+      "name": "competitors",
+      "type": "string",
+      "required": true,
+      "description": "Competitors to analyze"
+    },
+    {
+      "name": "analysis_objective",
+      "type": "string",
+      "required": false,
+      "description": "Specific objective of this analysis"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Your brand or client name"
+    },
+    {
+      "name": "market",
+      "type": "string",
+      "required": true,
+      "description": "Market or category being analyzed"
+    },
+    {
+      "name": "competitors",
+      "type": "string",
+      "required": true,
+      "description": "Competitors to analyze"
+    },
+    {
+      "name": "analysis_objective",
+      "type": "string",
+      "required": false,
+      "description": "Specific objective of this analysis"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet",
+    "web-search"
+  ],
+  "agents": [
+    "maya"
+  ],
+  "pipelines": [
+    "research"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "strategy",
+      "competitive-analysis",
+      "market-research",
+      "positioning"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

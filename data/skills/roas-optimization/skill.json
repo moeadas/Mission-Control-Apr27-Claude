@@ -1,0 +1,72 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "roas-optimization",
+  "name": "ROAS Optimization",
+  "description": "Optimizes Return on Ad Spend (ROAS) by identifying underperforming campaigns, reallocating budget, adjusting bidding, and refining audience and creative strategies.",
+  "category": "analytics",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "account_name",
+      "type": "string",
+      "required": true,
+      "description": "Account or campaign to optimize"
+    },
+    {
+      "name": "target_roas",
+      "type": "string",
+      "required": true,
+      "description": "Target ROAS"
+    },
+    {
+      "name": "constraints",
+      "type": "string",
+      "required": false,
+      "description": "Any constraints (minimum spend, pacing requirements)"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "account_name",
+      "type": "string",
+      "required": true,
+      "description": "Account or campaign to optimize"
+    },
+    {
+      "name": "target_roas",
+      "type": "string",
+      "required": true,
+      "description": "Target ROAS"
+    },
+    {
+      "name": "constraints",
+      "type": "string",
+      "required": false,
+      "description": "Any constraints (minimum spend, pacing requirements)"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "analytics",
+    "ad-platform"
+  ],
+  "agents": [
+    "dex"
+  ],
+  "pipelines": [
+    "optimization"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "analytics",
+      "roas",
+      "optimization",
+      "media"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

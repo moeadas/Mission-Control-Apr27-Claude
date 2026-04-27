@@ -1,0 +1,7 @@
+- Clear picture of what's working
+- Root causes understood
+- Reallocation is logical and respects constraints
+- Changes are data-supported
+- Refinements are tested, not assumed
+- Changes validated before full rollout
+- Improvement is measurable

@@ -1,0 +1,7 @@
+- Objectives are measurable
+- Audiences cover prospecting and retargeting
+- Allocation matches audience and objective
+- Structure supports testing and optimization
+- Creative varies by audience and platform
+- Bids align with efficiency targets
+- Tests have clear hypotheses and metrics

@@ -1,0 +1,6 @@
+- Define business objective is completed to a high standard
+- Clarify scope boundaries is completed to a high standard
+- Identify scope-creep risks is completed to a high standard
+- Create change-control path is completed to a high standard
+- Prepare client communication is completed to a high standard
+- Monitor scope health is completed to a high standard

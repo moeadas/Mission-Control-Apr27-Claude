@@ -1,0 +1,5 @@
+- Design will yield actionable insights
+- Data is representative and current
+- Segments are meaningful and differentiable
+- Insights are surprising and actionable
+- Findings are credible

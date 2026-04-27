@@ -1,0 +1,6 @@
+- The prompt knows what is being generated and why
+- The prompt cannot drift into a generic look
+- Reference hierarchy is explicit
+- Prompt is precise enough for repeatable rendering
+- Negative prompt closes the main risks
+- Variations differ without breaking identity

@@ -1,0 +1,5 @@
+- Complete list
+- First impression is recorded
+- Decision is clear for each item
+- Capacity is checked
+- No one is left wondering

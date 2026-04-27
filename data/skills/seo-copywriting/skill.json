@@ -1,0 +1,94 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "seo-copywriting",
+  "name": "SEO Copywriting",
+  "description": "Writes search engine optimized content that ranks well for target keywords while maintaining readability, engagement, and brand voice for advertising and marketing websites.",
+  "category": "content",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "target_keyword",
+      "type": "string",
+      "required": true,
+      "description": "Primary keyword the content should rank for"
+    },
+    {
+      "name": "search_intent",
+      "type": "string",
+      "required": true,
+      "description": "Primary search intent: informational, commercial, transactional, navigational"
+    },
+    {
+      "name": "content_type",
+      "type": "string",
+      "required": true,
+      "description": "Content format: blog post, landing page, product page, pillar page"
+    },
+    {
+      "name": "word_count",
+      "type": "string",
+      "required": false,
+      "description": "Target word count"
+    },
+    {
+      "name": "key_points",
+      "type": "string",
+      "required": false,
+      "description": "Key messages, facts, or points the content must cover"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "target_keyword",
+      "type": "string",
+      "required": true,
+      "description": "Primary keyword the content should rank for"
+    },
+    {
+      "name": "search_intent",
+      "type": "string",
+      "required": true,
+      "description": "Primary search intent: informational, commercial, transactional, navigational"
+    },
+    {
+      "name": "content_type",
+      "type": "string",
+      "required": true,
+      "description": "Content format: blog post, landing page, product page, pillar page"
+    },
+    {
+      "name": "word_count",
+      "type": "string",
+      "required": false,
+      "description": "Target word count"
+    },
+    {
+      "name": "key_points",
+      "type": "string",
+      "required": false,
+      "description": "Key messages, facts, or points the content must cover"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "echo"
+  ],
+  "pipelines": [
+    "content-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "seo-copywriting",
+      "content-writing",
+      "copywriting",
+      "seo"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

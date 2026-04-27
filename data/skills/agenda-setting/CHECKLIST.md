@@ -1,0 +1,5 @@
+- Objective is specific and achievable
+- Outcomes are measurable
+- Flow builds toward decisions
+- Time allocations are realistic
+- Pre-work is clear and assigned

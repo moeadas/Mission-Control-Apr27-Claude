@@ -1,0 +1,6 @@
+- Define KPI hierarchy is completed to a high standard
+- Find bottlenecks is completed to a high standard
+- Prioritize hypotheses is completed to a high standard
+- Design test roadmap is completed to a high standard
+- Separate quick wins from structural fixes is completed to a high standard
+- Define learning loop is completed to a high standard

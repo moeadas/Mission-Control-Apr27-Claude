@@ -1,0 +1,4 @@
+- Data is current and accurate
+- Status is honest and clear
+- Highlights are meaningful
+- Risks are not buried

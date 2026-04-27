@@ -1,0 +1,9 @@
+- Clarify brief is completed to a high standard
+- Define content pillars is completed to a high standard
+- Map platform roles is completed to a high standard
+- Set cadence is completed to a high standard
+- Plan weekly themes is completed to a high standard
+- Design format mix is completed to a high standard
+- Build calendar is completed to a high standard
+- Add repurposing is completed to a high standard
+- Stress-test execution is completed to a high standard

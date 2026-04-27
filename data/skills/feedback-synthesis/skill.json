@@ -1,0 +1,82 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "feedback-synthesis",
+  "name": "Feedback Synthesis",
+  "description": "Transforms client and stakeholder feedback into clear, actionable items that drive creative iteration, project improvements, and aligned deliverables without losing the core intent of the original feedback.",
+  "category": "client-management",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "feedback_sources",
+      "type": "string",
+      "required": true,
+      "description": "Who provided feedback: stakeholder names, roles"
+    },
+    {
+      "name": "feedback_content",
+      "type": "string",
+      "required": true,
+      "description": "The actual feedback provided, verbatim or summarized"
+    },
+    {
+      "name": "original_brief",
+      "type": "string",
+      "required": false,
+      "description": "The original creative or project brief"
+    },
+    {
+      "name": "deliverable",
+      "type": "string",
+      "required": false,
+      "description": "What deliverable the feedback relates to"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "feedback_sources",
+      "type": "string",
+      "required": true,
+      "description": "Who provided feedback: stakeholder names, roles"
+    },
+    {
+      "name": "feedback_content",
+      "type": "string",
+      "required": true,
+      "description": "The actual feedback provided, verbatim or summarized"
+    },
+    {
+      "name": "original_brief",
+      "type": "string",
+      "required": false,
+      "description": "The original creative or project brief"
+    },
+    {
+      "name": "deliverable",
+      "type": "string",
+      "required": false,
+      "description": "What deliverable the feedback relates to"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document"
+  ],
+  "agents": [
+    "sage"
+  ],
+  "pipelines": [
+    "client-management-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "feedback-synthesis",
+      "creative-briefing",
+      "revision-management",
+      "client-communication"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

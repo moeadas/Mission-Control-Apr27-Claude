@@ -1,0 +1,4 @@
+- No feedback is lost or missed
+- Patterns are clearly identified
+- Actions are specific and implementable
+- All conflicts are resolved

@@ -1,0 +1,84 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "brand-consistency",
+  "name": "Brand Consistency",
+  "description": "Ensures all creative output maintains consistent brand standards across visuals, tone, messaging, and execution — protecting brand integrity across every touchpoint.",
+  "category": "creative",
+  "difficulty": "intermediate",
+  "freedom": "low",
+  "variables": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand being reviewed"
+    },
+    {
+      "name": "creative_asset",
+      "type": "string",
+      "required": true,
+      "description": "Specific creative asset being reviewed"
+    },
+    {
+      "name": "deliverable_type",
+      "type": "string",
+      "required": false,
+      "description": "Type of deliverable (banner, social post, video, etc.)"
+    },
+    {
+      "name": "channel",
+      "type": "string",
+      "required": false,
+      "description": "Channel where the asset will run"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand being reviewed"
+    },
+    {
+      "name": "creative_asset",
+      "type": "string",
+      "required": true,
+      "description": "Specific creative asset being reviewed"
+    },
+    {
+      "name": "deliverable_type",
+      "type": "string",
+      "required": false,
+      "description": "Type of deliverable (banner, social post, video, etc.)"
+    },
+    {
+      "name": "channel",
+      "type": "string",
+      "required": false,
+      "description": "Channel where the asset will run"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "finn",
+    "lyra"
+  ],
+  "pipelines": [
+    "creative-review"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "creative",
+      "brand",
+      "quality",
+      "consistency"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

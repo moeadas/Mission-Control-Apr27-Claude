@@ -1,0 +1,106 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "attribution-modeling",
+  "name": "Attribution Modeling",
+  "description": "Analyzes marketing attribution across channels using multiple models. Generates channel scores and budget reallocation recommendations.",
+  "category": "media",
+  "difficulty": "advanced",
+  "freedom": "low",
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "customer_type",
+      "type": "string",
+      "required": true,
+      "description": "Type of customer or transaction"
+    },
+    {
+      "name": "channels",
+      "type": "string",
+      "required": true,
+      "description": "Marketing channels to analyze"
+    },
+    {
+      "name": "time_period",
+      "type": "string",
+      "required": true,
+      "description": "Analysis time period"
+    },
+    {
+      "name": "attribution_model",
+      "type": "string",
+      "required": true,
+      "description": "Primary attribution model"
+    },
+    {
+      "name": "total_budget",
+      "type": "string",
+      "required": false,
+      "description": "Total marketing budget"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client or brand name"
+    },
+    {
+      "name": "customer_type",
+      "type": "string",
+      "required": true,
+      "description": "Type of customer or transaction"
+    },
+    {
+      "name": "channels",
+      "type": "string",
+      "required": true,
+      "description": "Marketing channels to analyze"
+    },
+    {
+      "name": "time_period",
+      "type": "string",
+      "required": true,
+      "description": "Analysis time period"
+    },
+    {
+      "name": "attribution_model",
+      "type": "string",
+      "required": true,
+      "description": "Primary attribution model"
+    },
+    {
+      "name": "total_budget",
+      "type": "string",
+      "required": false,
+      "description": "Total marketing budget"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "analytics"
+  ],
+  "agents": [
+    "dex",
+    "nova"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "attribution",
+      "analytics",
+      "media",
+      "roi"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "creative-quality",
+  "name": "Creative Quality Assurance",
+  "description": "Reviews creative deliverables against the brief, brand guidelines, and quality standards before client delivery, ensuring all work meets agency and client expectations.",
+  "category": "creative",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "deliverable_name",
+      "type": "string",
+      "required": true,
+      "description": "Name of the deliverable being reviewed"
+    },
+    {
+      "name": "brief_version",
+      "type": "string",
+      "required": true,
+      "description": "Brief version the deliverable was created against"
+    },
+    {
+      "name": "brand_guidelines_version",
+      "type": "string",
+      "required": false,
+      "description": "Brand guidelines version being used"
+    },
+    {
+      "name": "version",
+      "type": "string",
+      "required": false,
+      "description": "Version number of the deliverable"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "deliverable_name",
+      "type": "string",
+      "required": true,
+      "description": "Name of the deliverable being reviewed"
+    },
+    {
+      "name": "brief_version",
+      "type": "string",
+      "required": true,
+      "description": "Brief version the deliverable was created against"
+    },
+    {
+      "name": "brand_guidelines_version",
+      "type": "string",
+      "required": false,
+      "description": "Brand guidelines version being used"
+    },
+    {
+      "name": "version",
+      "type": "string",
+      "required": false,
+      "description": "Version number of the deliverable"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "finn",
+    "lyra"
+  ],
+  "pipelines": [
+    "creative-review"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "creative",
+      "qa",
+      "quality",
+      "review",
+      "approval"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

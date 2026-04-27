@@ -1,0 +1,108 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "audience-targeting",
+  "name": "Audience Targeting",
+  "description": "Defines audience targeting strategies for paid media including demographics, lookalike modeling, exclusions, and optimization plans.",
+  "category": "media",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client brand name"
+    },
+    {
+      "name": "campaign_name",
+      "type": "string",
+      "required": true,
+      "description": "Campaign name"
+    },
+    {
+      "name": "campaign_objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objective (awareness, consideration, conversion)"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Primary target audience"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Campaign budget"
+    },
+    {
+      "name": "exclusion_criteria",
+      "type": "string",
+      "required": false,
+      "description": "Exclusion parameters"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client brand name"
+    },
+    {
+      "name": "campaign_name",
+      "type": "string",
+      "required": true,
+      "description": "Campaign name"
+    },
+    {
+      "name": "campaign_objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objective (awareness, consideration, conversion)"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Primary target audience"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Campaign budget"
+    },
+    {
+      "name": "exclusion_criteria",
+      "type": "string",
+      "required": false,
+      "description": "Exclusion parameters"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "analytics",
+    "spreadsheet"
+  ],
+  "agents": [
+    "dex",
+    "nova"
+  ],
+  "pipelines": [
+    "media-plan"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "targeting",
+      "media",
+      "audience",
+      "paid-ads"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

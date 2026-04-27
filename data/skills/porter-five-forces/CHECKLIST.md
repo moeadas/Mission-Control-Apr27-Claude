@@ -1,0 +1,7 @@
+- Scope is clear and defensible
+- Analysis is evidence-based
+- Barriers are current and accurate
+- Power dynamics are well-evidenced
+- Substitutes are correctly identified
+- Assessment is balanced and logical
+- Recommendations are specific and actionable

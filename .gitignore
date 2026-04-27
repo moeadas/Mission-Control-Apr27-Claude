@@ -18,6 +18,10 @@ build/
 .env.local
 .env.*.local
 
+# Local-only secrets storage (per-user provider settings, API keys)
+# DO NOT commit. Rotate any keys that have already been committed.
+data/provider-secrets.json
+
 # IDE
 .vscode/
 .idea/

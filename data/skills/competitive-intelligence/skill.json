@@ -1,0 +1,80 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "competitive-intelligence",
+  "name": "Competitive Intelligence",
+  "description": "Systematically monitors and analyzes competitor activities, market shifts, and industry developments to keep the agency and clients informed and ahead of competitive threats.",
+  "category": "strategy",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Your brand or client name"
+    },
+    {
+      "name": "competitors",
+      "type": "string",
+      "required": true,
+      "description": "Competitors to monitor"
+    },
+    {
+      "name": "scope",
+      "type": "string",
+      "required": false,
+      "description": "Scope of intelligence (all channels, specific markets, etc.)"
+    },
+    {
+      "name": "cadence",
+      "type": "string",
+      "required": false,
+      "description": "Reporting frequency"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Your brand or client name"
+    },
+    {
+      "name": "competitors",
+      "type": "string",
+      "required": true,
+      "description": "Competitors to monitor"
+    },
+    {
+      "name": "scope",
+      "type": "string",
+      "required": false,
+      "description": "Scope of intelligence (all channels, specific markets, etc.)"
+    },
+    {
+      "name": "cadence",
+      "type": "string",
+      "required": false,
+      "description": "Reporting frequency"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet",
+    "web-search",
+    "social-monitoring"
+  ],
+  "agents": [
+    "atlas"
+  ],
+  "pipelines": [
+    "research"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [],
+    "lastUpdated": "2026-03-30"
+  }
+}

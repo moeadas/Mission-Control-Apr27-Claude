@@ -1,0 +1,84 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "trend-identification",
+  "name": "Trend Identification",
+  "description": "Spots emerging performance trends early in advertising data to enable proactive optimization, budget reallocation, and strategic pivots before trends become obvious.",
+  "category": "analytics",
+  "difficulty": "intermediate",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "metrics",
+      "type": "string",
+      "required": true,
+      "description": "Performance metrics to monitor: CTR, CPC, ROAS, impressions, conversions, CPA"
+    },
+    {
+      "name": "time_period",
+      "type": "string",
+      "required": true,
+      "description": "Time window for analysis: daily, weekly, monthly"
+    },
+    {
+      "name": "benchmarks",
+      "type": "string",
+      "required": false,
+      "description": "Benchmarks to compare against: industry averages, past performance, targets"
+    },
+    {
+      "name": "alert_threshold",
+      "type": "string",
+      "required": false,
+      "description": "Change threshold that triggers an alert (e.g., >10% change)"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "metrics",
+      "type": "string",
+      "required": true,
+      "description": "Performance metrics to monitor: CTR, CPC, ROAS, impressions, conversions, CPA"
+    },
+    {
+      "name": "time_period",
+      "type": "string",
+      "required": true,
+      "description": "Time window for analysis: daily, weekly, monthly"
+    },
+    {
+      "name": "benchmarks",
+      "type": "string",
+      "required": false,
+      "description": "Benchmarks to compare against: industry averages, past performance, targets"
+    },
+    {
+      "name": "alert_threshold",
+      "type": "string",
+      "required": false,
+      "description": "Change threshold that triggers an alert (e.g., >10% change)"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "document",
+    "## Business Development"
+  ],
+  "agents": [
+    "dex"
+  ],
+  "pipelines": [
+    "analytics-pipeline"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "trends",
+      "performance-monitoring",
+      "alerts",
+      "analytics"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

@@ -1,0 +1,7 @@
+- Platforms are aligned with audience and goal
+- Structure supports optimization and clear reporting
+- Targeting is specific yet scalable
+- Budget allocation makes sense for objectives
+- All tracking fires correctly in testing
+- Creative knows exactly what's needed
+- Everything is correct before going live

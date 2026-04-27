@@ -1,0 +1,94 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "bid-management",
+  "name": "Bid Management",
+  "description": "Manages bid strategies for paid search and display campaigns across Google Ads, Meta, and other platforms to maximize ROAS, achieve target CPA, and optimize budget allocation in real time.",
+  "category": "analytics",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "campaign_name",
+      "type": "string",
+      "required": true,
+      "description": "Campaign being managed"
+    },
+    {
+      "name": "platform",
+      "type": "string",
+      "required": true,
+      "description": "Advertising platform (Google Ads, Meta, etc.)"
+    },
+    {
+      "name": "target_cpa",
+      "type": "string",
+      "required": false,
+      "description": "Target cost per acquisition"
+    },
+    {
+      "name": "target_roas",
+      "type": "string",
+      "required": false,
+      "description": "Target return on ad spend"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": false,
+      "description": "Campaign budget"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "campaign_name",
+      "type": "string",
+      "required": true,
+      "description": "Campaign being managed"
+    },
+    {
+      "name": "platform",
+      "type": "string",
+      "required": true,
+      "description": "Advertising platform (Google Ads, Meta, etc.)"
+    },
+    {
+      "name": "target_cpa",
+      "type": "string",
+      "required": false,
+      "description": "Target cost per acquisition"
+    },
+    {
+      "name": "target_roas",
+      "type": "string",
+      "required": false,
+      "description": "Target return on ad spend"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": false,
+      "description": "Campaign budget"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "document"
+  ],
+  "agents": [],
+  "pipelines": [
+    "paid-search",
+    "display"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "paid-search",
+      "bid-management",
+      "google-ads",
+      "optimization"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

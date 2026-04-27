@@ -1,0 +1,6 @@
+- Major platforms are covered
+- Selection is evidence-based
+- Targeting is precise but scalable
+- Specs match platform requirements
+- Caps prevent over-exposure
+- Measurement covers reach and impact

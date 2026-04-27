@@ -1,0 +1,104 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "agenda-setting",
+  "name": "Agenda Setting",
+  "description": "Builds structured, outcome-focused meeting agendas and workshop outlines. Covers flow design, time allocation, and pre-work preparation.",
+  "category": "operations",
+  "difficulty": "beginner",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "meeting_name",
+      "type": "string",
+      "required": true,
+      "description": "Meeting or workshop title"
+    },
+    {
+      "name": "meeting_type",
+      "type": "string",
+      "required": true,
+      "description": "Type (brainstorm, review, decision, status update)"
+    },
+    {
+      "name": "duration",
+      "type": "string",
+      "required": true,
+      "description": "Meeting duration"
+    },
+    {
+      "name": "attendees",
+      "type": "string",
+      "required": true,
+      "description": "List of attendees with roles"
+    },
+    {
+      "name": "meeting_objective",
+      "type": "string",
+      "required": true,
+      "description": "Primary meeting goal"
+    },
+    {
+      "name": "facilitators",
+      "type": "string",
+      "required": false,
+      "description": "Topic facilitators"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "meeting_name",
+      "type": "string",
+      "required": true,
+      "description": "Meeting or workshop title"
+    },
+    {
+      "name": "meeting_type",
+      "type": "string",
+      "required": true,
+      "description": "Type (brainstorm, review, decision, status update)"
+    },
+    {
+      "name": "duration",
+      "type": "string",
+      "required": true,
+      "description": "Meeting duration"
+    },
+    {
+      "name": "attendees",
+      "type": "string",
+      "required": true,
+      "description": "List of attendees with roles"
+    },
+    {
+      "name": "meeting_objective",
+      "type": "string",
+      "required": true,
+      "description": "Primary meeting goal"
+    },
+    {
+      "name": "facilitators",
+      "type": "string",
+      "required": false,
+      "description": "Topic facilitators"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "presentation"
+  ],
+  "agents": [
+    "iris"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "meetings",
+      "facilitation",
+      "planning"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

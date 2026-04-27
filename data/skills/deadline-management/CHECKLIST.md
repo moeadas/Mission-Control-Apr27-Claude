@@ -1,0 +1,5 @@
+- No deadlines are missing from the register
+- Risk assessment is realistic
+- Status is current and accurate
+- Escalation is timely and clear
+- Delivery performance is measured

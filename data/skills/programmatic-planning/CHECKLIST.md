@@ -1,0 +1,8 @@
+- Structure supports optimization granularity
+- DSP access matches inventory and data needs
+- Audience layers avoid over-narrowing
+- Inventory quality matches brand requirements
+- Bid strategy aligns with objectives
+- Brand safety is comprehensive
+- Creative relevance maximized
+- Optimization triggers are automated where possible

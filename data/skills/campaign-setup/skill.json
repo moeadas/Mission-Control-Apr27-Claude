@@ -1,0 +1,119 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "campaign-setup",
+  "name": "Campaign Setup",
+  "description": "Builds out paid media campaigns across platforms including campaign structure, ad groups, targeting, bidding, tracking, and creative brief delivery for execution.",
+  "category": "media",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client brand name"
+    },
+    {
+      "name": "campaign_name",
+      "type": "string",
+      "required": true,
+      "description": "Name of the campaign"
+    },
+    {
+      "name": "campaign_objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objective (conversions, traffic, awareness, etc.)"
+    },
+    {
+      "name": "platforms",
+      "type": "string",
+      "required": true,
+      "description": "Platforms to run campaign on"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience description"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Campaign budget and structure"
+    },
+    {
+      "name": "campaign_dates",
+      "type": "string",
+      "required": false,
+      "description": "Campaign start and end dates"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "client_name",
+      "type": "string",
+      "required": true,
+      "description": "Client brand name"
+    },
+    {
+      "name": "campaign_name",
+      "type": "string",
+      "required": true,
+      "description": "Name of the campaign"
+    },
+    {
+      "name": "campaign_objective",
+      "type": "string",
+      "required": true,
+      "description": "Campaign objective (conversions, traffic, awareness, etc.)"
+    },
+    {
+      "name": "platforms",
+      "type": "string",
+      "required": true,
+      "description": "Platforms to run campaign on"
+    },
+    {
+      "name": "target_audience",
+      "type": "string",
+      "required": true,
+      "description": "Target audience description"
+    },
+    {
+      "name": "budget",
+      "type": "string",
+      "required": true,
+      "description": "Campaign budget and structure"
+    },
+    {
+      "name": "campaign_dates",
+      "type": "string",
+      "required": false,
+      "description": "Campaign start and end dates"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "analytics",
+    "ad-platform"
+  ],
+  "agents": [],
+  "pipelines": [
+    "campaign-launch"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "media",
+      "campaign",
+      "setup",
+      "paid-ads",
+      "tracking"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

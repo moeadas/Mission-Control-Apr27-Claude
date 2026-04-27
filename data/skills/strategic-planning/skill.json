@@ -1,0 +1,93 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "strategic-planning",
+  "name": "Strategic Planning",
+  "description": "Develops comprehensive long-term strategies for brands and businesses — connecting brand positioning, market dynamics, audience insights, and business objectives into coherent plans that guide all marketing and creative decisions.",
+  "category": "strategy",
+  "difficulty": "advanced",
+  "freedom": "high",
+  "variables": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand or company name"
+    },
+    {
+      "name": "business_objective",
+      "type": "string",
+      "required": true,
+      "description": "The overarching business objective the strategy must support"
+    },
+    {
+      "name": "market_context",
+      "type": "string",
+      "required": true,
+      "description": "Current market conditions, category trends, and market dynamics"
+    },
+    {
+      "name": "competitive_landscape",
+      "type": "string",
+      "required": true,
+      "description": "Key competitors, their positioning, and market shares"
+    },
+    {
+      "name": "timeline",
+      "type": "string",
+      "required": false,
+      "description": "Planning horizon — 1 year, 3 years, 5 years"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "brand_name",
+      "type": "string",
+      "required": true,
+      "description": "Brand or company name"
+    },
+    {
+      "name": "business_objective",
+      "type": "string",
+      "required": true,
+      "description": "The overarching business objective the strategy must support"
+    },
+    {
+      "name": "market_context",
+      "type": "string",
+      "required": true,
+      "description": "Current market conditions, category trends, and market dynamics"
+    },
+    {
+      "name": "competitive_landscape",
+      "type": "string",
+      "required": true,
+      "description": "Key competitors, their positioning, and market shares"
+    },
+    {
+      "name": "timeline",
+      "type": "string",
+      "required": false,
+      "description": "Planning horizon — 1 year, 3 years, 5 years"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "document",
+    "spreadsheet"
+  ],
+  "agents": [
+    "maya"
+  ],
+  "pipelines": [],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "strategy",
+      "brand-planning",
+      "positioning",
+      "marketing-strategy"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}

@@ -1,0 +1,6 @@
+- Baseline is documented
+- Process is understood
+- Bottlenecks are identified
+- Solutions address root causes
+- Changes are communicated and trained
+- Improvement is verified

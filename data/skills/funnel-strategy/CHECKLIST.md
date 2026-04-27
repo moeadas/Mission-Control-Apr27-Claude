@@ -1,0 +1,7 @@
+- Journey covers all meaningful stages
+- Signals are observable and measurable
+- Channels match stage objectives
+- Messages progress logically through the funnel
+- Weighting matches campaign priority
+- Retargeting has clear triggers and timing
+- Attribution model is appropriate for funnel depth

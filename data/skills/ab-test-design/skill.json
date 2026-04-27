@@ -1,0 +1,108 @@
+{
+  "$schema": "../../../src/config/schemas/skill.schema.json",
+  "id": "ab-test-design",
+  "name": "A/B Test Design",
+  "description": "Designs rigorous A/B tests for marketing campaigns, ads, and landing pages. Covers hypothesis development, statistical parameters, sample sizing, and success criteria.",
+  "category": "media",
+  "difficulty": "intermediate",
+  "freedom": "medium",
+  "variables": [
+    {
+      "name": "primary_metric",
+      "type": "string",
+      "required": true,
+      "description": "Primary KPI to optimize (CTR, conversion rate, engagement)"
+    },
+    {
+      "name": "audience_segment",
+      "type": "string",
+      "required": true,
+      "description": "Target audience for the test"
+    },
+    {
+      "name": "traffic_volume",
+      "type": "string",
+      "required": true,
+      "description": "Monthly visitor or user volume"
+    },
+    {
+      "name": "test_element",
+      "type": "string",
+      "required": true,
+      "description": "Element being tested (headline, CTA, image, etc.)"
+    },
+    {
+      "name": "baseline",
+      "type": "string",
+      "required": false,
+      "description": "Current baseline conversion rate"
+    },
+    {
+      "name": "mde",
+      "type": "string",
+      "required": false,
+      "description": "Minimum detectable effect percentage"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "primary_metric",
+      "type": "string",
+      "required": true,
+      "description": "Primary KPI to optimize (CTR, conversion rate, engagement)"
+    },
+    {
+      "name": "audience_segment",
+      "type": "string",
+      "required": true,
+      "description": "Target audience for the test"
+    },
+    {
+      "name": "traffic_volume",
+      "type": "string",
+      "required": true,
+      "description": "Monthly visitor or user volume"
+    },
+    {
+      "name": "test_element",
+      "type": "string",
+      "required": true,
+      "description": "Element being tested (headline, CTA, image, etc.)"
+    },
+    {
+      "name": "baseline",
+      "type": "string",
+      "required": false,
+      "description": "Current baseline conversion rate"
+    },
+    {
+      "name": "mde",
+      "type": "string",
+      "required": false,
+      "description": "Minimum detectable effect percentage"
+    }
+  ],
+  "outputs": [],
+  "tools": [
+    "spreadsheet",
+    "analytics",
+    "web-search"
+  ],
+  "agents": [
+    "dex"
+  ],
+  "pipelines": [
+    "campaign-brief"
+  ],
+  "metadata": {
+    "version": "1.0",
+    "author": "agency",
+    "tags": [
+      "testing",
+      "cro",
+      "optimization",
+      "data"
+    ],
+    "lastUpdated": "2026-03-30"
+  }
+}
