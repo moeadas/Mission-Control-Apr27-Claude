@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
-import { resolveAuthContextFromToken } from '@/lib/supabase/auth'
+import { resolveAuthContextFromToken } from '@/lib/auth/server'
 
 export const runtime = 'nodejs'
 

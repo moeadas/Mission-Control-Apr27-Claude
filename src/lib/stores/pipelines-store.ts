@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { getSupabaseBrowserClient } from '@/lib/supabase/browser'
+import { getStoredToken } from '@/lib/auth/browser'
 
 export interface ClientProfileField {
   id: string
@@ -66,11 +66,9 @@ export const usePipelinesStore = create<PipelinesState>()(
       loadPipelines: async (force = false) => {
         if (get().isLoaded && !force) return
         try {
-          const {
-            data: { session },
-          } = await getSupabaseBrowserClient().auth.getSession()
+          const token = getStoredToken()
           const response = await fetch('/api/pipelines', {
-            headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
           })
           const pipelines = response.ok ? await response.json() : []
           set({ pipelines: Array.isArray(pipelines) ? pipelines : [], isLoaded: true })
@@ -83,14 +81,12 @@ export const usePipelinesStore = create<PipelinesState>()(
       getPipeline: (id) => get().pipelines.find(p => p.id === id),
 
       addPipeline: async (pipeline) => {
-        const {
-          data: { session },
-        } = await getSupabaseBrowserClient().auth.getSession()
+        const token = getStoredToken()
         const response = await fetch('/api/pipelines', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify(pipeline),
         })
@@ -103,14 +99,12 @@ export const usePipelinesStore = create<PipelinesState>()(
         const current = get().pipelines.find(p => p.id === id)
         if (!current) return false
         const nextPipeline = { ...current, ...updates }
-        const {
-          data: { session },
-        } = await getSupabaseBrowserClient().auth.getSession()
+        const token = getStoredToken()
         const response = await fetch(`/api/pipelines/${id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify(nextPipeline),
         })
@@ -120,12 +114,10 @@ export const usePipelinesStore = create<PipelinesState>()(
       },
 
       deletePipeline: async (id) => {
-        const {
-          data: { session },
-        } = await getSupabaseBrowserClient().auth.getSession()
+        const token = getStoredToken()
         const response = await fetch(`/api/pipelines/${id}`, {
           method: 'DELETE',
-          headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
         })
         if (!response.ok) return false
         await get().loadPipelines(true)

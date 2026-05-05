@@ -1,0 +1,527 @@
+'use client'
+
+import React, { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
+import { ExternalLink, Loader2, Radar, Sparkles, Target, X, Zap } from 'lucide-react'
+
+import { useAgentsStore } from '@/lib/agents-store'
+import { getStoredToken } from '@/lib/auth/browser'
+import { Badge } from '@/components/ui/Badge'
+import { Card } from '@/components/ui/Card'
+import { getMissionStageLabel, getWorkflowStageLabel } from '@/lib/mission-stage'
+
+const STATUS_COLORS: Record<string, string> = {
+  queued: '#ffd166',
+  in_progress: '#00d4aa',
+  blocked: '#ff7c42',
+  review: '#9b6dff',
+  paused: '#8b92a8',
+  cancelled: '#555b73',
+  completed: '#4f8ef7',
+}
+
+function safeTime(value?: string | null) {
+  if (!value) return 0
+  const time = new Date(value).getTime()
+  return Number.isFinite(time) ? time : 0
+}
+
+function formatRunLabel(stage: string) {
+  return stage.split(':').join(' · ').replace(/-/g, ' ')
+}
+
+function clampProgress(value: number | undefined) {
+  const next = Number.isFinite(value) ? Number(value) : 0
+  return Math.max(0, Math.min(100, next))
+}
+
+function MissionProgressDial({ progress, color, label }: { progress: number; color: string; label: string }) {
+  const normalized = clampProgress(progress)
+  const angle = (normalized / 100) * 360
+
+  return (
+    <div
+      className="relative h-14 w-14 shrink-0 rounded-full"
+      style={{
+        background: `conic-gradient(${color} ${angle}deg, color-mix(in srgb, var(--border) 78%, transparent) ${angle}deg 360deg)`,
+      }}
+    >
+      <div className="absolute inset-[5px] rounded-full bg-[var(--bg-card)]" />
+      <div className="absolute inset-0 flex items-center justify-center px-1 text-center text-[9px] font-mono uppercase leading-tight text-text-primary">
+        {label}
+      </div>
+    </div>
+  )
+}
+
+export function GlobalTaskTracker() {
+  const missions = useAgentsStore((state) => state.missions)
+  const agents = useAgentsStore((state) => state.agents)
+  const clients = useAgentsStore((state) => state.clients)
+  const artifacts = useAgentsStore((state) => state.artifacts)
+  const supabase = useMemo(() => null as any, [])
+
+  const [open, setOpen] = useState(false)
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
+  const [executionByTaskId, setExecutionByTaskId] = useState<Record<string, any>>({})
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const manuallyOpened = window.sessionStorage.getItem('mission-control:tracker-open')
+
+    if (manuallyOpened === '1') {
+      setOpen(true)
+    }
+  }, [])
+
+  const trackedMissions = useMemo(() => {
+    return [...missions]
+      .filter((mission) => ['queued', 'in_progress', 'review', 'blocked', 'paused'].includes(mission.status))
+      .sort((a, b) => safeTime(b.createdAt || b.updatedAt) - safeTime(a.createdAt || a.updatedAt))
+      .slice(0, 10)
+  }, [missions])
+
+  useEffect(() => {
+    if (!trackedMissions.length) {
+      setSelectedTaskId(null)
+      setOpen(false)
+      return
+    }
+
+    if (!selectedTaskId || !trackedMissions.some((mission) => mission.id === selectedTaskId)) {
+      setSelectedTaskId(trackedMissions[0].id)
+    }
+  }, [selectedTaskId, trackedMissions])
+
+  const handleToggleOpen = () => {
+    setOpen((value) => {
+      const next = !value
+      if (typeof window !== 'undefined') {
+        if (next) {
+          window.sessionStorage.setItem('mission-control:tracker-open', '1')
+        } else {
+          window.sessionStorage.removeItem('mission-control:tracker-open')
+        }
+      }
+      return next
+    })
+  }
+
+  const handleClose = () => {
+    setOpen(false)
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.removeItem('mission-control:tracker-open')
+    }
+  }
+
+  useEffect(() => {
+    if (!trackedMissions.length || !open) return
+
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | null = null
+
+    const poll = async () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        if (!cancelled) timer = setTimeout(poll, 6000)
+        return
+      }
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      if (!token || cancelled) {
+        if (!cancelled) timer = setTimeout(poll, 6000)
+        return
+      }
+
+      const results = await Promise.all(
+        trackedMissions.map(async (mission) => {
+          const response = await fetch(`/api/tasks/${mission.id}/execution`, {
+            headers: { Authorization: `Bearer ${token}` },
+            cache: 'no-store',
+          }).catch(() => null)
+
+          if (!response?.ok) return [mission.id, null] as const
+          const payload = await response.json().catch(() => null)
+          return [mission.id, payload] as const
+        })
+      )
+
+      if (!cancelled) {
+        setExecutionByTaskId((current) => ({ ...current, ...Object.fromEntries(results) }))
+        timer = setTimeout(poll, 5000)
+      }
+    }
+
+    poll()
+
+    return () => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
+    }
+  }, [open, supabase, trackedMissions])
+
+  if (!trackedMissions.length) return null
+
+  const selectedMission = trackedMissions.find((mission) => mission.id === selectedTaskId) || trackedMissions[0]
+  const selectedExecution = executionByTaskId[selectedMission.id]
+  const selectedClient = clients.find((client) => client.id === selectedMission.clientId)
+  const relatedArtifacts = artifacts.filter((artifact) => artifact.missionId === selectedMission.id)
+  const latestArtifact = [...relatedArtifacts].sort((a, b) => safeTime(b.updatedAt || b.createdAt) - safeTime(a.updatedAt || a.createdAt))[0]
+  const assignedAgents = agents.filter((agent) => selectedMission.assignedAgentIds?.includes(agent.id))
+  const currentSkills = Object.entries(selectedMission.skillAssignments || {})
+  const executionSteps = latestArtifact?.executionSteps || []
+  const recentRuns = (selectedExecution?.runs || []).slice(0, 6)
+  const activeProgress = clampProgress(selectedExecution?.workflow?.progress ?? selectedMission.progress ?? 0)
+  const currentPhase = selectedExecution?.workflow?.current_phase || selectedMission.pipelineName || 'Execution'
+  const currentJobStatus = selectedExecution?.job?.status || null
+  const latestTrace = selectedMission.orchestrationTrace || []
+  const missionColor = STATUS_COLORS[selectedMission.status] || '#4f8ef7'
+
+  const flow = [
+    {
+      id: 'analysis',
+      label: 'Analyzing',
+      icon: Sparkles,
+      detail: latestTrace[0] || 'Iris is interpreting the request and framing the job.',
+      state: 'done' as const,
+    },
+    {
+      id: 'routing',
+      label: 'Routing',
+      icon: Radar,
+      detail: selectedMission.leadAgentId
+        ? `Lead specialist locked: ${agents.find((agent) => agent.id === selectedMission.leadAgentId)?.name || selectedMission.leadAgentId}`
+        : 'Selecting the best squad and skills.',
+      state: selectedMission.leadAgentId ? ('done' as const) : selectedMission.status === 'blocked' ? ('warning' as const) : ('active' as const),
+    },
+    {
+      id: 'execution',
+      label: 'Execution',
+      icon: Zap,
+      detail:
+        currentJobStatus === 'running'
+          ? `${currentPhase} is live. Team actions are being recorded now.`
+          : currentJobStatus === 'queued'
+            ? 'Queued in runner and waiting for the next execution slot.'
+            : executionSteps.length
+              ? `${executionSteps.length} execution step${executionSteps.length === 1 ? '' : 's'} recorded so far.`
+              : selectedMission.handoffNotes || 'Specialists are moving through the work.',
+      state:
+        latestArtifact
+          ? ('done' as const)
+          : selectedMission.status === 'blocked'
+            ? ('warning' as const)
+            : selectedMission.status === 'in_progress' || selectedMission.status === 'review' || currentJobStatus === 'queued' || currentJobStatus === 'running'
+              ? ('active' as const)
+              : ('idle' as const),
+    },
+    {
+      id: 'saved',
+      label: 'Saved Output',
+      icon: Target,
+      detail: latestArtifact ? latestArtifact.title : 'Waiting for the final saved output artifact.',
+      state: latestArtifact ? ('done' as const) : ('idle' as const),
+    },
+  ]
+
+  const trackerAccent =
+    open
+      ? `linear-gradient(135deg, color-mix(in srgb, ${missionColor} 24%, var(--bg-card)), color-mix(in srgb, var(--accent-purple) 18%, var(--bg-card)))`
+      : 'var(--bg-card)'
+
+  return (
+    <div className="fixed bottom-36 right-4 z-30 w-[min(94vw,24rem)] md:bottom-24 md:right-6 md:w-[min(92vw,58rem)]">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={handleToggleOpen}
+          className="inline-flex items-center gap-2 rounded-full border border-[var(--border-glow)] bg-[color:var(--bg-card)]/95 px-4 py-2 text-sm text-text-primary shadow-[0_14px_36px_rgba(10,14,24,0.16)] backdrop-blur-xl transition-all hover:border-[var(--accent-blue)]"
+          aria-expanded={open}
+          aria-label={open ? 'Hide live mission console' : 'Show live mission console'}
+        >
+          <Radar size={15} className="text-[var(--accent-blue)]" />
+          <span className="font-medium">Mission Console</span>
+          <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-[rgba(79,142,247,0.12)] px-1.5 py-0.5 text-[11px] text-[var(--accent-blue)]">
+            {trackedMissions.length}
+          </span>
+        </button>
+      </div>
+
+      {open ? (
+        <Card
+          className="mt-3 overflow-hidden border-[var(--border-glow)] backdrop-blur-xl shadow-[0_24px_64px_rgba(10,14,24,0.22)]"
+          padding="none"
+          style={{
+            background: trackerAccent,
+          }}
+        >
+          <div className="grid max-h-[min(76vh,48rem)] grid-rows-[auto,1fr] md:grid-cols-[17rem,minmax(0,1fr)] md:grid-rows-1">
+            <aside className="border-b border-[var(--border)] bg-[color:var(--bg-card)]/88 md:border-b-0 md:border-r">
+              <div className="flex items-start justify-between gap-3 border-b border-[var(--border)] px-4 py-4">
+                <div>
+                  <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.24em] text-[var(--accent-blue)]">
+                    <Radar size={13} />
+                    Mission Console
+                  </div>
+                  <p className="mt-1 text-xs text-text-secondary">
+                    Switch between live tasks and watch the squad move.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="inline-flex items-center justify-center rounded-full border border-[var(--border)] bg-[var(--bg-elevated)] p-2 text-text-secondary transition-colors hover:text-text-primary"
+                  aria-label="Close task tracker"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+
+              <div className="max-h-[16rem] overflow-y-auto px-3 py-3 md:max-h-[calc(min(76vh,48rem)-5.4rem)]">
+                <div className="space-y-2">
+                  {trackedMissions.map((mission, index) => {
+                    const client = clients.find((item) => item.id === mission.clientId)
+                    const isActive = mission.id === selectedMission.id
+                    const progress = clampProgress(executionByTaskId[mission.id]?.workflow?.progress ?? mission.progress ?? 0)
+                    const missionTone = STATUS_COLORS[mission.status] || '#4f8ef7'
+                    const missionStage = getMissionStageLabel({ missionStatus: mission.status, progress })
+
+                    return (
+                      <button
+                        key={mission.id}
+                        type="button"
+                        onClick={() => setSelectedTaskId(mission.id)}
+                        className="w-full rounded-[22px] border p-3 text-left transition-all"
+                        style={{
+                          borderColor: isActive ? missionTone : 'var(--border)',
+                          background: isActive
+                            ? `linear-gradient(135deg, color-mix(in srgb, ${missionTone} 14%, var(--bg-card)), color-mix(in srgb, white 2%, var(--bg-card)))`
+                            : 'color-mix(in srgb, var(--bg-elevated) 92%, transparent)',
+                          boxShadow: isActive ? `0 12px 26px color-mix(in srgb, ${missionTone} 20%, transparent)` : 'none',
+                        }}
+                      >
+                        <div className="flex items-start gap-3">
+                          <MissionProgressDial progress={progress} color={missionTone} label={missionStage} />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[10px] font-mono uppercase tracking-[0.22em] text-text-dim">
+                                Queue {String(index + 1).padStart(2, '0')}
+                              </span>
+                              <span className="text-[10px] text-text-dim">
+                                {new Date(mission.createdAt || mission.updatedAt).toLocaleTimeString('en-GB', {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </span>
+                            </div>
+                            <p className="mt-1 line-clamp-2 text-sm font-semibold text-text-primary">{mission.title}</p>
+                            <p className="mt-1 text-[11px] text-text-secondary">
+                              {client?.name || 'General Ops'} · {mission.pipelineName || 'Direct execution'}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </aside>
+
+            <section className="min-h-0 bg-[color:var(--bg-card)]/72">
+              <div className="max-h-[calc(min(76vh,48rem)-0px)] overflow-y-auto px-4 py-4 md:px-5">
+                <div className="space-y-4">
+                  <div className="rounded-[24px] border border-[var(--border)] bg-[color:var(--bg-elevated)]/88 p-4">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.26em] text-[var(--accent-blue)]">
+                          <Target size={12} />
+                          Selected Mission
+                        </div>
+                        <h3 className="mt-2 text-xl font-heading font-bold text-text-primary">{selectedMission.title}</h3>
+                        <p className="mt-1 text-sm text-text-secondary">
+                          {selectedClient?.name || 'General Ops'} · {selectedMission.pipelineName || 'Direct execution'}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <MissionProgressDial
+                          progress={activeProgress}
+                          color={missionColor}
+                          label={getWorkflowStageLabel(selectedExecution?.workflow) || getMissionStageLabel({ missionStatus: selectedMission.status, progress: activeProgress, latestArtifact })}
+                        />
+                        <Badge color={missionColor} size="sm">
+                          {getMissionStageLabel({ missionStatus: selectedMission.status, progress: activeProgress, latestArtifact })}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid gap-3 md:grid-cols-3">
+                      <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] px-3 py-3">
+                        <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-text-dim">Current phase</p>
+                        <p className="mt-2 text-sm font-semibold text-text-primary">{currentPhase}</p>
+                      </div>
+                      <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] px-3 py-3">
+                        <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-text-dim">Runner</p>
+                        <p className="mt-2 text-sm font-semibold text-text-primary">{currentJobStatus || 'Waiting'}</p>
+                      </div>
+                      <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] px-3 py-3">
+                        <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-text-dim">Saved output</p>
+                        <p className="mt-2 text-sm font-semibold text-text-primary">{latestArtifact ? 'Locked' : 'Pending'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-[24px] border border-[var(--border)] bg-[color:var(--bg-elevated)]/88 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-[10px] font-mono uppercase tracking-[0.24em] text-text-dim">Mission flow</p>
+                      <div className="flex items-center gap-2 text-[11px] text-text-secondary">
+                        {currentJobStatus === 'running' || currentJobStatus === 'queued' ? <Loader2 size={12} className="animate-spin text-[var(--accent-blue)]" /> : null}
+                        Live status
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid gap-3 lg:grid-cols-4">
+                      {flow.map((step) => {
+                        const Icon = step.icon
+                        const stepColor =
+                          step.state === 'done'
+                            ? 'var(--accent-green)'
+                            : step.state === 'active'
+                              ? 'var(--accent-blue)'
+                              : step.state === 'warning'
+                                ? 'var(--accent-orange)'
+                                : 'var(--text-dim)'
+
+                        return (
+                          <div
+                            key={step.id}
+                            className="rounded-[22px] border p-3"
+                            style={{
+                              borderColor: `color-mix(in srgb, ${stepColor} 42%, var(--border))`,
+                              background: `linear-gradient(180deg, color-mix(in srgb, ${stepColor} 10%, var(--bg-card)), color-mix(in srgb, var(--bg-card) 92%, transparent))`,
+                            }}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-full"
+                                style={{ background: `color-mix(in srgb, ${stepColor} 14%, transparent)`, color: stepColor }}
+                              >
+                                <Icon size={14} />
+                              </span>
+                              <p className="text-[11px] font-mono uppercase tracking-[0.22em]" style={{ color: stepColor }}>
+                                {step.label}
+                              </p>
+                            </div>
+                            <p className="mt-3 text-sm leading-relaxed text-text-primary">{step.detail}</p>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 lg:grid-cols-[1.15fr,0.85fr]">
+                    <div className="space-y-4">
+                      <div className="rounded-[24px] border border-[var(--border)] bg-[color:var(--bg-elevated)]/88 p-4">
+                        <p className="text-[10px] font-mono uppercase tracking-[0.24em] text-text-dim">Active squad</p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {assignedAgents.length ? assignedAgents.map((agent) => (
+                            <span
+                              key={agent.id}
+                              className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] text-text-primary"
+                              style={{
+                                borderColor: `color-mix(in srgb, ${agent.color} 34%, var(--border))`,
+                                background: `color-mix(in srgb, ${agent.color} 12%, var(--bg-card))`,
+                              }}
+                            >
+                              {selectedMission.leadAgentId === agent.id ? <Sparkles size={11} style={{ color: agent.color }} /> : null}
+                              {agent.name}
+                            </span>
+                          )) : <span className="text-xs text-text-secondary">Iris is still assigning the best specialists.</span>}
+                        </div>
+                      </div>
+
+                      <div className="rounded-[24px] border border-[var(--border)] bg-[color:var(--bg-elevated)]/88 p-4">
+                        <p className="text-[10px] font-mono uppercase tracking-[0.24em] text-text-dim">Skills in play</p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {currentSkills.length ? currentSkills.flatMap(([agentId, skills]) =>
+                            (skills as string[]).slice(0, 3).map((skill) => (
+                              <span
+                                key={`${agentId}:${skill}`}
+                                className="rounded-full px-2.5 py-1 text-[11px]"
+                                style={{
+                                  background: 'rgba(79,142,247,0.1)',
+                                  color: 'var(--accent-blue)',
+                                }}
+                              >
+                                {skill}
+                              </span>
+                            ))
+                          ) : <span className="text-xs text-text-secondary">Skill selection appears once routing is complete.</span>}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-[24px] border border-[var(--border)] bg-[color:var(--bg-elevated)]/88 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-[10px] font-mono uppercase tracking-[0.24em] text-text-dim">Live execution log</p>
+                        {currentJobStatus ? (
+                          <span className="text-[11px] text-text-secondary">
+                            {currentJobStatus === 'running' || currentJobStatus === 'queued' ? <Loader2 size={12} className="mr-1 inline animate-spin text-[var(--accent-blue)]" /> : null}
+                            {currentJobStatus}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="mt-3 max-h-72 space-y-2 overflow-y-auto pr-1">
+                        {recentRuns.length ? recentRuns.map((run: any) => {
+                          const runAgent = agents.find((agent) => agent.id === run.agent_id)
+                          return (
+                            <div key={run.id} className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] px-3 py-3">
+                              <p className="text-xs font-medium text-text-primary">
+                                {runAgent?.name || 'System'} · {formatRunLabel(run.stage)}
+                              </p>
+                              <p className="mt-1 text-[11px] text-text-secondary">
+                                {run.status.replace('_', ' ')}
+                                {run.output_payload?.summary ? ` · ${run.output_payload.summary}` : ''}
+                              </p>
+                            </div>
+                          )
+                        }) : executionSteps.length ? executionSteps.map((step) => (
+                          <div key={step.id} className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] px-3 py-3">
+                            <p className="text-xs font-medium text-text-primary">
+                              {step.agentName} · {step.title}
+                            </p>
+                            <p className="mt-1 text-[11px] text-text-secondary">{step.summary}</p>
+                          </div>
+                        )) : (
+                          <p className="text-xs text-text-secondary">
+                            {selectedMission.handoffNotes || 'Execution events will appear here as the team moves through the work.'}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 px-1 pb-1">
+                    <p className="text-[11px] text-text-dim">
+                      Updated {new Date(selectedMission.updatedAt || selectedMission.createdAt).toLocaleString('en-GB', {
+                        day: '2-digit',
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </p>
+                    <Link href={`/tasks/${selectedMission.id}`} className="inline-flex items-center gap-1 text-[11px] text-[var(--accent-blue)] hover:underline">
+                      Open full task <ExternalLink size={11} />
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </Card>
+      ) : null}
+    </div>
+  )
+}

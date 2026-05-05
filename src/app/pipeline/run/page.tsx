@@ -25,15 +25,26 @@ import {
   routeTask,
   createPipelineInstance,
   validatePipelineClientData,
+  runPipelineFromUI,
   type PipelineInstance,
   type PipelineTask,
 } from '@/lib/pipeline-execution'
-import type { Pipeline } from '@/lib/stores/pipelines-store'
+import { type Pipeline, usePipelinesStore } from '@/lib/stores/pipelines-store'
+import { useRouter } from 'next/navigation'
 
 export default function PipelineRunPage() {
   const agents = useAgentsStore(state => state.agents)
   const clients = useAgentsStore(state => state.clients)
+  const router = useRouter()
+  const [isStarting, setIsStarting] = useState(false)
+  const [startError, setStartError] = useState<string | null>(null)
   
+  // Pull pipelines from the canonical store (Supabase first, bundled config
+  // as a server-side fallback inside /api/pipelines). Importantly: pipelines
+  // CREATED by users via /pipeline/[id] now show up here without a restart.
+  const dbPipelines = usePipelinesStore((s) => s.pipelines)
+  const pipelinesLoaded = usePipelinesStore((s) => s.isLoaded)
+  const loadPipelinesFromDb = usePipelinesStore((s) => s.loadPipelines)
   const [pipelines, setPipelines] = useState<Pipeline[]>([])
   const [selectedPipeline, setSelectedPipeline] = useState<Pipeline | null>(null)
   const [selectedClient, setSelectedClient] = useState(clients[0]?.id || '')
@@ -51,19 +62,19 @@ export default function PipelineRunPage() {
   const [activeTab, setActiveTab] = useState<'run' | 'skills' | 'active'>('run')
 
   useEffect(() => {
-    async function loadPipelines() {
-      try {
-        const modules = await import('@/config/pipelines/pipelines.json')
-        setPipelines(modules.default.pipelines)
-        if (modules.default.pipelines.length > 0) {
-          setSelectedPipeline(modules.default.pipelines[0])
-        }
-      } catch (error) {
-        console.error('Failed to load pipelines:', error)
-      }
+    if (!pipelinesLoaded) {
+      loadPipelinesFromDb()
     }
-    loadPipelines()
-  }, [])
+  }, [pipelinesLoaded, loadPipelinesFromDb])
+
+  // Mirror the canonical store into local state so the UI reacts to live
+  // edits (creating a pipeline at /pipeline/[id] reflects here on its next
+  // tick without a page reload).
+  useEffect(() => {
+    if (!dbPipelines.length) return
+    setPipelines(dbPipelines)
+    setSelectedPipeline((current) => current ?? dbPipelines[0])
+  }, [dbPipelines])
 
   const handleRouteTask = async () => {
     if (!taskDescription.trim()) return
@@ -87,10 +98,15 @@ export default function PipelineRunPage() {
     setIsRouting(false)
   }
 
-  const startPipeline = (pipelineId: string) => {
+  const startPipeline = async (pipelineId: string) => {
     const pipeline = pipelines.find(p => p.id === pipelineId)
     if (!pipeline) return
 
+    setStartError(null)
+
+    // Pre-flight client-data validation runs in the browser to give immediate
+    // feedback without paying for a server round-trip on obviously incomplete
+    // setups.
     const clientData = createPipelineInstance(pipeline, selectedClient, {}, language).clientData
     const validation = validatePipelineClientData(pipeline, clientData)
     if (!validation.ok) {
@@ -116,17 +132,26 @@ export default function PipelineRunPage() {
       })
       return
     }
-    
-    const instance = createPipelineInstance(
-      pipeline,
-      selectedClient,
-      clientData,
-      language
-    )
-    setInstances(prev => [...prev, instance])
-    setActiveTab('active')
-    setRoutingResult(null)
-    setTaskDescription('')
+
+    // Start the run server-side via /api/pipelines/run, then jump straight
+    // to the live task page where workflow_runs + task_runs stream the
+    // execution. No browser-side activity loop.
+    setIsStarting(true)
+    try {
+      const result = await runPipelineFromUI({
+        pipelineId: pipeline.id,
+        clientId: selectedClient || null,
+        request: taskDescription.trim() || `Run ${pipeline.name} for ${clients.find((c) => c.id === selectedClient)?.name || 'client'}`,
+        language,
+      })
+      setRoutingResult(null)
+      setTaskDescription('')
+      router.push(`/tasks/${result.taskId}`)
+    } catch (error) {
+      setStartError(error instanceof Error ? error.message : 'Failed to start pipeline run.')
+    } finally {
+      setIsStarting(false)
+    }
   }
 
   return (
@@ -298,11 +323,17 @@ export default function PipelineRunPage() {
                       
                       <button
                         onClick={() => startPipeline(routingResult.pipelineId)}
-                        className="w-full py-3 bg-accent-green text-white rounded-lg font-medium hover:bg-accent-green/80 flex items-center justify-center gap-2"
+                        disabled={isStarting}
+                        className="w-full py-3 bg-accent-green text-white rounded-lg font-medium hover:bg-accent-green/80 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                       >
-                        <Play size={16} />
-                        Start Pipeline: {routingResult.pipelineName}
+                        {isStarting ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
+                        {isStarting ? 'Queuing pipeline run…' : `Start Pipeline: ${routingResult.pipelineName}`}
                       </button>
+                      {startError && (
+                        <p className="mt-3 text-xs text-accent-red flex items-center gap-1.5">
+                          <AlertCircle size={12} /> {startError}
+                        </p>
+                      )}
                     </>
                   ) : (
                     <>

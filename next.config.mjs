@@ -6,6 +6,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Required for Docker standalone build (node server.js)
+  output: process.env.DOCKER_BUILD === '1' ? 'standalone' : undefined,
   outputFileTracingRoot: __dirname,
   async headers() {
     return [

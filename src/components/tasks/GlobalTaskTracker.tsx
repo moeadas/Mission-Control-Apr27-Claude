@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { ExternalLink, Loader2, Radar, Sparkles, Target, X, Zap } from 'lucide-react'
 
 import { useAgentsStore } from '@/lib/agents-store'
-import { getSupabaseBrowserClient } from '@/lib/supabase/browser'
+import { getStoredToken } from '@/lib/auth/browser'
 import { Badge } from '@/components/ui/Badge'
 import { Card } from '@/components/ui/Card'
 import { getMissionStageLabel, getWorkflowStageLabel } from '@/lib/mission-stage'
@@ -59,7 +59,8 @@ export function GlobalTaskTracker() {
   const agents = useAgentsStore((state) => state.agents)
   const clients = useAgentsStore((state) => state.clients)
   const artifacts = useAgentsStore((state) => state.artifacts)
-  const supabase = useMemo(() => getSupabaseBrowserClient(), [])
+  const supabase = useMemo(() => null as any, [])
+  const token = getStoredToken()
 
   const [open, setOpen] = useState(false)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
@@ -127,11 +128,7 @@ export function GlobalTaskTracker() {
         return
       }
 
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-
-      if (!session?.access_token || cancelled) {
+      if (!token || cancelled) {
         if (!cancelled) timer = setTimeout(poll, 6000)
         return
       }
@@ -139,7 +136,7 @@ export function GlobalTaskTracker() {
       const results = await Promise.all(
         trackedMissions.map(async (mission) => {
           const response = await fetch(`/api/tasks/${mission.id}/execution`, {
-            headers: { Authorization: `Bearer ${session.access_token}` },
+            headers: { Authorization: `Bearer ${token}` },
             cache: 'no-store',
           }).catch(() => null)
 

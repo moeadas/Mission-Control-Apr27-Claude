@@ -4,8 +4,8 @@ import path from 'node:path'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { parseSkillZip } from '@/lib/skill-packages'
-import { getSupabaseServerClient } from '@/lib/supabase/server'
-import { resolveAuthContextFromToken } from '@/lib/supabase/auth'
+import { getDb } from '@/lib/db/client'
+import { resolveAuthContextFromToken } from '@/lib/auth/server'
 
 function getBearerToken(request: NextRequest) {
   const authHeader = request.headers.get('authorization') || ''
@@ -13,12 +13,14 @@ function getBearerToken(request: NextRequest) {
   return authHeader.slice(7).trim()
 }
 
-async function getAgencyId() {
-  const supabase = getSupabaseServerClient()
-  if (!supabase) return null
-  const { data, error } = await supabase.from('agencies').select('id').eq('slug', 'default-agency').single()
-  if (error) throw error
-  return data.id as string
+async function getAgencyId(): Promise<string | null> {
+  try {
+    const db = getDb()
+    const rows = await db`SELECT id FROM agencies WHERE slug = 'default-agency' LIMIT 1`
+    return rows[0]?.id ?? null
+  } catch {
+    return null
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -69,38 +71,50 @@ export async function POST(request: NextRequest) {
       } as any,
     }
 
-    const supabase = getSupabaseServerClient()
     const agencyId = await getAgencyId()
-    if (!supabase || !agencyId) {
-      return NextResponse.json({ error: 'Supabase not available' }, { status: 503 })
+    if (!agencyId) {
+      return NextResponse.json({ error: 'Database not available' }, { status: 503 })
     }
 
-    const payload = {
-      id: parsed.skill.id,
-      agency_id: agencyId,
-      name: parsed.skill.name,
-      category: parsed.skill.category,
-      description: parsed.skill.description || '',
-      prompts: parsed.skill.prompts,
-      checklist: parsed.skill.checklist || [],
-      examples: parsed.skill.examples || [],
-      metadata: {
-        ...(parsed.skill.metadata || {}),
-        difficulty: parsed.skill.difficulty || 'intermediate',
-        freedom: parsed.skill.freedom || 'medium',
-        variables: parsed.skill.variables || [],
-        inputs: parsed.skill.inputs || [],
-        outputs: parsed.skill.outputs || [],
-        workflow: parsed.skill.workflow || { steps: [] },
-        tools: parsed.skill.tools || [],
-        agents: parsed.skill.agents || [],
-        pipelines: parsed.skill.pipelines || [],
-      },
-      source: 'app',
-    }
+    const metadata = JSON.stringify({
+      ...(parsed.skill.metadata || {}),
+      difficulty: parsed.skill.difficulty || 'intermediate',
+      freedom: parsed.skill.freedom || 'medium',
+      variables: parsed.skill.variables || [],
+      inputs: parsed.skill.inputs || [],
+      outputs: parsed.skill.outputs || [],
+      workflow: parsed.skill.workflow || { steps: [] },
+      tools: parsed.skill.tools || [],
+      agents: parsed.skill.agents || [],
+      pipelines: parsed.skill.pipelines || [],
+    })
 
-    const { error } = await supabase.from('skills').upsert(payload, { onConflict: 'id' })
-    if (error) throw error
+    const db = getDb()
+    await db`
+      INSERT INTO skills (id, agency_id, name, category, description, prompts, checklist, examples, metadata, source)
+      VALUES (
+        ${parsed.skill.id},
+        ${agencyId},
+        ${parsed.skill.name},
+        ${parsed.skill.category || null},
+        ${parsed.skill.description || ''},
+        ${JSON.stringify(parsed.skill.prompts || { en: '' })},
+        ${JSON.stringify(parsed.skill.checklist || [])},
+        ${JSON.stringify(parsed.skill.examples || [])},
+        ${metadata},
+        'app'
+      )
+      ON CONFLICT (id) DO UPDATE SET
+        agency_id = EXCLUDED.agency_id,
+        name = EXCLUDED.name,
+        category = EXCLUDED.category,
+        description = EXCLUDED.description,
+        prompts = EXCLUDED.prompts,
+        checklist = EXCLUDED.checklist,
+        examples = EXCLUDED.examples,
+        metadata = EXCLUDED.metadata,
+        source = EXCLUDED.source
+    `
 
     return NextResponse.json({
       success: true,

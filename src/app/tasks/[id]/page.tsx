@@ -14,7 +14,7 @@ import { DELIVERABLE_LABELS } from '@/lib/bot-animations'
 import { useAgentsStore } from '@/lib/agents-store'
 import { Artifact, ArtifactExport } from '@/lib/types'
 import { ArtifactOutputView } from '@/components/outputs/ArtifactOutputView'
-import { getSupabaseBrowserClient } from '@/lib/supabase/browser'
+import { getStoredToken } from '@/lib/auth/browser'
 import { getMissionStageLabel, getWorkflowStageLabel } from '@/lib/mission-stage'
 
 const STATUS_COLORS: Record<string, string> = {
@@ -264,12 +264,13 @@ export default function TaskDetailPage() {
 
   useEffect(() => {
     let active = true
-    const supabase = getSupabaseBrowserClient()
+    const supabase: any = null // migrated to REST API
+    const token = getStoredToken()
 
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!data.session?.access_token || !active) return
+    supabase.auth.getSession().then(async ({ data }: any) => {
+      if (!data.token || !active) return
       const response = await fetch(`/api/tasks/${params.id}/execution`, {
-        headers: { Authorization: `Bearer ${data.session.access_token}` },
+        headers: { Authorization: `Bearer ${data.token}` },
         cache: 'no-store',
       }).catch(() => null)
 
@@ -297,16 +298,17 @@ export default function TaskDetailPage() {
 
     let cancelled = false
     let timer: ReturnType<typeof setTimeout> | null = null
-    const supabase = getSupabaseBrowserClient()
+    const supabase: any = null // migrated to REST API
+    const token = getStoredToken()
 
     const poll = async () => {
       const {
         data: { session },
       } = await supabase.auth.getSession()
-      if (!session?.access_token || cancelled) return
+      if (!token || cancelled) return
 
       const response = await fetch(`/api/tasks/${params.id}/execution`, {
-        headers: { Authorization: `Bearer ${session.access_token}` },
+        headers: { Authorization: `Bearer ${token}` },
         cache: 'no-store',
       }).catch(() => null)
 
@@ -334,14 +336,15 @@ export default function TaskDetailPage() {
   }, [executionBusy, executionState?.job?.status, executionState?.workflow?.status, mission.status, params.id])
 
   async function refreshSharedState() {
-    const supabase = getSupabaseBrowserClient()
+    const supabase: any = null // migrated to REST API
+    const token = getStoredToken()
     const {
       data: { session },
     } = await supabase.auth.getSession()
-    if (!session?.access_token) return
+    if (!token) return
 
     const response = await fetch('/api/state', {
-      headers: { Authorization: `Bearer ${session.access_token}` },
+      headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
     })
     if (!response.ok) return
@@ -356,17 +359,18 @@ export default function TaskDetailPage() {
     setExecutionBusy(action)
     setFeedback(null)
     try {
-      const supabase = getSupabaseBrowserClient()
+      const supabase: any = null // migrated to REST API
+    const token = getStoredToken()
       const {
         data: { session },
       } = await supabase.auth.getSession()
-      if (!session?.access_token) throw new Error('Sign in required.')
+      if (!token) throw new Error('Sign in required.')
 
       const response = await fetch(`/api/tasks/${mission.id}/execution`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ action }),
       })
@@ -433,17 +437,18 @@ export default function TaskDetailPage() {
         handoffNotes: `Revision requested: ${comment}`,
       })
 
-      const supabase = getSupabaseBrowserClient()
+      const supabase: any = null // migrated to REST API
+    const token = getStoredToken()
       const {
         data: { session },
       } = await supabase.auth.getSession()
-      if (!session?.access_token) throw new Error('Sign in required.')
+      if (!token) throw new Error('Sign in required.')
 
       const response = await fetch(`/api/tasks/${mission.id}/execution`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           action: 'retry',

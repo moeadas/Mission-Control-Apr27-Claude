@@ -3,7 +3,7 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react'
 import { Archive, CheckCircle2, AlertCircle, Upload, Loader2 } from 'lucide-react'
 
-import { getSupabaseAccessToken } from '@/lib/supabase/browser'
+import { getSupabaseAccessToken } from '@/lib/auth/browser'
 
 type ImportResult = {
   fileName: string

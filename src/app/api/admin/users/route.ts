@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import bcrypt from 'bcryptjs'
 
-import { getSupabaseServerClient } from '@/lib/supabase/server'
-import { getSuperAdminEmail, resolveAuthContextFromToken } from '@/lib/supabase/auth'
+import { getDb } from '@/lib/db/client'
+import { getSuperAdminEmail, resolveAuthContextFromToken } from '@/lib/auth/server'
 
 function getBearerToken(request: NextRequest) {
   const authHeader = request.headers.get('authorization') || ''
@@ -11,58 +12,35 @@ function getBearerToken(request: NextRequest) {
 
 async function requireSuperAdmin(request: NextRequest) {
   const auth = await resolveAuthContextFromToken(getBearerToken(request))
-  if (!auth || auth.role !== 'super_admin') {
-    return null
-  }
+  if (!auth || auth.role !== 'super_admin') return null
   return auth
 }
 
 export async function GET(request: NextRequest) {
   try {
     const auth = await requireSuperAdmin(request)
-    if (!auth) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
+    if (!auth) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-    const supabase = getSupabaseServerClient()
-    if (!supabase) {
-      return NextResponse.json({ error: 'Supabase not available' }, { status: 503 })
-    }
-
-    const [{ data: authData, error: authError }, { data: profiles, error: profilesError }] = await Promise.all([
-      supabase.auth.admin.listUsers(),
-      supabase.from('profiles').select('*').order('email', { ascending: true }),
+    const db = getDb()
+    const [users, clients, tasks] = await Promise.all([
+      db`SELECT id, email, role, is_active, created_at FROM users ORDER BY email ASC`,
+      db`SELECT id, name, owner_user_id FROM clients ORDER BY name ASC`,
+      db`SELECT id, title, owner_user_id, status FROM tasks ORDER BY updated_at DESC`,
     ])
 
-    if (authError) throw authError
-    if (profilesError) throw profilesError
+    const superAdminEmail = getSuperAdminEmail()
+    const formattedUsers = users.map((user: any) => ({
+      id: user.id,
+      email: user.email,
+      fullName: '',
+      role: user.email.toLowerCase() === superAdminEmail ? 'super_admin' : user.role,
+      isActive: user.is_active,
+      confirmed: true,
+      createdAt: user.created_at,
+      lastSignInAt: null,
+    }))
 
-    const profilesById = new Map((profiles || []).map((profile) => [profile.id, profile]))
-    const users = (authData.users || []).map((user) => {
-      const profile = profilesById.get(user.id)
-      const superAdminEmail = getSuperAdminEmail()
-      return {
-        id: user.id,
-        email: user.email || profile?.email || '',
-        fullName: profile?.full_name || user.user_metadata?.full_name || '',
-        role: profile?.role || (user.email?.toLowerCase() === superAdminEmail ? 'super_admin' : 'member'),
-        isActive: profile?.is_active ?? true,
-        confirmed: Boolean(user.email_confirmed_at),
-        createdAt: user.created_at,
-        lastSignInAt: user.last_sign_in_at,
-      }
-    })
-
-    const [{ data: clients }, { data: tasks }] = await Promise.all([
-      supabase.from('clients').select('id, name, owner_user_id').order('name', { ascending: true }),
-      supabase.from('tasks').select('id, title, owner_user_id, status').order('updated_at', { ascending: false }),
-    ])
-
-    return NextResponse.json({
-      users,
-      clients: clients || [],
-      tasks: tasks || [],
-    })
+    return NextResponse.json({ users: formattedUsers, clients, tasks })
   } catch (error) {
     console.error('Failed to load admin users:', error)
     return NextResponse.json({ error: 'Failed to load admin users' }, { status: 500 })
@@ -72,154 +50,71 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireSuperAdmin(request)
-    if (!auth) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
+    if (!auth) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-    const supabase = getSupabaseServerClient()
-    if (!supabase) {
-      return NextResponse.json({ error: 'Supabase not available' }, { status: 503 })
-    }
-
-    const body = (await request.json()) as {
-      mode?: 'create' | 'invite'
+    const body = await request.json() as {
       email?: string
-      fullName?: string
       password?: string
       role?: 'super_admin' | 'member'
     }
 
     const email = body.email?.trim().toLowerCase()
+    if (!email) return NextResponse.json({ error: 'Email is required' }, { status: 400 })
+
     const superAdminEmail = getSuperAdminEmail()
-    if (!email) {
-      return NextResponse.json({ error: 'Email is required' }, { status: 400 })
-    }
-
-    const mode = body.mode === 'invite' ? 'invite' : 'create'
-    const fullName = body.fullName?.trim() || null
     const role = email === superAdminEmail ? 'super_admin' : body.role === 'super_admin' ? 'super_admin' : 'member'
+    const temporaryPassword = body.password?.trim() ||
+      `${Math.random().toString(36).slice(2, 8)}A!9${Math.random().toString(36).slice(2, 6)}`
 
-    let userId: string | null = null
-    let temporaryPassword: string | null = null
+    const passwordHash = await bcrypt.hash(temporaryPassword, 12)
+    const db = getDb()
+    const rows = await db`
+      INSERT INTO users (email, password_hash, role, is_active)
+      VALUES (${email}, ${passwordHash}, ${role}, true)
+      ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, role = EXCLUDED.role
+      RETURNING id, email, role
+    `
+    const user = rows[0]
 
-    if (mode === 'invite') {
-      const { data, error } = await supabase.auth.admin.inviteUserByEmail(email, {
-        data: fullName ? { full_name: fullName } : undefined,
-      })
-      if (error) throw error
-      userId = data.user?.id || null
-    } else {
-      temporaryPassword = body.password?.trim() || `${Math.random().toString(36).slice(2, 8)}A!9${Math.random().toString(36).slice(2, 6)}`
-      const { data, error } = await supabase.auth.admin.createUser({
-        email,
-        password: temporaryPassword,
-        email_confirm: true,
-        user_metadata: fullName ? { full_name: fullName } : undefined,
-      })
-      if (error) throw error
-      userId = data.user?.id || null
-    }
-
-    if (!userId) {
-      return NextResponse.json({ error: 'Unable to create user' }, { status: 500 })
-    }
-
-    const { error: profileError } = await supabase.from('profiles').upsert(
-      {
-        id: userId,
-        email,
-        full_name: fullName,
-        role,
-        is_active: true,
-      },
-      { onConflict: 'id' }
-    )
-
-    if (profileError) throw profileError
-
-    return NextResponse.json({
-      ok: true,
-      mode,
-      user: {
-        id: userId,
-        email,
-        fullName,
-        role,
-      },
-      temporaryPassword,
-    })
+    return NextResponse.json({ ok: true, user: { id: user.id, email: user.email, role: user.role }, temporaryPassword })
   } catch (error) {
-    console.error('Failed to create or invite user:', error)
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to create or invite user' }, { status: 500 })
+    console.error('Failed to create user:', error)
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to create user' }, { status: 500 })
   }
 }
 
 export async function PATCH(request: NextRequest) {
   try {
     const auth = await requireSuperAdmin(request)
-    if (!auth) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
+    if (!auth) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-    const supabase = getSupabaseServerClient()
-    if (!supabase) {
-      return NextResponse.json({ error: 'Supabase not available' }, { status: 503 })
-    }
-
-    const body = (await request.json()) as {
+    const body = await request.json() as {
       userId?: string
       role?: 'super_admin' | 'member'
       isActive?: boolean
-      fullName?: string
     }
 
-    if (!body.userId) {
-      return NextResponse.json({ error: 'userId is required' }, { status: 400 })
-    }
+    if (!body.userId) return NextResponse.json({ error: 'userId is required' }, { status: 400 })
 
-    const { data: authUserData, error: authUserError } = await supabase.auth.admin.getUserById(body.userId)
-    if (authUserError) throw authUserError
+    const db = getDb()
+    const existing = await db`SELECT email FROM users WHERE id = ${body.userId}::uuid LIMIT 1`
+    if (!existing[0]) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-    const email = authUserData.user?.email?.toLowerCase() || ''
+    const email = existing[0].email.toLowerCase()
     const lockedSuperAdmin = email === getSuperAdminEmail()
     const nextRole = lockedSuperAdmin ? 'super_admin' : body.role === 'super_admin' ? 'super_admin' : 'member'
     const nextIsActive = lockedSuperAdmin ? true : body.isActive ?? true
 
-    if (typeof body.fullName === 'string') {
-      const { error: updateUserError } = await supabase.auth.admin.updateUserById(body.userId, {
-        user_metadata: {
-          ...(authUserData.user?.user_metadata || {}),
-          full_name: body.fullName,
-        },
-      })
-      if (updateUserError) throw updateUserError
-    }
+    await db`
+      UPDATE users SET role = ${nextRole}, is_active = ${nextIsActive}
+      WHERE id = ${body.userId}::uuid
+    `
+    await db`
+      UPDATE profiles SET role = ${nextRole}, is_active = ${nextIsActive}
+      WHERE id = ${body.userId}::uuid
+    `
 
-    const { error: profileError } = await supabase.from('profiles').upsert(
-      {
-        id: body.userId,
-        email: authUserData.user?.email || '',
-        full_name:
-          typeof body.fullName === 'string'
-            ? body.fullName
-            : authUserData.user?.user_metadata?.full_name || null,
-        role: nextRole,
-        is_active: nextIsActive,
-      },
-      { onConflict: 'id' }
-    )
-
-    if (profileError) throw profileError
-
-    return NextResponse.json({
-      ok: true,
-      user: {
-        id: body.userId,
-        email: authUserData.user?.email || '',
-        role: nextRole,
-        isActive: nextIsActive,
-      },
-    })
+    return NextResponse.json({ ok: true, user: { id: body.userId, email, role: nextRole, isActive: nextIsActive } })
   } catch (error) {
     console.error('Failed to update user:', error)
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to update user' }, { status: 500 })

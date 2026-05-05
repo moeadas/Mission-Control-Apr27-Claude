@@ -16,31 +16,54 @@ import {
   BookOpen,
   Shield,
   X,
+  Rocket,
+  Calendar,
+  HelpCircle,
 } from 'lucide-react'
 import { clsx } from 'clsx'
-import { getSupabaseAccessToken } from '@/lib/supabase/browser'
+import { getSupabaseAccessToken } from '@/lib/auth/browser'
 import { useAgentsStore } from '@/lib/agents-store'
 
-const NAV_ITEMS = [
+// ─── Navigation structure ────────────────────────────────────────────────────
+
+const PRIMARY_NAV = [
+  { id: 'mission', label: 'Start a Mission', icon: Rocket, href: '/mission', color: '#9b6dff', highlight: true },
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard', color: '#60a5fa' },
   { id: 'office', label: 'Virtual Office', icon: Building2, href: '/office', color: '#2dd4bf' },
-  { id: 'agents', label: 'Agents', icon: Bot, href: '/agents', color: '#a78bfa' },
-  { id: 'clients', label: 'Clients', icon: Users, href: '/clients', color: '#fbbf24' },
   { id: 'tasks', label: 'Tasks', icon: ListTodo, href: '/tasks', color: '#fb923c' },
-  { id: 'pipeline', label: 'Pipeline', icon: GitBranch, href: '/pipeline', color: '#2dd4bf' },
-  { id: 'skills', label: 'Skills', icon: BookOpen, href: '/skills', color: '#fbbf24' },
   { id: 'analytics', label: 'Analytics', icon: BarChart3, href: '/analytics', color: '#a78bfa' },
-  { id: 'outputs', label: 'Outputs', icon: FileText, href: '/outputs', color: '#60a5fa' },
-  { id: 'users', label: 'Users', icon: Shield, href: '/users', color: '#f472b6' },
-  { id: 'settings', label: 'Settings', icon: Settings, href: '/settings', color: '#71717a' },
+  { id: 'outputs', label: 'Output', icon: FileText, href: '/outputs', color: '#60a5fa' },
 ]
 
-const ADMIN_ONLY_IDS = new Set(['pipeline', 'skills', 'users', 'settings'])
+const COMPANY_SETUP_NAV = [
+  { id: 'agents', label: 'Agents', icon: Bot, href: '/agents', color: '#a78bfa' },
+  { id: 'clients', label: 'Clients', icon: Users, href: '/clients', color: '#fbbf24' },
+  { id: 'skills', label: 'Skills', icon: BookOpen, href: '/skills', color: '#fbbf24' },
+  { id: 'pipeline', label: 'Pipelines', icon: GitBranch, href: '/pipeline', color: '#2dd4bf' },
+  { id: 'schedules', label: 'Schedules', icon: Calendar, href: '/schedules', color: '#22d3ee' },
+  { id: 'users', label: 'Users', icon: Shield, href: '/users', color: '#f472b6' },
+]
+
+const SETTINGS_NAV = [
+  { id: 'settings', label: 'Settings', icon: Settings, href: '/settings', color: '#71717a' },
+  { id: 'support', label: 'Support', icon: HelpCircle, href: '/support', color: '#71717a' },
+]
+
+const ADMIN_ONLY_IDS = new Set(['pipeline', 'skills', 'users', 'settings', 'schedules'])
 
 interface SidebarProps {
   collapsed?: boolean
   mobileOpen?: boolean
   onMobileClose?: () => void
+}
+
+type NavItem = {
+  id: string
+  label: string
+  icon: React.ComponentType<{ size?: number; className?: string; style?: React.CSSProperties }>
+  href: string
+  color: string
+  highlight?: boolean
 }
 
 function NavItem({
@@ -49,16 +72,65 @@ function NavItem({
   collapsed,
   onClick,
 }: {
-  item: (typeof NAV_ITEMS)[0]
+  item: NavItem
   isActive: boolean
   collapsed?: boolean
   onClick?: () => void
 }) {
   const Icon = item.icon
 
+  if (item.highlight && !collapsed) {
+    return (
+      <Link
+        href={item.href}
+        onClick={onClick}
+        className={clsx(
+          'group relative flex items-center gap-3 rounded-[18px] transition-all duration-150 min-h-[46px] px-3',
+          isActive
+            ? 'shadow-[0_10px_22px_rgba(155,109,255,0.35)]'
+            : 'hover:shadow-[0_10px_22px_rgba(155,109,255,0.22)] hover:scale-[1.01]'
+        )}
+        style={{
+          background: isActive
+            ? 'linear-gradient(135deg, #9b6dff, #6f42f5)'
+            : 'linear-gradient(135deg, rgba(155,109,255,0.16), rgba(111,66,245,0.10))',
+          border: `1px solid ${isActive ? 'rgba(155,109,255,0.5)' : 'rgba(155,109,255,0.28)'}`,
+        }}
+        aria-current={isActive ? 'page' : undefined}
+      >
+        <div
+          className="flex items-center justify-center w-9 h-9 rounded-[14px] flex-shrink-0"
+          style={{ background: 'rgba(255,255,255,0.15)' }}
+        >
+          <Icon size={16} style={{ color: isActive ? '#fff' : '#c4a8ff' }} />
+        </div>
+        <span className="text-[13px] font-semibold flex-1 leading-tight" style={{ color: isActive ? '#fff' : '#c4a8ff' }}>
+          {item.label}
+        </span>
+      </Link>
+    )
+  }
+
+  // Collapsed highlight item
+  if (item.highlight && collapsed) {
+    return (
+      <Link
+        href={item.href}
+        onClick={onClick}
+        className="flex items-center justify-center w-10 h-10 rounded-[14px] mx-auto transition-all"
+        style={{
+          background: isActive ? 'linear-gradient(135deg, #9b6dff, #6f42f5)' : 'rgba(155,109,255,0.15)',
+          border: '1px solid rgba(155,109,255,0.3)',
+        }}
+        aria-current={isActive ? 'page' : undefined}
+      >
+        <Icon size={16} style={{ color: isActive ? '#fff' : '#c4a8ff' }} />
+      </Link>
+    )
+  }
+
   return (
     <Link
-      key={item.id}
       href={item.href}
       onClick={onClick}
       className={clsx(
@@ -96,6 +168,21 @@ function NavItem({
   )
 }
 
+function SectionLabel({ label, collapsed }: { label: string; collapsed?: boolean }) {
+  if (collapsed) {
+    return <div className="my-3 mx-auto w-8 h-px bg-[var(--border)]" />
+  }
+  return (
+    <div className="mt-5 mb-2 px-1 flex items-center gap-2">
+      <div className="h-px flex-1 bg-[var(--border)]" />
+      <p className="text-[9px] font-mono uppercase tracking-[0.22em] text-[var(--text-dim)] whitespace-nowrap px-1">
+        {label}
+      </p>
+      <div className="h-px flex-1 bg-[var(--border)]" />
+    </div>
+  )
+}
+
 export function Sidebar({ collapsed = false, mobileOpen = false, onMobileClose }: SidebarProps) {
   const pathname = usePathname()
   const currentUser = useAgentsStore((state) => state.currentUser)
@@ -121,7 +208,6 @@ export function Sidebar({ collapsed = false, mobileOpen = false, onMobileClose }
       })
 
       if (!active) return
-
       if (!response.ok) {
         setIsSuperAdmin(false)
         return
@@ -132,23 +218,94 @@ export function Sidebar({ collapsed = false, mobileOpen = false, onMobileClose }
     }
 
     loadRole()
-
-    return () => {
-      active = false
-    }
+    return () => { active = false }
   }, [currentUser?.role])
 
-  const visibleNavItems = useMemo(
-    () => NAV_ITEMS.filter((item) => isSuperAdmin || !ADMIN_ONLY_IDS.has(item.id)),
+  const visibleCompanySetup = useMemo(
+    () => COMPANY_SETUP_NAV.filter((item) => isSuperAdmin || !ADMIN_ONLY_IDS.has(item.id)),
     [isSuperAdmin]
   )
-  const primaryNavItems = useMemo(
-    () => visibleNavItems.filter((item) => !['settings'].includes(item.id)),
-    [visibleNavItems]
+  const visibleSettings = useMemo(
+    () => SETTINGS_NAV.filter((item) => isSuperAdmin || !ADMIN_ONLY_IDS.has(item.id)),
+    [isSuperAdmin]
   )
-  const settingsNavItems = useMemo(
-    () => visibleNavItems.filter((item) => ['settings'].includes(item.id)),
-    [visibleNavItems]
+
+  const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
+
+  const renderNav = (isMobile?: boolean) => {
+    const c = !isMobile && collapsed
+    return (
+      <div className="flex-1 overflow-y-auto px-3 py-3">
+        {/* Primary nav */}
+        <div className="space-y-1">
+          {PRIMARY_NAV.map((item) => (
+            <NavItem
+              key={item.id}
+              item={item}
+              isActive={isActive(item.href)}
+              collapsed={c}
+              onClick={isMobile ? onMobileClose : undefined}
+            />
+          ))}
+        </div>
+
+        {/* Company Setup */}
+        {visibleCompanySetup.length > 0 && (
+          <>
+            <SectionLabel label="Company Setup" collapsed={c} />
+            <div className="space-y-1">
+              {visibleCompanySetup.map((item) => (
+                <NavItem
+                  key={item.id}
+                  item={item}
+                  isActive={isActive(item.href)}
+                  collapsed={c}
+                  onClick={isMobile ? onMobileClose : undefined}
+                />
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Settings */}
+        {visibleSettings.length > 0 && (
+          <>
+            <SectionLabel label="Settings" collapsed={c} />
+            <div className="space-y-1">
+              {visibleSettings.map((item) => (
+                <NavItem
+                  key={item.id}
+                  item={item}
+                  isActive={isActive(item.href)}
+                  collapsed={c}
+                  onClick={isMobile ? onMobileClose : undefined}
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    )
+  }
+
+  const renderFooter = (isCollapsed?: boolean) => (
+    <div className={clsx('border-t border-[var(--border)] flex-shrink-0', isCollapsed ? 'p-2' : 'p-3')}>
+      <div className={clsx(
+        'flex items-center gap-2.5 rounded-[20px] border border-white/50 bg-white/72 p-3 shadow-[0_12px_24px_rgba(45,78,135,0.08)]',
+        isCollapsed ? 'justify-center' : ''
+      )}>
+        <div className="h-9 w-9 rounded-[14px] bg-[linear-gradient(180deg,#ffffff,#f4f7fb)] border border-white/80 shadow-[0_10px_18px_rgba(45,78,135,0.08)] flex-shrink-0" />
+        {!isCollapsed && (
+          <>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-[var(--text-primary)] truncate">Agency Mode</p>
+              <p className="text-[10px] font-mono uppercase tracking-[0.12em] text-[var(--text-dim)]">Iris · Online</p>
+            </div>
+            <div className="w-2 h-2 rounded-full bg-[#2dd4bf] shadow-[0_0_4px_#2dd4bf] flex-shrink-0 animate-pulse" />
+          </>
+        )}
+      </div>
+    </div>
   )
 
   return (
@@ -180,48 +337,8 @@ export function Sidebar({ collapsed = false, mobileOpen = false, onMobileClose }
             <X size={18} />
           </button>
         </div>
-
-        {/* Nav items */}
-        <div className="flex-1 overflow-y-auto px-3 py-3">
-          <div className="space-y-1">
-            {primaryNavItems.map((item) => (
-              <NavItem
-                key={item.id}
-                item={item}
-                isActive={pathname === item.href || pathname.startsWith(item.href + '/')}
-                onClick={onMobileClose}
-              />
-            ))}
-          </div>
-
-          {settingsNavItems.length ? (
-            <div className="mt-8">
-              <p className="px-3 pb-3 text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--text-dim)]">Settings</p>
-              <div className="space-y-1">
-                {settingsNavItems.map((item) => (
-                  <NavItem
-                    key={item.id}
-                    item={item}
-                    isActive={pathname === item.href || pathname.startsWith(item.href + '/')}
-                    onClick={onMobileClose}
-                  />
-                ))}
-              </div>
-            </div>
-          ) : null}
-        </div>
-
-        {/* Footer */}
-        <div className="p-3 border-t border-[var(--border)] flex-shrink-0">
-          <div className="flex items-center gap-3 rounded-[20px] border border-white/50 bg-white/72 p-3 shadow-[0_12px_24px_rgba(45,78,135,0.08)]">
-            <div className="h-9 w-9 rounded-[14px] bg-[linear-gradient(180deg,#ffffff,#f4f7fb)] border border-white/80 shadow-[0_10px_18px_rgba(45,78,135,0.08)]" />
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium text-[var(--text-primary)]">Agency Mode</p>
-              <p className="text-[10px] font-mono uppercase tracking-[0.12em] text-[var(--text-dim)]">Iris · Online</p>
-            </div>
-            <div className="w-2 h-2 rounded-full bg-[#2dd4bf] shadow-[0_0_4px_#2dd4bf] flex-shrink-0 animate-pulse" />
-          </div>
-        </div>
+        {renderNav(true)}
+        {renderFooter(false)}
       </nav>
 
       {/* Desktop sidebar */}
@@ -233,58 +350,8 @@ export function Sidebar({ collapsed = false, mobileOpen = false, onMobileClose }
         )}
         aria-label="Main navigation"
       >
-        <div className="flex-1 overflow-y-auto px-3 py-3">
-          <div className="space-y-1">
-            {primaryNavItems.map((item) => (
-              <NavItem
-                key={item.id}
-                item={item}
-                isActive={pathname === item.href || pathname.startsWith(item.href + '/')}
-                collapsed={collapsed}
-              />
-            ))}
-          </div>
-
-          {settingsNavItems.length ? (
-            <div className="mt-8">
-              {!collapsed && (
-                <p className="px-3 pb-3 text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--text-dim)]">Settings</p>
-              )}
-              <div className="space-y-1">
-                {settingsNavItems.map((item) => (
-                  <NavItem
-                    key={item.id}
-                    item={item}
-                    isActive={pathname === item.href || pathname.startsWith(item.href + '/')}
-                    collapsed={collapsed}
-                  />
-                ))}
-              </div>
-            </div>
-          ) : null}
-        </div>
-
-        {/* Footer */}
-        <div className={clsx(
-          'border-t border-[var(--border)] flex-shrink-0',
-          collapsed ? 'p-2' : 'p-3'
-        )}>
-          <div className={clsx(
-            'flex items-center gap-2.5 rounded-[20px] border border-white/50 bg-white/72 p-3 shadow-[0_12px_24px_rgba(45,78,135,0.08)]',
-            collapsed ? 'justify-center' : ''
-          )}>
-            <div className="h-9 w-9 rounded-[14px] bg-[linear-gradient(180deg,#ffffff,#f4f7fb)] border border-white/80 shadow-[0_10px_18px_rgba(45,78,135,0.08)]" />
-            {!collapsed && (
-              <>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-[var(--text-primary)] truncate">Agency Mode</p>
-                  <p className="text-[10px] font-mono uppercase tracking-[0.12em] text-[var(--text-dim)]">Iris · Online</p>
-                </div>
-                <div className="w-2 h-2 rounded-full bg-[#2dd4bf] shadow-[0_0_4px_#2dd4bf] flex-shrink-0 animate-pulse" />
-              </>
-            )}
-          </div>
-        </div>
+        {renderNav(false)}
+        {renderFooter(collapsed)}
       </nav>
     </>
   )

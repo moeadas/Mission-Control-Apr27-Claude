@@ -4,11 +4,11 @@ import { buildArtifactHtml } from '@/lib/output-html'
 import { buildTaskExecutionPlan } from '@/lib/task-output'
 import { buildTaskChannelingPlan } from '@/lib/server/task-channeling'
 import { executeAutonomousTask } from '@/lib/server/autonomous-task'
-import { inferPipeline, getServerDeliverableSpec } from '@/lib/server/ai'
+import { getFriendlyProviderError, inferPipeline, getServerDeliverableSpec } from '@/lib/server/ai'
 import { normalizeProviderSettings, resolveFallbackRuntime, resolveTaskRuntime, shouldRunCompareMode } from '@/lib/provider-settings'
 import { sanitizePromptProfile, sanitizePromptValue } from '@/lib/server/prompt-safety'
-import { getSupabaseServerClient } from '@/lib/supabase/server'
-import type { AuthContext } from '@/lib/supabase/auth'
+import { getDb } from '@/lib/db/client'
+import type { AuthContext } from '@/lib/auth/server'
 import { loadConfigSkillCategories, mergeDbSkillsWithConfig } from '@/lib/server/skills-catalog'
 
 function toStableUuid(value: string) {
@@ -16,61 +16,48 @@ function toStableUuid(value: string) {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`
 }
 
-async function getDefaultAgencyId() {
-  const supabase = getSupabaseServerClient()
-  if (!supabase) return null
-
-  const { data, error } = await supabase
-    .from('agencies')
-    .select('id')
-    .eq('slug', 'default-agency')
-    .maybeSingle()
-
-  if (error) throw error
-  return data?.id || null
+async function getDefaultAgencyId(): Promise<string | null> {
+  try {
+    const db = getDb()
+    const rows = await db`SELECT id FROM agencies WHERE slug = 'default-agency' LIMIT 1`
+    return rows[0]?.id ?? null
+  } catch {
+    return null
+  }
 }
 
 export async function loadTaskExecutionState(taskId: string, auth: AuthContext) {
-  const supabase = getSupabaseServerClient()
   const agencyId = await getDefaultAgencyId()
-  if (!supabase || !agencyId) return null
+  if (!agencyId) return null
 
-  const taskQuery = supabase
-    .from('tasks')
-    .select('id, owner_user_id')
-    .eq('agency_id', agencyId)
-    .eq('id', taskId)
-    .maybeSingle()
-
-  const { data: task, error: taskError } = await taskQuery
-  if (taskError) throw taskError
+  const db = getDb()
+  const taskRows = await db`
+    SELECT id, owner_user_id FROM tasks
+    WHERE agency_id = ${agencyId} AND id = ${taskId}
+    LIMIT 1
+  `
+  const task = taskRows[0]
   if (!task) return null
   if (auth.role !== 'super_admin' && task.owner_user_id && task.owner_user_id !== auth.userId) {
     return null
   }
 
-  const [{ data: workflow, error: workflowError }, { data: runs, error: runsError }] = await Promise.all([
-    supabase
-      .from('workflow_instances')
-      .select('*')
-      .eq('agency_id', agencyId)
-      .eq('task_id', taskId)
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-    supabase
-      .from('task_runs')
-      .select('*')
-      .eq('agency_id', agencyId)
-      .eq('task_id', taskId)
-      .order('created_at', { ascending: false }),
+  const [workflowRows, runs] = await Promise.all([
+    db`
+      SELECT * FROM workflow_instances
+      WHERE agency_id = ${agencyId} AND task_id = ${taskId}
+      ORDER BY updated_at DESC
+      LIMIT 1
+    `,
+    db`
+      SELECT * FROM task_runs
+      WHERE agency_id = ${agencyId} AND task_id = ${taskId}
+      ORDER BY created_at DESC
+    `,
   ])
 
-  if (workflowError) throw workflowError
-  if (runsError) throw runsError
-
   return {
-    workflow,
+    workflow: workflowRows[0] || null,
     runs: runs || [],
   }
 }
@@ -83,31 +70,32 @@ export async function upsertWorkflowExecutionState(input: {
   progress: number
   context?: Record<string, any>
 }) {
-  const supabase = getSupabaseServerClient()
   const agencyId = await getDefaultAgencyId()
-  if (!supabase || !agencyId) return null
+  if (!agencyId) return null
 
   const id = toStableUuid(`workflow:${input.taskId}`)
-  const { data, error } = await supabase
-    .from('workflow_instances')
-    .upsert(
-      {
-        id,
-        agency_id: agencyId,
-        pipeline_id: input.pipelineId || null,
-        task_id: input.taskId,
-        status: input.status,
-        current_phase: input.currentPhase || null,
-        progress: input.progress,
-        context: input.context || {},
-      },
-      { onConflict: 'id' }
+  const db = getDb()
+  const rows = await db`
+    INSERT INTO workflow_instances (id, agency_id, pipeline_id, task_id, status, current_phase, progress, context)
+    VALUES (
+      ${id},
+      ${agencyId},
+      ${input.pipelineId || null},
+      ${input.taskId},
+      ${input.status},
+      ${input.currentPhase || null},
+      ${input.progress},
+      ${db.json(input.context || {})}
     )
-    .select('*')
-    .single()
-
-  if (error) throw error
-  return data
+    ON CONFLICT (id) DO UPDATE SET
+      status = EXCLUDED.status,
+      current_phase = EXCLUDED.current_phase,
+      progress = EXCLUDED.progress,
+      context = EXCLUDED.context,
+      updated_at = NOW()
+    RETURNING *
+  `
+  return rows[0] || null
 }
 
 export async function insertTaskRun(input: {
@@ -121,58 +109,56 @@ export async function insertTaskRun(input: {
   startedAt?: string | null
   completedAt?: string | null
 }) {
-  const supabase = getSupabaseServerClient()
   const agencyId = await getDefaultAgencyId()
-  if (!supabase || !agencyId) return null
+  if (!agencyId) return null
 
-  const { data, error } = await supabase
-    .from('task_runs')
-    .insert({
-      agency_id: agencyId,
-      task_id: input.taskId,
-      agent_id: input.agentId || null,
-      stage: input.stage,
-      status: input.status,
-      input_payload: input.inputPayload || {},
-      output_payload: input.outputPayload || {},
-      error_message: input.errorMessage || null,
-      started_at: input.startedAt || null,
-      completed_at: input.completedAt || null,
-    })
-    .select('*')
-    .single()
-
-  if (error) throw error
-  return data
+  const db = getDb()
+  const rows = await db`
+    INSERT INTO task_runs (agency_id, task_id, agent_id, stage, status, input_payload, output_payload, error_message, started_at, completed_at)
+    VALUES (
+      ${agencyId},
+      ${input.taskId},
+      ${input.agentId || null},
+      ${input.stage},
+      ${input.status},
+      ${db.json(input.inputPayload || {})},
+      ${db.json(input.outputPayload || {})},
+      ${input.errorMessage || null},
+      ${input.startedAt || null},
+      ${input.completedAt || null}
+    )
+    RETURNING *
+  `
+  return rows[0] || null
 }
 
 async function loadPipelines(agencyId: string) {
-  const supabase = getSupabaseServerClient()
-  if (!supabase) return []
-
-  const { data, error } = await supabase
-    .from('pipelines')
-    .select('definition')
-    .eq('agency_id', agencyId)
-    .order('name', { ascending: true })
-
-  if (error) throw error
-  return (data || []).map((row: any) => row.definition || {}).filter(Boolean)
+  try {
+    const db = getDb()
+    const rows = await db`
+      SELECT definition FROM pipelines
+      WHERE agency_id = ${agencyId}
+      ORDER BY name ASC
+    `
+    return rows.map((row: any) => row.definition || {}).filter(Boolean)
+  } catch {
+    return []
+  }
 }
 
 async function loadSkills(agencyId: string) {
-  const supabase = getSupabaseServerClient()
-  if (!supabase) return loadConfigSkillCategories()
-
-  const { data, error } = await supabase
-    .from('skills')
-    .select('*')
-    .eq('agency_id', agencyId)
-    .order('category', { ascending: true })
-    .order('name', { ascending: true })
-
-  if (error) throw error
-  return mergeDbSkillsWithConfig(data || [])
+  try {
+    const db = getDb()
+    const rows = await db`
+      SELECT * FROM skills
+      WHERE agency_id = ${agencyId}
+      ORDER BY category ASC, name ASC
+    `
+    if (rows.length) return mergeDbSkillsWithConfig(rows)
+  } catch {
+    // fall through
+  }
+  return loadConfigSkillCategories()
 }
 
 function buildClientContext(client: any, knowledgeAssets: any[]) {
@@ -260,38 +246,43 @@ export async function runTaskExecution(
   action: 'retry' | 'resume' = 'retry',
   options?: { comment?: string; runtimeMode?: 'fast' | 'thinking' | 'compare' }
 ) {
-  const supabase = getSupabaseServerClient()
   const agencyId = await getDefaultAgencyId()
-  if (!supabase || !agencyId) throw new Error('Execution service unavailable.')
+  if (!agencyId) throw new Error('Execution service unavailable.')
 
-  const [{ data: task, error: taskError }, { data: agents, error: agentsError }, { data: agency, error: agencyError }, pipelines, skillCategories] =
-    await Promise.all([
-      supabase.from('tasks').select('*').eq('agency_id', agencyId).eq('id', taskId).maybeSingle(),
-      supabase.from('agents').select('*').eq('agency_id', agencyId).order('name', { ascending: true }),
-      supabase.from('agencies').select('settings').eq('id', agencyId).single(),
-      loadPipelines(agencyId),
-      loadSkills(agencyId),
-    ])
+  const db = getDb()
 
-  if (taskError) throw taskError
-  if (agentsError) throw agentsError
-  if (agencyError) throw agencyError
+  const [taskRows, agentRows, agencyRows, pipelines, skillCategories] = await Promise.all([
+    db`SELECT * FROM tasks WHERE agency_id = ${agencyId} AND id = ${taskId} LIMIT 1`,
+    db`SELECT * FROM agents WHERE agency_id = ${agencyId} ORDER BY name ASC`,
+    db`SELECT settings FROM agencies WHERE id = ${agencyId} LIMIT 1`,
+    loadPipelines(agencyId),
+    loadSkills(agencyId),
+  ])
+
+  const task = taskRows[0]
+  const agents = agentRows
+  const agency = agencyRows[0]
+
   if (!task) throw new Error('Task not found.')
   if (auth.role !== 'super_admin' && task.owner_user_id && task.owner_user_id !== auth.userId) {
     throw new Error('Unauthorized')
   }
 
-  const [{ data: client }, { data: knowledgeAssets }, { data: outputs }] = await Promise.all([
+  const [clientRows, knowledgeRows, outputRows] = await Promise.all([
     task.client_id
-      ? supabase.from('clients').select('*').eq('agency_id', agencyId).eq('id', task.client_id).maybeSingle()
-      : Promise.resolve({ data: null } as any),
+      ? db`SELECT * FROM clients WHERE agency_id = ${agencyId} AND id = ${task.client_id} LIMIT 1`
+      : Promise.resolve([]),
     task.client_id
-      ? supabase.from('knowledge_assets').select('*').eq('agency_id', agencyId).eq('client_id', task.client_id)
-      : Promise.resolve({ data: [] } as any),
-    supabase.from('outputs').select('*').eq('agency_id', agencyId).eq('task_id', taskId).order('updated_at', { ascending: false }),
+      ? db`SELECT * FROM knowledge_assets WHERE agency_id = ${agencyId} AND client_id = ${task.client_id}`
+      : Promise.resolve([]),
+    db`SELECT * FROM outputs WHERE agency_id = ${agencyId} AND task_id = ${taskId} ORDER BY updated_at DESC`,
   ])
 
-  const clientContext = buildClientContext(client, knowledgeAssets || [])
+  const client = clientRows[0] || null
+  const knowledgeAssets = knowledgeRows || []
+  const outputs = outputRows || []
+
+  const clientContext = buildClientContext(client, knowledgeAssets)
   const clientProfile = buildClientProfile(client)
   const fallbackPipelineId =
     task.pipeline_id ||
@@ -497,67 +488,76 @@ export async function runTaskExecution(
     const now = new Date().toISOString()
     const renderedHtml = result.renderedHtml || buildArtifactHtml(result.response)
 
-    const outputPayload = {
-      id: artifactId,
-      agency_id: agencyId,
-      task_id: taskId,
-      client_id: task.client_id || null,
-      agent_id: channelingPlan.leadAgentId || task.lead_agent_id || null,
-      title: task.title,
-      deliverable_type: task.deliverable_type,
-      status: 'draft',
-      owner_user_id: task.owner_user_id || null,
-      format: result.creative?.assetUrl || result.creative?.assetPath ? 'image' : 'html',
-      content: result.response,
-      rendered_html: renderedHtml,
-      public_url: result.creative?.assetUrl || null,
-      storage_path: result.creative?.assetPath || null,
-      creative: result.creative || {},
-      exports: {},
-      metadata: {},
-      source_prompt: task.summary || task.title,
-      notes: result.qualityResult?.ok ? 'Generated via task execution runner.' : `Quality issues: ${(result.qualityResult?.issues || []).join(' | ')}`,
-      execution_steps: result.executionSteps,
-      created_at: outputs?.[0]?.created_at || now,
-      updated_at: now,
+    await db`
+      INSERT INTO outputs (
+        id, agency_id, task_id, client_id, agent_id, title, deliverable_type, status,
+        owner_user_id, format, content, rendered_html, public_url, storage_path,
+        creative, exports, metadata, source_prompt, notes, execution_steps,
+        created_at, updated_at
+      ) VALUES (
+        ${artifactId},
+        ${agencyId},
+        ${taskId},
+        ${task.client_id || null},
+        ${channelingPlan.leadAgentId || task.lead_agent_id || null},
+        ${task.title},
+        ${task.deliverable_type},
+        'draft',
+        ${task.owner_user_id || null},
+        ${result.creative?.assetUrl || result.creative?.assetPath ? 'image' : 'html'},
+        ${result.response},
+        ${renderedHtml},
+        ${result.creative?.assetUrl || null},
+        ${result.creative?.assetPath || null},
+        ${db.json((result.creative || {}) as any)},
+        ${db.json({})},
+        ${db.json({})},
+        ${task.summary || task.title},
+        ${result.qualityResult?.ok ? 'Generated via task execution runner.' : `Quality issues: ${(result.qualityResult?.issues || []).join(' | ')}`},
+        ${db.json((result.executionSteps || []) as any)},
+        ${outputs?.[0]?.created_at || now},
+        ${now}
+      )
+      ON CONFLICT (id) DO UPDATE SET
+        content = EXCLUDED.content,
+        rendered_html = EXCLUDED.rendered_html,
+        public_url = EXCLUDED.public_url,
+        storage_path = EXCLUDED.storage_path,
+        creative = EXCLUDED.creative,
+        notes = EXCLUDED.notes,
+        execution_steps = EXCLUDED.execution_steps,
+        updated_at = EXCLUDED.updated_at
+    `
+
+    const executionPlanUpdate = {
+      ...(task.execution_plan || {}),
+      assignedAgentIds: channelingPlan.assignedAgentIds,
+      collaboratorAgentIds: channelingPlan.collaboratorAgentIds,
+      skillAssignments: channelingPlan.selectedSkillsByAgent,
+      orchestrationTrace: channelingPlan.orchestrationTrace,
+      qualityChecklist: executionPlan.qualityChecklist,
+      reviewComments: Array.isArray(task.execution_plan?.reviewComments)
+        ? task.execution_plan.reviewComments.map((entry: any) =>
+            entry.status === 'open' ? { ...entry, status: 'addressed' } : entry
+          )
+        : [],
+      reviewStatus: result.qualityResult?.ok ? 'approved' : 'changes_requested',
+      runtimeMode: providerSettings.routing.runtimeMode,
+      compareSummary: compareSummary || null,
+      handoffNotes: result.qualityResult?.ok
+        ? executionPlan.handoffNotes
+        : `Quality gate failed: ${(result.qualityResult?.issues || []).join(' | ')}`,
+      lastRunAt: now,
     }
 
-    const { error: outputUpsertError } = await supabase.from('outputs').upsert(outputPayload, { onConflict: 'id' })
-    if (outputUpsertError) {
-      const { error: outputInsertError } = await supabase.from('outputs').insert(outputPayload)
-      if (outputInsertError) {
-        throw new Error(`Failed to persist output artifact: ${outputUpsertError.message} / ${outputInsertError.message}`)
-      }
-    }
-
-    await supabase
-      .from('tasks')
-      .update({
-        status: result.qualityResult?.ok ? 'completed' : 'blocked',
-        progress: result.qualityResult?.ok ? 100 : 20,
-        execution_plan: {
-          ...(task.execution_plan || {}),
-          assignedAgentIds: channelingPlan.assignedAgentIds,
-          collaboratorAgentIds: channelingPlan.collaboratorAgentIds,
-          skillAssignments: channelingPlan.selectedSkillsByAgent,
-          orchestrationTrace: channelingPlan.orchestrationTrace,
-          qualityChecklist: executionPlan.qualityChecklist,
-          reviewComments: Array.isArray(task.execution_plan?.reviewComments)
-            ? task.execution_plan.reviewComments.map((entry: any) =>
-                entry.status === 'open' ? { ...entry, status: 'addressed' } : entry
-              )
-            : [],
-          reviewStatus: result.qualityResult?.ok ? 'approved' : 'changes_requested',
-          runtimeMode: providerSettings.routing.runtimeMode,
-          compareSummary: compareSummary || null,
-          handoffNotes: result.qualityResult?.ok
-            ? executionPlan.handoffNotes
-            : `Quality gate failed: ${(result.qualityResult?.issues || []).join(' | ')}`,
-          lastRunAt: now,
-        },
-      })
-      .eq('agency_id', agencyId)
-      .eq('id', taskId)
+    await db`
+      UPDATE tasks
+      SET
+        status = ${result.qualityResult?.ok ? 'completed' : 'blocked'},
+        progress = ${result.qualityResult?.ok ? 100 : 20},
+        execution_plan = ${db.json(executionPlanUpdate)}
+      WHERE agency_id = ${agencyId} AND id = ${taskId}
+    `
 
     await insertTaskRun({
       taskId,
@@ -594,7 +594,7 @@ export async function runTaskExecution(
       quality: result.qualityResult,
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Task execution failed.'
+    const message = getFriendlyProviderError(error)
     const now = new Date().toISOString()
 
     await insertTaskRun({
@@ -614,11 +614,10 @@ export async function runTaskExecution(
       progress: 10,
       context: { action, error: message, failedAt: now },
     })
-    await supabase
-      .from('tasks')
-      .update({ status: 'blocked', progress: 0 })
-      .eq('agency_id', agencyId)
-      .eq('id', taskId)
+    await db`
+      UPDATE tasks SET status = 'blocked', progress = 0
+      WHERE agency_id = ${agencyId} AND id = ${taskId}
+    `
 
     throw error
   }

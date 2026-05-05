@@ -5,17 +5,18 @@ import { createAppPersistenceSnapshot, useAgentsStore } from '@/lib/agents-store
 import { AgentBot } from '@/components/agents/AgentBot'
 import { SkillPicker } from '@/components/ui/SkillPicker'
 import { toast } from '@/components/ui/Toast'
-import { X, Save } from 'lucide-react'
-import type { AgencyDivision } from '@/lib/types'
-import { getSupabaseBrowserClient } from '@/lib/supabase/browser'
+import { X, Save, ChevronRight, ChevronLeft, Check, User, Brain, Wrench, Cpu, Trash2, AlertTriangle } from 'lucide-react'
+import type { AgencyDivision, AgentSpecialty } from '@/lib/types'
+import { getStoredToken } from '@/lib/auth/browser'
 import { getAgentArchitectureBundle, getAgentMemoryNote, getAgentSourceOfTruthPath, getProviderRoutingNote } from '@/lib/agent-architecture'
+import { v4 as uuidv4 } from 'uuid'
 
 interface AgentEditorProps {
   agentId: string | null
   onClose: () => void
 }
 
-const DIVISIONS = ['orchestration', 'client-services', 'creative', 'media', 'research', 'strategy']
+const DIVISIONS: AgencyDivision[] = ['orchestration', 'client-services', 'creative', 'media', 'research', 'strategy']
 const DIVISION_COLORS: Record<string, string> = {
   orchestration: '#a78bfa',
   'client-services': '#4f8ef7',
@@ -25,37 +26,74 @@ const DIVISION_COLORS: Record<string, string> = {
   strategy: '#9b6dff',
 }
 
+const STEPS = [
+  { id: 'identity', label: 'Identity', icon: User, desc: 'Name, role, division & photo' },
+  { id: 'personality', label: 'Personality', icon: Brain, desc: 'Bio, methodology & system prompt' },
+  { id: 'capabilities', label: 'Capabilities', icon: Wrench, desc: 'Skills, tools & responsibilities' },
+  { id: 'config', label: 'AI Config', icon: Cpu, desc: 'Model settings & parameters' },
+]
+
+type FormData = {
+  name: string
+  role: string
+  photoUrl: string
+  bio: string
+  methodology: string
+  skills: string[]
+  responsibilities: string[]
+  tools: string[]
+  division: AgencyDivision
+  color: string
+  systemPrompt: string
+  temperature: number
+  maxTokens: number
+}
+
+const DEFAULT_FORM: FormData = {
+  name: '',
+  role: '',
+  photoUrl: '',
+  bio: '',
+  methodology: '',
+  skills: [],
+  responsibilities: [],
+  tools: [],
+  division: 'creative',
+  color: '#00d4aa',
+  systemPrompt: '',
+  temperature: 0.7,
+  maxTokens: 1536,
+}
+
 export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
-  const agents = useAgentsStore(state => state.agents)
-  const updateAgent = useAgentsStore(state => state.updateAgent)
-  const supabase = useMemo(() => getSupabaseBrowserClient(), [])
-  const agent = agents.find(a => a.id === agentId)
-  const architectureBundle = agentId ? getAgentArchitectureBundle(agentId) : null
-  
-  const [formData, setFormData] = useState({
-    name: '',
-    role: '',
-    photoUrl: '',
-    bio: '',
-    methodology: '',
-    skills: [] as string[],
-    responsibilities: [] as string[],
-    tools: [] as string[],
-    division: 'creative' as AgencyDivision,
-    color: '#4f8ef7',
-    systemPrompt: '',
-    temperature: 0.7,
-    maxTokens: 1536,
-  })
-  
+  const agents = useAgentsStore((state) => state.agents)
+  const updateAgent = useAgentsStore((state) => state.updateAgent)
+  const createAgent = useAgentsStore((state) => state.createAgent)
+  const deleteAgent = useAgentsStore((state) => state.deleteAgent)
+  const supabase = useMemo(() => null as any, [])
+  const token = getStoredToken()
+
+  const isCreating = agentId === null
+  const agent = isCreating ? null : agents.find((a) => a.id === agentId)
+
+  // Don't render if editing a non-existent agent (agentId set but not found)
+  if (!isCreating && !agent) return null
+
+  const architectureBundle = !isCreating && agentId ? getAgentArchitectureBundle(agentId) : null
+
+  const [step, setStep] = useState(0)
+  const [formData, setFormData] = useState<FormData>(DEFAULT_FORM)
   const [newResponsibility, setNewResponsibility] = useState('')
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [photoError, setPhotoError] = useState<string | null>(null)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null)
+  // For new agents, generate an id upfront so photo upload works
+  const [pendingAgentId] = useState(() => isCreating ? uuidv4() : agentId!)
   const photoInputRef = useRef<HTMLInputElement>(null)
   const latestPhotoUrlRef = useRef<string>('')
-  
+
   useEffect(() => {
     if (agent) {
       setFormData({
@@ -76,7 +114,7 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
       setPhotoPreviewUrl(agent.photoUrl || null)
       latestPhotoUrlRef.current = agent.photoUrl || ''
     }
-  }, [agent])
+  }, [agent?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     return () => {
@@ -85,11 +123,13 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
       }
     }
   }, [photoPreviewUrl])
-  
-  if (!agent) return null
-  
+
   const handleSave = async () => {
-    if (!agentId) return
+    if (!formData.name.trim()) {
+      toast.error('Agent name is required')
+      setStep(0)
+      return
+    }
     if (isUploadingPhoto) {
       setPhotoError('Please wait for the photo upload to finish before saving.')
       return
@@ -100,83 +140,106 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
 
     try {
       const effectivePhotoUrl = latestPhotoUrlRef.current || formData.photoUrl || ''
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      const authHeaders = {
+      const authHeaders: Record<string, string> = {
         'Content-Type': 'application/json',
-        ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       }
 
-      await fetch(`/api/agent-photos/${agentId}`, {
-        method: 'PUT',
-        headers: authHeaders,
-        body: JSON.stringify({ photoUrl: effectivePhotoUrl || null }),
-      }).catch(() => {})
-
-      updateAgent(agentId, {
-        name: formData.name,
-        role: formData.role,
-        photoUrl: effectivePhotoUrl || undefined,
-        bio: formData.bio,
-        methodology: formData.methodology,
-        skills: formData.skills,
-        responsibilities: formData.responsibilities,
-        tools: formData.tools,
-        division: formData.division,
-        color: formData.color,
-        systemPrompt: formData.systemPrompt,
-        temperature: formData.temperature,
-        maxTokens: formData.maxTokens,
-      })
-
-      try {
-        const snapshot = createAppPersistenceSnapshot(useAgentsStore.getState())
-        await fetch('/api/state', {
-          method: 'PUT',
-          headers: {
-            ...authHeaders,
-          },
-          body: JSON.stringify({ state: snapshot }),
+      if (isCreating) {
+        // Create new agent
+        createAgent({
+          name: formData.name,
+          role: formData.role,
+          photoUrl: effectivePhotoUrl || undefined,
+          bio: formData.bio,
+          methodology: formData.methodology,
+          skills: formData.skills,
+          responsibilities: formData.responsibilities,
+          tools: formData.tools,
+          division: formData.division,
+          unit: formData.division,
+          specialty: (formData.division as AgentSpecialty) || 'creative',
+          color: formData.color,
+          accentColor: formData.color,
+          avatar: formData.name.slice(0, 2).toUpperCase(),
+          systemPrompt: formData.systemPrompt,
+          temperature: formData.temperature,
+          maxTokens: formData.maxTokens,
+          provider: 'gemini',
+          model: 'gemini-2.5-flash',
+          status: 'active',
+          primaryOutputs: [],
+          position: { x: 200, y: 200, room: 'creative' },
         })
-      } catch {
-        // Let the background sync pick it up if the immediate save path fails.
-      }
+        toast.success(`${formData.name} added to your team`)
+      } else {
+        // Update existing agent
+        await fetch(`/api/agent-photos/${agentId}`, {
+          method: 'PUT',
+          headers: authHeaders,
+          body: JSON.stringify({ photoUrl: effectivePhotoUrl || null }),
+        }).catch(() => {})
 
-      toast.success(`${formData.name || agent.name} updated`)
+        updateAgent(agentId!, {
+          name: formData.name,
+          role: formData.role,
+          photoUrl: effectivePhotoUrl || undefined,
+          bio: formData.bio,
+          methodology: formData.methodology,
+          skills: formData.skills,
+          responsibilities: formData.responsibilities,
+          tools: formData.tools,
+          division: formData.division,
+          color: formData.color,
+          systemPrompt: formData.systemPrompt,
+          temperature: formData.temperature,
+          maxTokens: formData.maxTokens,
+        })
+
+        try {
+          const snapshot = createAppPersistenceSnapshot(useAgentsStore.getState())
+          await fetch('/api/state', {
+            method: 'PUT',
+            headers: authHeaders,
+            body: JSON.stringify({ state: snapshot }),
+          })
+        } catch {
+          // Background sync will pick it up
+        }
+
+        toast.success(`${formData.name} updated`)
+      }
       onClose()
     } finally {
       setIsSaving(false)
     }
   }
-  
+
   const addSkill = (skillId: string) => {
     if (!formData.skills.includes(skillId)) {
-      setFormData(prev => ({ ...prev, skills: [...prev.skills, skillId] }))
+      setFormData((prev) => ({ ...prev, skills: [...prev.skills, skillId] }))
     }
   }
-  
+
   const removeSkill = (skillId: string) => {
-    setFormData(prev => ({ ...prev, skills: prev.skills.filter(s => s !== skillId) }))
+    setFormData((prev) => ({ ...prev, skills: prev.skills.filter((s) => s !== skillId) }))
   }
-  
+
   const addResponsibility = () => {
     const resp = newResponsibility.trim()
     if (resp && !formData.responsibilities.includes(resp)) {
-      setFormData(prev => ({ ...prev, responsibilities: [...prev.responsibilities, resp] }))
+      setFormData((prev) => ({ ...prev, responsibilities: [...prev.responsibilities, resp] }))
       setNewResponsibility('')
     }
   }
-  
+
   const removeResponsibility = (r: string) => {
-    setFormData(prev => ({ ...prev, responsibilities: prev.responsibilities.filter(item => item !== r) }))
+    setFormData((prev) => ({ ...prev, responsibilities: prev.responsibilities.filter((item) => item !== r) }))
   }
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
-
-    if (!agentId) return
 
     setIsUploadingPhoto(true)
     setPhotoError(null)
@@ -188,17 +251,13 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
         return localPreview
       })
 
-      const normalizedFile = await normalizeImageUpload(file, agentId)
+      const normalizedFile = await normalizeImageUpload(file, pendingAgentId)
       const body = new FormData()
       body.append('file', normalizedFile)
-      body.append('agentId', agentId)
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-
+      body.append('agentId', pendingAgentId)
       const response = await fetch('/api/agent-photos/upload', {
         method: 'POST',
-        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         body,
       })
 
@@ -214,9 +273,11 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
         if (current?.startsWith('blob:')) URL.revokeObjectURL(current)
         return payload.photoUrl
       })
-      updateAgent(agentId, { photoUrl: payload.photoUrl })
+      if (!isCreating && agentId) {
+        updateAgent(agentId, { photoUrl: payload.photoUrl })
+      }
       setPhotoError(null)
-      toast.success(`${agent.name} avatar uploaded`)
+      toast.success('Avatar uploaded')
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to upload photo'
       setPhotoError(message)
@@ -228,11 +289,9 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
     event.target.value = ''
   }
 
-  const normalizeImageUpload = async (file: File, currentAgentId: string): Promise<File> => {
+  const normalizeImageUpload = async (file: File, id: string): Promise<File> => {
     if (file.size <= 900_000) return file
-
     const imageUrl = URL.createObjectURL(file)
-
     try {
       const image = await new Promise<HTMLImageElement>((resolve, reject) => {
         const img = new Image()
@@ -240,7 +299,6 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
         img.onerror = () => reject(new Error('Could not read image'))
         img.src = imageUrl
       })
-
       const maxDimension = 768
       const scale = Math.min(1, maxDimension / Math.max(image.width, image.height))
       const targetWidth = Math.max(1, Math.round(image.width * scale))
@@ -249,342 +307,510 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
       canvas.width = targetWidth
       canvas.height = targetHeight
       const context = canvas.getContext('2d')
-
       if (!context) throw new Error('Could not process image')
-
       context.drawImage(image, 0, 0, targetWidth, targetHeight)
-
       const blob = await new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob((result) => {
-          if (result) resolve(result)
-          else reject(new Error('Could not compress image'))
-        }, 'image/webp', 0.86)
+        canvas.toBlob(
+          (result) => { if (result) resolve(result); else reject(new Error('Could not compress image')) },
+          'image/webp', 0.86
+        )
       })
-
-      return new File([blob], `${currentAgentId}-avatar.webp`, { type: 'image/webp' })
+      return new File([blob], `${id}-avatar.webp`, { type: 'image/webp' })
     } finally {
       URL.revokeObjectURL(imageUrl)
     }
   }
-  
+
+  const currentStepName = STEPS[step].id
+
   return (
     <div className="fixed inset-0 bg-black/55 backdrop-blur-md flex items-center justify-center z-50 p-4">
-      <div className="editor-theme bg-[var(--bg-panel)] rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col border border-border shadow-2xl">
+      <div className="relative editor-theme bg-[var(--bg-panel)] rounded-2xl w-full max-w-3xl max-h-[92vh] overflow-hidden flex flex-col border border-border shadow-2xl">
+
         {/* Header */}
-        <div className="p-6 border-b border-border flex items-center justify-between">
+        <div className="p-5 border-b border-border flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-4">
             <AgentBot
-              name={formData.name || agent.name}
-              avatar={agent.avatar}
+              name={formData.name || (isCreating ? 'New' : agent?.name || 'Agent')}
+              avatar={isCreating ? 'NW' : agent?.avatar || 'AG'}
               color={formData.color}
-              photoUrl={photoPreviewUrl || formData.photoUrl || agent.photoUrl}
+              photoUrl={photoPreviewUrl || formData.photoUrl || undefined}
               size={40}
             />
             <div>
-              <h2 className="text-xl font-bold text-text-primary">Edit Agent</h2>
-              <p className="text-sm text-text-secondary">{formData.name || agent.name} — {formData.role || agent.role}</p>
+              <h2 className="text-lg font-bold text-text-primary">
+                {isCreating ? 'Add New Agent' : `Edit Agent`}
+              </h2>
+              <p className="text-xs text-text-secondary">
+                {formData.name || (isCreating ? 'Fill in the details below' : agent?.role)}
+              </p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-[var(--bg-hover)] rounded-lg text-text-dim hover:text-text-primary">
             <X size={20} />
           </button>
         </div>
-        
-        {/* Form */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Basic Info */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1 text-text-primary">Name</label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                className="editor-input w-full px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1 text-text-primary">Role</label>
-              <input
-                type="text"
-                value={formData.role}
-                onChange={e => setFormData(prev => ({ ...prev, role: e.target.value }))}
-                className="editor-input w-full px-3 py-2 text-sm"
-              />
-            </div>
-          </div>
 
-          {architectureBundle ? (
-            <div className="rounded-2xl border border-border bg-[var(--bg-elevated)] p-4 space-y-3">
-              <div className="flex items-start justify-between gap-4">
+        {/* Step indicators */}
+        <div className="flex-shrink-0 border-b border-border px-5 py-3">
+          <div className="flex items-center gap-1">
+            {STEPS.map((s, i) => {
+              const Icon = s.icon
+              const isCompleted = i < step
+              const isCurrent = i === step
+              return (
+                <React.Fragment key={s.id}>
+                  <button
+                    onClick={() => setStep(i)}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
+                      isCurrent
+                        ? 'bg-[#9b6dff]/14 text-[#9b6dff] border border-[#9b6dff]/30'
+                        : isCompleted
+                        ? 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                        : 'text-text-dim hover:text-text-secondary'
+                    }`}
+                  >
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold ${
+                      isCompleted ? 'bg-[#00d4aa]/20 text-[#00d4aa]' : isCurrent ? 'bg-[#9b6dff]/20 text-[#9b6dff]' : 'bg-[var(--bg-elevated)] text-text-dim'
+                    }`}>
+                      {isCompleted ? <Check size={10} /> : i + 1}
+                    </span>
+                    <span className="hidden sm:block">{s.label}</span>
+                  </button>
+                  {i < STEPS.length - 1 && (
+                    <div className={`h-px flex-1 max-w-6 ${i < step ? 'bg-[#00d4aa]/40' : 'bg-[var(--border)]'}`} />
+                  )}
+                </React.Fragment>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Step content */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+
+          {/* ── Step 0: Identity ── */}
+          {currentStepName === 'identity' && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm font-semibold text-text-primary">Architecture Source Of Truth</p>
-                  <p className="text-xs text-text-dim mt-1">
-                    This agent now loads from folder-based architecture files. Use the app here for avatar changes; use the config files for behavioral edits.
+                  <label className="block text-sm font-medium mb-1 text-text-primary">Name <span className="text-red-400">*</span></label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                    className="editor-input w-full px-3 py-2 text-sm"
+                    placeholder="e.g., Nova, Atlas, Maya"
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-text-primary">Role / Title</label>
+                  <input
+                    type="text"
+                    value={formData.role}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, role: e.target.value }))}
+                    className="editor-input w-full px-3 py-2 text-sm"
+                    placeholder="e.g., Creative Director, SEO Specialist"
+                  />
+                </div>
+              </div>
+
+              {/* Division */}
+              <div>
+                <label className="block text-sm font-medium mb-2 text-text-primary">Division</label>
+                <div className="flex gap-2 flex-wrap">
+                  {DIVISIONS.map((div) => (
+                    <button
+                      key={div}
+                      onClick={() => setFormData((prev) => ({ ...prev, division: div, color: DIVISION_COLORS[div] }))}
+                      className="px-4 py-2 rounded-xl text-sm font-medium transition-all capitalize"
+                      style={{
+                        backgroundColor: formData.division === div ? DIVISION_COLORS[div] + '20' : 'var(--bg-elevated)',
+                        color: formData.division === div ? DIVISION_COLORS[div] : 'var(--text-secondary)',
+                        border: `1px solid ${formData.division === div ? DIVISION_COLORS[div] : 'var(--border)'}`,
+                      }}
+                    >
+                      {div}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Photo */}
+              <div>
+                <label className="block text-sm font-medium mb-2 text-text-primary">Avatar Photo</label>
+                <div className="flex items-center gap-5">
+                  <div className="rounded-2xl border border-border bg-[var(--bg-elevated)] p-3">
+                    <AgentBot
+                      name={formData.name || 'New'}
+                      avatar={formData.name.slice(0, 2).toUpperCase() || 'NW'}
+                      color={formData.color}
+                      photoUrl={photoPreviewUrl || formData.photoUrl || undefined}
+                      size={72}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <input
+                      ref={photoInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="absolute w-px h-px opacity-0 pointer-events-none"
+                      onChange={handlePhotoUpload}
+                    />
+                    <button
+                      type="button"
+                      disabled={isUploadingPhoto}
+                      onClick={() => photoInputRef.current?.click()}
+                      className="inline-flex items-center px-4 py-2 rounded-lg text-sm editor-button-secondary disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {isUploadingPhoto ? 'Uploading...' : 'Upload Photo'}
+                    </button>
+                    {formData.photoUrl && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData((prev) => ({ ...prev, photoUrl: '' }))
+                          latestPhotoUrlRef.current = ''
+                          setPhotoPreviewUrl(null)
+                        }}
+                        className="block text-xs text-text-dim hover:text-text-primary"
+                      >
+                        Remove photo
+                      </button>
+                    )}
+                    <p className="text-xs text-text-dim">Square or portrait image. Auto-compressed.</p>
+                    {photoError && <p className="text-xs text-red-400">{photoError}</p>}
+                  </div>
+                  {/* Color picker */}
+                  <div className="ml-auto text-center">
+                    <label className="block text-xs text-text-dim mb-1">Color</label>
+                    <input
+                      type="color"
+                      value={formData.color}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, color: e.target.value }))}
+                      className="w-12 h-12 rounded-xl cursor-pointer border border-border bg-[var(--bg-elevated)]"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Architecture notice for existing agents */}
+              {architectureBundle && (
+                <div className="rounded-2xl border border-border bg-[var(--bg-elevated)] p-4">
+                  <p className="text-sm font-semibold text-text-primary mb-1">Architecture Source</p>
+                  <p className="text-xs text-text-dim">
+                    This agent loads from config files at{' '}
+                    <code className="text-[10px] bg-[var(--bg-panel)] px-1 py-0.5 rounded">
+                      {getAgentSourceOfTruthPath(agentId!)}
+                    </code>
+                    . Edit behaviour there; use this editor for avatar & appearance changes.
                   </p>
                 </div>
-                <code className="text-[11px] text-text-dim bg-[var(--bg-panel)] px-2 py-1 rounded-md">
-                  {getAgentSourceOfTruthPath(agent.id)}
-                </code>
-              </div>
+              )}
+            </>
+          )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                <div className="rounded-xl border border-border bg-[var(--bg-panel)] p-3">
-                  <p className="text-xs uppercase tracking-[0.14em] text-text-dim mb-1">Soul</p>
-                  <p className="text-text-secondary line-clamp-4">{architectureBundle.soul.split('\n').find(line => line.trim() && !line.startsWith('#'))}</p>
-                </div>
-                <div className="rounded-xl border border-border bg-[var(--bg-panel)] p-3">
-                  <p className="text-xs uppercase tracking-[0.14em] text-text-dim mb-1">Runtime</p>
-                  <p className="text-text-secondary">{getProviderRoutingNote(agent.provider, agent.model)}</p>
-                </div>
-                <div className="rounded-xl border border-border bg-[var(--bg-panel)] p-3 md:col-span-2">
-                  <p className="text-xs uppercase tracking-[0.14em] text-text-dim mb-1">Memory</p>
-                  <p className="text-text-secondary">{getAgentMemoryNote()}</p>
-                </div>
-              </div>
-            </div>
-          ) : null}
-
-          <div>
-            <label className="block text-sm font-medium mb-2 text-text-primary">Personal Photo</label>
-            <div className="flex items-center gap-4">
-              <div className="rounded-2xl border border-border bg-[var(--bg-elevated)] p-3">
-                <AgentBot
-                  name={formData.name || agent.name}
-                  avatar={agent.avatar}
-                  color={formData.color}
-                  photoUrl={photoPreviewUrl || formData.photoUrl || undefined}
-                  size={72}
+          {/* ── Step 1: Personality ── */}
+          {currentStepName === 'personality' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium mb-1 text-text-primary">Bio</label>
+                <p className="text-xs text-text-dim mb-2">A short description of who this agent is and what makes them unique.</p>
+                <textarea
+                  value={formData.bio}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, bio: e.target.value }))}
+                  rows={3}
+                  className="editor-textarea w-full px-3 py-2 text-sm resize-none"
+                  placeholder="e.g., Nova is a data-driven creative strategist who blends analytical insight with bold visual thinking..."
                 />
               </div>
-              <div className="space-y-2">
+
+              <div>
+                <label className="block text-sm font-medium mb-1 text-text-primary">Methodology</label>
+                <p className="text-xs text-text-dim mb-2">How does this agent approach work?</p>
                 <input
-                  id="agent-photo-upload"
-                  ref={photoInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="absolute w-px h-px opacity-0 pointer-events-none"
-                  onChange={handlePhotoUpload}
+                  type="text"
+                  value={formData.methodology}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, methodology: e.target.value }))}
+                  className="editor-input w-full px-3 py-2 text-sm"
+                  placeholder="e.g., Design Thinking + Agile, Research-first, Iterate fast"
                 />
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    disabled={isUploadingPhoto}
-                    onClick={() => photoInputRef.current?.click()}
-                    className="inline-flex items-center px-4 py-2 rounded-lg text-sm editor-button-secondary disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    {isUploadingPhoto ? 'Uploading...' : 'Upload Photo'}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1 text-text-primary">System Prompt</label>
+                <p className="text-xs text-text-dim mb-2">
+                  The AI instructions that define this agent's behavior. Leave blank to inherit global defaults.
+                </p>
+                <textarea
+                  value={formData.systemPrompt}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, systemPrompt: e.target.value }))}
+                  rows={7}
+                  className="editor-textarea w-full px-3 py-2 text-sm font-mono resize-none"
+                  placeholder="You are [name], a [role] at a creative agency. You specialise in..."
+                />
+              </div>
+            </>
+          )}
+
+          {/* ── Step 2: Capabilities ── */}
+          {currentStepName === 'capabilities' && (
+            <>
+              {/* Skills */}
+              <div>
+                <label className="block text-sm font-medium mb-1 text-text-primary">Skills</label>
+                <p className="text-xs text-text-dim mb-3">Select skills from the library. Each skill unlocks specialised capabilities.</p>
+                <SkillPicker
+                  selectedSkillIds={formData.skills}
+                  onAddSkill={addSkill}
+                  onRemoveSkill={removeSkill}
+                />
+              </div>
+
+              {/* Tools */}
+              <div>
+                <label className="block text-sm font-medium mb-2 text-text-primary">Tools Access</label>
+                <div className="flex flex-wrap gap-2">
+                  {['web-search', 'analytics', 'document', 'spreadsheet', 'presentation', 'image-gen', 'figma', 'canva'].map((tool) => {
+                    const isSelected = formData.tools.includes(tool)
+                    return (
+                      <button
+                        key={tool}
+                        onClick={() =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            tools: isSelected ? prev.tools.filter((t) => t !== tool) : [...prev.tools, tool],
+                          }))
+                        }
+                        className="px-3 py-1.5 rounded-xl text-xs font-medium transition-all"
+                        style={{
+                          backgroundColor: isSelected ? 'rgba(155, 109, 255, 0.14)' : 'var(--bg-elevated)',
+                          color: isSelected ? '#9b6dff' : 'var(--text-secondary)',
+                          border: `1px solid ${isSelected ? '#9b6dff' : 'var(--border)'}`,
+                        }}
+                      >
+                        {isSelected ? '✓ ' : '+ '}{tool}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Responsibilities */}
+              <div>
+                <label className="block text-sm font-medium mb-1 text-text-primary">Responsibilities</label>
+                <p className="text-xs text-text-dim mb-2">What is this agent accountable for?</p>
+                <div className="space-y-1 mb-3">
+                  {formData.responsibilities.length === 0 && (
+                    <span className="text-xs text-text-dim italic">No responsibilities added yet</span>
+                  )}
+                  {formData.responsibilities.map((r) => (
+                    <div key={r} className="editor-panel-muted flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg">
+                      <span className="flex-1">{r}</span>
+                      <button onClick={() => removeResponsibility(r)} className="text-text-dim hover:text-red-400 flex-shrink-0">
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newResponsibility}
+                    onChange={(e) => setNewResponsibility(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { addResponsibility() } }}
+                    className="editor-input flex-1 px-3 py-2 text-sm"
+                    placeholder="Type a responsibility and press Enter…"
+                  />
+                  <button onClick={addResponsibility} className="editor-button-primary px-4 py-2 rounded-lg text-sm">
+                    Add
                   </button>
-                  {formData.photoUrl && (
-                    <span className="text-xs text-emerald-500">Photo selected</span>
-                  )}
-                  {isUploadingPhoto && (
-                    <span className="text-xs text-amber-500">Uploading...</span>
-                  )}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* ── Step 3: AI Config ── */}
+          {currentStepName === 'config' && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-text-primary">Temperature</label>
+                  <p className="text-xs text-text-dim mb-2">0 = precise, 1 = creative. Default: 0.7</p>
+                  <input
+                    type="number"
+                    value={formData.temperature}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, temperature: parseFloat(e.target.value) || 0.7 }))}
+                    step={0.05}
+                    min={0}
+                    max={1}
+                    className="editor-input w-full px-3 py-2 text-sm"
+                  />
+                  <input
+                    type="range"
+                    value={formData.temperature}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, temperature: parseFloat(e.target.value) }))}
+                    step={0.05}
+                    min={0}
+                    max={1}
+                    className="w-full mt-2 accent-[#9b6dff]"
+                  />
+                  <div className="flex justify-between text-[10px] text-text-dim mt-0.5">
+                    <span>Precise</span>
+                    <span>Creative</span>
+                  </div>
                 </div>
                 <div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFormData((prev) => ({ ...prev, photoUrl: '' }))
-                      latestPhotoUrlRef.current = ''
-                      setPhotoPreviewUrl(null)
-                      if (agentId) {
-                        updateAgent(agentId, { photoUrl: undefined })
-                      }
-                      toast.info('Using default agent icon')
-                    }}
-                    className="text-xs text-text-dim hover:text-text-primary"
-                  >
-                    Use default icon
-                  </button>
+                  <label className="block text-sm font-medium mb-1 text-text-primary">Max Output Tokens</label>
+                  <p className="text-xs text-text-dim mb-2">How long responses can be. Default: 1536</p>
+                  <input
+                    type="number"
+                    value={formData.maxTokens}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, maxTokens: parseInt(e.target.value) || 1536 }))}
+                    min={256}
+                    max={8192}
+                    step={256}
+                    className="editor-input w-full px-3 py-2 text-sm"
+                  />
                 </div>
-                <p className="text-xs text-text-dim max-w-md">
-                  Upload a square or portrait photo. It is saved to the app uploads folder and reused anywhere this agent appears.
-                </p>
-                {photoError ? <p className="text-xs text-red-400">{photoError}</p> : null}
+              </div>
+
+              {/* Summary card */}
+              <div className="rounded-2xl border border-border bg-[var(--bg-elevated)] p-5 mt-4">
+                <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">Agent Summary</p>
+                <div className="flex items-center gap-4 mb-4">
+                  <AgentBot
+                    name={formData.name || 'New'}
+                    avatar={formData.name.slice(0, 2).toUpperCase() || 'NW'}
+                    color={formData.color}
+                    photoUrl={photoPreviewUrl || formData.photoUrl || undefined}
+                    size={52}
+                  />
+                  <div>
+                    <p className="font-bold text-text-primary">{formData.name || '—'}</p>
+                    <p className="text-xs text-text-secondary">{formData.role || '—'}</p>
+                    <p className="text-xs text-text-dim capitalize mt-0.5">{formData.division}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-3 text-center text-xs">
+                  <div className="bg-[var(--bg-panel)] rounded-xl p-2">
+                    <p className="font-bold text-[#9b6dff]">{formData.skills.length}</p>
+                    <p className="text-text-dim">Skills</p>
+                  </div>
+                  <div className="bg-[var(--bg-panel)] rounded-xl p-2">
+                    <p className="font-bold text-[#4f8ef7]">{formData.tools.length}</p>
+                    <p className="text-text-dim">Tools</p>
+                  </div>
+                  <div className="bg-[var(--bg-panel)] rounded-xl p-2">
+                    <p className="font-bold text-[#00d4aa]">{formData.responsibilities.length}</p>
+                    <p className="text-text-dim">Tasks</p>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Footer navigation */}
+        <div className="p-5 border-t border-border flex items-center justify-between flex-shrink-0 gap-2">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => (step === 0 ? onClose() : setStep((s) => s - 1))}
+              className="flex items-center gap-2 px-4 py-2 text-sm text-text-dim hover:text-text-primary transition-colors"
+            >
+              {step === 0 ? (
+                'Cancel'
+              ) : (
+                <>
+                  <ChevronLeft size={16} />
+                  Back
+                </>
+              )}
+            </button>
+            {/* Delete — only visible when editing an existing agent */}
+            {!isCreating && (
+              <button
+                onClick={() => setConfirmingDelete(true)}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm text-red-400 hover:text-red-500 hover:bg-red-500/8 rounded-xl transition-all"
+              >
+                <Trash2 size={14} />
+                Delete
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1">
+            {STEPS.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setStep(i)}
+                className={`w-2 h-2 rounded-full transition-all ${i === step ? 'bg-[#9b6dff] w-4' : i < step ? 'bg-[#00d4aa]' : 'bg-[var(--border)]'}`}
+              />
+            ))}
+          </div>
+
+          {step < STEPS.length - 1 ? (
+            <button
+              onClick={() => setStep((s) => s + 1)}
+              className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-medium text-white transition-all"
+              style={{ background: 'linear-gradient(135deg, #9b6dff, #6f42f5)' }}
+            >
+              Next
+              <ChevronRight size={16} />
+            </button>
+          ) : (
+            <button
+              onClick={handleSave}
+              disabled={isUploadingPhoto || isSaving || !formData.name.trim()}
+              className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-medium text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ background: 'linear-gradient(135deg, #00d4aa, #0ea5c4)' }}
+            >
+              <Save size={16} />
+              {isSaving ? 'Saving…' : isCreating ? 'Create Agent' : 'Save Changes'}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Delete confirmation overlay */}
+      {confirmingDelete && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm rounded-2xl z-10">
+          <div
+            className="bg-[var(--bg-panel)] border border-[var(--border)] rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/12">
+                <AlertTriangle size={20} className="text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-[var(--text-primary)]">Delete {agent?.name}?</h3>
+                <p className="text-xs text-[var(--text-secondary)] mt-0.5">This cannot be undone.</p>
               </div>
             </div>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium mb-1 text-text-primary">Bio</label>
-            <textarea
-              value={formData.bio}
-              onChange={e => setFormData(prev => ({ ...prev, bio: e.target.value }))}
-              rows={2}
-              className="editor-textarea w-full px-3 py-2 text-sm resize-none"
-              placeholder="Brief description of the agent..."
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium mb-1 text-text-primary">Methodology</label>
-            <input
-              type="text"
-              value={formData.methodology}
-              onChange={e => setFormData(prev => ({ ...prev, methodology: e.target.value }))}
-              className="editor-input w-full px-3 py-2 text-sm"
-              placeholder="e.g., Agile/Scrum + Design Thinking"
-            />
-          </div>
-          
-          {/* Division */}
-          <div>
-            <label className="block text-sm font-medium mb-2 text-text-primary">Division</label>
-            <div className="flex gap-2 flex-wrap">
-              {DIVISIONS.map(div => (
-                <button
-                  key={div}
-                  onClick={() => setFormData(prev => ({ ...prev, division: div as AgencyDivision, color: DIVISION_COLORS[div] }))}
-                  className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
-                  style={{
-                    backgroundColor: formData.division === div ? DIVISION_COLORS[div] + '20' : '#1a1d26',
-                    color: formData.division === div ? DIVISION_COLORS[div] : 'var(--text-secondary)',
-                    border: formData.division === div ? `1px solid ${DIVISION_COLORS[div]}` : '1px solid var(--border)',
-                  }}
-                >
-                  {div}
-                </button>
-              ))}
-            </div>
-          </div>
-          
-          {/* Skills - Using Picker */}
-          <div>
-            <label className="block text-sm font-medium mb-2 text-text-primary">Skills</label>
-            <p className="text-xs text-text-dim mb-3">Select from the skills library. Each skill includes detailed prompts and instructions.</p>
-            <SkillPicker
-              selectedSkillIds={formData.skills}
-              onAddSkill={addSkill}
-              onRemoveSkill={removeSkill}
-            />
-          </div>
-          
-          {/* Responsibilities */}
-          <div>
-            <label className="block text-sm font-medium mb-2 text-text-primary">Responsibilities</label>
-            <p className="text-xs text-text-dim mb-2">What this agent is responsible for</p>
-            <div className="space-y-1 mb-2">
-              {formData.responsibilities.length === 0 && (
-                <span className="text-xs text-text-dim italic">No responsibilities added yet</span>
-              )}
-              {formData.responsibilities.map(r => (
-                <div key={r} className="editor-panel-muted flex items-center gap-2 px-3 py-1.5 text-sm">
-                  <span className="flex-1">{r}</span>
-                  <button onClick={() => removeResponsibility(r)} className="text-text-dim hover:text-red-400">
-                    <X size={14} />
-                  </button>
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={newResponsibility}
-                onChange={e => setNewResponsibility(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && (addResponsibility(), setNewResponsibility(''))}
-                className="editor-input flex-1 px-3 py-2 text-sm"
-                placeholder="Type a responsibility and press Enter..."
-              />
-              <button onClick={() => { addResponsibility(); setNewResponsibility('') }} className="editor-button-primary px-4 py-2 rounded-lg text-sm">
-                Add
+            <p className="text-sm text-[var(--text-secondary)] mb-5 leading-relaxed">
+              The agent will be removed from your roster and all active missions they are assigned to.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmingDelete(false)}
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium border border-[var(--border)] text-[var(--text-secondary)] hover:bg-white/50 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (agentId) deleteAgent(agentId)
+                  onClose()
+                }}
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-red-500 hover:bg-red-600 transition-all"
+              >
+                Delete Agent
               </button>
             </div>
           </div>
-          
-          {/* Tools */}
-          <div>
-            <label className="block text-sm font-medium mb-2 text-text-primary">Tools</label>
-            <div className="flex flex-wrap gap-2">
-              {['web-search', 'analytics', 'document', 'spreadsheet', 'presentation', 'image-gen', 'figma', 'canva'].map(tool => {
-                const isSelected = formData.tools.includes(tool)
-                return (
-                  <button
-                    key={tool}
-                    onClick={() => {
-                      if (isSelected) {
-                        setFormData(prev => ({ ...prev, tools: prev.tools.filter(t => t !== tool) }))
-                      } else {
-                        setFormData(prev => ({ ...prev, tools: [...prev.tools, tool] }))
-                      }
-                    }}
-                    className="px-3 py-1.5 rounded-lg text-xs transition-all"
-                    style={{
-                      backgroundColor: isSelected ? 'rgba(155, 109, 255, 0.14)' : 'var(--bg-elevated)',
-                      color: isSelected ? '#9b6dff' : 'var(--text-secondary)',
-                      border: `1px solid ${isSelected ? '#9b6dff' : 'var(--border)'}`,
-                    }}
-                  >
-                    {isSelected ? '✓ ' : '+ '}{tool}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-          
-          {/* AI Settings */}
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1 text-text-primary">Temperature</label>
-              <input
-                type="number"
-                value={formData.temperature}
-                onChange={e => setFormData(prev => ({ ...prev, temperature: parseFloat(e.target.value) || 0.7 }))}
-                step={0.1}
-                min={0}
-                max={1}
-                className="editor-input w-full px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1 text-text-primary">Max Tokens</label>
-              <input
-                type="number"
-                value={formData.maxTokens}
-                onChange={e => setFormData(prev => ({ ...prev, maxTokens: parseInt(e.target.value) || 1536 }))}
-                className="editor-input w-full px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1 text-text-primary">Color</label>
-              <input
-                type="color"
-                value={formData.color}
-                onChange={e => setFormData(prev => ({ ...prev, color: e.target.value }))}
-                className="w-full h-10 bg-[var(--bg-elevated)] rounded-lg cursor-pointer border border-border"
-              />
-            </div>
-          </div>
-          
-          {/* System Prompt */}
-          <div>
-            <label className="block text-sm font-medium mb-1 text-text-primary">System Prompt</label>
-            <textarea
-              value={formData.systemPrompt}
-              onChange={e => setFormData(prev => ({ ...prev, systemPrompt: e.target.value }))}
-              rows={6}
-              className="editor-textarea w-full px-3 py-2 text-sm font-mono resize-none"
-              placeholder="Agent system prompt..."
-            />
-          </div>
         </div>
-        
-        {/* Footer */}
-        <div className="p-6 border-t border-border flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-text-dim hover:text-text-primary">
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={isUploadingPhoto || isSaving}
-            className="editor-button-primary px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            <Save size={16} />
-            {isSaving ? 'Saving...' : isUploadingPhoto ? 'Uploading photo...' : 'Save Changes'}
-          </button>
-        </div>
-      </div>
+      )}
     </div>
   )
 }

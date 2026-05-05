@@ -1,0 +1,393 @@
+// Pipeline Execution Engine
+// Handles task routing, pipeline execution, and agent coordination
+
+import { useAgentsStore } from './agents-store'
+import type { Pipeline, Phase, Activity } from '@/lib/stores/pipelines-store'
+import { pickAgentForRole } from '@/lib/agent-roles'
+import { getStoredToken } from '@/lib/auth/browser'
+import { useSkillsStore } from '@/lib/stores/skills-store'
+import type { Client } from '@/lib/client-data'
+
+export interface PipelineInstance {
+  id: string
+  pipelineId: string
+  clientId: string
+  language: 'en' | 'ar'
+  status: 'pending' | 'running' | 'completed' | 'paused' | 'blocked'
+  currentPhase: string
+  currentActivity: string | null
+  tasks: PipelineTask[]
+  outputs: Map<string, PipelineOutput>
+  clientData: Record<string, string>
+  startedAt: number | null
+  completedAt: number | null
+}
+
+export interface PipelineTask {
+  id: string
+  phaseId: string
+  activityId: string
+  title: string
+  status: 'pending' | 'in-progress' | 'completed' | 'blocked'
+  assignedAgent: string | null
+  output: PipelineOutput | null
+  checklist: string[]
+  completedChecklist: string[]
+  startedAt: number | null
+  completedAt: number | null
+  error: string | null
+}
+
+export interface PipelineOutput {
+  taskId: string
+  content: string
+  format: 'text' | 'json' | 'markdown'
+  artifacts: string[] // file references
+}
+
+export interface PipelineValidationResult {
+  ok: boolean
+  missingFields: string[]
+  missingTemplateVariables: string[]
+  message?: string
+}
+
+function mapClientToPipelineData(client?: Client | null): Record<string, string> {
+  if (!client) return {}
+
+  return {
+    brand_name: client.name || '',
+    niche: client.industry || '',
+    industry: client.industry || '',
+    target_audience: client.targetAudiences || '',
+    audience_demographics: client.targetAudiences || '',
+    audience_psychographics: client.targetAudiences || '',
+    product_service: client.productsAndServices || '',
+    business_objectives: client.strategicPriorities || '',
+    tone: client.toneOfVoice || '',
+    brand_voice: client.toneOfVoice || '',
+    campaign_theme: client.keyMessages || '',
+    visual_direction: client.brandIdentityNotes || '',
+    asset_specs: client.brandIdentityNotes || '',
+    competitive_landscape: client.competitiveLandscape || '',
+    channel_strategy: client.strategicPriorities || '',
+    pain_points: client.objectionHandling || '',
+    key_dates: client.operationalDetails || '',
+    posting_frequency: '3-4 posts per week',
+    platforms: 'Instagram, LinkedIn',
+    content_goal: 'Awareness and lead generation',
+    campaign_duration: '30 days',
+  }
+}
+
+function extractTemplateVariables(template: string) {
+  return Array.from(template.matchAll(/\{\{([^}]+)\}\}/g)).map((match) => match[1].trim())
+}
+
+export function validatePipelineClientData(
+  pipeline: Pipeline,
+  clientData: Record<string, string>
+): PipelineValidationResult {
+  const missingFields = (pipeline.clientProfileFields || [])
+    .filter((field) => field.required && !String(clientData[field.id] || '').trim())
+    .map((field) => field.label)
+
+  const templateVariables = new Set<string>()
+  for (const phase of pipeline.phases || []) {
+    for (const activity of phase.activities || []) {
+      for (const template of [activity.prompts?.en, activity.prompts?.ar, activity.description]) {
+        if (!template) continue
+        for (const variable of extractTemplateVariables(template)) {
+          templateVariables.add(variable)
+        }
+      }
+    }
+  }
+
+  const missingTemplateVariables = Array.from(templateVariables).filter(
+    (variable) => !String(clientData[variable] || '').trim()
+  )
+
+  return {
+    ok: missingFields.length === 0 && missingTemplateVariables.length === 0,
+    missingFields,
+    missingTemplateVariables,
+    message:
+      missingFields.length || missingTemplateVariables.length
+        ? 'Pipeline setup is incomplete. Fill the missing client profile fields before running this pipeline.'
+        : undefined,
+  }
+}
+
+function buildKnowledgeAssetsContext(clientId: string) {
+  const client = useAgentsStore.getState().clients.find((entry) => entry.id === clientId)
+  const assets = Array.isArray(client?.knowledgeAssets) ? client.knowledgeAssets : []
+  if (!assets.length) return ''
+
+  return [
+    'Client knowledge assets:',
+    ...assets.slice(0, 8).map((asset) =>
+      `- ${asset.title} (${asset.type}, ${asset.status})${asset.summary ? `: ${asset.summary}` : ''}${asset.extractedInsights ? ` | Insights: ${asset.extractedInsights}` : ''}`
+    ),
+  ].join('\n')
+}
+
+async function getSkillContextForAgent(agentId: string) {
+  const skillsStore = useSkillsStore.getState()
+  if (!skillsStore.isLoaded) {
+    await skillsStore.loadSkills()
+  }
+
+  const agent = useAgentsStore.getState().agents.find((entry) => entry.id === agentId)
+  const skillDefinitions = (agent?.skills || [])
+    .map((skillId) => skillsStore.getSkill(skillId))
+    .filter(Boolean)
+    .slice(0, 8)
+
+  if (!skillDefinitions.length) return ''
+
+  return [
+    'Assigned specialist skills:',
+    ...skillDefinitions.map((skill) =>
+      [
+        `- ${skill!.name}`,
+        skill!.description ? `  Description: ${skill!.description}` : '',
+        skill!.prompts?.en?.instructions ? `  Instructions: ${skill!.prompts.en.instructions}` : '',
+        skill!.prompts?.en?.output_template ? `  Output template: ${skill!.prompts.en.output_template}` : '',
+      ]
+        .filter(Boolean)
+        .join('\n')
+    ),
+  ].join('\n')
+}
+
+// Build execution context from client data
+function buildContext(
+  promptTemplate: string,
+  clientData: Record<string, string>,
+  language: 'en' | 'ar',
+  extraContext = ''
+): string {
+  let context = promptTemplate
+  
+  // Replace all {{variable}} placeholders
+  for (const [key, value] of Object.entries(clientData)) {
+    const placeholder = `{{${key}}}`
+    context = context.split(placeholder).join(value)
+  }
+  
+  // Select language
+  if (language === 'ar' && context.includes('{{language}}')) {
+    context = context.split('{{language}}').join('Arabic')
+  } else if (language === 'en' && context.includes('{{language}}')) {
+    context = context.split('{{language}}').join('English')
+  }
+
+  return extraContext ? `${extraContext}\n\n${context}` : context
+}
+
+// Get agent for a role
+function getAgentForRole(
+  agents: ReturnType<typeof useAgentsStore.getState>['agents'],
+  role: string
+): { id: string; name: string } | null {
+  const agent = pickAgentForRole(agents, role, 'iris')
+  return agent ? { id: agent.id, name: agent.name } : null
+}
+
+// Create a new pipeline instance
+export function createPipelineInstance(
+  pipeline: Pipeline,
+  clientId: string,
+  clientData: Record<string, string>,
+  language: 'en' | 'ar'
+): PipelineInstance {
+  const client = useAgentsStore.getState().clients.find((entry) => entry.id === clientId)
+  const mergedClientData = {
+    ...mapClientToPipelineData(client),
+    ...(clientData || {}),
+  }
+  const instance: PipelineInstance = {
+    id: `pipeline-${Date.now()}`,
+    pipelineId: pipeline.id,
+    clientId,
+    language,
+    status: 'pending',
+    currentPhase: pipeline.phases[0]?.id || '',
+    currentActivity: null,
+    tasks: [],
+    outputs: new Map(),
+    clientData: mergedClientData,
+    startedAt: null,
+    completedAt: null,
+  }
+  
+  // Create tasks for each phase/activity
+  for (const phase of pipeline.phases) {
+    for (const activity of phase.activities) {
+      const assignedAgent = getAgentForRole(useAgentsStore.getState().agents, activity.assignedRole)
+      instance.tasks.push({
+        id: `${phase.id}-${activity.id}`,
+        phaseId: phase.id,
+        activityId: activity.id,
+        title: activity.name,
+        status: 'pending',
+        assignedAgent: assignedAgent?.id || null,
+        output: null,
+        checklist: activity.checklist || [],
+        completedChecklist: [],
+        startedAt: null,
+        completedAt: null,
+        error: null,
+      })
+    }
+  }
+  
+  return instance
+}
+
+/**
+ * Pipeline execution moved to the server.
+ *
+ * The previous browser-side path looped back through `/api/chat` once per
+ * activity, re-authenticating, re-loading skills+pipelines, and re-running
+ * channeling on every hop — and the only "next/run" surfaces (`executeTask`,
+ * `executeActivityBatch`, `callAgent`) were never actually wired into any UI.
+ *
+ * The new flow goes through `POST /api/pipelines/run`, which creates a task
+ * row and queues `runTaskExecution` (which uses `executeAutonomousTask` —
+ * the single canonical orchestrator). The client just navigates to
+ * `/tasks/<id>` and watches the live execution feed.
+ *
+ * `runPipelineFromUI` below is a thin wrapper exposed to the runner page so
+ * UI code doesn't have to know about auth headers and request shapes.
+ */
+export async function runPipelineFromUI(input: {
+  pipelineId: string
+  clientId?: string | null
+  request: string
+  language?: 'en' | 'ar'
+  runtimeMode?: 'fast' | 'thinking' | 'compare'
+}): Promise<{ taskId: string; pipelineName: string | null; deliverableType: string }> {
+  const supabase: any = null // migrated to REST API
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!token) {
+    throw new Error('You need to sign in before starting a pipeline run.')
+  }
+
+  const response = await fetch('/api/pipelines/run', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      pipelineId: input.pipelineId,
+      clientId: input.clientId || null,
+      request: input.request,
+      language: input.language || 'en',
+      runtimeMode: input.runtimeMode,
+    }),
+  })
+
+  const payload = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    throw new Error(payload?.error || 'Failed to start pipeline run.')
+  }
+
+  return {
+    taskId: payload.taskId,
+    pipelineName: payload.pipelineName ?? null,
+    deliverableType: payload.deliverableType ?? 'general-task',
+  }
+}
+
+// Get next pending task
+export function getNextTask(instance: PipelineInstance, pipeline: Pipeline): PipelineTask | null {
+  // Find first pending task
+  return instance.tasks.find(t => t.status === 'pending') || null
+}
+
+// Check if phase is complete
+export function isPhaseComplete(instance: PipelineInstance, phaseId: string): boolean {
+  const phaseTasks = instance.tasks.filter(t => t.phaseId === phaseId)
+  return phaseTasks.every(t => t.status === 'completed')
+}
+
+// Route a task request to the correct pipeline
+export interface TaskRequest {
+  description: string
+  clientId: string
+  language?: 'en' | 'ar'
+}
+
+export interface TaskResponse {
+  success: boolean
+  pipelineId?: string
+  pipelineName?: string
+  instanceId?: string
+  taskId?: string
+  message: string
+  availablePipelines?: Array<{
+    id: string
+    name: string
+    description: string
+    version: string
+    phases: Array<{ id: string; name: string }>
+  }>
+}
+
+// Pipeline matching is delegated to the canonical classifier so this
+// runner agrees with the chat route, agents-store, and IrisChat about which
+// pipeline a request maps to.
+import { inferPipelineHint } from '@/lib/intents/intent-classifier'
+
+export async function routeTask(
+  request: TaskRequest,
+  availablePipelines: Pipeline[]
+): Promise<TaskResponse> {
+  const { description, clientId, language = 'en' } = request
+  void clientId
+  void language
+
+  const hint = inferPipelineHint(description, availablePipelines as any)
+
+  if (!hint) {
+    return {
+      success: false,
+      message: `No matching pipeline found for: "${description.slice(0, 50)}..."`,
+      availablePipelines: availablePipelines.map(p => ({
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        version: p.version,
+        phases: p.phases.map(ph => ({ id: ph.id, name: ph.name })),
+      })),
+    }
+  }
+
+  const matchedPipeline = availablePipelines.find(p => p.id === hint.id)
+
+  if (!matchedPipeline) {
+    return {
+      success: false,
+      message: `Pipeline found but not loaded: ${hint.id}`,
+      availablePipelines: availablePipelines.map(p => ({
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        version: p.version,
+        phases: p.phases.map(ph => ({ id: ph.id, name: ph.name })),
+      })),
+    }
+  }
+
+  return {
+    success: true,
+    pipelineId: matchedPipeline.id,
+    pipelineName: matchedPipeline.name,
+    message: `Found pipeline: ${matchedPipeline.name}`,
+  }
+}

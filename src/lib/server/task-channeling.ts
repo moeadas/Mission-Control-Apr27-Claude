@@ -289,6 +289,11 @@ function buildSkillIndex(skillCategories: SkillCategory[]): Map<string, Enriched
   return byId
 }
 
+// Skill scoring is owned by `@/lib/skills/scoring` so this channeling pass
+// and the per-activity primary-skill picker in `autonomous-task.ts` always
+// agree about what's most relevant.
+import { scoreSkillRelevance } from '@/lib/skills/scoring'
+
 function scoreSkill(
   skill: EnrichedSkillDefinition,
   request: string,
@@ -297,57 +302,16 @@ function scoreSkill(
   agentId: string
 ): number {
   const spec = getChannelingSpec(deliverableType)
-  const haystacks = [
-    skill.id,
-    skill.name,
-    skill.description || '',
-    skill.prompts?.en?.trigger || '',
-    skill.prompts?.en?.context || '',
-    skill.prompts?.en?.instructions || '',
-  ]
-    .join(' ')
-    .toLowerCase()
-
-  const tokens = tokenize(request)
-  let score = 0
-
-  for (const token of tokens) {
-    if (token.length < 3) continue
-    if (haystacks.includes(token)) score += 2
-  }
-
-  if (skill.agents?.includes(agentId)) score += 3
-  if (pipeline && skill.pipelines?.includes(pipeline.id)) score += 4
-
-  for (const pattern of spec.skillBoostPatterns) {
-    if (pattern.test(skill.id)) {
-      score += 6
-      break
-    }
-  }
-
-  for (const pattern of spec.skillPenaltyPatterns) {
-    if (pattern.test(skill.id)) {
-      score -= 8
-      break
-    }
-  }
-
-  if (
-    /deep-research/.test(skill.id) &&
-    ['research-brief', 'strategy-brief', 'campaign-strategy', 'data-analysis', 'seo-audit'].includes(deliverableType)
-  ) {
-    score += 10
-  }
-
-  if (
-    /(brand-template|brand-guidelines|brand-consistency|nano|reference-image)/.test(skill.id) &&
-    (deliverableType === 'creative-asset' || deliverableType === 'brand-guidelines')
-  ) {
-    score += 7
-  }
-
-  return score
+  return scoreSkillRelevance(skill, {
+    request,
+    deliverableType,
+    agentId,
+    pipeline: pipeline ? { id: pipeline.id, name: pipeline.name } : null,
+    channelingSpec: {
+      skillBoostPatterns: spec.skillBoostPatterns,
+      skillPenaltyPatterns: spec.skillPenaltyPatterns,
+    },
+  })
 }
 
 function isSimpleVariant(request: string, spec: ChannelingDeliverableSpec): boolean {

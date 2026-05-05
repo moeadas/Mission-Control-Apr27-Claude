@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 import { exportArtifactToFile } from '@/lib/server/artifact-export'
-import { resolveAuthContextFromToken } from '@/lib/supabase/auth'
+import { resolveAuthContextFromToken } from '@/lib/auth/server'
 import { Artifact, ArtifactExport } from '@/lib/types'
 
 export const runtime = 'nodejs'

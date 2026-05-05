@@ -10,6 +10,16 @@ import { useRouter } from 'next/navigation'
 import { buildAgentLeaderboard } from '@/lib/live-ops'
 import { AgentLeaderboardPanel } from '@/components/analytics/AgentLeaderboardPanel'
 import { getMissionStageLabel } from '@/lib/mission-stage'
+import { Building2, Users, Bot, Wrench, GitBranch, Rocket, CheckCircle, Sparkles, X as XIcon } from 'lucide-react'
+
+const ONBOARDING_STEPS = [
+  { id: 'company', icon: Building2, color: '#4f8ef7', label: 'Configure your agency', href: '/settings' },
+  { id: 'client', icon: Users, color: '#00d4aa', label: 'Add your first client', href: '/clients' },
+  { id: 'agents', icon: Bot, color: '#a78bfa', label: 'Meet your agents', href: '/agents' },
+  { id: 'skills', icon: Wrench, color: '#fb923c', label: 'Add a skill', href: '/skills' },
+  { id: 'pipeline', icon: GitBranch, color: '#38bdf8', label: 'Create a pipeline', href: '/pipeline' },
+  { id: 'mission', icon: Rocket, color: '#f472b6', label: 'Start your first mission', href: '/mission' },
+]
 
 const DASHBOARD_MESSAGES = [
   'Launch great work with a lighter touch.',
@@ -25,7 +35,15 @@ export default function DashboardPage() {
   const missions = useAgentsStore((state) => state.missions)
   const clients = useAgentsStore((state) => state.clients)
   const artifacts = useAgentsStore((state) => state.artifacts)
+  const agencySettings = useAgentsStore((state) => state.agencySettings)
+  const updateAgencySettings = useAgentsStore((state) => state.updateAgencySettings)
   const router = useRouter()
+  const onboardingStep = agencySettings.onboardingStep ?? 0
+  // Only show checklist for users who explicitly have onboardingStep set (new users)
+  // undefined = existing user who never went through onboarding, so don't show
+  const showChecklist =
+    typeof agencySettings.onboardingStep === 'number' &&
+    onboardingStep < ONBOARDING_STEPS.length
   const activeTasks = missions.filter((task) => !['completed', 'cancelled'].includes(task.status))
   const leaderboard = buildAgentLeaderboard({ agents, missions, artifacts })
   const heroMessage = useMemo(
@@ -123,6 +141,136 @@ export default function DashboardPage() {
 
           {/* Metrics Cards */}
           <MetricsCards />
+
+          {/* Getting Started */}
+          {showChecklist && (
+            <div
+              className="relative rounded-3xl overflow-hidden p-6"
+              style={{
+                background: 'linear-gradient(135deg, rgba(155,109,255,0.08) 0%, rgba(79,142,247,0.06) 50%, rgba(45,212,191,0.05) 100%)',
+                border: '1px solid rgba(155,109,255,0.18)',
+              }}
+            >
+              {/* Decorative gradient orb */}
+              <div
+                className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full opacity-30"
+                style={{ background: 'radial-gradient(circle, rgba(155,109,255,0.4), transparent 70%)' }}
+              />
+
+              {/* Header row */}
+              <div className="relative flex items-center justify-between mb-6 gap-4">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="flex h-9 w-9 items-center justify-center rounded-xl"
+                    style={{ background: 'linear-gradient(135deg, rgba(155,109,255,0.22), rgba(79,142,247,0.16))', border: '1px solid rgba(155,109,255,0.28)' }}
+                  >
+                    <Sparkles size={15} style={{ color: '#9b6dff' }} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-[var(--text-primary)]">Setup checklist</h3>
+                    <p className="text-[11px] text-[var(--text-secondary)]">
+                      {onboardingStep} of {ONBOARDING_STEPS.length} complete
+                      {onboardingStep > 0 && (
+                        <span
+                          className="ml-2 inline-block px-1.5 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wide"
+                          style={{ background: 'rgba(45,212,191,0.18)', color: '#0ea5c4' }}
+                        >
+                          {Math.round((onboardingStep / ONBOARDING_STEPS.length) * 100)}%
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => updateAgencySettings({ onboardingComplete: false, onboardingStep })}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                    style={{
+                      background: 'rgba(155,109,255,0.10)',
+                      border: '1px solid rgba(155,109,255,0.25)',
+                      color: '#9b6dff',
+                    }}
+                  >
+                    Open wizard
+                  </button>
+                  <button
+                    onClick={() => updateAgencySettings({ onboardingStep: ONBOARDING_STEPS.length, onboardingComplete: true })}
+                    className="p-1.5 rounded-lg text-[var(--text-dim)] hover:text-[var(--text-secondary)] transition-all"
+                    aria-label="Dismiss"
+                  >
+                    <XIcon size={13} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Steps — horizontal list */}
+              <div className="relative grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
+                {ONBOARDING_STEPS.map((s, idx) => {
+                  const SIcon = s.icon
+                  const done = idx < onboardingStep
+                  const active = idx === onboardingStep
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => router.push(s.href)}
+                      className="group relative flex flex-col gap-3 p-4 rounded-2xl text-left transition-all hover:scale-[1.02]"
+                      style={{
+                        background: done
+                          ? `linear-gradient(135deg, ${s.color}14, ${s.color}08)`
+                          : active
+                          ? 'rgba(255,255,255,0.72)'
+                          : 'rgba(255,255,255,0.40)',
+                        border: `1px solid ${done ? s.color + '30' : active ? s.color + '50' : 'rgba(255,255,255,0.5)'}`,
+                        boxShadow: active ? `0 8px 24px ${s.color}20` : done ? 'none' : '0 2px 8px rgba(45,78,135,0.04)',
+                      }}
+                    >
+                      {/* Step number */}
+                      <span
+                        className="absolute top-2.5 right-2.5 text-[9px] font-mono"
+                        style={{ color: done ? s.color : 'var(--text-dim)', opacity: 0.7 }}
+                      >
+                        {String(idx + 1).padStart(2, '0')}
+                      </span>
+
+                      {/* Icon */}
+                      <div
+                        className="flex h-8 w-8 items-center justify-center rounded-xl"
+                        style={{
+                          background: done ? `${s.color}20` : active ? `${s.color}16` : 'rgba(255,255,255,0.5)',
+                          border: `1px solid ${done || active ? s.color + '35' : 'rgba(255,255,255,0.6)'}`,
+                        }}
+                      >
+                        {done ? (
+                          <CheckCircle size={14} style={{ color: s.color }} />
+                        ) : (
+                          <SIcon size={14} style={{ color: active ? s.color : 'var(--text-dim)' }} />
+                        )}
+                      </div>
+
+                      {/* Label */}
+                      <p
+                        className="text-[11px] font-semibold leading-tight pr-4"
+                        style={{
+                          color: done ? 'var(--text-secondary)' : active ? 'var(--text-primary)' : 'var(--text-dim)',
+                          textDecoration: done ? 'none' : undefined,
+                        }}
+                      >
+                        {s.label}
+                      </p>
+
+                      {/* Active indicator stripe */}
+                      {active && (
+                        <div
+                          className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full"
+                          style={{ background: `linear-gradient(90deg, ${s.color}, ${s.color}50)` }}
+                        />
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Main Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">

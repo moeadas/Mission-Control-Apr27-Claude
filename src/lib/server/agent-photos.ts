@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from 'fs/promises'
 import { basename, join } from 'path'
-import { getSupabaseServerClient } from '@/lib/supabase/server'
+import { getDb } from '@/lib/db/client'
 
 const DATA_DIR = join(process.cwd(), 'data')
 const UPLOADS_DIR = join(process.cwd(), 'public', 'uploads', 'agents')
@@ -70,14 +70,9 @@ export async function getUploadsDir() {
 }
 
 export async function syncAgentPhotoToDatabase(agentId: string, photoUrl?: string) {
-  const supabase = getSupabaseServerClient()
-  if (!supabase) return
-
   try {
-    await supabase
-      .from('agents')
-      .update({ photo_url: photoUrl || null })
-      .eq('id', agentId)
+    const db = getDb()
+    await db`UPDATE agents SET photo_url = ${photoUrl || null} WHERE id = ${agentId}`
   } catch (error) {
     console.error('Failed to sync agent photo to database:', error)
   }

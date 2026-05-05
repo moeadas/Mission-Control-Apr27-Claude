@@ -3,9 +3,24 @@ import { generateText } from '@/lib/server/ai'
 import { pickAgentForRole } from '@/lib/agent-roles'
 import { sanitizePromptProfile, sanitizePromptValue } from '@/lib/server/prompt-safety'
 import { validateDeliverableQuality } from '@/lib/output-quality'
+import {
+  formatChecklistFailures,
+  validateSkillChecklists,
+} from '@/lib/skills/checklist-validator'
 import { executeCreativeAssetTask } from '@/lib/server/creative-asset-engine'
 import { executeAutomatedContentCalendar } from '@/lib/server/content-calendar-engine'
-import { CONTENT_GENERATION_DELIVERABLE_TYPES, normalizeProviderSettings, resolveFallbackRuntime } from '@/lib/provider-settings'
+import {
+  CONTENT_GENERATION_DELIVERABLE_TYPES,
+  normalizeProviderSettings,
+  resolveContentTaskModel,
+  resolveFallbackRuntime,
+} from '@/lib/provider-settings'
+
+// Tiny helper used by the checklist-validation wiring. Defined here rather
+// than in scoring.ts since it's not skill-specific — just a dedupe pass.
+function uniqueIds(ids: string[]): string[] {
+  return Array.from(new Set(ids.filter(Boolean)))
+}
 
 interface RuntimeAgent {
   id: string
@@ -189,87 +204,44 @@ function resolveAgentSkillRefs(
   const refs: SkillRef[] = []
   for (const id of ids) {
     const ref = skillLookup.get(id)
-    if (ref) refs.push(ref)
-    else refs.push({ id, name: id }) // gracefully handle missing skill metadata
+    if (ref) {
+      refs.push(ref)
+    } else {
+      // skillCategories may have failed to load — synthesise a minimal but useful SkillRef
+      // from the ID so skills are still visible in the prompt rather than silently dropped.
+      const humanName = id
+        .replace(/[-_]/g, ' ')
+        .replace(/\b\w/g, (char) => char.toUpperCase())
+      refs.push({
+        id,
+        name: humanName,
+        description: `${humanName} expertise.`,
+        trigger: `Apply ${humanName.toLowerCase()} best practices to this task.`,
+        context: `The agent has specialised ${humanName.toLowerCase()} skills. Apply them throughout the output.`,
+        instructions: `Use your ${humanName.toLowerCase()} knowledge to produce a high-quality, accurate result.`,
+        outputTemplate: '',
+        checklist: [],
+        workflowSteps: [],
+        tags: [id],
+      })
+    }
   }
   return refs
 }
 
-/**
- * Score a skill's relevance to a specific pipeline activity. We tokenise the
- * activity name + description + assignedRole and reward overlap with the
- * skill id, name, tags, trigger, and (lightly) instructions. The top scorer
- * becomes the activity's "primary skill" — its full instructions are injected.
- */
-function scoreSkillForActivity(skill: SkillRef, activity: PipelineActivity, deliverableType?: DeliverableType): number {
-  const haystack = [
-    skill.id,
-    skill.name,
-    (skill.tags || []).join(' '),
-    skill.description || '',
-    skill.trigger || '',
-    (skill.instructions || '').slice(0, 600),
-  ]
-    .join(' ')
-    .toLowerCase()
-
-  const needle = [activity.name, activity.description, activity.assignedRole].filter(Boolean).join(' ').toLowerCase()
-  if (!needle.trim()) return 0
-
-  const tokens = needle
-    .replace(/[^a-z0-9\s-]/g, ' ')
-    .split(/\s+/)
-    .filter((token) => token.length >= 4)
-
-  let score = 0
-  for (const token of tokens) {
-    if (haystack.includes(token)) score += 2
-  }
-  if (deliverableType && haystack.includes(deliverableType.replace(/-/g, ' '))) score += 5
-  if (activity.assignedRole && skill.tags?.includes(activity.assignedRole)) score += 3
-  return score
-}
+// Skill scoring lives in `@/lib/skills/scoring` so this picker and the
+// channeling pass in `task-channeling.ts` always agree.
+import { pickBestSkill, scoreSkillRelevance } from '@/lib/skills/scoring'
 
 function pickPrimarySkillForActivity(
   skills: SkillRef[],
   activity: PipelineActivity,
   deliverableType?: DeliverableType
 ): SkillRef | null {
-  if (!skills.length) return null
-  let best: { skill: SkillRef; score: number } | null = null
-  for (const skill of skills) {
-    const score = scoreSkillForActivity(skill, activity, deliverableType)
-    if (!best || score > best.score) best = { skill, score }
-  }
-  return best && best.score > 0 ? best.skill : skills[0]
-}
-
-function scoreSkillForDeliverable(skill: SkillRef, deliverableType: DeliverableType, request: string): number {
-  const haystack = [
-    skill.id,
-    skill.name,
-    (skill.tags || []).join(' '),
-    skill.description || '',
-    skill.trigger || '',
-    (skill.instructions || '').slice(0, 600),
-  ]
-    .join(' ')
-    .toLowerCase()
-
-  let score = 0
-  if (haystack.includes(deliverableType.replace(/-/g, ' '))) score += 6
-  if (haystack.includes(deliverableType)) score += 4
-
-  const requestTokens = request
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, ' ')
-    .split(/\s+/)
-    .filter((token) => token.length >= 4)
-    .slice(0, 16)
-  for (const token of requestTokens) {
-    if (haystack.includes(token)) score += 1
-  }
-  return score
+  return pickBestSkill(skills, {
+    activity: { name: activity.name, description: activity.description, assignedRole: activity.assignedRole, id: activity.id },
+    deliverableType,
+  })
 }
 
 function pickPrimarySkillForLead(
@@ -277,14 +249,18 @@ function pickPrimarySkillForLead(
   deliverableType: DeliverableType,
   request: string
 ): SkillRef | null {
-  if (!skills.length) return null
-  let best: { skill: SkillRef; score: number } | null = null
-  for (const skill of skills) {
-    const score = scoreSkillForDeliverable(skill, deliverableType, request)
-    if (!best || score > best.score) best = { skill, score }
-  }
-  return best && best.score > 0 ? best.skill : skills[0]
+  return pickBestSkill(skills, {
+    request,
+    deliverableType,
+  }, { maxRequestTokens: 16, requestTokenWeight: 1 })
 }
+
+// Surface the score function for diagnostics / future tuning.
+export const _scoreSkillForActivity = (skill: SkillRef, activity: PipelineActivity, deliverableType?: DeliverableType) =>
+  scoreSkillRelevance(skill, {
+    activity: { name: activity.name, description: activity.description, assignedRole: activity.assignedRole, id: activity.id },
+    deliverableType,
+  })
 
 function renderPrimarySkillBlock(skill: SkillRef): string {
   const lines: string[] = [`### Primary skill in use: ${skill.name} (${skill.id})`]
@@ -453,11 +429,15 @@ async function generateContentFirstText(input: {
   const isContentTask = input.deliverableType && CONTENT_GENERATION_DELIVERABLE_TYPES.has(input.deliverableType)
   const normalizedSettings = normalizeProviderSettings(input.providerSettings)
 
+  // For content tasks we resolve the preferred provider+model through the
+  // user-scoped Settings (DEFAULT_CONTENT_TASK_MODELS provides the fallback
+  // when nothing is configured). For other tasks the caller already picked
+  // the runtime upstream so we honor it.
   const primaryRuntime = isContentTask
-    ? {
-        provider: normalizedSettings.ollama.enabled !== false ? ('ollama' as AIProvider) : ('gemini' as AIProvider),
-        model: normalizedSettings.ollama.enabled !== false ? 'minimax-m2.7:cloud' : 'gemini-2.5-pro',
-      }
+    ? (() => {
+        const provider: AIProvider = normalizedSettings.ollama.enabled !== false ? 'ollama' : 'gemini'
+        return { provider, model: resolveContentTaskModel(normalizedSettings, provider) }
+      })()
     : { provider: input.provider, model: input.model }
 
   try {
@@ -470,15 +450,21 @@ async function generateContentFirstText(input: {
       ollamaBaseUrl: input.ollamaBaseUrl,
       ollamaContextWindow: input.ollamaContextWindow,
       geminiApiKey: input.geminiApiKey,
-      timeoutMs: isContentTask && primaryRuntime.provider === 'ollama' ? 30000 : undefined,
+      // Content chunks (especially calendar posts at 4k tokens) regularly
+      // exceed 30s on Ollama. Allow up to 120s before giving up and trying
+      // the fallback runtime.
+      timeoutMs: isContentTask && primaryRuntime.provider === 'ollama' ? 120000 : undefined,
     })
   } catch (error) {
     if (!isContentTask) throw error
 
+    // Fallback path: ask the canonical resolver for the *other* provider's
+    // user-preferred content-task model. No string literals here.
+    const fallbackProvider: AIProvider = primaryRuntime.provider === 'ollama' ? 'gemini' : 'ollama'
     const fallbackRuntime = resolveFallbackRuntime({
       settings: normalizedSettings,
       currentProvider: primaryRuntime.provider,
-      requestedModel: primaryRuntime.provider === 'ollama' ? 'gemini-2.5-pro' : 'minimax-m2.7:cloud',
+      requestedModel: resolveContentTaskModel(normalizedSettings, fallbackProvider),
     })
 
     if (!fallbackRuntime) throw error
@@ -492,7 +478,10 @@ async function generateContentFirstText(input: {
       ollamaBaseUrl: input.ollamaBaseUrl,
       ollamaContextWindow: input.ollamaContextWindow,
       geminiApiKey: input.geminiApiKey,
-      timeoutMs: fallbackRuntime.provider === 'gemini' ? 45000 : 30000,
+      // Fallback path has the same headroom as the primary call. The
+      // generic generateText default is 120s for both providers — we
+      // pin it explicitly here for clarity.
+      timeoutMs: 120000,
     })
   }
 }
@@ -1135,6 +1124,31 @@ export async function executeAutonomousTask(input: {
   })
 
   let qualityResult = validateDeliverableQuality(input.deliverableType, response, input.request)
+
+  // Phase 3 — skill-checklist enforcement. The lead-skill checklist plus the
+  // primary collaborator-skill checklists are validated against the response.
+  // Any clear failures get merged into qualityResult.issues so the existing
+  // repair-pass loop kicks in automatically. Soft items are skipped to avoid
+  // false positives.
+  const checklistTargets = [
+    leadPrimarySkillId,
+    ...Object.values(input.selectedSkillsByAgent || {}).flat().slice(0, 6),
+  ].filter(Boolean) as string[]
+  const checklistSkills = uniqueIds(checklistTargets)
+    .map((id) => skillLookup.get(id))
+    .filter(Boolean) as SkillRef[]
+  const checklistVerdict = validateSkillChecklists(
+    checklistSkills.map((skill) => ({ id: skill.id, name: skill.name, checklist: skill.checklist })),
+    response
+  )
+  if (checklistVerdict.failed.length) {
+    const checklistIssueMessages = formatChecklistFailures(checklistVerdict.failed)
+    qualityResult = {
+      ok: false,
+      score: Math.max(0, qualityResult.score - checklistVerdict.failed.length * 5),
+      issues: [...qualityResult.issues, ...checklistIssueMessages],
+    }
+  }
 
   if (!qualityResult.ok) {
     const repaired = await generateContentFirstText({

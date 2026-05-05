@@ -1,0 +1,68 @@
+version: "3.9"
+
+services:
+  # ─── PostgreSQL ──────────────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: mc_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: mission_control
+      POSTGRES_USER: mc_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mc_db_data:/var/lib/postgresql/data
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mc_user -d mission_control"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mc_internal
+
+  # ─── Next.js App ─────────────────────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+    container_name: mc_app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://mc_user:${DB_PASSWORD}@db:5432/mission_control
+      JWT_SECRET: ${JWT_SECRET}
+      SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+      # AI providers
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      META_APP_ID: ${META_APP_ID:-}
+      META_APP_SECRET: ${META_APP_SECRET:-}
+    volumes:
+      # Persist uploaded files (agent photos, client assets)
+      - mc_uploads:/app/public/uploads
+      # Persist provider secrets written to disk
+      - mc_secrets:/app/data
+    ports:
+      - "3000:3000"
+    networks:
+      - mc_internal
+      - mc_external
+
+volumes:
+  mc_db_data:
+  mc_uploads:
+  mc_secrets:
+
+networks:
+  mc_internal:
+    driver: bridge
+  mc_external:
+    driver: bridge

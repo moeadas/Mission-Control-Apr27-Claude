@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-import { getSupabaseServerClient } from '@/lib/supabase/server'
-import { resolveAuthContextFromToken } from '@/lib/supabase/auth'
+import { getDb } from '@/lib/db/client'
+import { resolveAuthContextFromToken } from '@/lib/auth/server'
 
 function getBearerToken(request: NextRequest) {
   const authHeader = request.headers.get('authorization') || ''
@@ -9,12 +9,14 @@ function getBearerToken(request: NextRequest) {
   return authHeader.slice(7).trim()
 }
 
-async function getAgencyId() {
-  const supabase = getSupabaseServerClient()
-  if (!supabase) return null
-  const { data, error } = await supabase.from('agencies').select('id').eq('slug', 'default-agency').single()
-  if (error) throw error
-  return data.id as string
+async function getAgencyId(): Promise<string | null> {
+  try {
+    const db = getDb()
+    const rows = await db`SELECT id FROM agencies WHERE slug = 'default-agency' LIMIT 1`
+    return rows[0]?.id ?? null
+  } catch {
+    return null
+  }
 }
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -23,13 +25,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { id } = await params
-    const supabase = getSupabaseServerClient()
     const agencyId = await getAgencyId()
-    if (!supabase || !agencyId) return NextResponse.json({ error: 'Supabase not available' }, { status: 503 })
+    if (!agencyId) return NextResponse.json({ error: 'Database not available' }, { status: 503 })
 
-    const { data, error } = await supabase.from('pipelines').select('*').eq('agency_id', agencyId).eq('id', id).single()
-    if (error) throw error
-    return NextResponse.json(data.definition || {})
+    const db = getDb()
+    const rows = await db`
+      SELECT * FROM pipelines WHERE agency_id = ${agencyId} AND id = ${id} LIMIT 1
+    `
+    if (!rows[0]) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    return NextResponse.json(rows[0].definition || {})
   } catch (error) {
     console.error('Failed to load pipeline:', error)
     return NextResponse.json({ error: 'Failed to load pipeline' }, { status: 500 })
@@ -43,24 +47,33 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     const { id } = await params
     const pipeline = await request.json()
-    const supabase = getSupabaseServerClient()
     const agencyId = await getAgencyId()
-    if (!supabase || !agencyId) return NextResponse.json({ error: 'Supabase not available' }, { status: 503 })
+    if (!agencyId) return NextResponse.json({ error: 'Database not available' }, { status: 503 })
 
-    const payload = {
-      id,
-      agency_id: agencyId,
-      name: pipeline.name,
-      description: pipeline.description || '',
-      version: pipeline.version || '1.0',
-      is_default: Boolean(pipeline.isDefault),
-      estimated_duration: pipeline.estimatedDuration || null,
-      definition: pipeline,
-      source: 'app',
-    }
-
-    const { error } = await supabase.from('pipelines').upsert(payload, { onConflict: 'id' })
-    if (error) throw error
+    const db = getDb()
+    await db`
+      INSERT INTO pipelines (id, agency_id, name, description, version, is_default, estimated_duration, definition, source)
+      VALUES (
+        ${id},
+        ${agencyId},
+        ${pipeline.name},
+        ${pipeline.description || ''},
+        ${pipeline.version || '1.0'},
+        ${Boolean(pipeline.isDefault)},
+        ${pipeline.estimatedDuration || null},
+        ${JSON.stringify(pipeline)},
+        'app'
+      )
+      ON CONFLICT (id) DO UPDATE SET
+        agency_id = EXCLUDED.agency_id,
+        name = EXCLUDED.name,
+        description = EXCLUDED.description,
+        version = EXCLUDED.version,
+        is_default = EXCLUDED.is_default,
+        estimated_duration = EXCLUDED.estimated_duration,
+        definition = EXCLUDED.definition,
+        source = EXCLUDED.source
+    `
     return NextResponse.json({ success: true, pipeline })
   } catch (error) {
     console.error('Failed to save pipeline:', error)
@@ -74,12 +87,11 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     if (!auth || auth.role !== 'super_admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     const { id } = await params
-    const supabase = getSupabaseServerClient()
     const agencyId = await getAgencyId()
-    if (!supabase || !agencyId) return NextResponse.json({ error: 'Supabase not available' }, { status: 503 })
+    if (!agencyId) return NextResponse.json({ error: 'Database not available' }, { status: 503 })
 
-    const { error } = await supabase.from('pipelines').delete().eq('agency_id', agencyId).eq('id', id)
-    if (error) throw error
+    const db = getDb()
+    await db`DELETE FROM pipelines WHERE agency_id = ${agencyId} AND id = ${id}`
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Failed to delete pipeline:', error)

@@ -11,7 +11,7 @@ import { toast } from '@/components/ui/Toast'
 import { useAgentsStore } from '@/lib/agents-store'
 import { getProviderModels, MODEL_OPTIONS, PROVIDER_OPTIONS } from '@/lib/providers'
 import { ProviderFallback, ThemeMode } from '@/lib/types'
-import { getSupabaseAccessToken } from '@/lib/supabase/browser'
+import { getSupabaseAccessToken } from '@/lib/auth/browser'
 import Link from 'next/link'
 
 type GeminiHealth = 'idle' | 'testing' | 'connected' | 'invalid'

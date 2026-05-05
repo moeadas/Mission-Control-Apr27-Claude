@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-import { getSupabaseServerClient } from '@/lib/supabase/server'
-import { resolveAuthContextFromToken } from '@/lib/supabase/auth'
-import { loadConfigSkillMap } from '@/lib/server/skills-catalog'
+import { getDb } from '@/lib/db/client'
+import { resolveAuthContextFromToken } from '@/lib/auth/server'
+import { invalidateSkillRegistry, loadConfigSkillMap } from '@/lib/server/skills-catalog'
 
 function getBearerToken(request: NextRequest) {
   const authHeader = request.headers.get('authorization') || ''
@@ -10,12 +10,14 @@ function getBearerToken(request: NextRequest) {
   return authHeader.slice(7).trim()
 }
 
-async function getAgencyId() {
-  const supabase = getSupabaseServerClient()
-  if (!supabase) return null
-  const { data, error } = await supabase.from('agencies').select('id').eq('slug', 'default-agency').single()
-  if (error) throw error
-  return data.id as string
+async function getAgencyId(): Promise<string | null> {
+  try {
+    const db = getDb()
+    const rows = await db`SELECT id FROM agencies WHERE slug = 'default-agency' LIMIT 1`
+    return rows[0]?.id ?? null
+  } catch {
+    return null
+  }
 }
 
 function mapSkill(row: any) {
@@ -53,20 +55,21 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { id } = await params
-    const supabase = getSupabaseServerClient()
     const agencyId = await getAgencyId()
     const configSkillMap = await loadConfigSkillMap()
 
-    if (!supabase || !agencyId) {
+    if (!agencyId) {
       const fallback = configSkillMap.get(id)
       return fallback
         ? NextResponse.json(fallback)
         : NextResponse.json({ error: 'Skill not found' }, { status: 404 })
     }
 
-    const { data, error } = await supabase.from('skills').select('*').eq('agency_id', agencyId).eq('id', id).maybeSingle()
-    if (error) throw error
-    if (!data) {
+    const db = getDb()
+    const rows = await db`
+      SELECT * FROM skills WHERE agency_id = ${agencyId} AND id = ${id} LIMIT 1
+    `
+    if (!rows[0]) {
       const fallback = configSkillMap.get(id)
       return fallback
         ? NextResponse.json(fallback)
@@ -74,7 +77,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const fallback = configSkillMap.get(id)
-    const mapped = mapSkill(data)
+    const mapped = mapSkill(rows[0])
     return NextResponse.json({
       ...mapped,
       prompts: mapped.prompts?.en?.instructions ? mapped.prompts : fallback?.prompts || mapped.prompts,
@@ -105,36 +108,49 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     const { id } = await params
     const skill = await request.json()
-    const supabase = getSupabaseServerClient()
     const agencyId = await getAgencyId()
-    if (!supabase || !agencyId) return NextResponse.json({ error: 'Supabase not available' }, { status: 503 })
+    if (!agencyId) return NextResponse.json({ error: 'Database not available' }, { status: 503 })
 
-    const payload = {
-      id,
-      agency_id: agencyId,
-      name: skill.name,
-      category: skill.category,
-      description: skill.description || '',
-      prompts: skill.prompts || { en: '' },
-      checklist: skill.checklist || [],
-      examples: skill.examples || [],
-      metadata: {
-        ...(skill.metadata || {}),
-        difficulty: skill.difficulty || 'intermediate',
-        freedom: skill.freedom || 'medium',
-        variables: skill.variables || [],
-        inputs: skill.inputs || [],
-        outputs: skill.outputs || [],
-        workflow: skill.workflow || { steps: [] },
-        tools: skill.tools || [],
-        agents: skill.agents || [],
-        pipelines: skill.pipelines || [],
-      },
-      source: 'app',
-    }
+    const metadata = JSON.stringify({
+      ...(skill.metadata || {}),
+      difficulty: skill.difficulty || 'intermediate',
+      freedom: skill.freedom || 'medium',
+      variables: skill.variables || [],
+      inputs: skill.inputs || [],
+      outputs: skill.outputs || [],
+      workflow: skill.workflow || { steps: [] },
+      tools: skill.tools || [],
+      agents: skill.agents || [],
+      pipelines: skill.pipelines || [],
+    })
 
-    const { error } = await supabase.from('skills').upsert(payload, { onConflict: 'id' })
-    if (error) throw error
+    const db = getDb()
+    await db`
+      INSERT INTO skills (id, agency_id, name, category, description, prompts, checklist, examples, metadata, source)
+      VALUES (
+        ${id},
+        ${agencyId},
+        ${skill.name},
+        ${skill.category || null},
+        ${skill.description || ''},
+        ${JSON.stringify(skill.prompts || { en: '' })},
+        ${JSON.stringify(skill.checklist || [])},
+        ${JSON.stringify(skill.examples || [])},
+        ${metadata},
+        'app'
+      )
+      ON CONFLICT (id) DO UPDATE SET
+        agency_id = EXCLUDED.agency_id,
+        name = EXCLUDED.name,
+        category = EXCLUDED.category,
+        description = EXCLUDED.description,
+        prompts = EXCLUDED.prompts,
+        checklist = EXCLUDED.checklist,
+        examples = EXCLUDED.examples,
+        metadata = EXCLUDED.metadata,
+        source = EXCLUDED.source
+    `
+    invalidateSkillRegistry()
     return NextResponse.json({ success: true, skill })
   } catch (error) {
     console.error('Failed to save skill:', error)
@@ -148,12 +164,12 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     if (!auth || auth.role !== 'super_admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     const { id } = await params
-    const supabase = getSupabaseServerClient()
     const agencyId = await getAgencyId()
-    if (!supabase || !agencyId) return NextResponse.json({ error: 'Supabase not available' }, { status: 503 })
+    if (!agencyId) return NextResponse.json({ error: 'Database not available' }, { status: 503 })
 
-    const { error } = await supabase.from('skills').delete().eq('agency_id', agencyId).eq('id', id)
-    if (error) throw error
+    const db = getDb()
+    await db`DELETE FROM skills WHERE agency_id = ${agencyId} AND id = ${id}`
+    invalidateSkillRegistry()
 
     return NextResponse.json({ success: true })
   } catch (error) {

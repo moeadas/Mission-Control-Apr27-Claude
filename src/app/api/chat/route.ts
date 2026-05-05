@@ -9,11 +9,12 @@ import {
   inferPipeline,
   getServerDeliverableSpec,
 } from '@/lib/server/ai'
+import { isConversationalMessage } from '@/lib/intents/intent-classifier'
 import { buildTaskExecutionPlan } from '@/lib/task-output'
 import { executeAutonomousTask } from '@/lib/server/autonomous-task'
 import { buildArtifactHtml } from '@/lib/output-html'
-import { getSupabaseServerClient } from '@/lib/supabase/server'
-import { resolveAuthContextFromToken } from '@/lib/supabase/auth'
+import { getDb } from '@/lib/db/client'
+import { resolveAuthContextFromToken } from '@/lib/auth/server'
 import { normalizeProviderSettings, resolveFallbackRuntime, resolveTaskRuntime, shouldRunCompareMode } from '@/lib/provider-settings'
 import { sanitizePromptProfile, sanitizePromptValue } from '@/lib/server/prompt-safety'
 import { validateDeliverableQuality } from '@/lib/output-quality'
@@ -26,65 +27,6 @@ function debugLog(label: string, data: any) {
   if (process.env.NODE_ENV === 'development') {
     console.log(`[CHAT DEBUG] ${label}:`, JSON.stringify(data, null, 2).slice(0, 500))
   }
-}
-
-const TASK_KEYWORDS = /\b(create|make|build|draft|generate|write|produce|design|plan|schedule|audit|analyze|research|forecast|calendar|campaign|brief|copy|content calendar|media plan|budget|strategy|strategic plan|strategic messages|message pillars|messaging|positioning|value proposition|target audience|audience research|market analysis|customer insight|consumer insights|deep research|kpi|seo|competitor|carousel|caption|social post|facebook post|instagram post|linkedin post|x post|twitter post|post copy|post for|hashtag|visual|banner|ad creative|launch plan|report|sales issue|sales problem|objection|buyer|customer)\b/i
-
-const STRATEGIC_TASK_SIGNALS = [
-  'target audience',
-  'audience research',
-  'market analysis',
-  'customer insight',
-  'what value are they seeking',
-  'what do they want',
-  'value proposition',
-  'strategic messages',
-  'message pillars',
-  'messaging',
-  'positioning',
-  'why they are not buying',
-  "why they're not buying",
-  'why they are not converting',
-  'sales issue',
-  'sales problem',
-]
-
-function isConversationalMessage(content: string): boolean {
-  const trimmed = content.trim()
-  const lower = trimmed.toLowerCase()
-  if (!trimmed) return true
-  if (TASK_KEYWORDS.test(content)) return false
-  if (STRATEGIC_TASK_SIGNALS.some((signal) => lower.includes(signal))) return false
-  if (/\b(i need|we need|i want|can you create|can you write|help me create|help me write)\b/.test(lower) && /\b(post|caption|copy|brief|calendar|audit|strategy|plan|content)\b/.test(lower)) {
-    return false
-  }
-
-  const casualOnlyPatterns = [
-    /^hi[.!? ]*$/i,
-    /^hey[.!? ]*$/i,
-    /^hello[.!? ]*$/i,
-    /^yo[.!? ]*$/i,
-    /^thanks?[.!? ]*$/i,
-    /^ok(?:ay)?[.!? ]*$/i,
-    /^cool[.!? ]*$/i,
-  ]
-
-  if (casualOnlyPatterns.some((pattern) => pattern.test(trimmed))) return true
-
-  const explicitChatOnlyPatterns = [
-    /\b(project status|task status|status update|what is the status|progress update)\b/i,
-    /\bwhat are the agents doing\b/i,
-    /\bwho is working on\b/i,
-    /\bwhat can you do\b/i,
-    /\bwhat can iris do\b/i,
-    /\bshow me the team\b/i,
-    /\bwho are the agents\b/i,
-    /\bhow does the app work\b/i,
-    /\bwhat capabilities\b/i,
-  ]
-
-  if (explicitChatOnlyPatterns.some((pattern) => pattern.test(content.trim()))) return true
-  return trimmed.length < 24 && !/[?.!]/.test(trimmed)
 }
 
 function enforceArtifactTruth(responseText: string, artifacts: any[]) {
@@ -173,23 +115,27 @@ function looksLikeUsableDeliverable(
   return trimmed.length >= 80
 }
 
-async function getDefaultAgencyId() {
-  const supabase = getSupabaseServerClient()
-  if (!supabase) return null
-
-  const { data, error } = await supabase.from('agencies').select('id').eq('slug', 'default-agency').single()
-  if (error) throw error
-  return data.id as string
+async function getDefaultAgencyId(): Promise<string | null> {
+  try {
+    const db = getDb()
+    const rows = await db`SELECT id FROM agencies WHERE slug = 'default-agency' LIMIT 1`
+    return rows[0]?.id ?? null
+  } catch {
+    return null
+  }
 }
 
 async function waitForTaskPersistence(taskId: string, attempts = 8, delayMs = 250) {
-  const supabase = getSupabaseServerClient()
-  if (!supabase || !taskId) return false
+  if (!taskId) return false
 
   for (let attempt = 0; attempt < attempts; attempt += 1) {
-    const { data, error } = await supabase.from('tasks').select('id').eq('id', taskId).maybeSingle()
-    if (error) throw error
-    if (data?.id) return true
+    try {
+      const db = getDb()
+      const rows = await db`SELECT id FROM tasks WHERE id = ${taskId} LIMIT 1`
+      if (rows[0]?.id) return true
+    } catch {
+      // ignore transient errors during wait
+    }
     if (attempt < attempts - 1) {
       await new Promise((resolve) => setTimeout(resolve, delayMs))
     }
@@ -201,19 +147,15 @@ async function waitForTaskPersistence(taskId: string, attempts = 8, delayMs = 25
 // Load pipelines server-side
 async function loadPipelines() {
   try {
-    const supabase = getSupabaseServerClient()
     const agencyId = await getDefaultAgencyId()
-
-    if (supabase && agencyId) {
-      const { data, error } = await supabase
-        .from('pipelines')
-        .select('definition')
-        .eq('agency_id', agencyId)
-        .order('name', { ascending: true })
-
-      if (!error && data?.length) {
-        return data.map((row: any) => row.definition || {}).filter(Boolean)
-      }
+    if (agencyId) {
+      const db = getDb()
+      const rows = await db`
+        SELECT definition FROM pipelines
+        WHERE agency_id = ${agencyId}
+        ORDER BY name ASC
+      `
+      if (rows.length) return rows.map((row: any) => row.definition || {}).filter(Boolean)
     }
   } catch {
     // Fall through to config fallback.
@@ -230,28 +172,28 @@ async function loadPipelines() {
 // Load skills server-side
 async function loadSkills() {
   try {
-    const supabase = getSupabaseServerClient()
     const agencyId = await getDefaultAgencyId()
-
-    if (supabase && agencyId) {
-      const { data, error } = await supabase
-        .from('skills')
-        .select('*')
-        .eq('agency_id', agencyId)
-        .order('category', { ascending: true })
-        .order('name', { ascending: true })
-
-      if (!error && data?.length) {
-        return mergeDbSkillsWithConfig(data)
-      }
+    if (agencyId) {
+      const db = getDb()
+      const rows = await db`
+        SELECT * FROM skills
+        WHERE agency_id = ${agencyId}
+        ORDER BY category ASC, name ASC
+      `
+      if (rows.length) return mergeDbSkillsWithConfig(rows)
     }
   } catch {
     // Fall through to config fallback.
   }
 
   try {
-    return loadConfigSkillCategories()
-  } catch {
+    const cats = await loadConfigSkillCategories()
+    if (!cats?.length) {
+      console.warn('[loadSkills] Config skill categories returned empty — agents will use synthetic skill stubs.')
+    }
+    return cats || []
+  } catch (err) {
+    console.error('[loadSkills] Failed to load config skill categories:', err)
     return []
   }
 }
@@ -978,44 +920,64 @@ Orchestration trace:
     }
     const renderedHtml = renderedHtmlFromTask || buildArtifactHtml(responseText)
 
-    return NextResponse.json({
-      response: responseText,
-      meta: {
-        routedAgentId: routing.routedAgentId,
-        leadAgentId: channelingPlan.leadAgentId,
-        collaboratorAgentIds: channelingPlan.collaboratorAgentIds,
-        assignedAgentIds: channelingPlan.assignedAgentIds,
-        selectedSkillsByAgent: channelingPlan.selectedSkillsByAgent,
-        orchestrationTrace: channelingPlan.orchestrationTrace,
-        clientId: routing.clientId || currentClientId || null,
-        campaignId: currentCampaignId || null,
+    const meta = {
+      routedAgentId: routing.routedAgentId,
+      leadAgentId: channelingPlan.leadAgentId,
+      collaboratorAgentIds: channelingPlan.collaboratorAgentIds,
+      assignedAgentIds: channelingPlan.assignedAgentIds,
+      selectedSkillsByAgent: channelingPlan.selectedSkillsByAgent,
+      orchestrationTrace: channelingPlan.orchestrationTrace,
+      clientId: routing.clientId || currentClientId || null,
+      campaignId: currentCampaignId || null,
+      deliverableType,
+      pipelineId: pipelineHint?.id || resolvedPipelineId || null,
+      pipelineName: pipelineHint?.name || pipelineDefinition?.name || null,
+      qualityChecklist: executionPlan.qualityChecklist,
+      handoffNotes: executionPlan.handoffNotes,
+      confidence: channelingPlan.confidence,
+      resolvedDeliverableType: channelingPlan.resolvedDeliverableType,
+      executionSteps,
+      quality: qualityResult,
+      executionPrompt,
+      renderedHtml,
+      creative: creativeFromTask,
+      provider: actualProvider,
+      model: actualModel,
+      fallbackUsed,
+      compareSummary,
+    }
+
+    // Build NDJSON response: pipeline_start chunk (if applicable) then done chunk.
+    // The client reads pipeline_start first to update the pipeline indicator, then done for the full result.
+    // TODO: For genuine background streaming, move executeAutonomousTask calls inside
+    // a ReadableStream.start async callback so pipeline_start is flushed before execution begins.
+    const ndjsonLines: string[] = []
+    if (resolvedPipelineId) {
+      ndjsonLines.push(JSON.stringify({
+        type: 'pipeline_start',
+        pipelineName: pipelineHint?.name || pipelineDefinition?.name || resolvedPipelineId,
+        phases: pipelineHint?.phases
+          || (Array.isArray(pipelineDefinition?.phases)
+            ? pipelineDefinition.phases.map((p: any) => (typeof p === 'string' ? p : p?.name || ''))
+            : []),
         deliverableType,
-        pipelineId: pipelineHint?.id || null,
-        pipelineName: pipelineHint?.name || null,
-        qualityChecklist: executionPlan.qualityChecklist,
-        handoffNotes: executionPlan.handoffNotes,
-        confidence: channelingPlan.confidence,
-        resolvedDeliverableType: channelingPlan.resolvedDeliverableType,
-        executionSteps,
-        quality: qualityResult,
-        executionPrompt,
-        renderedHtml,
-        creative: creativeFromTask,
-        provider: actualProvider,
-        model: actualModel,
-        fallbackUsed,
-        compareSummary,
+      }))
+    }
+    ndjsonLines.push(JSON.stringify({ type: 'done', response: responseText, meta }))
+
+    return new Response(ndjsonLines.join('\n') + '\n', {
+      headers: {
+        'Content-Type': 'application/x-ndjson',
+        'Cache-Control': 'no-cache, no-transform',
       },
     })
   } catch (err: any) {
     console.error('[/api/chat]', err)
     if (requestBody?.missionId) {
       try {
-        const supabase = getSupabaseServerClient()
-        const { data: existingTask } = supabase
-          ? await supabase.from('tasks').select('id').eq('id', requestBody.missionId).maybeSingle()
-          : { data: null }
-        if (existingTask?.id) {
+        const db = getDb()
+        const taskRows = await db`SELECT id FROM tasks WHERE id = ${requestBody.missionId} LIMIT 1`
+        if (taskRows[0]?.id) {
           await insertTaskRun({
             taskId: requestBody.missionId,
             stage: 'task-execution',

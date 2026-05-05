@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-import { getSupabaseServerClient } from '@/lib/supabase/server'
-import { resolveAuthContextFromToken } from '@/lib/supabase/auth'
+import { getDb } from '@/lib/db/client'
+import { resolveAuthContextFromToken } from '@/lib/auth/server'
 
 function getBearerToken(request: NextRequest) {
   const authHeader = request.headers.get('authorization') || ''
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const body = (await request.json()) as {
+    const body = await request.json() as {
       entityType?: EntityType
       entityId?: string
       ownerUserId?: string | null
@@ -28,34 +28,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing assignment payload' }, { status: 400 })
     }
 
-    const supabase = getSupabaseServerClient()
-    if (!supabase) {
-      return NextResponse.json({ error: 'Supabase not available' }, { status: 503 })
-    }
-
+    const db = getDb()
     const ownerUserId = body.ownerUserId || null
 
     if (body.entityType === 'client') {
-      const { error } = await supabase.from('clients').update({ owner_user_id: ownerUserId }).eq('id', body.entityId)
-      if (error) throw error
+      await db`UPDATE clients SET owner_user_id = ${ownerUserId}::uuid WHERE id = ${body.entityId}`
       await Promise.all([
-        supabase.from('tasks').update({ owner_user_id: ownerUserId }).eq('client_id', body.entityId),
-        supabase.from('outputs').update({ owner_user_id: ownerUserId }).eq('client_id', body.entityId),
-        supabase.from('conversations').update({ owner_user_id: ownerUserId }).eq('client_id', body.entityId),
+        db`UPDATE tasks         SET owner_user_id = ${ownerUserId}::uuid WHERE client_id = ${body.entityId}`,
+        db`UPDATE outputs       SET owner_user_id = ${ownerUserId}::uuid WHERE client_id = ${body.entityId}`,
+        db`UPDATE conversations SET owner_user_id = ${ownerUserId}::uuid WHERE client_id = ${body.entityId}`,
       ])
     } else if (body.entityType === 'task') {
-      const { error } = await supabase.from('tasks').update({ owner_user_id: ownerUserId }).eq('id', body.entityId)
-      if (error) throw error
+      await db`UPDATE tasks SET owner_user_id = ${ownerUserId}::uuid WHERE id = ${body.entityId}`
       await Promise.all([
-        supabase.from('outputs').update({ owner_user_id: ownerUserId }).eq('task_id', body.entityId),
-        supabase.from('conversations').update({ owner_user_id: ownerUserId }).eq('task_id', body.entityId),
+        db`UPDATE outputs       SET owner_user_id = ${ownerUserId}::uuid WHERE task_id = ${body.entityId}`,
+        db`UPDATE conversations SET owner_user_id = ${ownerUserId}::uuid WHERE task_id = ${body.entityId}`,
       ])
     } else if (body.entityType === 'output') {
-      const { error } = await supabase.from('outputs').update({ owner_user_id: ownerUserId }).eq('id', body.entityId)
-      if (error) throw error
+      await db`UPDATE outputs SET owner_user_id = ${ownerUserId}::uuid WHERE id = ${body.entityId}`
     } else if (body.entityType === 'conversation') {
-      const { error } = await supabase.from('conversations').update({ owner_user_id: ownerUserId }).eq('id', body.entityId)
-      if (error) throw error
+      await db`UPDATE conversations SET owner_user_id = ${ownerUserId}::uuid WHERE id = ${body.entityId}`
     }
 
     return NextResponse.json({ success: true })

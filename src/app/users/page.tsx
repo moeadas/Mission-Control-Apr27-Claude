@@ -7,7 +7,7 @@ import { ClientShell } from '@/components/ClientShell'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { useAgentsStore } from '@/lib/agents-store'
-import { getSupabaseAccessToken } from '@/lib/supabase/browser'
+import { getSupabaseAccessToken } from '@/lib/auth/browser'
 import { toast } from '@/components/ui/Toast'
 
 interface AdminUser {

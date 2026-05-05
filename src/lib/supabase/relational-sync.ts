@@ -2,31 +2,24 @@ import pipelinesConfig from '@/config/pipelines/pipelines.json'
 import type { AppPersistenceSnapshot, AppPersistencePatch, Conversation, ChatMessage, EntityDeltaPatch } from '@/lib/agents-store'
 import type { Agent, Artifact, Mission, ProviderSettings, AgencySettings, ActivityEntry, Campaign } from '@/lib/types'
 import type { Client } from '@/lib/client-data'
-import { getSupabaseServerClient } from '@/lib/supabase/server'
+import { getDb } from '@/lib/db/client'
 import { mergeAgentMemories } from '@/lib/agent-memory'
 import { normalizeAgentPhotoUrl } from '@/lib/server/agent-photos'
 import { loadConfigSkillCategories } from '@/lib/server/skills-catalog'
 
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
 function inferMissionPipelineMetadata(deliverableType: Mission['deliverableType']) {
   switch (deliverableType) {
-    case 'content-calendar':
-      return { pipelineId: 'content-calendar', pipelineName: 'Content Calendar' }
-    case 'creative-asset':
-      return { pipelineId: 'ad-creative', pipelineName: 'Ad Creative' }
-    case 'client-brief':
-      return { pipelineId: 'client-brief', pipelineName: 'Client Brief' }
-    case 'strategy-brief':
-      return { pipelineId: 'strategy-brief', pipelineName: 'Strategy Brief' }
-    case 'campaign-strategy':
-      return { pipelineId: 'campaign-brief', pipelineName: 'Campaign Brief' }
-    case 'research-brief':
-      return { pipelineId: 'competitor-research', pipelineName: 'Competitor Research' }
-    case 'seo-audit':
-      return { pipelineId: 'seo-audit', pipelineName: 'SEO Audit' }
-    case 'media-plan':
-      return { pipelineId: 'media-plan', pipelineName: 'Media Plan' }
-    default:
-      return { pipelineId: null, pipelineName: null }
+    case 'content-calendar': return { pipelineId: 'content-calendar', pipelineName: 'Content Calendar' }
+    case 'creative-asset':   return { pipelineId: 'ad-creative',      pipelineName: 'Ad Creative' }
+    case 'client-brief':     return { pipelineId: 'client-brief',     pipelineName: 'Client Brief' }
+    case 'strategy-brief':   return { pipelineId: 'strategy-brief',   pipelineName: 'Strategy Brief' }
+    case 'campaign-strategy':return { pipelineId: 'campaign-brief',   pipelineName: 'Campaign Brief' }
+    case 'research-brief':   return { pipelineId: 'competitor-research', pipelineName: 'Competitor Research' }
+    case 'seo-audit':        return { pipelineId: 'seo-audit',        pipelineName: 'SEO Audit' }
+    case 'media-plan':       return { pipelineId: 'media-plan',       pipelineName: 'Media Plan' }
+    default:                 return { pipelineId: null, pipelineName: null }
   }
 }
 
@@ -35,75 +28,48 @@ const DEFAULT_AGENCY_NAME = 'Default Agency'
 
 function dedupeByKey<T>(items: T[], getKey: (item: T) => string) {
   const map = new Map<string, T>()
-  for (const item of items) {
-    map.set(getKey(item), item)
-  }
+  for (const item of items) map.set(getKey(item), item)
   return [...map.values()]
 }
 
 function toStableUuid(value: string) {
   const hex = Buffer.from(value).toString('hex').padEnd(32, '0').slice(0, 32)
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`
+  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20,32)}`
 }
 
-async function getDefaultAgencyId() {
-  const supabase = getSupabaseServerClient()
-  if (!supabase) return null
+// ─── Agency helpers ─────────────────────────────────────────────────────────
 
-  const { data: existing, error: existingError } = await supabase
-    .from('agencies')
-    .select('id')
-    .eq('slug', DEFAULT_AGENCY_SLUG)
-    .maybeSingle()
+async function getDefaultAgencyId(): Promise<string | null> {
+  const db = getDb()
+  const existing = await db`SELECT id FROM agencies WHERE slug = ${DEFAULT_AGENCY_SLUG} LIMIT 1`
+  if (existing[0]?.id) return existing[0].id as string
 
-  if (existingError) throw existingError
-  if (existing?.id) return existing.id as string
-
-  const { data: created, error: createError } = await supabase
-    .from('agencies')
-    .insert({ slug: DEFAULT_AGENCY_SLUG, name: DEFAULT_AGENCY_NAME })
-    .select('id')
-    .single()
-
-  if (createError) throw createError
-  return created.id as string
-}
-
-async function tableHasRows(table: 'skills' | 'pipelines', agencyId: string) {
-  const supabase = getSupabaseServerClient()
-  if (!supabase) return false
-
-  const { count, error } = await supabase
-    .from(table)
-    .select('id', { count: 'exact', head: true })
-    .eq('agency_id', agencyId)
-
-  if (error) throw error
-  return (count || 0) > 0
+  const created = await db`
+    INSERT INTO agencies (slug, name, settings) VALUES (${DEFAULT_AGENCY_SLUG}, ${DEFAULT_AGENCY_NAME}, '{}')
+    RETURNING id
+  `
+  return created[0]?.id as string ?? null
 }
 
 export async function getDefaultAgency() {
-  const supabase = getSupabaseServerClient()
-  if (!supabase) return null
+  const db = getDb()
+  const existing = await db`SELECT id, slug, name, settings FROM agencies WHERE slug = ${DEFAULT_AGENCY_SLUG} LIMIT 1`
+  if (existing[0]) return existing[0]
 
-  const { data: existing, error: existingError } = await supabase
-    .from('agencies')
-    .select('id, slug, name, settings')
-    .eq('slug', DEFAULT_AGENCY_SLUG)
-    .maybeSingle()
-
-  if (existingError) throw existingError
-  if (existing) return existing
-
-  const { data: created, error: createError } = await supabase
-    .from('agencies')
-    .insert({ slug: DEFAULT_AGENCY_SLUG, name: DEFAULT_AGENCY_NAME })
-    .select('id, slug, name, settings')
-    .single()
-
-  if (createError) throw createError
-  return created
+  const created = await db`
+    INSERT INTO agencies (slug, name, settings) VALUES (${DEFAULT_AGENCY_SLUG}, ${DEFAULT_AGENCY_NAME}, '{}')
+    RETURNING id, slug, name, settings
+  `
+  return created[0] ?? null
 }
+
+async function tableHasRows(table: 'skills' | 'pipelines', agencyId: string): Promise<boolean> {
+  const db = getDb()
+  const res = await db`SELECT 1 FROM ${db(table)} WHERE agency_id = ${agencyId}::uuid LIMIT 1`
+  return res.length > 0
+}
+
+// ─── Row builders ───────────────────────────────────────────────────────────
 
 function toAgentRow(agent: Agent, agencyId: string) {
   return {
@@ -253,9 +219,7 @@ function toOutputRow(artifact: Artifact, agencyId: string) {
     creative: artifact.creative || {},
     exports: artifact.exports || [],
     execution_steps: artifact.executionSteps || [],
-    metadata: {
-      campaignId: artifact.campaignId || null,
-    },
+    metadata: { campaignId: artifact.campaignId || null },
     created_at: artifact.createdAt,
     updated_at: artifact.updatedAt,
   }
@@ -362,243 +326,173 @@ function buildKnowledgeAssetRows(clients: AppPersistenceSnapshot['clients'], age
   )
 }
 
-export async function syncSnapshotToRelationalTables(state: AppPersistenceSnapshot) {
-  const supabase = getSupabaseServerClient()
-  if (!supabase) return
+// ─── Generic upsert helper ───────────────────────────────────────────────────
 
+async function upsert(table: string, rows: Record<string, any>[], conflictCol = 'id') {
+  if (!rows.length) return
+  const db = getDb()
+  const cols = Object.keys(rows[0])
+  const setCols = cols.filter((c) => c !== conflictCol)
+  const setClause = setCols.map((c) => `"${c}" = EXCLUDED."${c}"`).join(', ')
+  await db.unsafe(
+    `INSERT INTO "${table}" ${db(rows).toString()} ON CONFLICT ("${conflictCol}") DO UPDATE SET ${setClause}`
+  )
+}
+
+// ─── Sync snapshot ───────────────────────────────────────────────────────────
+
+export async function syncSnapshotToRelationalTables(state: AppPersistenceSnapshot) {
+  const db = getDb()
   const agencyId = await getDefaultAgencyId()
   if (!agencyId) return
 
-  const { error: agencyUpdateError } = await supabase
-    .from('agencies')
-    .update({
-      settings: {
-        agencySettings: state.agencySettings,
-        providerSettings: state.providerSettings,
-        campaigns: state.campaigns,
-        activities: state.activities,
-        agentMemories: state.agentMemories,
-      },
-    })
-    .eq('id', agencyId)
+  // Update agency settings blob
+  await db`
+    UPDATE agencies
+    SET settings = ${db.json({
+      agencySettings: state.agencySettings,
+      providerSettings: state.providerSettings,
+      campaigns: state.campaigns,
+      activities: state.activities,
+      agentMemories: state.agentMemories,
+    } as any)}
+    WHERE id = ${agencyId}::uuid
+  `
 
-  if (agencyUpdateError) throw agencyUpdateError
+  const agents      = dedupeByKey(state.agents.map((a) => toAgentRow(a, agencyId)), (r) => r.id)
+  const clients     = dedupeByKey(state.clients.map((c) => toClientRow(c, agencyId)), (r) => r.id)
+  const tasks       = dedupeByKey(state.missions.map((m) => toTaskRow(m, agencyId)), (r) => r.id)
+  const outputs     = dedupeByKey(state.artifacts.map((a) => toOutputRow(a, agencyId)), (r) => r.id)
+  const convos      = dedupeByKey(state.conversations.map((c) => toConversationRow(c, agencyId)), (r) => r.id)
+  const msgs        = dedupeByKey(buildMessageRows(state.conversations), (r) => r.id)
+  const knowledge   = dedupeByKey(buildKnowledgeAssetRows(state.clients, agencyId), (r) => r.id)
+  const assignments = dedupeByKey(buildTaskAssignmentRows(state.missions, agencyId), (r) => `${r.task_id}:${r.agent_id}:${r.role}`)
 
-  const agents = state.agents.map((agent) => toAgentRow(agent, agencyId))
-  const clients = state.clients.map((client) => toClientRow(client, agencyId))
-  const tasks = state.missions.map((mission) => toTaskRow(mission, agencyId))
-  const taskAssignments = buildTaskAssignmentRows(state.missions, agencyId)
-  const outputs = state.artifacts.map((artifact) => toOutputRow(artifact, agencyId))
-  const conversations = state.conversations.map((conversation) => toConversationRow(conversation, agencyId))
-  const messages = buildMessageRows(state.conversations)
-  const knowledgeAssets = buildKnowledgeAssetRows(state.clients, agencyId)
+  if (agents.length)  await upsert('agents',  agents)
+  if (clients.length) await upsert('clients', clients)
 
-  const dedupedAgents = dedupeByKey(agents, (item) => item.id)
-  const dedupedClients = dedupeByKey(clients, (item) => item.id)
-  const dedupedTasks = dedupeByKey(tasks, (item) => item.id)
-  const dedupedTaskAssignments = dedupeByKey(taskAssignments, (item) => `${item.task_id}:${item.agent_id}:${item.role}`)
-  const dedupedOutputs = dedupeByKey(outputs, (item) => item.id)
-  const dedupedConversations = dedupeByKey(conversations, (item) => item.id)
-  const dedupedMessages = dedupeByKey(messages, (item) => item.id)
-  const dedupedKnowledgeAssets = dedupeByKey(knowledgeAssets, (item) => item.id)
-
-  if (dedupedAgents.length) {
-    const { error } = await supabase.from('agents').upsert(dedupedAgents, { onConflict: 'id' })
-    if (error) throw error
+  // Skills — only insert missing
+  const skillRows = dedupeByKey(await buildSkillRows(agencyId), (r) => r.id)
+  if (skillRows.length) {
+    const existing = await db`SELECT id FROM skills WHERE agency_id = ${agencyId}::uuid`
+    const existingIds = new Set(existing.map((r: any) => r.id))
+    const missing = skillRows.filter((r) => !existingIds.has(r.id))
+    if (missing.length) await upsert('skills', missing)
   }
-  if (dedupedClients.length) {
-    const { error } = await supabase.from('clients').upsert(dedupedClients, { onConflict: 'id' })
-    if (error) throw error
-  }
-  {
-    const dedupedSkills = dedupeByKey(await buildSkillRows(agencyId), (item) => item.id)
-    if (dedupedSkills.length) {
-      const { data: existingSkills, error: existingSkillsError } = await supabase
-        .from('skills')
-        .select('id')
-        .eq('agency_id', agencyId)
-      if (existingSkillsError) throw existingSkillsError
 
-      const existingIds = new Set((existingSkills || []).map((item: any) => item.id))
-      const missingSkills = dedupedSkills.filter((skill) => !existingIds.has(skill.id))
-
-      if (missingSkills.length) {
-        const { error } = await supabase.from('skills').upsert(missingSkills, { onConflict: 'id' })
-        if (error) throw error
-      }
-    }
-  }
+  // Pipelines — only seed once
   if (!(await tableHasRows('pipelines', agencyId))) {
-    const dedupedPipelines = dedupeByKey(buildPipelineRows(agencyId), (item) => item.id)
-    if (dedupedPipelines.length) {
-      const { error } = await supabase.from('pipelines').upsert(dedupedPipelines, { onConflict: 'id' })
-      if (error) throw error
-    }
-  }
-  if (dedupedTasks.length) {
-    const { error } = await supabase.from('tasks').upsert(dedupedTasks, { onConflict: 'id' })
-    if (error) throw error
+    const pipelineRows = dedupeByKey(buildPipelineRows(agencyId), (r) => r.id)
+    if (pipelineRows.length) await upsert('pipelines', pipelineRows)
   }
 
-  const { error: deleteAssignmentsError } = await supabase.from('task_assignments').delete().eq('agency_id', agencyId)
-  if (deleteAssignmentsError) throw deleteAssignmentsError
-  if (dedupedTaskAssignments.length) {
-    const { error } = await supabase.from('task_assignments').insert(dedupedTaskAssignments)
-    if (error) throw error
+  if (tasks.length)   await upsert('tasks', tasks)
+  if (outputs.length) await upsert('outputs', outputs)
+  if (convos.length)  await upsert('conversations', convos)
+  if (knowledge.length) await upsert('knowledge_assets', knowledge, 'id')
+
+  // Task assignments — delete and re-insert
+  await db`DELETE FROM task_assignments WHERE agency_id = ${agencyId}::uuid`
+  if (assignments.length) {
+    await db`INSERT INTO task_assignments ${db(assignments)}`
   }
 
-  if (dedupedOutputs.length) {
-    const { error } = await supabase.from('outputs').upsert(dedupedOutputs, { onConflict: 'id' })
-    if (error) throw error
+  // Messages — delete touched convos and re-insert
+  const convIds = state.conversations.map((c) => c.id)
+  if (convIds.length) {
+    await db`DELETE FROM messages WHERE conversation_id = ANY(${convIds})`
   }
-  if (dedupedConversations.length) {
-    const { error } = await supabase.from('conversations').upsert(dedupedConversations, { onConflict: 'id' })
-    if (error) throw error
-  }
-  if (dedupedKnowledgeAssets.length) {
-    const { error } = await supabase.from('knowledge_assets').upsert(dedupedKnowledgeAssets, { onConflict: 'id' })
-    if (error) throw error
-  }
-
-  const conversationIds = state.conversations.map((conversation) => conversation.id)
-  if (conversationIds.length) {
-    const { error: deleteMessagesError } = await supabase.from('messages').delete().in('conversation_id', conversationIds)
-    if (deleteMessagesError) throw deleteMessagesError
-  }
-  if (dedupedMessages.length) {
-    const { error } = await supabase.from('messages').insert(dedupedMessages)
-    if (error) throw error
+  if (msgs.length) {
+    await db`INSERT INTO messages ${db(msgs as any[])}`
   }
 }
 
+// ─── Sync delta ──────────────────────────────────────────────────────────────
+
 export async function syncEntityDeltaToRelationalTables(
-  input: {
-    statePatch?: AppPersistencePatch
-    entityPatch?: EntityDeltaPatch
-  },
+  input: { statePatch?: AppPersistencePatch; entityPatch?: EntityDeltaPatch },
   fullState: AppPersistenceSnapshot
 ) {
-  const supabase = getSupabaseServerClient()
-  if (!supabase) return
-
+  const db = getDb()
   const agencyId = await getDefaultAgencyId()
   if (!agencyId) return
 
   const statePatch = input.statePatch || {}
   const entityPatch = input.entityPatch || {}
 
-  if (
-    statePatch.agencySettings ||
-    statePatch.providerSettings ||
-    statePatch.campaigns ||
-    statePatch.activities ||
-    statePatch.agentMemories
-  ) {
-    const { error: agencyUpdateError } = await supabase
-      .from('agencies')
-      .update({
-        settings: {
-          agencySettings: fullState.agencySettings,
-          providerSettings: fullState.providerSettings,
-          campaigns: fullState.campaigns,
-          activities: fullState.activities,
-          agentMemories: fullState.agentMemories,
-        },
-      })
-      .eq('id', agencyId)
-
-    if (agencyUpdateError) throw agencyUpdateError
+  if (statePatch.agencySettings || statePatch.providerSettings || statePatch.campaigns || statePatch.activities || statePatch.agentMemories) {
+    await db`
+      UPDATE agencies
+      SET settings = ${db.json({
+        agencySettings: fullState.agencySettings,
+        providerSettings: fullState.providerSettings,
+        campaigns: fullState.campaigns,
+        activities: fullState.activities,
+        agentMemories: fullState.agentMemories,
+      } as any)}
+      WHERE id = ${agencyId}::uuid
+    `
   }
 
   if (entityPatch.agents) {
-    const upserts = dedupeByKey(entityPatch.agents.upserts.map((agent) => toAgentRow(agent, agencyId)), (item) => item.id)
-    if (upserts.length) {
-      const { error } = await supabase.from('agents').upsert(upserts, { onConflict: 'id' })
-      if (error) throw error
-    }
+    const upserts = dedupeByKey(entityPatch.agents.upserts.map((a) => toAgentRow(a, agencyId)), (r) => r.id)
+    if (upserts.length) await upsert('agents', upserts)
     if (entityPatch.agents.deletes.length) {
-      const { error } = await supabase.from('agents').delete().in('id', entityPatch.agents.deletes).eq('agency_id', agencyId)
-      if (error) throw error
+      await db`DELETE FROM agents WHERE id = ANY(${entityPatch.agents.deletes}) AND agency_id = ${agencyId}::uuid`
     }
   }
 
   if (entityPatch.clients) {
-    const upserts = dedupeByKey(entityPatch.clients.upserts.map((client) => toClientRow(client, agencyId)), (item) => item.id)
-    if (upserts.length) {
-      const { error } = await supabase.from('clients').upsert(upserts, { onConflict: 'id' })
-      if (error) throw error
-    }
+    const upserts = dedupeByKey(entityPatch.clients.upserts.map((c) => toClientRow(c, agencyId)), (r) => r.id)
+    if (upserts.length) await upsert('clients', upserts)
     for (const client of entityPatch.clients.upserts) {
-      const { error: deleteKnowledgeError } = await supabase.from('knowledge_assets').delete().eq('agency_id', agencyId).eq('client_id', client.id)
-      if (deleteKnowledgeError) throw deleteKnowledgeError
-      const knowledgeRows = buildKnowledgeAssetRows([client], agencyId)
-      if (knowledgeRows.length) {
-        const { error } = await supabase.from('knowledge_assets').insert(knowledgeRows)
-        if (error) throw error
-      }
+      await db`DELETE FROM knowledge_assets WHERE agency_id = ${agencyId}::uuid AND client_id = ${client.id}`
+      const kRows = buildKnowledgeAssetRows([client], agencyId)
+      if (kRows.length) await db`INSERT INTO knowledge_assets ${db(kRows)}`
     }
     if (entityPatch.clients.deletes.length) {
-      const { error } = await supabase.from('clients').delete().in('id', entityPatch.clients.deletes).eq('agency_id', agencyId)
-      if (error) throw error
+      await db`DELETE FROM clients WHERE id = ANY(${entityPatch.clients.deletes}) AND agency_id = ${agencyId}::uuid`
     }
   }
 
   if (entityPatch.missions) {
-    const upserts = dedupeByKey(entityPatch.missions.upserts.map((mission) => toTaskRow(mission, agencyId)), (item) => item.id)
-    if (upserts.length) {
-      const { error } = await supabase.from('tasks').upsert(upserts, { onConflict: 'id' })
-      if (error) throw error
-    }
-    const touchedTaskIds = entityPatch.missions.upserts.map((mission) => mission.id)
-    if (touchedTaskIds.length) {
-      const { error: deleteAssignmentsError } = await supabase.from('task_assignments').delete().in('task_id', touchedTaskIds).eq('agency_id', agencyId)
-      if (deleteAssignmentsError) throw deleteAssignmentsError
-      const assignmentRows = buildTaskAssignmentRows(entityPatch.missions.upserts, agencyId)
-      if (assignmentRows.length) {
-        const { error } = await supabase.from('task_assignments').insert(assignmentRows)
-        if (error) throw error
-      }
+    const upserts = dedupeByKey(entityPatch.missions.upserts.map((m) => toTaskRow(m, agencyId)), (r) => r.id)
+    if (upserts.length) await upsert('tasks', upserts)
+    const touchedIds = entityPatch.missions.upserts.map((m) => m.id)
+    if (touchedIds.length) {
+      await db`DELETE FROM task_assignments WHERE task_id = ANY(${touchedIds}) AND agency_id = ${agencyId}::uuid`
+      const aRows = buildTaskAssignmentRows(entityPatch.missions.upserts, agencyId)
+      if (aRows.length) await db`INSERT INTO task_assignments ${db(aRows)}`
     }
     if (entityPatch.missions.deletes.length) {
-      const { error } = await supabase.from('tasks').delete().in('id', entityPatch.missions.deletes).eq('agency_id', agencyId)
-      if (error) throw error
+      await db`DELETE FROM tasks WHERE id = ANY(${entityPatch.missions.deletes}) AND agency_id = ${agencyId}::uuid`
     }
   }
 
   if (entityPatch.artifacts) {
-    const upserts = dedupeByKey(entityPatch.artifacts.upserts.map((artifact) => toOutputRow(artifact, agencyId)), (item) => item.id)
-    if (upserts.length) {
-      const { error } = await supabase.from('outputs').upsert(upserts, { onConflict: 'id' })
-      if (error) throw error
-    }
+    const upserts = dedupeByKey(entityPatch.artifacts.upserts.map((a) => toOutputRow(a, agencyId)), (r) => r.id)
+    if (upserts.length) await upsert('outputs', upserts)
     if (entityPatch.artifacts.deletes.length) {
-      const { error } = await supabase.from('outputs').delete().in('id', entityPatch.artifacts.deletes).eq('agency_id', agencyId)
-      if (error) throw error
+      await db`DELETE FROM outputs WHERE id = ANY(${entityPatch.artifacts.deletes}) AND agency_id = ${agencyId}::uuid`
     }
   }
 
   if (entityPatch.conversations) {
-    const upserts = dedupeByKey(entityPatch.conversations.upserts.map((conversation) => toConversationRow(conversation, agencyId)), (item) => item.id)
-    if (upserts.length) {
-      const { error } = await supabase.from('conversations').upsert(upserts, { onConflict: 'id' })
-      if (error) throw error
-    }
-    const touchedConversationIds = entityPatch.conversations.upserts.map((conversation) => conversation.id)
-    if (touchedConversationIds.length) {
-      const { error: deleteMessagesError } = await supabase.from('messages').delete().in('conversation_id', touchedConversationIds)
-      if (deleteMessagesError) throw deleteMessagesError
-      const messageRows = buildMessageRows(entityPatch.conversations.upserts)
-      if (messageRows.length) {
-        const { error } = await supabase.from('messages').insert(messageRows)
-        if (error) throw error
-      }
+    const upserts = dedupeByKey(entityPatch.conversations.upserts.map((c) => toConversationRow(c, agencyId)), (r) => r.id)
+    if (upserts.length) await upsert('conversations', upserts)
+    const touchedConvoIds = entityPatch.conversations.upserts.map((c) => c.id)
+    if (touchedConvoIds.length) {
+      await db`DELETE FROM messages WHERE conversation_id = ANY(${touchedConvoIds})`
+      const mRows = buildMessageRows(entityPatch.conversations.upserts)
+      if (mRows.length) await db`INSERT INTO messages ${db(mRows as any[])}`
     }
     if (entityPatch.conversations.deletes.length) {
-      const { error } = await supabase.from('conversations').delete().in('id', entityPatch.conversations.deletes).eq('agency_id', agencyId)
-      if (error) throw error
+      await db`DELETE FROM conversations WHERE id = ANY(${entityPatch.conversations.deletes}) AND agency_id = ${agencyId}::uuid`
     }
   }
 }
+
+// ─── Map helpers (DB rows → domain types) ───────────────────────────────────
 
 function mapAgentRow(row: any): Agent {
   return {
@@ -770,64 +664,62 @@ function mapConversationRows(conversationRows: any[], messageRows: any[]): Conve
     id: row.id,
     ownerUserId: row.owner_user_id || undefined,
     title: row.title,
-    messages: (messagesByConversation.get(row.id) || []).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()),
+    messages: (messagesByConversation.get(row.id) || []).sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    ),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }))
 }
 
-export async function loadRelationalAppState(userId?: string, isSuperAdmin = false): Promise<Partial<AppPersistenceSnapshot> | null> {
-  const supabase = getSupabaseServerClient()
-  if (!supabase) return null
+// ─── Load relational state ───────────────────────────────────────────────────
 
+export async function loadRelationalAppState(userId?: string, isSuperAdmin = false): Promise<Partial<AppPersistenceSnapshot> | null> {
+  const db = getDb()
   const agency = await getDefaultAgency()
   if (!agency?.id) return null
 
-  const [agentsRes, clientsRes, tasksRes, outputsRes, conversationsRes, messagesRes, knowledgeRes] = await Promise.all([
-    supabase.from('agents').select('*').eq('agency_id', agency.id).order('name', { ascending: true }),
+  const agencyId = agency.id
+
+  const [agentsRows, clientsRows, tasksRows, outputsRows, conversationsRows, messagesRows, knowledgeRows] = await Promise.all([
+    db`SELECT * FROM agents WHERE agency_id = ${agencyId}::uuid ORDER BY name ASC`,
     isSuperAdmin || !userId
-      ? supabase.from('clients').select('*').eq('agency_id', agency.id).order('name', { ascending: true })
-      : supabase.from('clients').select('*').eq('agency_id', agency.id).eq('owner_user_id', userId).order('name', { ascending: true }),
+      ? db`SELECT * FROM clients WHERE agency_id = ${agencyId}::uuid ORDER BY name ASC`
+      : db`SELECT * FROM clients WHERE agency_id = ${agencyId}::uuid AND owner_user_id = ${userId}::uuid ORDER BY name ASC`,
     isSuperAdmin || !userId
-      ? supabase.from('tasks').select('*').eq('agency_id', agency.id).order('updated_at', { ascending: false })
-      : supabase.from('tasks').select('*').eq('agency_id', agency.id).eq('owner_user_id', userId).order('updated_at', { ascending: false }),
+      ? db`SELECT * FROM tasks WHERE agency_id = ${agencyId}::uuid ORDER BY updated_at DESC`
+      : db`SELECT * FROM tasks WHERE agency_id = ${agencyId}::uuid AND owner_user_id = ${userId}::uuid ORDER BY updated_at DESC`,
     isSuperAdmin || !userId
-      ? supabase.from('outputs').select('*').eq('agency_id', agency.id).order('updated_at', { ascending: false })
-      : supabase.from('outputs').select('*').eq('agency_id', agency.id).eq('owner_user_id', userId).order('updated_at', { ascending: false }),
+      ? db`SELECT * FROM outputs WHERE agency_id = ${agencyId}::uuid ORDER BY updated_at DESC`
+      : db`SELECT * FROM outputs WHERE agency_id = ${agencyId}::uuid AND owner_user_id = ${userId}::uuid ORDER BY updated_at DESC`,
     isSuperAdmin || !userId
-      ? supabase.from('conversations').select('*').eq('agency_id', agency.id).order('updated_at', { ascending: false })
-      : supabase.from('conversations').select('*').eq('agency_id', agency.id).eq('owner_user_id', userId).order('updated_at', { ascending: false }),
-    supabase.from('messages').select('*').order('created_at', { ascending: true }),
-    isSuperAdmin || !userId
-      ? supabase.from('knowledge_assets').select('*').eq('agency_id', agency.id)
-      : supabase.from('knowledge_assets').select('*').eq('agency_id', agency.id),
+      ? db`SELECT * FROM conversations WHERE agency_id = ${agencyId}::uuid ORDER BY updated_at DESC`
+      : db`SELECT * FROM conversations WHERE agency_id = ${agencyId}::uuid AND owner_user_id = ${userId}::uuid ORDER BY updated_at DESC`,
+    db`SELECT * FROM messages ORDER BY created_at ASC`,
+    db`SELECT * FROM knowledge_assets WHERE agency_id = ${agencyId}::uuid`,
   ])
 
-  for (const response of [agentsRes, clientsRes, tasksRes, outputsRes, conversationsRes, messagesRes, knowledgeRes]) {
-    if (response.error) throw response.error
-  }
+  const allowedConversationIds = new Set(conversationsRows.map((r: any) => r.id))
+  const filteredMessages = messagesRows.filter((r: any) => allowedConversationIds.has(r.conversation_id))
+  const allowedClientIds = new Set(clientsRows.map((r: any) => r.id))
+  const filteredKnowledge = knowledgeRows.filter((r: any) => allowedClientIds.has(r.client_id))
 
-  const allowedConversationIds = new Set((conversationsRes.data || []).map((row) => row.id))
-  const filteredMessages = (messagesRes.data || []).filter((row) => allowedConversationIds.has(row.conversation_id))
-  const allowedClientIds = new Set((clientsRes.data || []).map((row) => row.id))
-  const filteredKnowledge = (knowledgeRes.data || []).filter((row) => allowedClientIds.has(row.client_id))
-
-  const settings = (agency.settings || {}) as {
+  const settings = ((agency.settings || {}) as {
     agencySettings?: AgencySettings
     providerSettings?: ProviderSettings
     agentMemories?: AppPersistenceSnapshot['agentMemories']
     campaigns?: Campaign[]
     activities?: ActivityEntry[]
-  }
+  })
 
-  const agents = (agentsRes.data || []).map(mapAgentRow)
+  const agents = agentsRows.map(mapAgentRow)
 
   return {
     agents,
-    clients: mapClientRows(clientsRes.data || [], filteredKnowledge),
-    missions: mapTaskRows(tasksRes.data || []),
-    artifacts: mapOutputRows(outputsRes.data || []),
-    conversations: mapConversationRows(conversationsRes.data || [], filteredMessages),
+    clients: mapClientRows(clientsRows, filteredKnowledge),
+    missions: mapTaskRows(tasksRows),
+    artifacts: mapOutputRows(outputsRows),
+    conversations: mapConversationRows(conversationsRows, filteredMessages),
     campaigns: Array.isArray(settings.campaigns) ? settings.campaigns : [],
     activities: Array.isArray(settings.activities) ? settings.activities : [],
     agencySettings: settings.agencySettings,

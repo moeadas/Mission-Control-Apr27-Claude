@@ -11,10 +11,16 @@ import {
 import { AgentBot } from '@/components/agents/AgentBot'
 import { clsx } from 'clsx'
 import { getModelLabel, getProviderLabel } from '@/lib/providers'
-import { Paperclip, Send, X, Image, FileText, File, AlertCircle, Loader2, Plus, Trash2, ExternalLink } from 'lucide-react'
+import { Paperclip, Send, X, Image, FileText, File, AlertCircle, Loader2, Plus, Trash2, ExternalLink, GitBranch } from 'lucide-react'
 import { buildTaskTitleFromRequest } from '@/lib/task-output'
-import { getSupabaseBrowserClient } from '@/lib/supabase/browser'
+import { getStoredToken } from '@/lib/auth/browser'
 import { DeliverableType } from '@/lib/types'
+import {
+  DELIVERABLE_REGISTRY as CANONICAL_DELIVERABLE_REGISTRY,
+  inferDeliverableType as canonicalInferDeliverableType,
+  isConversationalMessage as canonicalIsConversationalMessage,
+  isSubstantiveRequest as canonicalIsSubstantiveRequest,
+} from '@/lib/intents/intent-classifier'
 
 const OBJECTIVE_OPTIONS = [
   { label: 'Awareness', value: 'awareness' },
@@ -75,13 +81,17 @@ const ARTWORK_OPTIONS = [
 
 type IntakePromptConfig = NonNullable<NonNullable<ChatMessage['meta']>['intakePrompt']>
 
+// Deliverable inference is delegated to the canonical classifier.
+// `DELIVERABLE_SPECS` is kept here only as a *display* lookup so existing
+// code that does `DELIVERABLE_SPECS.find(...)?.label` keeps working —
+// patterns are no longer used for classification (the classifier owns that).
 type DeliverableSpec = {
   id: DeliverableType
   label: string
   patterns: RegExp[]
 }
 
-const DELIVERABLE_SPECS: DeliverableSpec[] = [
+const _LEGACY_DELIVERABLE_SPECS: DeliverableSpec[] = [
   {
     id: 'content-calendar',
     label: 'Content Calendar',
@@ -227,8 +237,18 @@ const IRIS = {
   status: 'active' as const,
 }
 
+// Build a name lookup once from both the legacy display map and the canonical
+// registry, so labels for newly-added deliverables (added by the registry
+// only) still render correctly.
+const DELIVERABLE_LABEL_MAP: Record<string, string> = (() => {
+  const map: Record<string, string> = {}
+  for (const spec of _LEGACY_DELIVERABLE_SPECS) map[spec.id] = spec.label
+  for (const spec of CANONICAL_DELIVERABLE_REGISTRY) map[spec.id] = map[spec.id] || spec.label
+  return map
+})()
+
 function getDeliverableLabel(deliverableType: DeliverableType | string) {
-  return DELIVERABLE_SPECS.find((spec) => spec.id === deliverableType)?.label || 'Task'
+  return DELIVERABLE_LABEL_MAP[String(deliverableType)] || 'Task'
 }
 
 function formatTime(iso: string) {
@@ -332,86 +352,32 @@ function buildAssignmentNote(meta?: ChatMessage['meta']) {
   return `Lead: ${meta.leadAgentId} · ${collaborators} · ${pipeline}`
 }
 
+// All inference now delegates to the canonical classifier so the chat
+// route, the mission store, the standalone pipeline runner, and IrisChat
+// always agree on what a given user message is.
 function isSubstantiveRequest(message: string) {
-  const lower = message.toLowerCase().trim()
-
-  if (lower.length < 20) return false
-
-  const actionVerbs =
-    /\b(create|draft|write|build|make|generate|prepare|design|plan|develop|analyse|analyze|audit|review|research|outline|summarize|summarise|propose|recommend|evaluate|compare|assess|optimize|optimise|launch|execute|schedule|set up|configure|map out|brainstorm|ideate|produce|compose|compile|format|restructure|rework|revamp|update|refresh|rephrase|rewrite|improve|enhance|craft)\b/
-  const needVerbs = /\b(i need|we need|i want|can you|could you|please|help me|let's|lets|i'd like|we'd like|would you)\b/
-  const deliverableNouns =
-    /\b(report|brief|calendar|plan|strategy|audit|analysis|proposal|copy|content|script|template|guide|framework|roadmap|presentation|newsletter|campaign|email|post|article|blog|page|asset|design|mockup|wireframe|diagram|description|bio|tagline)\b/
-
-  if (actionVerbs.test(lower)) return true
-  if (needVerbs.test(lower) && lower.length > 30) return true
-  if (deliverableNouns.test(lower) && lower.length > 30) return true
-  if (lower.length > 60 && lower.includes('?')) return true
-
-  return lower.length > 50
+  return canonicalIsSubstantiveRequest(message)
 }
 
 function shouldOpenMissionForMessage(message: string) {
-  const trimmed = message.trim()
-  if (!trimmed) return false
-
-  const lower = trimmed.toLowerCase()
-
-  const casualOnlyPatterns = [
-    /^hi[.!? ]*$/i,
-    /^hey[.!? ]*$/i,
-    /^hello[.!? ]*$/i,
-    /^yo[.!? ]*$/i,
-    /^thanks?[.!? ]*$/i,
-    /^thank you[.!? ]*$/i,
-    /^ok[.!? ]*$/i,
-    /^okay[.!? ]*$/i,
-    /^test(ing)?[.!? ]*$/i,
-    /^(good )?morning[.!? ]*$/i,
-    /^(good )?afternoon[.!? ]*$/i,
-    /^(good )?evening[.!? ]*$/i,
-    /^how are you[.!? ]*$/i,
-    /^sure[.!? ]*$/i,
-    /^yes[.!? ]*$/i,
-    /^no[.!? ]*$/i,
-    /^got it[.!? ]*$/i,
-    /^cool[.!? ]*$/i,
-    /^great[.!? ]*$/i,
-    /^perfect[.!? ]*$/i,
-    /^awesome[.!? ]*$/i,
-    /^sounds good[.!? ]*$/i,
-    /^why[.!? ]*$/i,
-  ]
-
-  if (casualOnlyPatterns.some((pattern) => pattern.test(trimmed))) return false
-
-  const explicitChatOnlyPatterns = [
-    /\b(project status|task status|status update|what is the status|progress update)\b/i,
-    /\bwhat are the agents doing\b/i,
-    /\bwho is working on\b/i,
-    /\bwhat can you do\b/i,
-    /\bwhat can iris do\b/i,
-    /\bshow me the team\b/i,
-    /\bwho are the agents\b/i,
-    /\bhow does the app work\b/i,
-    /\bwhat capabilities\b/i,
-    /\blist (the|all|my) (tasks|missions|projects)\b/i,
-    /\b(explain|tell me about|describe) (yourself|iris|the agents|the team)\b/i,
-  ]
-
-  if (explicitChatOnlyPatterns.some((pattern) => pattern.test(lower))) return false
-  const inferred = inferDeliverableFromPrompt(lower)
-  if (inferred !== 'status-report') return true
-
-  return isSubstantiveRequest(trimmed)
+  if (!message.trim()) return false
+  if (canonicalIsConversationalMessage(message)) return false
+  if (canonicalInferDeliverableType(message) !== 'status-report') return true
+  return canonicalIsSubstantiveRequest(message)
 }
 
 function inferDeliverableFromPrompt(message: string) {
+  return canonicalInferDeliverableType(message)
+}
+
+// Stub kept for the legacy structure of the function body that still references
+// `bestId` for downstream early-return safety. The real return path is above.
+function _legacy_inferDeliverableFromPrompt_unused(message: string) {
   const lower = message.toLowerCase()
   let bestId: DeliverableType | 'status-report' = 'status-report'
   let bestScore = 0
 
-  for (const spec of DELIVERABLE_SPECS) {
+  for (const spec of _LEGACY_DELIVERABLE_SPECS) {
     let score = 0
 
     for (const pattern of spec.patterns) {
@@ -561,15 +527,17 @@ function buildIntakePrompt(briefing: IrisConversationBriefing): IntakePromptConf
     case 'objective':
       return {
         field,
-        question: `What is the main objective for this ${deliverableLabel}?`,
-        helperText: 'This helps Iris pick the right lead agent, tone, and pipeline.',
+        question: `What are the objectives for this ${deliverableLabel}?`,
+        helperText: 'Select one or more. This helps Iris pick the right lead agent, tone, and pipeline.',
+        multiSelect: true,
         options: OBJECTIVE_OPTIONS,
       }
     case 'platforms':
       return {
         field,
-        question: 'Which platform should this target?',
-        helperText: 'Choose the main channel or a combined option.',
+        question: 'Which platforms should this target?',
+        helperText: 'Select one or more channels.',
+        multiSelect: true,
         options: PLATFORM_OPTIONS,
       }
     case 'format':
@@ -1085,14 +1053,16 @@ async function requestChat(
   payload: Record<string, unknown>,
   onChunk: (text: string) => void,
   onDone: (meta?: ChatMessage['meta']) => void,
-  onError: (err: string) => void
+  onError: (err: string) => void,
+  onPipelineStart?: (info: { pipelineName: string; phases: string[]; deliverableType: string }) => void
 ) {
   try {
-    const supabase = getSupabaseBrowserClient()
+    const supabase: any = null // migrated to REST API
+    const token = getStoredToken()
     const {
       data: { session },
     } = await supabase.auth.getSession()
-    if (!session?.access_token) {
+    if (!token) {
       onError('Your session is not ready or has expired. Please sign in again and retry.')
       return
     }
@@ -1103,23 +1073,63 @@ async function requestChat(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.access_token}`,
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(payload),
       signal: controller.signal,
     })
     clearTimeout(timeoutId)
-    const data = await response.json()
+
     if (!response.ok) {
-      onError(data.error || 'Request failed')
+      const errData = await response.json().catch(() => ({}))
+      onError(errData.error || 'Request failed')
       return
     }
-    if (!data.response || !String(data.response).trim()) {
-      onError('Iris did not return a usable response. Check provider settings and retry.')
-      return
+
+    const contentType = response.headers.get('Content-Type') || ''
+    if (contentType.includes('application/x-ndjson')) {
+      // Parse NDJSON chunks: pipeline_start (optional) then done
+      const text = await response.text()
+      const lines = text.trim().split('\n').filter(Boolean)
+      let resolved = false
+      for (const line of lines) {
+        try {
+          const chunk = JSON.parse(line)
+          if (chunk.type === 'pipeline_start') {
+            onPipelineStart?.({
+              pipelineName: chunk.pipelineName || '',
+              phases: chunk.phases || [],
+              deliverableType: chunk.deliverableType || '',
+            })
+          } else if (chunk.type === 'done') {
+            if (!chunk.response || !String(chunk.response).trim()) {
+              onError('Iris did not return a usable response. Check provider settings and retry.')
+              return
+            }
+            onChunk(chunk.response || '')
+            onDone(chunk.meta)
+            resolved = true
+          } else if (chunk.type === 'error') {
+            onError(chunk.error || 'Request failed')
+            return
+          }
+        } catch {
+          // malformed line — skip
+        }
+      }
+      if (!resolved) {
+        onError('Iris did not return a usable response. Check provider settings and retry.')
+      }
+    } else {
+      // Legacy JSON response (conversational path or older server)
+      const data = await response.json().catch(() => ({}))
+      if (!data.response || !String(data.response).trim()) {
+        onError('Iris did not return a usable response. Check provider settings and retry.')
+        return
+      }
+      onChunk(data.response || '')
+      onDone(data.meta)
     }
-    onChunk(data.response || '')
-    onDone(data.meta)
   } catch (err: any) {
     if (err?.name === 'AbortError') {
       onError('The request timed out before Iris returned a result. Open the task page to check the live execution state and latest error.')
@@ -1204,7 +1214,10 @@ export function IrisChat() {
   const [input, setInput] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [attachments, setAttachments] = useState<File[]>([])
+  // Track pending multi-select answers keyed by message id
+  const [multiSelectPending, setMultiSelectPending] = useState<Record<string, string[]>>({})
   const [attachedText, setAttachedText] = useState<string>('')
+  const [activePipelineInfo, setActivePipelineInfo] = useState<{ name: string; deliverableType: string } | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -1226,6 +1239,17 @@ export function IrisChat() {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [activeConv?.messages.length, chatStatus])
+
+  // Listen for prefill events from the Mission page quick-starts
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const text = (e as CustomEvent<{ text: string }>).detail?.text
+      if (text) setInput(text)
+      setTimeout(() => inputRef.current?.focus(), 50)
+    }
+    window.addEventListener('iris:prefill', handler)
+    return () => window.removeEventListener('iris:prefill', handler)
+  }, [])
 
   useEffect(() => {
     if (isIrisOpen) setTimeout(() => inputRef.current?.focus(), 300)
@@ -1271,29 +1295,31 @@ export function IrisChat() {
       : null
 
     const persistCurrentState = async () => {
-      const supabase = getSupabaseBrowserClient()
+      const supabase: any = null // migrated to REST API
+    const token = getStoredToken()
       const {
         data: { session },
       } = await supabase.auth.getSession()
-      if (!session?.access_token) return
+      if (!token) return
 
       const snapshot = createAppPersistenceSnapshot(useAgentsStore.getState())
       await fetch('/api/state', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ state: snapshot }),
       }).catch(() => null)
     }
 
     const getSessionToken = async () => {
-      const supabase = getSupabaseBrowserClient()
+      const supabase: any = null // migrated to REST API
+    const token = getStoredToken()
       const {
         data: { session },
       } = await supabase.auth.getSession()
-      return session?.access_token || null
+      return token || null
     }
 
     const waitForMissionSync = async () => {
@@ -1305,6 +1331,9 @@ export function IrisChat() {
 
     if (createdMissionId) {
       const provisionalRouting = buildProvisionalMissionRouting(finalPrompt, agents)
+      if (provisionalRouting.pipelineName) {
+        setActivePipelineInfo({ name: provisionalRouting.pipelineName, deliverableType: provisionalRouting.deliverableType })
+      }
       updateMission(createdMissionId, {
         status: 'in_progress',
         progress: 8,
@@ -1539,10 +1568,16 @@ export function IrisChat() {
           })
         }
         persistCurrentState().catch(() => null)
+        // Update pipeline info with confirmed server response, then clear after a brief moment
+        if (meta?.pipelineName) {
+          setActivePipelineInfo({ name: meta.pipelineName, deliverableType: (meta as any).resolvedDeliverableType || meta.deliverableType || '' })
+        }
+        setTimeout(() => setActivePipelineInfo(null), 1200)
         setChatStatus('idle')
       },
       (err) => {
         setError(err)
+        setActivePipelineInfo(null)
         addAssistantMessage(
           conversationId,
           `Iris could not complete that request.\n\nReason: ${err}`,
@@ -1558,9 +1593,16 @@ export function IrisChat() {
         }
         persistCurrentState().catch(() => null)
         setChatStatus('idle')
+      },
+      // onPipelineStart: server confirms which pipeline is running — update indicator
+      // from server source (overrides provisional routing from client)
+      (info) => {
+        if (info.pipelineName) {
+          setActivePipelineInfo({ name: info.pipelineName, deliverableType: info.deliverableType })
+        }
       }
     )
-  }, [activeMission, addArtifact, addAssistantMessage, agencySettings.defaultModel, agencySettings.defaultProvider, agentMemories, agents, artifacts, clients, createMissionFromPrompt, irisAgent?.maxTokens, irisAgent?.model, irisAgent?.provider, irisAgent?.systemPrompt, irisAgent?.temperature, missions, providerSettings, rememberAgentWork, setChatStatus, updateConversationBriefing, updateMission, upsertAssistantDraft])
+  }, [activeMission, addArtifact, addAssistantMessage, agencySettings.defaultModel, agencySettings.defaultProvider, agentMemories, agents, artifacts, clients, createMissionFromPrompt, irisAgent?.maxTokens, irisAgent?.model, irisAgent?.provider, irisAgent?.systemPrompt, irisAgent?.temperature, missions, providerSettings, rememberAgentWork, setActivePipelineInfo, setChatStatus, updateConversationBriefing, updateMission, upsertAssistantDraft])
 
   const advanceBriefing = useCallback(async (conversationId: string, nextBriefing: IrisConversationBriefing, userFacingText?: string) => {
     updateConversationBriefing(conversationId, nextBriefing)
@@ -1652,6 +1694,29 @@ export function IrisChat() {
     }
     nextBriefing.awaitingField = getNextMissingField(nextBriefing)
     await advanceBriefing(activeConversationId, nextBriefing, `${field === 'includeArtwork' ? 'Artwork' : field}: ${label}`)
+  }, [activeConversationId, advanceBriefing, chatStatus])
+
+  // Multi-select confirm handler — called when user clicks "Confirm" on a multiSelect intake prompt
+  const handleMultiSelectConfirm = useCallback(async (field: IrisBriefField, values: string[], labels: string[]) => {
+    if (chatStatus !== 'idle' || !activeConversationId || values.length === 0) return
+    const liveConversation = useAgentsStore.getState().conversations.find((c) => c.id === activeConversationId)
+    const briefing = liveConversation?.briefing
+    if (!briefing?.active) return
+
+    const nextBriefing: IrisConversationBriefing = {
+      ...briefing,
+      fields: {
+        ...briefing.fields,
+        [field]:
+          field === 'platforms'
+            ? values
+            : field === 'objective'
+            ? values.join(', ')
+            : values[0],
+      },
+    }
+    nextBriefing.awaitingField = getNextMissingField(nextBriefing)
+    await advanceBriefing(activeConversationId, nextBriefing, `${field}: ${labels.join(', ')}`)
   }, [activeConversationId, advanceBriefing, chatStatus])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -1793,35 +1858,84 @@ export function IrisChat() {
                         : 'bg-[#1a1d26] text-gray-200 border border-[#2a2d38] rounded-tl-sm'
                     )}>
                       <p className="whitespace-pre-wrap">{msg.content}</p>
-                      {!isUser && msg.meta?.intakePrompt ? (
-                        <div className="mt-3 space-y-3">
-                          <div className="flex flex-wrap gap-2">
-                            {msg.meta.intakePrompt.options.map((option) => (
-                              <button
-                                key={`${msg.id}-${option.value}`}
-                                type="button"
-                                onClick={() => handleIntakeOptionClick(msg.meta?.intakePrompt?.field as IrisBriefField, option.value, option.label)}
-                                className="rounded-full border border-[#3a3f50] bg-[#171a21] px-3 py-1.5 text-[11px] text-[#d9dcff] transition hover:border-[#9b6dff] hover:text-white"
-                              >
-                                {option.label}
-                              </button>
-                            ))}
-                          </div>
-                          {activeBriefing?.active ? (
-                            <div className="rounded-2xl border border-[#2f3342] bg-[#11141b] px-3 py-2 text-[11px] text-gray-400">
-                              <p className="font-mono uppercase tracking-[0.22em] text-[#9b6dff]">Brief So Far</p>
-                              <div className="mt-2 flex flex-wrap gap-2">
-                                {activeBriefing.fields.objective ? <span>Objective: {activeBriefing.fields.objective}</span> : null}
-                                {activeBriefing.fields.platforms?.length ? <span>Platforms: {activeBriefing.fields.platforms.join(' + ')}</span> : null}
-                                {activeBriefing.fields.format ? <span>Format: {activeBriefing.fields.format}</span> : null}
-                                {activeBriefing.fields.timeframe ? <span>Timeframe: {activeBriefing.fields.timeframe}</span> : null}
-                                {activeBriefing.fields.cadence ? <span>Cadence: {activeBriefing.fields.cadence}</span> : null}
-                                {typeof activeBriefing.fields.includeArtwork === 'boolean' ? <span>Artwork: {activeBriefing.fields.includeArtwork ? 'Yes' : 'No'}</span> : null}
-                              </div>
+                      {!isUser && msg.meta?.intakePrompt ? (() => {
+                        const ip = msg.meta.intakePrompt
+                        const isMulti = ip.multiSelect === true
+                        const msgSelections = multiSelectPending[msg.id] || []
+                        return (
+                          <div className="mt-3 space-y-3">
+                            <div className="flex flex-wrap gap-2">
+                              {ip.options.map((option) => {
+                                const isSelected = msgSelections.includes(option.value)
+                                return (
+                                  <button
+                                    key={`${msg.id}-${option.value}`}
+                                    type="button"
+                                    onClick={() => {
+                                      if (!isMulti) {
+                                        handleIntakeOptionClick(ip.field as IrisBriefField, option.value, option.label)
+                                      } else {
+                                        setMultiSelectPending((prev) => {
+                                          const current = prev[msg.id] || []
+                                          const next = current.includes(option.value)
+                                            ? current.filter((v) => v !== option.value)
+                                            : [...current, option.value]
+                                          return { ...prev, [msg.id]: next }
+                                        })
+                                      }
+                                    }}
+                                    className={`rounded-full border px-3 py-1.5 text-[11px] transition-all flex items-center gap-1.5 ${
+                                      isSelected && isMulti
+                                        ? 'border-[#9b6dff] bg-[#9b6dff]/20 text-white'
+                                        : 'border-[#3a3f50] bg-[#171a21] text-[#d9dcff] hover:border-[#9b6dff] hover:text-white'
+                                    }`}
+                                  >
+                                    {isMulti && (
+                                      <span className={`w-3.5 h-3.5 rounded-sm border flex items-center justify-center flex-shrink-0 ${
+                                        isSelected ? 'bg-[#9b6dff] border-[#9b6dff]' : 'border-[#3a3f50]'
+                                      }`}>
+                                        {isSelected && (
+                                          <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                                            <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                          </svg>
+                                        )}
+                                      </span>
+                                    )}
+                                    {option.label}
+                                  </button>
+                                )
+                              })}
                             </div>
-                          ) : null}
-                        </div>
-                      ) : null}
+                            {isMulti && msgSelections.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const selectedOptions = ip.options.filter((o) => msgSelections.includes(o.value))
+                                  const labels = selectedOptions.map((o) => o.label)
+                                  handleMultiSelectConfirm(ip.field as IrisBriefField, msgSelections, labels)
+                                  setMultiSelectPending((prev) => { const next = { ...prev }; delete next[msg.id]; return next })
+                                }}
+                                className="px-4 py-1.5 rounded-full text-[11px] font-semibold bg-[#9b6dff] text-white hover:bg-[#8b5cf6] transition-colors"
+                              >
+                                Confirm {msgSelections.length} selection{msgSelections.length !== 1 ? 's' : ''} →
+                              </button>
+                            )}
+                            {activeBriefing?.active ? (
+                              <div className="rounded-2xl border border-[#2f3342] bg-[#11141b] px-3 py-2 text-[11px] text-gray-400">
+                                <p className="font-mono uppercase tracking-[0.22em] text-[#9b6dff]">Brief So Far</p>
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                  {activeBriefing.fields.objective ? <span>Objective: {activeBriefing.fields.objective}</span> : null}
+                                  {activeBriefing.fields.platforms?.length ? <span>Platforms: {activeBriefing.fields.platforms.join(' + ')}</span> : null}
+                                  {activeBriefing.fields.format ? <span>Format: {activeBriefing.fields.format}</span> : null}
+                                  {activeBriefing.fields.timeframe ? <span>Timeframe: {activeBriefing.fields.timeframe}</span> : null}
+                                  {activeBriefing.fields.cadence ? <span>Cadence: {activeBriefing.fields.cadence}</span> : null}
+                                  {typeof activeBriefing.fields.includeArtwork === 'boolean' ? <span>Artwork: {activeBriefing.fields.includeArtwork ? 'Yes' : 'No'}</span> : null}
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
+                        )
+                      })() : null}
                       {!isUser && msg.meta?.missionId ? (
                         <div className="mt-3 flex items-center gap-2">
                           <a
@@ -1841,27 +1955,40 @@ export function IrisChat() {
                 )
               })}
               
-              {/* Streaming indicator */}
-              {chatStatus === 'thinking' && (
+              {/* Thinking / streaming indicator */}
+              {(chatStatus === 'thinking' || chatStatus === 'streaming') && (
                 <div className="flex gap-3">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${irisVisual.color}20` }}>
-                    <Loader2 size={16} className="animate-spin" style={{ color: irisVisual.color }} />
+                  <div className="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center" style={{ background: `${irisVisual.color}20` }}>
+                    {chatStatus === 'thinking'
+                      ? <Loader2 size={16} className="animate-spin" style={{ color: irisVisual.color }} />
+                      : <AgentBot name={irisVisual.name} avatar={irisVisual.avatar} photoUrl={irisVisual.photoUrl} color={irisVisual.color} status="active" animation="idle" size={28} />
+                    }
                   </div>
-                  <div className="bg-[#1a1d26] border border-[#2a2d38] rounded-2xl rounded-tl-sm px-4 py-3">
-                    <p className="text-sm text-gray-400">Thinking...</p>
-                  </div>
-                </div>
-              )}
-              
-              {chatStatus === 'streaming' && (
-                <div className="flex gap-3">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${irisVisual.color}20` }}>
-                    <AgentBot name={irisVisual.name} avatar={irisVisual.avatar} photoUrl={irisVisual.photoUrl} color={irisVisual.color} status="active" animation="idle" size={28} />
-                  </div>
-                  <div className="bg-[#1a1d26] border border-[#2a2d38] rounded-2xl rounded-tl-sm px-4 py-3">
-                    <span className="inline-block w-2 h-2 rounded-full bg-[#9b6dff] animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="inline-block w-2 h-2 rounded-full bg-[#9b6dff] animate-bounce mx-0.5" style={{ animationDelay: '150ms' }} />
-                    <span className="inline-block w-2 h-2 rounded-full bg-[#9b6dff] animate-bounce" style={{ animationDelay: '300ms' }} />
+                  <div className="bg-[#1a1d26] border border-[#2a2d38] rounded-2xl rounded-tl-sm px-4 py-3 flex flex-col gap-1.5 min-w-0">
+                    {activePipelineInfo?.name ? (
+                      <>
+                        <div className="flex items-center gap-1.5 text-xs font-medium" style={{ color: irisVisual.color }}>
+                          <GitBranch size={11} />
+                          <span className="truncate">Pipeline: {activePipelineInfo.name}</span>
+                        </div>
+                        <p className="text-sm text-gray-400">
+                          {chatStatus === 'thinking' ? 'Routing to specialists…' : 'Specialists are working on the deliverable…'}
+                        </p>
+                        <div className="flex gap-1 mt-0.5">
+                          <span className="inline-block w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: irisVisual.color, animationDelay: '0ms' }} />
+                          <span className="inline-block w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: irisVisual.color, animationDelay: '150ms' }} />
+                          <span className="inline-block w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: irisVisual.color, animationDelay: '300ms' }} />
+                        </div>
+                      </>
+                    ) : chatStatus === 'streaming' ? (
+                      <div className="flex gap-1 py-1">
+                        <span className="inline-block w-2 h-2 rounded-full bg-[#9b6dff] animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <span className="inline-block w-2 h-2 rounded-full bg-[#9b6dff] animate-bounce mx-0.5" style={{ animationDelay: '150ms' }} />
+                        <span className="inline-block w-2 h-2 rounded-full bg-[#9b6dff] animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-400">Thinking…</p>
+                    )}
                   </div>
                 </div>
               )}

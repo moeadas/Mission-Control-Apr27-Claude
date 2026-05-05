@@ -5,7 +5,7 @@ import { extname } from 'path'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { buildAgentPhotoUrl, getUploadsDir, setAgentPhoto, syncAgentPhotoToDatabase } from '@/lib/server/agent-photos'
-import { resolveAuthContextFromToken } from '@/lib/supabase/auth'
+import { resolveAuthContextFromToken } from '@/lib/auth/server'
 
 const EXT_BY_TYPE: Record<string, string> = {
   'image/jpeg': '.jpg',

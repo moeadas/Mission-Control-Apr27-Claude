@@ -377,6 +377,17 @@ export interface ProviderRoutingSettings {
   fallbackProvider: ProviderFallback
   useGeminiForThinking: boolean
   runtimeMode: ProviderRuntimeMode
+  /**
+   * Per-provider override for content-task generation (calendars, posts,
+   * captions, blog articles, etc.). When unset, the runtime falls back to
+   * the global defaults defined in `provider-settings.ts`. The Settings UI
+   * exposes these as advanced fields so super-admins can pick a different
+   * model without editing code.
+   */
+  contentModels?: {
+    ollama?: string
+    gemini?: string
+  }
 }
 
 export interface OllamaSettings extends ProviderSetting {
@@ -426,4 +437,6 @@ export interface AgencySettings {
   defaultProvider: AIProvider
   defaultModel: AgentModel
   themeMode: ThemeMode
+  onboardingComplete?: boolean
+  onboardingStep?: number
 }

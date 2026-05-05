@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 
 import { type Skill, SKILL_CATEGORIES } from '@/lib/skill-schema'
-import { getSupabaseAccessToken } from '@/lib/supabase/browser'
+import { getSupabaseAccessToken } from '@/lib/auth/browser'
 
 export interface SkillDefinition extends Skill {}
 

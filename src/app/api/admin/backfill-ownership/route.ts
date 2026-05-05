@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-import { getSupabaseServerClient } from '@/lib/supabase/server'
-import { resolveAuthContextFromToken } from '@/lib/supabase/auth'
+import { getDb } from '@/lib/db/client'
+import { resolveAuthContextFromToken } from '@/lib/auth/server'
 
 function getBearerToken(request: NextRequest) {
   const authHeader = request.headers.get('authorization') || ''
@@ -16,30 +16,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const supabase = getSupabaseServerClient()
-    if (!supabase) {
-      return NextResponse.json({ error: 'Supabase not available' }, { status: 503 })
-    }
+    const db = getDb()
 
-    const { error: profileError } = await supabase.from('profiles').upsert(
-      {
-        id: auth.userId,
-        email: auth.email,
-        role: 'super_admin',
-        is_active: true,
-      },
-      { onConflict: 'id' }
-    )
-    if (profileError) throw profileError
+    // Ensure this user has a profile row
+    await db`
+      INSERT INTO profiles (id, email, role, is_active)
+      VALUES (${auth.userId}::uuid, ${auth.email}, 'super_admin', true)
+      ON CONFLICT (id) DO UPDATE SET role = 'super_admin', is_active = true
+    `
 
     const updateTable = async (table: 'clients' | 'tasks' | 'outputs' | 'conversations') => {
-      const { data, error } = await supabase
-        .from(table)
-        .update({ owner_user_id: auth.userId })
-        .is('owner_user_id', null)
-        .select('id')
-      if (error) throw error
-      return data?.length || 0
+      const rows = await db.unsafe(
+        `UPDATE "${table}" SET owner_user_id = $1 WHERE owner_user_id IS NULL RETURNING id`,
+        [auth.userId]
+      )
+      return rows.length
     }
 
     const [clients, tasks, outputs, conversations] = await Promise.all([
@@ -49,10 +40,7 @@ export async function POST(request: NextRequest) {
       updateTable('conversations'),
     ])
 
-    return NextResponse.json({
-      success: true,
-      counts: { clients, tasks, outputs, conversations },
-    })
+    return NextResponse.json({ success: true, counts: { clients, tasks, outputs, conversations } })
   } catch (error) {
     console.error('Failed to backfill ownership:', error)
     return NextResponse.json({ error: 'Failed to backfill ownership' }, { status: 500 })

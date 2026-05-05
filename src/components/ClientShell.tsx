@@ -6,10 +6,12 @@ import { Sidebar } from '@/components/layout/Sidebar'
 import { ToastContainer } from '@/components/ui/Toast'
 import { IrisChat } from '@/components/agents/IrisChat'
 import { createRemoteAppPersistenceSnapshot, useAgentsStore } from '@/lib/agents-store'
-import { getSupabaseBrowserClient } from '@/lib/supabase/browser'
-import { MessageCircle, LayoutDashboard, Building2, Bot, ListTodo, X } from 'lucide-react'
+import { getStoredToken } from '@/lib/auth/browser'
+import { MessageCircle, LayoutDashboard, Building2, Bot, ListTodo, X, AlertTriangle } from 'lucide-react'
+import { OnboardingWizard } from '@/components/onboarding/OnboardingWizard'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { toast } from '@/components/ui/Toast'
 
 const MOBILE_NAV = [
   { id: 'dashboard', label: 'Home', icon: LayoutDashboard, href: '/dashboard' },
@@ -32,13 +34,36 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
   const openIris = useAgentsStore((state) => state.openIris)
   const isIrisOpen = useAgentsStore((state) => state.isIrisOpen)
   const themeMode = useAgentsStore((state) => state.agencySettings.themeMode)
+  const onboardingComplete = useAgentsStore((state) => state.agencySettings.onboardingComplete)
+  const appStateReady = useAgentsStore((state) => state.appStateReady)
   const hydrateAgentPhotos = useAgentsStore((state) => state.hydrateAgentPhotos)
   const hydrateAppState = useAgentsStore((state) => state.hydrateAppState)
   const setAppStateReady = useAgentsStore((state) => state.setAppStateReady)
   const setAuthenticatedUser = useAgentsStore((state) => state.setAuthenticatedUser)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const pathname = usePathname()
-  const supabase = useMemo(() => getSupabaseBrowserClient(), [])
+  const supabase = useMemo(() => null as any, [])
+
+  // ── Task failure notifications ──────────────────────────────────────────
+  useEffect(() => {
+    const seenFailedIds = new Set<string>()
+    const unsubscribe = useAgentsStore.subscribe((state) => {
+      state.missions.forEach((mission) => {
+        if (
+          (mission.status === 'cancelled' || (mission as any).status === 'failed') &&
+          !seenFailedIds.has(mission.id)
+        ) {
+          seenFailedIds.add(mission.id)
+          // Only notify for missions that were recently updated (last 10s)
+          const updatedAt = mission.updatedAt ? new Date(mission.updatedAt).getTime() : 0
+          if (Date.now() - updatedAt < 10_000) {
+            toast.error(`Task failed: "${mission.title || 'Unnamed task'}"`)
+          }
+        }
+      })
+    })
+    return () => unsubscribe()
+  }, [])
 
   useEffect(() => {
     document.documentElement.dataset.theme = themeMode
@@ -50,8 +75,8 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
     let latestPhotos: Record<string, string> | null = null
 
     fetch('/api/agent-photos')
-      .then((response) => response.ok ? response.json() : null)
-      .then((payload) => {
+      .then((response: any) => response.ok ? response.json() : null)
+      .then((payload: any) => {
         latestPhotos = payload?.photos || null
         if (isMounted && latestPhotos) {
           hydrateAgentPhotos(latestPhotos)
@@ -79,16 +104,16 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
     let latestPhotos: Record<string, string> | null = null
 
     const photosPromise = fetch('/api/agent-photos')
-      .then((response) => (response.ok ? response.json() : null))
-      .then((payload) => {
+      .then((response: any) => (response.ok ? response.json() : null))
+      .then((payload: any) => {
         latestPhotos = payload?.photos || null
         return latestPhotos
       })
       .catch(() => null)
 
     supabase.auth.getSession()
-      .then(({ data }) => {
-        const accessToken = data.session?.access_token
+      .then(({ data }: any) => {
+        const accessToken = data.token
         authHeaders = accessToken
           ? { Authorization: `Bearer ${accessToken}` }
           : {}
@@ -103,8 +128,8 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
         }
 
         fetch('/api/auth/session', { headers: authHeaders })
-          .then((response) => (response.ok ? response.json() : null))
-          .then((payload) => {
+          .then((response: any) => (response.ok ? response.json() : null))
+          .then((payload: any) => {
             if (payload?.authenticated && isMounted) {
               setAuthenticatedUser(payload.user)
             }
@@ -113,8 +138,8 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
 
         return fetch('/api/state', { cache: 'no-store', headers: authHeaders })
       })
-      .then((response) => (response?.ok ? response.json() : null))
-      .then(async (payload) => {
+      .then((response: any) => (response?.ok ? response.json() : null))
+      .then(async (payload: any) => {
         if (!isMounted) return
         if (payload?.state) {
           hydrateAppState(payload.state)
@@ -152,10 +177,8 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
       if (saveTimer) clearTimeout(saveTimer)
 
       saveTimer = setTimeout(async () => {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession()
-        if (!session?.access_token) {
+        const token = getStoredToken()
+        if (!token) {
           canSync = false
           return
         }
@@ -189,7 +212,7 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify({ statePatch, entityPatch, updatedAt: latestUpdatedAt }),
         })
@@ -197,7 +220,7 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
             if (response.status === 409) {
               const latestResponse = await fetch('/api/state', {
                 headers: {
-                  Authorization: `Bearer ${session.access_token}`,
+                  Authorization: `Bearer ${token}`,
                 },
                 cache: 'no-store',
               }).catch(() => null)
@@ -330,6 +353,7 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
         {isIrisOpen ? <X size={20} /> : <MessageCircle size={22} />}
       </button>
 
+      {appStateReady && onboardingComplete === false && <OnboardingWizard />}
       <IrisChat />
       <ToastContainer />
     </div>

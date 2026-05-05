@@ -4,601 +4,94 @@ import { v4 as uuidv4 } from 'uuid'
 import {
   ActivityEntry,
   Artifact,
-  ArtifactExecutionStep,
   AgencySettings,
   Agent,
   AIProvider,
   Campaign,
-  CreativeArtifactSpec,
   GeminiSettings,
   Mission,
   ProviderSettings,
   ThemeMode,
 } from './types'
-import { CONFIG_AGENTS } from './agents-from-config'
-import { Client, DEFAULT_CLIENTS } from './client-data'
+import type { Client } from './client-data'
 import { maskApiKey } from './providers'
-import { DEFAULT_PROVIDER_SETTINGS, normalizeProviderSettings } from './provider-settings'
+import { normalizeProviderSettings } from './provider-settings'
 import { AgentMemory, appendAgentMemoryNote, buildDefaultAgentMemories, mergeAgentMemories } from './agent-memory'
 import { buildTaskTitleFromRequest } from './task-output'
 
-export interface ChatMessage {
-  id: string
-  role: 'user' | 'assistant' | 'system'
-  content: string
-  timestamp: string
-  agentId?: string
-  meta?: {
-    routedAgentId?: string
-    leadAgentId?: string
-    assignedAgentIds?: string[]
-    collaboratorAgentIds?: string[]
-    clientId?: string
-    campaignId?: string
-    missionId?: string
-    deliverableType?: string
-    artifactId?: string
-    executionPrompt?: string
-    pipelineId?: string | null
-    pipelineName?: string | null
-    selectedSkillsByAgent?: Record<string, string[]>
-    orchestrationTrace?: string[]
-    qualityChecklist?: string[]
-    handoffNotes?: string
-    executionSteps?: ArtifactExecutionStep[]
-    renderedHtml?: string
-    creative?: CreativeArtifactSpec
-    provider?: AIProvider
-    model?: string
-    fallbackUsed?: boolean
-    quality?: { ok: boolean; score: number; issues: string[] } | null
-    compareSummary?: Mission['compareSummary']
-    confidence?: Mission['channelingConfidence']
-    intakePrompt?: {
-      field: IrisBriefField
-      question: string
-      helperText?: string
-      multiSelect?: boolean
-      options: Array<{ label: string; value: string }>
-    } | null
-  }
-}
+// ──────────────────────────────────────────────────────────────────────────
+//  Persistence types live in a dedicated module so /api/state and ClientShell
+//  don't have to import the entire Zustand store. Re-exported here for
+//  back-compat — every existing import of these from '@/lib/agents-store'
+//  continues to work.
+// ──────────────────────────────────────────────────────────────────────────
+export type {
+  ChatMessage,
+  IrisBriefField,
+  IrisConversationBriefing,
+  Conversation,
+  AuthenticatedUser,
+  AppPersistenceSnapshot,
+  AppPersistencePatch,
+  EntityCollectionKey,
+  EntityDeltaPatch,
+} from './types/persistence'
+import type {
+  AppPersistenceSnapshot,
+  AuthenticatedUser,
+  ChatMessage,
+  Conversation,
+  IrisBriefField,
+  IrisConversationBriefing,
+} from './types/persistence'
 
-export type IrisBriefField =
-  | 'objective'
-  | 'platforms'
-  | 'format'
-  | 'timeframe'
-  | 'cadence'
-  | 'includeArtwork'
+// ──────────────────────────────────────────────────────────────────────────
+//  Defaults + normalizers live in dedicated modules. Re-exported here for
+//  back-compat (createAppPersistenceSnapshot, createRemoteAppPersistenceSnapshot
+//  are imported by ClientShell and IrisChat).
+// ──────────────────────────────────────────────────────────────────────────
+export {
+  createAppPersistenceSnapshot,
+  createRemoteAppPersistenceSnapshot,
+} from './agents-store/normalizers'
+import {
+  createLocalPersistenceSnapshot,
+  createRemoteAppPersistenceSnapshot,
+  normalizePersistedState,
+} from './agents-store/normalizers'
+import {
+  ALL_DEFAULT_AGENTS,
+  IRIS_AGENT,
+  INITIAL_ACTIVITIES,
+  INITIAL_AGENCY_SETTINGS,
+  INITIAL_ARTIFACTS,
+  INITIAL_CAMPAIGNS,
+  INITIAL_MISSIONS,
+  INITIAL_PROVIDER_SETTINGS,
+  DEFAULT_CLIENT_BRAND_KIT,
+  SEEDED_ARTIFACT_IDS,
+  SEEDED_CAMPAIGN_IDS,
+  SEEDED_MISSION_IDS,
+  nowIso,
+} from './agents-store/defaults'
+import { DEFAULT_CLIENTS } from './client-data'
 
-export interface IrisConversationBriefing {
-  active: boolean
-  originalRequest: string
-  deliverableType: Mission['deliverableType']
-  fields: {
-    objective?: string
-    platforms?: string[]
-    format?: string
-    timeframe?: string
-    cadence?: string
-    includeArtwork?: boolean
-  }
-  awaitingField?: IrisBriefField | null
-}
-
-export interface Conversation {
-  id: string
-  ownerUserId?: string
-  title: string
-  messages: ChatMessage[]
-  briefing?: IrisConversationBriefing | null
-  createdAt: string
-  updatedAt: string
-}
-
-export interface AuthenticatedUser {
-  id: string
-  email: string
-  role: 'super_admin' | 'member'
-}
-
-export interface AppPersistenceSnapshot {
-  agents: Agent[]
-  activities: ActivityEntry[]
-  campaigns: Campaign[]
-  clients: Client[]
-  missions: Mission[]
-  artifacts: Artifact[]
-  conversations: Conversation[]
-  agencySettings: AgencySettings
-  providerSettings: ProviderSettings
-  agentMemories: Record<string, AgentMemory>
-}
-
-export type AppPersistencePatch = Partial<AppPersistenceSnapshot>
-
-export type EntityCollectionKey = 'agents' | 'clients' | 'missions' | 'artifacts' | 'conversations'
-
-export type EntityDeltaPatch = {
-  [K in EntityCollectionKey]?: {
-    upserts: AppPersistenceSnapshot[K]
-    deletes: string[]
-  }
-}
-
-const nowIso = () => new Date().toISOString()
-const DEFAULT_PROVIDER_MODEL: Record<AIProvider, Agent['model']> = {
-  ollama: 'llama3.2:latest',
-  gemini: 'gemini-2.5-flash',
-}
-const VALID_DIVISIONS = new Set<Agent['division']>([
-  'orchestration',
-  'client-services',
-  'creative',
-  'media',
-  'research',
-  'strategy',
-  'analytics',
-  'communications',
-  'production',
-])
-const VALID_SPECIALTIES = new Set<Agent['specialty']>([
-  'strategy',
-  'creative',
-  'design',
-  'copy',
-  'project-management',
-  'client-services',
-  'media-planning',
-  'performance',
-  'client',
-  'seo',
-  'research',
-  'data-analytics',
-  'communications',
-  'content-production',
-  'event-management',
-  'operations',
-  'ux-design',
-  'brand',
-])
-const VALID_STATUSES = new Set<Agent['status']>(['active', 'idle', 'paused'])
-const VALID_PROVIDERS = new Set<AIProvider>(['ollama', 'gemini'])
-const SEEDED_CAMPAIGN_IDS = new Set(['campaign-1', 'campaign-2'])
-const SEEDED_MISSION_IDS = new Set(['mission-1', 'mission-2', 'mission-3'])
-const SEEDED_ARTIFACT_IDS = new Set(['artifact-1'])
-const VALID_MISSION_STATUSES = new Set<Mission['status']>(['queued', 'in_progress', 'blocked', 'review', 'paused', 'cancelled', 'completed'])
-const VALID_MISSION_PRIORITIES = new Set<Mission['priority']>(['low', 'medium', 'high'])
-
-export function createAppPersistenceSnapshot(
-  state: Pick<
-    AgentsState,
-    | 'agents'
-    | 'activities'
-    | 'campaigns'
-    | 'clients'
-    | 'missions'
-    | 'artifacts'
-    | 'conversations'
-    | 'agencySettings'
-    | 'providerSettings'
-    | 'agentMemories'
-  >
-): AppPersistenceSnapshot {
-  return {
-    agents: state.agents,
-    activities: state.activities,
-    campaigns: state.campaigns,
-    clients: state.clients,
-    missions: state.missions,
-    artifacts: state.artifacts,
-    conversations: state.conversations,
-    agencySettings: state.agencySettings,
-    providerSettings: state.providerSettings,
-    agentMemories: state.agentMemories,
-  }
-}
-
-export function createRemoteAppPersistenceSnapshot(
-  state: Pick<
-    AgentsState,
-    | 'agents'
-    | 'activities'
-    | 'campaigns'
-    | 'clients'
-    | 'missions'
-    | 'artifacts'
-    | 'conversations'
-    | 'agencySettings'
-    | 'providerSettings'
-    | 'agentMemories'
-  >
-): AppPersistenceSnapshot {
-  return {
-    ...createAppPersistenceSnapshot(state),
-    conversations: [],
-  }
-}
-
-function createLocalPersistenceSnapshot(
-  state: Pick<
-    AgentsState,
-    | 'agents'
-    | 'activities'
-    | 'campaigns'
-    | 'clients'
-    | 'missions'
-    | 'artifacts'
-    | 'conversations'
-    | 'agencySettings'
-    | 'providerSettings'
-    | 'agentMemories'
-  >
-): AppPersistenceSnapshot {
-  return {
-    ...createAppPersistenceSnapshot(state),
-    artifacts: state.artifacts.map((artifact) => ({
-      ...artifact,
-      content: undefined,
-      renderedHtml: undefined,
-      sourcePrompt: undefined,
-      executionSteps: Array.isArray(artifact.executionSteps)
-        ? artifact.executionSteps.map((step) => ({ ...step, summary: step.summary.slice(0, 240) }))
-        : [],
-    })),
-    conversations: state.conversations.map((conversation) => ({
-      ...conversation,
-      messages: conversation.messages.slice(-6).map((message) => ({
-        ...message,
-        content: message.content.length > 500 ? `${message.content.slice(0, 497)}...` : message.content,
-      })),
-    })),
-    // Keep Gemini locally on the current machine so provider access survives
-    // refreshes even if remote auth metadata hydration lags for a moment.
-    providerSettings: normalizeProviderSettings(state.providerSettings),
-  }
-}
+// Deliverable + pipeline inference is delegated to the canonical classifier
+// so the store, chat route, IrisChat, and the standalone pipeline runner all
+// agree on what a request actually is. These thin wrappers keep existing
+// call sites unchanged.
+import {
+  inferDeliverableType as canonicalInferDeliverableType,
+  inferPipelineMetadataForDeliverable,
+} from '@/lib/intents/intent-classifier'
 
 function inferMissionDeliverableType(prompt: string): Mission['deliverableType'] {
-  const lower = prompt.toLowerCase()
-  const wantsImageAsset =
-    /\b(image|visual|artwork|design|creative asset|mockup|poster|hero image|ad creative|text over|text overlay|headline on image|post image|generate image|create image)\b/.test(lower)
-  const wantsPostCopy =
-    /\b(caption|post copy|facebook post|instagram post|linkedin post|social post|single post|cta)\b/.test(lower)
-  const wantsShortFormCopy =
-    /\b(whatsapp description|whatsapp bio|bio|profile description|short description|company description|brand description|tagline|one-liner)\b/.test(lower)
-
-  if (wantsImageAsset && wantsPostCopy) return 'creative-asset'
-  if (wantsShortFormCopy) return 'short-form-copy'
-  if (/\b(email campaign|email sequence|email template|newsletter|drip campaign|email marketing|welcome email|onboarding email|email flow|email series|email blast|edm)\b/.test(lower)) return 'email-campaign'
-  if (/\b(blog post|blog article|article|thought leadership|op-?ed|long-?form content|guest post|pillar page|how-?to guide|listicle|write an article|write a blog)\b/.test(lower)) return 'blog-article'
-  if (/\b(website copy|web copy|landing page|homepage copy|about page|product page|service page|hero copy|website content|web content|page copy|site copy)\b/.test(lower)) return 'website-copy'
-  if (/\b(video script|script for|youtube script|reel script|tiktok script|podcast script|voiceover|voice over|screenplay|storyboard script|explainer video|ad script|commercial script)\b/.test(lower)) return 'video-script'
-  if (/\b(presentation|slide deck|pitch deck|keynote|powerpoint|pptx|investor deck|sales deck|stakeholder deck|board deck|proposal deck|slides)\b/.test(lower)) return 'presentation'
-  if (/\b(brand guidelines|brand book|style guide|brand identity|visual identity|brand manual|brand standards|design system|brand kit)\b/.test(lower)) return 'brand-guidelines'
-  if (/\b(data analysis|analytics report|performance report|dashboard|kpi report|metrics|roi analysis|attribution|conversion rate|funnel analysis|analytics audit|data audit|reporting)\b/.test(lower)) return 'data-analysis'
-  if (/\b(press release|pr strategy|media release|public relations|media kit|press kit|media pitch|crisis comms|crisis communication|pr plan|media outreach|earned media|spokesperson)\b/.test(lower)) return 'pr-comms'
-  if (/\b(event plan|event strategy|conference|webinar|workshop|summit|meetup|event brief|activation|experiential|launch event|virtual event|hybrid event)\b/.test(lower)) return 'event-plan'
-  if (
-    lower.includes('carousel') ||
-    lower.includes('caption') ||
-    lower.includes('social post') ||
-    lower.includes('facebook post') ||
-    lower.includes('instagram post') ||
-    lower.includes('linkedin post') ||
-    lower.includes('twitter post') ||
-    lower.includes('x post') ||
-    lower.includes('campaign content') ||
-    lower.includes('post copy') ||
-    lower.includes('whatsapp description') ||
-    lower.includes('short description') ||
-    lower.includes('company description')
-  ) return 'campaign-copy'
-  if (/\b(i need|we need|i want|can you create|can you write|help me create|help me write)\b/.test(lower) && /\b(post|caption|copy)\b/.test(lower)) {
-    return 'campaign-copy'
-  }
-  if (lower.includes('content calendar')) return 'content-calendar'
-  if (lower.includes('media plan')) return 'media-plan'
-  if (lower.includes('budget')) return 'budget-sheet'
-  if (lower.includes('kpi') || lower.includes('forecast')) return 'kpi-forecast'
-  if (lower.includes('seo audit')) return 'seo-audit'
-  if (lower.includes('ui audit') || lower.includes('ux audit') || lower.includes('website audit') || lower.includes('accessibility audit')) return 'ui-audit'
-  const strategySignalCount = [
-    'target audience',
-    'audience research',
-    'market analysis',
-    'customer insight',
-    'value proposition',
-    'what value are they seeking',
-    'what do they want',
-    'why they are not buying',
-    "why they're not buying",
-    'strategic messages',
-    'message pillars',
-    'messaging',
-    'positioning',
-    'strategic plan',
-  ].filter((signal) => lower.includes(signal)).length
-
-  if (strategySignalCount >= 2 && (lower.includes('research') || lower.includes('analysis') || lower.includes('audience'))) return 'research-brief'
-  if (lower.includes('research') || lower.includes('competitor') || lower.includes('market analysis') || lower.includes('audience research')) return 'research-brief'
-  if (lower.includes('campaign strategy')) return 'campaign-strategy'
-  if (strategySignalCount >= 2 || lower.includes('strategy') || lower.includes('positioning') || lower.includes('messaging') || lower.includes('value proposition')) return 'strategy-brief'
-  if (lower.includes('visual') || lower.includes('design') || lower.includes('creative asset') || lower.includes('artwork') || lower.includes('illustration') || lower.includes('nano banana') || lower.includes('mockup')) return 'creative-asset'
-  if (lower.includes('brief')) return 'client-brief'
-  if (/\b(create|draft|write|build|make|generate|prepare|design|plan|develop|analyse|analyze|audit|review|research|outline|summarize|summarise|propose|recommend|evaluate|compare|assess|optimize|optimise|launch|execute|schedule|set up|configure|map out|brainstorm|ideate|produce|compose|compile|format|restructure|rework|revamp|update|refresh|rephrase|rewrite|improve|enhance|craft)\b/.test(lower)) {
-    return 'general-task'
-  }
-  return 'status-report'
+  return canonicalInferDeliverableType(prompt)
 }
 
 function inferPipelineMetadata(deliverableType: Mission['deliverableType']) {
-  switch (deliverableType) {
-    case 'content-calendar':
-      return { pipelineId: 'content-calendar', pipelineName: 'Content Calendar' }
-    case 'creative-asset':
-      return { pipelineId: 'ad-creative', pipelineName: 'Ad Creative' }
-    case 'client-brief':
-      return { pipelineId: 'client-brief', pipelineName: 'Client Brief' }
-    case 'strategy-brief':
-      return { pipelineId: 'strategy-brief', pipelineName: 'Strategy Brief' }
-    case 'campaign-strategy':
-      return { pipelineId: 'campaign-brief', pipelineName: 'Campaign Brief' }
-    case 'research-brief':
-      return { pipelineId: 'competitor-research', pipelineName: 'Competitor Research' }
-    case 'seo-audit':
-      return { pipelineId: 'seo-audit', pipelineName: 'SEO Audit' }
-    case 'media-plan':
-      return { pipelineId: 'media-plan', pipelineName: 'Media Plan' }
-    default:
-      return { pipelineId: null, pipelineName: null }
-  }
+  return inferPipelineMetadataForDeliverable(deliverableType)
 }
-
-function inferDivision(agent: Partial<Agent> & Record<string, any>): Agent['division'] {
-  if (VALID_DIVISIONS.has(agent.division as Agent['division'])) return agent.division as Agent['division']
-  if (VALID_DIVISIONS.has(agent.unit as Agent['division'])) return agent.unit as Agent['division']
-  const positionRoom = agent.position?.room as Agent['division'] | undefined
-  if (positionRoom && VALID_DIVISIONS.has(positionRoom)) return positionRoom
-
-  switch (agent.specialty) {
-    case 'strategy':
-    case 'project-management':
-    case 'client-services':
-    case 'client':
-      return 'client-services'
-    case 'media-planning':
-    case 'performance':
-      return 'media'
-    case 'seo':
-    case 'research':
-      return 'research'
-    case 'data-analytics':
-      return 'analytics'
-    case 'communications':
-      return 'communications'
-    case 'content-production':
-      return 'production'
-    default:
-      return 'creative'
-  }
-}
-
-function normalizeAgent(agent: Partial<Agent> & Record<string, any>): Agent {
-  const template = ALL_DEFAULT_AGENTS.find((item) => item.id === agent.id)
-  const division = inferDivision({ ...template, ...agent })
-  const provider = VALID_PROVIDERS.has(agent.provider as AIProvider)
-    ? (agent.provider as AIProvider)
-    : template?.provider || (String(agent.model || '').startsWith('gemini') ? 'gemini' : 'ollama')
-  const model = (agent.model || template?.model || DEFAULT_PROVIDER_MODEL[provider]) as Agent['model']
-
-  return {
-    ...(template || {
-      id: agent.id || uuidv4(),
-      name: 'New Agent',
-      role: 'Specialist',
-      photoUrl: undefined,
-      division,
-      specialty: 'creative',
-      unit: division,
-      color: '#4f8ef7',
-      accentColor: 'blue',
-      avatar: 'bot-blue',
-      systemPrompt: '',
-      provider,
-      model,
-      temperature: 0.7,
-      maxTokens: 1024,
-      tools: [],
-      skills: [],
-      responsibilities: [],
-      primaryOutputs: ['status-report'],
-      status: 'idle',
-      bio: '',
-      methodology: '',
-      position: { x: 300, y: 220, room: division },
-    }),
-    ...agent,
-    division,
-    unit: division,
-    specialty: VALID_SPECIALTIES.has(agent.specialty as Agent['specialty'])
-      ? (agent.specialty as Agent['specialty'])
-      : template?.specialty || 'creative',
-    provider,
-    model,
-    status: VALID_STATUSES.has(agent.status as Agent['status']) ? (agent.status as Agent['status']) : template?.status || 'idle',
-    tools: Array.isArray(agent.tools) ? agent.tools.filter(Boolean) : template?.tools || [],
-    skills: Array.isArray(agent.skills) ? agent.skills.filter(Boolean) : template?.skills || [],
-    responsibilities: Array.isArray(agent.responsibilities)
-      ? agent.responsibilities.filter(Boolean)
-      : template?.responsibilities || [],
-    primaryOutputs: Array.isArray(agent.primaryOutputs) && agent.primaryOutputs.length
-      ? agent.primaryOutputs
-      : template?.primaryOutputs || ['status-report'],
-    color: agent.color || template?.color || '#4f8ef7',
-    photoUrl: typeof agent.photoUrl === 'string' ? agent.photoUrl : template?.photoUrl,
-    accentColor: agent.accentColor || template?.accentColor || 'blue',
-    avatar: agent.avatar || template?.avatar || 'bot-blue',
-    name: agent.name || template?.name || 'New Agent',
-    role: agent.role || template?.role || 'Specialist',
-    bio: agent.bio || template?.bio || '',
-    systemPrompt: agent.systemPrompt || template?.systemPrompt || '',
-    methodology: agent.methodology || template?.methodology || '',
-    temperature: typeof agent.temperature === 'number' ? agent.temperature : template?.temperature || 0.7,
-    maxTokens: typeof agent.maxTokens === 'number' ? agent.maxTokens : template?.maxTokens || 1024,
-    workload: typeof agent.workload === 'number' ? agent.workload : template?.workload,
-    position: {
-      x: typeof agent.position?.x === 'number' ? agent.position.x : template?.position.x || 300,
-      y: typeof agent.position?.y === 'number' ? agent.position.y : template?.position.y || 220,
-      room: division,
-    },
-  }
-}
-
-const DEFAULT_CLIENT_BRAND_KIT = {
-  colors: [],
-  fonts: [],
-  visualKeywords: '',
-  lookAndFeel: '',
-  photoStyle: '',
-  compositionRules: '',
-  negativeRules: '',
-  logos: [],
-  templates: [],
-  referenceImages: [],
-  fontFiles: [],
-}
-
-function normalizePersistedState(persistedState: any) {
-  if (!persistedState) return persistedState
-  const agents = Array.isArray(persistedState.agents) ? persistedState.agents.map(normalizeAgent) : ALL_DEFAULT_AGENTS
-  const clients = Array.isArray(persistedState.clients)
-    ? persistedState.clients.map((client: Client) => ({
-        ...client,
-        brandKit: {
-          ...DEFAULT_CLIENT_BRAND_KIT,
-          ...(client.brandKit || {}),
-          logos: Array.isArray(client.brandKit?.logos) ? client.brandKit.logos : [],
-          templates: Array.isArray(client.brandKit?.templates) ? client.brandKit.templates : [],
-          referenceImages: Array.isArray(client.brandKit?.referenceImages) ? client.brandKit.referenceImages : [],
-          fontFiles: Array.isArray(client.brandKit?.fontFiles) ? client.brandKit.fontFiles : [],
-        },
-      }))
-    : DEFAULT_CLIENTS
-  const missions = Array.isArray(persistedState.missions)
-    ? persistedState.missions.map((mission: Mission & { assignedAgentId?: string }) => {
-        const leadAgentId = mission.leadAgentId || mission.assignedAgentId || mission.assignedAgentIds?.[0] || 'iris'
-        const collaboratorAgentIds = Array.isArray(mission.collaboratorAgentIds) ? mission.collaboratorAgentIds.filter(Boolean) : []
-        const assignedAgentIds = Array.isArray(mission.assignedAgentIds) && mission.assignedAgentIds.length
-          ? mission.assignedAgentIds.filter(Boolean)
-          : [leadAgentId, ...collaboratorAgentIds].filter(Boolean)
-
-        return {
-          ...mission,
-          title: mission.title || 'Untitled Task',
-          summary: mission.summary || '',
-          deliverableType: mission.deliverableType || 'status-report',
-          status: VALID_MISSION_STATUSES.has(mission.status as Mission['status']) ? mission.status : 'queued',
-          priority: VALID_MISSION_PRIORITIES.has(mission.priority as Mission['priority']) ? mission.priority : 'medium',
-          assignedAgentIds,
-          leadAgentId,
-          collaboratorAgentIds,
-          assignedBy: mission.assignedBy || 'iris',
-          progress: typeof mission.progress === 'number' ? mission.progress : mission.status === 'completed' ? 100 : 0,
-          createdAt: mission.createdAt || nowIso(),
-          updatedAt: mission.updatedAt || mission.createdAt || nowIso(),
-        }
-      })
-    : INITIAL_MISSIONS
-  const artifacts = Array.isArray(persistedState.artifacts)
-    ? persistedState.artifacts.map((artifact: Artifact) => ({
-        ...artifact,
-        title: artifact.title || 'Untitled Output',
-        deliverableType: artifact.deliverableType || 'client-brief',
-        status: artifact.status || 'draft',
-        format: artifact.format || 'html',
-        sourcePrompt:
-          typeof artifact.sourcePrompt === 'string'
-            ? artifact.sourcePrompt
-            : typeof (artifact as Artifact & { executionPrompt?: string }).executionPrompt === 'string'
-              ? (artifact as Artifact & { executionPrompt?: string }).executionPrompt
-              : undefined,
-        exports: Array.isArray(artifact.exports) ? artifact.exports : [],
-        executionSteps: Array.isArray(artifact.executionSteps) ? artifact.executionSteps : [],
-        renderedHtml: typeof artifact.renderedHtml === 'string' ? artifact.renderedHtml : undefined,
-        createdAt: artifact.createdAt || nowIso(),
-        updatedAt: artifact.updatedAt || artifact.createdAt || nowIso(),
-      }))
-    : INITIAL_ARTIFACTS
-
-  return {
-    ...persistedState,
-    agents,
-    clients,
-    missions,
-    artifacts,
-    conversations: Array.isArray(persistedState.conversations) ? persistedState.conversations : [],
-    agencySettings: {
-      ...INITIAL_AGENCY_SETTINGS,
-      ...persistedState.agencySettings,
-    },
-    providerSettings: normalizeProviderSettings(persistedState.providerSettings),
-    agentMemories: mergeAgentMemories(persistedState.agentMemories, agents),
-  }
-}
-
-const ALL_DEFAULT_AGENTS = CONFIG_AGENTS.map((agent) => ({
-  ...agent,
-  status: agent.id === 'iris' ? 'active' : agent.status,
-  currentTask: agent.id === 'iris' ? 'Coordinating active missions across the agency' : agent.currentTask,
-  lastActive: agent.lastActive || nowIso(),
-  workload: typeof agent.workload === 'number' ? agent.workload : agent.id === 'iris' ? 76 : 0,
-  tools: [...agent.tools],
-  skills: [...agent.skills],
-  responsibilities: [...agent.responsibilities],
-  primaryOutputs: [...agent.primaryOutputs],
-  position: { ...agent.position },
-}))
-const IRIS_AGENT = ALL_DEFAULT_AGENTS.find((agent) => agent.id === 'iris') || ALL_DEFAULT_AGENTS[0]
-
-const INITIAL_CAMPAIGNS: Campaign[] = []
-
-const INITIAL_MISSIONS: Mission[] = []
-
-const INITIAL_ACTIVITIES: ActivityEntry[] = [
-  {
-    id: uuidv4(),
-    agentId: 'iris',
-    agentName: 'Iris',
-    agentColor: '#a78bfa',
-    action: 'routed launch narrative mission',
-    detail: 'Assigned Sage and Maya to shape Victory Genomics messaging.',
-    timestamp: nowIso(),
-    type: 'started',
-  },
-  {
-    id: uuidv4(),
-    agentId: 'atlas',
-    agentName: 'Atlas',
-    agentColor: '#38bdf8',
-    action: 'surfaced competitor intelligence',
-    detail: 'Found recurring weak spots in panel-testing competitors versus whole-genome positioning.',
-    timestamp: nowIso(),
-    type: 'thinking',
-  },
-]
-
-const INITIAL_ARTIFACTS: Artifact[] = []
-
-const INITIAL_AGENCY_SETTINGS: AgencySettings = {
-  agencyName: "Moe's Mission Control",
-  defaultProvider: 'ollama',
-  defaultModel: 'minimax-m2.7:cloud',
-  themeMode: 'dark',
-}
-
-const INITIAL_PROVIDER_SETTINGS: ProviderSettings = DEFAULT_PROVIDER_SETTINGS
 
 interface AgentsState {
   agents: Agent[]

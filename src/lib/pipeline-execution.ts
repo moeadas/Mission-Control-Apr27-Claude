@@ -4,7 +4,7 @@
 import { useAgentsStore } from './agents-store'
 import type { Pipeline, Phase, Activity } from '@/lib/stores/pipelines-store'
 import { pickAgentForRole } from '@/lib/agent-roles'
-import { getSupabaseBrowserClient } from '@/lib/supabase/browser'
+import { getStoredToken } from '@/lib/auth/browser'
 import { useSkillsStore } from '@/lib/stores/skills-store'
 import type { Client } from '@/lib/client-data'
 
@@ -246,122 +246,63 @@ export function createPipelineInstance(
   return instance
 }
 
-// Execute a single task
-export async function executeTask(
-  instance: PipelineInstance,
-  task: PipelineTask,
-  pipeline: Pipeline
-): Promise<PipelineOutput> {
-  // Find the activity
-  const phase = pipeline.phases.find(p => p.id === task.phaseId)
-  const activity = phase?.activities.find(a => a.id === task.activityId)
-  
-  if (!activity) {
-    throw new Error(`Activity not found: ${task.activityId}`)
-  }
-  
-  // Get the prompt based on language
-  const promptTemplate = activity.prompts?.[instance.language] || activity.prompts?.en || ''
-  
-  if (!promptTemplate) {
-    throw new Error(`No prompt found for activity: ${activity.id}`)
-  }
-  
-  // Build the context
-  const agent = getAgentForRole(useAgentsStore.getState().agents, activity.assignedRole)
-  const skillContext = await getSkillContextForAgent(agent?.id || 'iris')
-  const knowledgeContext = buildKnowledgeAssetsContext(instance.clientId)
-  const context = buildContext(
-    promptTemplate,
-    instance.clientData,
-    instance.language,
-    [skillContext, knowledgeContext].filter(Boolean).join('\n\n')
-  )
-  
-  // Call the AI agent
-  // This would integrate with the actual agent execution system
-  const response = await callAgent(agent?.id || 'iris', context)
-  
-  return {
-    taskId: task.id,
-    content: response,
-    format: 'markdown',
-    artifacts: [],
-  }
-}
-
-export async function executeActivityBatch(
-  instance: PipelineInstance,
-  phaseId: string,
-  activityId: string,
-  pipeline: Pipeline
-): Promise<PipelineOutput[]> {
-  const tasks = instance.tasks.filter(
-    (task) => task.phaseId === phaseId && task.activityId === activityId && task.status === 'pending'
-  )
-
-  const phase = pipeline.phases.find((entry) => entry.id === phaseId)
-  const activity = phase?.activities.find((entry) => entry.id === activityId)
-  if (!activity || !tasks.length) return []
-
-  const batchSize = Math.max(1, activity.batching?.batchSize || 1)
-  const parallel = activity.batching?.parallel !== false
-  const outputs: PipelineOutput[] = []
-
-  for (let index = 0; index < tasks.length; index += batchSize) {
-    const slice = tasks.slice(index, index + batchSize)
-    const runner = async (task: PipelineTask) => executeTask(instance, task, pipeline)
-
-    if (parallel) {
-      outputs.push(...(await Promise.all(slice.map(runner))))
-    } else {
-      for (const task of slice) {
-        outputs.push(await runner(task))
-      }
-    }
-  }
-
-  return outputs
-}
-
-// Call an AI agent
-async function callAgent(agentId: string, prompt: string): Promise<string> {
-  const supabase = getSupabaseBrowserClient()
+/**
+ * Pipeline execution moved to the server.
+ *
+ * The previous browser-side path looped back through `/api/chat` once per
+ * activity, re-authenticating, re-loading skills+pipelines, and re-running
+ * channeling on every hop — and the only "next/run" surfaces (`executeTask`,
+ * `executeActivityBatch`, `callAgent`) were never actually wired into any UI.
+ *
+ * The new flow goes through `POST /api/pipelines/run`, which creates a task
+ * row and queues `runTaskExecution` (which uses `executeAutonomousTask` —
+ * the single canonical orchestrator). The client just navigates to
+ * `/tasks/<id>` and watches the live execution feed.
+ *
+ * `runPipelineFromUI` below is a thin wrapper exposed to the runner page so
+ * UI code doesn't have to know about auth headers and request shapes.
+ */
+export async function runPipelineFromUI(input: {
+  pipelineId: string
+  clientId?: string | null
+  request: string
+  language?: 'en' | 'ar'
+  runtimeMode?: 'fast' | 'thinking' | 'compare'
+}): Promise<{ taskId: string; pipelineName: string | null; deliverableType: string }> {
+  const supabase: any = null // migrated to REST API
+    const token = getStoredToken()
   const {
     data: { session },
   } = await supabase.auth.getSession()
-
-  if (!session?.access_token) {
-    throw new Error('You need to sign in before running pipeline tasks.')
+  if (!token) {
+    throw new Error('You need to sign in before starting a pipeline run.')
   }
 
-  const state = useAgentsStore.getState()
-  const response = await fetch('/api/chat', {
+  const response = await fetch('/api/pipelines/run', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${session.access_token}`,
+      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({
-      messages: [{ role: 'user', content: prompt }],
-      providerSettings: state.providerSettings,
-      agentMemories: state.agentMemories,
-      artifacts: state.artifacts,
-      agents: state.agents,
-      clients: state.clients,
-      missions: state.missions,
-      systemPrompt: `Execute this pipeline activity as agent ${agentId}. Produce only the actual activity output with no routing or management boilerplate.`,
-      provider: state.agents.find((agent) => agent.id === agentId)?.provider || state.providerSettings.routing.primaryProvider,
-      model: state.agents.find((agent) => agent.id === agentId)?.model || undefined,
+      pipelineId: input.pipelineId,
+      clientId: input.clientId || null,
+      request: input.request,
+      language: input.language || 'en',
+      runtimeMode: input.runtimeMode,
     }),
   })
 
   const payload = await response.json().catch(() => ({}))
   if (!response.ok) {
-    throw new Error(payload?.error || 'Pipeline agent execution failed.')
+    throw new Error(payload?.error || 'Failed to start pipeline run.')
   }
 
-  return payload.response || ''
+  return {
+    taskId: payload.taskId,
+    pipelineName: payload.pipelineName ?? null,
+    deliverableType: payload.deliverableType ?? 'general-task',
+  }
 }
 
 // Get next pending task
@@ -399,65 +340,22 @@ export interface TaskResponse {
   }>
 }
 
+// Pipeline matching is delegated to the canonical classifier so this
+// runner agrees with the chat route, agents-store, and IrisChat about which
+// pipeline a request maps to.
+import { inferPipelineHint } from '@/lib/intents/intent-classifier'
+
 export async function routeTask(
   request: TaskRequest,
   availablePipelines: Pipeline[]
 ): Promise<TaskResponse> {
   const { description, clientId, language = 'en' } = request
-  
-  // Analyze the task description to find matching pipeline
-  const lowerDesc = description.toLowerCase()
-  
-  // Pipeline matching keywords
-  const pipelineKeywords: Record<string, string[]> = {
-    'content-calendar': [
-      'content calendar', 'social media content', 'content ideas', 'post copy',
-      '30 day content', 'content plan', 'hashtags', 'visual brief', 'hooks',
-      'instagram', 'linkedin', 'tiktok', 'facebook', 'twitter', 'social posts'
-    ],
-    'campaign-brief': [
-      'campaign brief', 'campaign strategy', 'marketing campaign', 'campaign plan',
-      'campaign concept', 'positioning', 'messaging'
-    ],
-    'ad-creative': [
-      'ad creative', 'advertising creative', 'ad copy', 'ad assets', 'banner ads',
-      'facebook ads', 'google ads', 'instagram ads', 'ad campaign'
-    ],
-    'seo-audit': [
-      'seo audit', 'seo analysis', 'search engine optimization', 'keyword research',
-      'technical seo', 'seo report'
-    ],
-    'competitor-research': [
-      'competitor research', 'competitive analysis', 'competitor report',
-      'market research', 'competitor intelligence'
-    ],
-    'media-plan': [
-      'media plan', 'media strategy', 'channel strategy', 'budget allocation',
-      'media buying', 'ad spend'
-    ],
-    'strategy-brief': [
-      'strategy brief', 'brand strategy', 'messaging strategy', 'positioning',
-      'strategic brief', 'brand platform'
-    ],
-    'client-brief': [
-      'client brief', 'briefing document', 'intake brief', 'onboarding brief',
-      'client onboarding'
-    ],
-  }
-  
-  // Find matching pipeline
-  let matchedPipelineId: string | null = null
-  let highestMatchCount = 0
-  
-  for (const [pipelineId, keywords] of Object.entries(pipelineKeywords)) {
-    const matchCount = keywords.filter(kw => lowerDesc.includes(kw)).length
-    if (matchCount > highestMatchCount) {
-      highestMatchCount = matchCount
-      matchedPipelineId = pipelineId
-    }
-  }
-  
-  if (!matchedPipelineId) {
+  void clientId
+  void language
+
+  const hint = inferPipelineHint(description, availablePipelines as any)
+
+  if (!hint) {
     return {
       success: false,
       message: `No matching pipeline found for: "${description.slice(0, 50)}..."`,
@@ -470,13 +368,13 @@ export async function routeTask(
       })),
     }
   }
-  
-  const matchedPipeline = availablePipelines.find(p => p.id === matchedPipelineId)
-  
+
+  const matchedPipeline = availablePipelines.find(p => p.id === hint.id)
+
   if (!matchedPipeline) {
     return {
       success: false,
-      message: `Pipeline found but not loaded: ${matchedPipelineId}`,
+      message: `Pipeline found but not loaded: ${hint.id}`,
       availablePipelines: availablePipelines.map(p => ({
         id: p.id,
         name: p.name,
@@ -486,7 +384,7 @@ export async function routeTask(
       })),
     }
   }
-  
+
   return {
     success: true,
     pipelineId: matchedPipeline.id,

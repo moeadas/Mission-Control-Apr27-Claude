@@ -1,11 +1,46 @@
 import { AIProvider, ProviderFallback, ProviderSettings } from '@/lib/types'
 
+/**
+ * Default per-provider model used for content-generation deliverables when
+ * the user hasn't overridden it via `providerSettings.routing.contentModels`.
+ *
+ * These are the strings that used to be hardcoded inside resolveTaskRuntime,
+ * resolveFallbackRuntime, and (worst of all) generateContentFirstText in
+ * autonomous-task.ts. Centralized here so the Settings UI can override them
+ * without touching code, and so a single edit changes every site.
+ */
+export const DEFAULT_CONTENT_TASK_MODELS: Record<AIProvider, string> = {
+  ollama: 'minimax-m2.7:cloud',
+  gemini: 'gemini-2.5-pro',
+}
+
+/**
+ * Resolve the user-preferred content-generation model for a given provider.
+ * Priority:
+ *   1. `providerSettings.routing.contentModels[provider]` if set and non-empty
+ *   2. `providerSettings.<provider>.model` if set (the user's last-verified pick)
+ *   3. The DEFAULT_CONTENT_TASK_MODELS constant for that provider
+ */
+export function resolveContentTaskModel(settings: ProviderSettings | undefined, provider: AIProvider): string {
+  const normalized = normalizeProviderSettings(settings)
+  const overrides = normalized.routing.contentModels || {}
+  const override = overrides[provider]?.trim()
+  if (override) return override
+  if (provider === 'ollama' && normalized.ollama.model) return normalized.ollama.model
+  if (provider === 'gemini' && normalized.gemini.model) return normalized.gemini.model
+  return DEFAULT_CONTENT_TASK_MODELS[provider]
+}
+
 export const DEFAULT_PROVIDER_SETTINGS: ProviderSettings = {
   routing: {
     primaryProvider: 'ollama',
     fallbackProvider: 'gemini',
     useGeminiForThinking: true,
     runtimeMode: 'fast',
+    contentModels: {
+      ollama: 'minimax-m2.7:cloud',
+      gemini: 'gemini-2.5-pro',
+    },
   },
   ollama: {
     enabled: true,
@@ -89,6 +124,10 @@ export function normalizeProviderSettings(input?: Partial<ProviderSettings> | nu
         input?.routing?.fallbackProvider === 'none'
           ? input.routing.fallbackProvider
           : DEFAULT_PROVIDER_SETTINGS.routing.fallbackProvider,
+      contentModels: {
+        ...(DEFAULT_PROVIDER_SETTINGS.routing.contentModels || {}),
+        ...(input?.routing?.contentModels || {}),
+      },
     },
     ollama: {
       ...DEFAULT_PROVIDER_SETTINGS.ollama,
@@ -210,12 +249,9 @@ export function resolveTaskRuntime(input: {
 
   return {
     provider,
-    model:
-      contentFirst && provider === 'ollama'
-        ? 'minimax-m2.7:cloud'
-        : contentFirst && provider === 'gemini'
-          ? 'gemini-2.5-pro'
-          : resolveProviderModel(settings, provider, input.requestedModel),
+    model: contentFirst
+      ? resolveContentTaskModel(settings, provider)
+      : resolveProviderModel(settings, provider, input.requestedModel),
   }
 }
 
@@ -244,14 +280,17 @@ export function resolveFallbackRuntime(input: {
     return null
   }
 
+  // The fallback path is used by content-task generation, so default to the
+  // user-preferred content-task model for the fallback provider rather than
+  // hardcoded strings. The caller can still pass `requestedModel` for a
+  // non-content fallback (e.g. retrying a strategy brief) and we'll honor it.
+  const fallbackModel = input.requestedModel
+    ? resolveProviderModel(settings, fallbackProvider, input.requestedModel)
+    : resolveContentTaskModel(settings, fallbackProvider)
+
   return {
     provider: fallbackProvider,
-    model:
-      fallbackProvider === 'ollama'
-        ? 'minimax-m2.7:cloud'
-        : fallbackProvider === 'gemini'
-          ? 'gemini-2.5-pro'
-          : resolveProviderModel(settings, fallbackProvider, input.requestedModel),
+    model: fallbackModel,
   }
 }
 

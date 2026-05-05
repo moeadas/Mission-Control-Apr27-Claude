@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyProvider } from '@/lib/server/ai'
-import { resolveAuthContextFromToken } from '@/lib/supabase/auth'
+import { resolveAuthContextFromToken } from '@/lib/auth/server'
 
 function getBearerToken(request: NextRequest) {
   const authHeader = request.headers.get('authorization') || ''

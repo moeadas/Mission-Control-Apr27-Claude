@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 
 import { buildArtifactHtml } from '@/lib/output-html'
-import { getSupabaseServerClient } from '@/lib/supabase/server'
+import { getDb } from '@/lib/db/client'
 
 type PageProps = {
   params: Promise<{ id: string }>
@@ -9,15 +9,20 @@ type PageProps = {
 
 export default async function SharedOutputPage({ params }: PageProps) {
   const { id } = await params
-  const supabase = getSupabaseServerClient()
 
-  if (!supabase) notFound()
-
-  const { data: output } = await supabase
-    .from('outputs')
-    .select('id, title, content, rendered_html, deliverable_type, status, created_at')
-    .eq('id', id)
-    .maybeSingle()
+  let output: any
+  try {
+    const db = getDb()
+    const rows = await db`
+      SELECT id, title, content, rendered_html, deliverable_type, status, created_at
+      FROM outputs
+      WHERE id = ${id}
+      LIMIT 1
+    `
+    output = rows[0]
+  } catch {
+    notFound()
+  }
 
   if (!output) notFound()
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-import { resolveAuthContextFromToken } from '@/lib/supabase/auth'
+import { resolveAuthContextFromToken } from '@/lib/auth/server'
 import { loadTaskExecutionState } from '@/lib/server/task-execution'
 import { getExecutionJobState, queueTaskExecution } from '@/lib/server/execution-queue'
 

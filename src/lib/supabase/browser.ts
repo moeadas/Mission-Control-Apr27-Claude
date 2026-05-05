@@ -1,27 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
-
-import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from '@/lib/supabase/config'
-
-let browserClient: ReturnType<typeof createClient> | null = null
-
-export function getSupabaseBrowserClient() {
-  if (browserClient) return browserClient
-
-  browserClient = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-    },
-  })
-
-  return browserClient
-}
-
-export async function getSupabaseAccessToken() {
-  const {
-    data: { session },
-  } = await getSupabaseBrowserClient().auth.getSession()
-
-  return session?.access_token || null
-}
+// DEPRECATED — all imports should use @/lib/auth/browser instead.
+// This file is kept as an empty re-export stub so any stray imports
+// don't break the TypeScript build during migration.
+export { getSupabaseBrowserClient, getSupabaseAccessToken } from '@/lib/auth/browser'

@@ -1,0 +1,12 @@
+.git
+.gitignore
+.env
+.env.local
+.env.docker.example
+node_modules
+.next
+README.md
+ARCHITECTURE.md
+HOSTINGER_DEPLOY.md
+DOCKER_DEPLOY.md
+*.log

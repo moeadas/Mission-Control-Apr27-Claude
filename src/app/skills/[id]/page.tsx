@@ -6,7 +6,7 @@ import { SKILL_CATEGORIES, DIFFICULTY_LEVELS, FREEDOM_LEVELS, type Skill } from 
 import { ClientShell } from '@/components/ClientShell'
 import { Save, Plus, Trash2, X, ChevronDown, ChevronRight, BookOpen, Workflow, ListChecks, Lightbulb, FileText, MessageSquare, Settings } from 'lucide-react'
 import { clsx } from 'clsx'
-import { getSupabaseAccessToken } from '@/lib/supabase/browser'
+import { getSupabaseAccessToken } from '@/lib/auth/browser'
 
 interface SkillEditorProps {
   isModal?: boolean

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 import { normalizeProviderSettings } from '@/lib/provider-settings'
-import { resolveAuthContextFromToken, saveUserProviderSettings } from '@/lib/supabase/auth'
+import { resolveAuthContextFromToken, saveUserProviderSettings } from '@/lib/auth/server'
 import { mergePersistedProviderSettings } from '@/lib/server/provider-secrets'
 
 function getBearerToken(request: NextRequest) {

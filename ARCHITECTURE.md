@@ -1,5 +1,8 @@
 # Mission Control — Architecture
 
+> **Last Updated:** 2026-05-04 (quality gate fix)
+> **Rule for contributors:** Update this file after every code change. Add new pages to the Page Structure table, new components to the Component Library, new store shape changes to State Management, etc.
+
 ## Overview
 
 Mission Control is a Next.js 16.2.1-based agency management application designed to orchestrate virtual AI agents through configurable workflows. The system follows a config-first philosophy where all business logic is stored as editable JSON.
@@ -120,9 +123,10 @@ Accent Pink:       #f472b6
 
 | Route | Purpose |
 |-------|---------|
-| `/dashboard` | Main command center with agency stats, agent strip, activity feed |
+| `/dashboard` | Main command center with agency stats, agent strip, activity feed, Getting Started checklist |
+| `/mission` | Start a Mission hub — plain-language brief input, category prompt starters, routes to IrisChat |
 | `/office` | Minimal virtual office workspace with seated active agents and roaming idle agents |
-| `/agents` | Agent roster with edit modal |
+| `/agents` | Agent roster; "Add Agent" opens multi-step AgentEditor drawer |
 | `/clients` | Client management |
 | `/tasks` | Task list and mission tracking |
 | `/pipeline` | Pipeline templates browser |
@@ -132,9 +136,13 @@ Accent Pink:       #f472b6
 | `/skills/[id]` | Individual skill editor |
 | `/analytics` | Analytics dashboards |
 | `/outputs` | Saved deliverables |
+| `/schedules` | Scheduled task CRUD — UI complete, execution requires backend cron (see Schedules section) |
+| `/users` | Super admin user management (invite, role, activate/suspend) |
 | `/settings` | App settings with OAuth integrations |
 | `/settings/integrations` | OAuth integrations (Google, Meta) |
+| `/support` | Support contact form (mailto-based) |
 | `/config` | JSON config editor |
+| `/login` | Supabase Auth login gate |
 
 ## Virtual Office
 
@@ -661,10 +669,13 @@ How it works:
 - `Toast` - Notifications
 
 ### Layout Components
-- `ClientShell` - Main app wrapper
-- `Sidebar` - Navigation sidebar (collapsible)
-- `TopBar` - Header with actions
-- `IrisChat` - Floating chat widget
+- `ClientShell` - Main app wrapper; mounts global overlays (IrisChat, ToastContainer, OnboardingWizard); hydrates from `/api/state`; sets `appStateReady`
+- `Sidebar` - Navigation sidebar (collapsible); three sections: PRIMARY_NAV, COMPANY_SETUP_NAV, SETTINGS_NAV; admin-only items hidden for non-super_admin users
+- `TopBar` - Header with actions, hard-refresh control
+- `IrisChat` - Right-panel overlay chat widget; triggered by FAB in ClientShell or `openIris()` store action
+
+### Onboarding Components
+- `src/components/onboarding/OnboardingWizard.tsx` - Full-screen overlay wizard for new users; 6 steps: Configure Agency → Add Client → Meet Agents → Add Skill → Create Pipeline → Start Mission; dismissable; tracks progress via `agencySettings.onboardingComplete` and `agencySettings.onboardingStep`; shown only when `onboardingComplete === false` (strict equality avoids triggering for existing users whose persisted state lacks the key)
 
 ### Dashboard Components
 - `MetricsCards` - Stats display with clean card design
@@ -994,6 +1005,40 @@ Pipeline and skill editing surfaces now use a shared editor theme layer from `sr
   - Iris/task generation still depends on at least one actually available AI provider
   - if Ollama is selected but not running, `/api/chat` returns a friendly failure and the task is blocked instead of silently pretending it completed
 
+## Pipeline & Skill Execution Fixes (2026-05-04)
+
+Four systemic issues were fixed to make pipelines and skills actually fire during generation:
+
+### 1. Aggressive Pipeline Matching (`src/lib/intents/deliverable-registry.ts` + `src/lib/intents/intent-classifier.ts`)
+- Expanded `pipelineKeywords` arrays for all pipeline-backed deliverable types with natural-language synonyms (e.g. "plan my social content", "research competitors", "launch strategy")
+- Added **deliverable-type bridge** in `inferPipelineHint`: after keyword matching, if `inferDeliverableType` resolves to a type with a `pipelineId`, that pipeline is now always used — even without keyword matches
+- Lowered user-defined pipeline fallback threshold from `matchCount >= 2` to `>= 1` so single-keyword pipeline names still trigger
+
+### 2. Skill Injection Resilience (`src/lib/server/autonomous-task.ts`)
+- `resolveAgentSkillRefs` now creates **synthetic SkillRef objects** when `skillCategories` fails to load (Supabase/config failure)
+- Synthetic refs convert raw skill IDs (`'seo-writing'`) to human-readable names (`'SEO Writing'`) and inject minimal context/instructions so the LLM still receives skill guidance
+- `loadSkills()` in `route.ts` now logs a warning when config skill categories are empty, making failures visible
+
+### 3. Visible Pipeline Indicator (`src/components/agents/IrisChat.tsx`)
+- `activePipelineInfo` state (`{ name, deliverableType }`) tracks the active pipeline
+- Set provisionally from `buildProvisionalMissionRouting` (client-side, instant) then confirmed from the server's NDJSON `pipeline_start` chunk
+- Displayed in the Thinking/Streaming bubble: `Pipeline: [Name]` badge + `Routing to specialists…` status text
+- Cleared 1.2s after the response arrives (smooth UX, doesn't linger)
+
+### 4. NDJSON Streaming Wire Format (`src/app/api/chat/route.ts` + `src/components/agents/IrisChat.tsx`)
+- Deliverable execution path now returns `Content-Type: application/x-ndjson` instead of `application/json`
+- Response has two chunks: `{ type: 'pipeline_start', pipelineName, phases, deliverableType }` then `{ type: 'done', response, meta }`
+- `requestChat()` in IrisChat detects `Content-Type`, parses NDJSON line-by-line, calls `onPipelineStart` callback on first chunk (updates indicator from server source), then `onChunk`/`onDone` on the done chunk
+- Conversational path still returns plain JSON (fast, no pipeline overhead)
+- _TODO_: For genuine concurrent streaming (pipeline_start before execution starts), move `executeAutonomousTask` calls inside a `ReadableStream.start` async callback
+
+### Quality Gate Fix — Simple Social Posts (`src/lib/output-quality.ts`)
+- `isSimpleSocialPostRequest` regex expanded to catch natural phrasings: `"a post for facebook"`, `"write a post on linkedin"`, `"single instagram post"`, etc.
+- `LIGHTWEIGHT_TYPES` set introduced: `campaign-copy`, `short-form-copy`, `status-report`, `general-task`, `pr-comms` — these types skip the H1 title check entirely
+- Simple social posts (`isSimplePost = true`) now require **zero** structural H2 headers — a plain caption passes cleanly
+- Minimum word count check (≥ 8 words) still catches genuinely empty outputs
+- `short-form-copy` (bios, taglines) also emptied of required sections — these are prose, not documents
+
 ## Build & Deployment
 
 ```bash
@@ -1027,3 +1072,210 @@ Access at: http://localhost:3000
   - Ollama calls now use `/api/chat` with structured messages and a larger context window instead of flattening everything into one prompt string
   - the Nova media skill set was expanded with 16 detailed media-planning skills and corrected skill ids
   - server-side skill loading now merges Supabase-backed skills with full JSON config definitions, so missing config-only skills still appear in the UI/runtime and missing config skills are inserted into Supabase on later relational sync without overwriting edited DB rows
+
+## Onboarding Flow
+
+New users see a full-screen overlay wizard on their first visit. Existing users (whose persisted state predates the onboarding system) never see it because the condition uses strict equality (`=== false`) rather than a falsy check.
+
+### Key Files
+- `src/components/onboarding/OnboardingWizard.tsx` — the overlay component
+- `src/lib/agents-store/defaults.ts` — `INITIAL_AGENCY_SETTINGS` seeds `onboardingComplete: false, onboardingStep: 0`
+- `src/lib/types.ts` — `AgencySettings` interface has optional `onboardingComplete?: boolean` and `onboardingStep?: number`
+- `src/components/ClientShell.tsx` — mounts `<OnboardingWizard />` when `appStateReady && onboardingComplete === false`
+
+### Wizard Steps
+1. **Configure Agency** (`/settings`) — name, logo, theme
+2. **Add Client** (`/clients`) — first client profile
+3. **Meet Agents** (`/agents`) — explore the roster
+4. **Add Skill** (`/skills`) — unlock agent capabilities
+5. **Create Pipeline** (`/pipeline`) — build repeatable workflows
+6. **Start Mission** (`/mission`) — first real brief to Iris
+
+### Behaviour
+- Left column: clickable step nav with done/active/upcoming states
+- Right panel: large icon, headline, bullets, contextual tip
+- "Go there now" CTA navigates to the relevant page and closes the wizard
+- "Next step" advances within the wizard without leaving
+- Dismiss (×) sets `onboardingComplete: true` without losing step progress
+- Progress bar fills as steps are completed
+
+## Getting Started Checklist (Dashboard)
+
+A styled card on the `/dashboard` page shows onboarding step progress for users who have been through the new-user flow.
+
+- Only shown when `typeof agencySettings.onboardingStep === 'number'` (avoids showing for existing users)
+- Clicking any step tile highlights it with its accent color
+- "Open wizard" button re-launches the onboarding overlay
+- Uses the same `ONBOARDING_STEPS` color/icon/href data as the wizard
+
+## Sidebar Navigation Structure
+
+`src/components/layout/Sidebar.tsx` organizes nav into three sections:
+
+```
+PRIMARY_NAV          — Start a Mission, Dashboard, Virtual Office, Tasks, Analytics, Output
+COMPANY_SETUP_NAV    — Agents, Clients, Skills, Pipelines, Schedules, Users
+SETTINGS_NAV         — Settings, Support
+```
+
+- Admin-only IDs (`pipeline`, `skills`, `users`, `settings`, `schedules`) are hidden for non-`super_admin` users
+- "Start a Mission" uses a purple gradient highlight variant that stays on one line (no badge text)
+- Active non-highlight items use a green-tinted active state
+
+## Agent Editor (Multi-Step Drawer)
+
+`src/components/agents/AgentEditor.tsx` is a side-drawer modal opened from the Agents page.
+
+### Opening Logic
+The editor is mounted conditionally in `src/app/agents/page.tsx`:
+```tsx
+{isEditorOpen && <AgentEditor agentId={editingAgentId} onClose={closeEditor} />}
+```
+This prevents the editor from rendering on every page load. With `isEditorOpen: false` (initial state), the drawer does not mount at all.
+
+### Modes
+- **Create mode**: `agentId === null` — all fields empty, Save calls `createAgent()`
+- **Edit mode**: `agentId = string` — prefilled, Save calls `updateAgent()`
+
+### Steps
+1. Identity — name, role, division, status
+2. Personality — bio, specialty, tone
+3. Capabilities — tools, skills
+4. AI Config — provider, model, system prompt
+
+### Delete Agent
+- Delete button appears in the footer only in edit mode
+- Clicking it shows a confirmation overlay inside the modal (`confirmingDelete` state)
+- Confirmed delete calls `deleteAgent(agentId)` then closes the drawer
+
+## Mission Page (`/mission`)
+
+`src/app/mission/page.tsx` — A clean brief-input hub. Does NOT auto-open IrisChat when visited.
+
+### How It Works
+1. User types a brief in the textarea (or clicks a prompt starter to prefill it)
+2. Clicking "Brief Iris" or pressing Enter:
+   - calls `openIris()` if the panel isn't already open
+   - dispatches a `CustomEvent('iris:prefill', { detail: { text } })` after 150ms delay
+3. IrisChat listens for `iris:prefill` and sets the input value
+
+### Prompt Starters
+Three categories (Content & Copy, Strategy & Research, Creative & Campaigns) with text-only pill buttons — no emojis, no icons.
+
+### Design Notes
+- Dark headline text using `var(--text-primary)` explicitly — not gradient-text that bleeds into surrounding elements
+- Input area is a light glass card with explicit color tokens
+- Three-step footer explains the workflow (Describe → Iris routes → Review output)
+
+## Schedules Page (`/schedules`)
+
+`src/app/schedules/page.tsx` — CRUD interface for scheduled automated tasks.
+
+### What Works Today
+- Create, read, update, delete scheduled entries
+- Pause/resume a schedule
+- "Run Now" button for manual trigger
+- localStorage persistence (`schedules` key)
+
+### What Does NOT Work Yet (Requires Backend)
+Schedules are UI-only. For automatic execution to work you need:
+1. A real cron system: **Vercel Cron Jobs**, **Inngest**, or **Trigger.dev**
+2. A `POST /api/schedules/:id/run` API endpoint that loads the schedule, executes the task via the chat/autonomous pipeline, and saves the result
+3. Supabase persistence for schedule records (currently localStorage-only)
+
+Until these are wired up, "Run Now" opens the Mission page and "automatic" schedules do nothing at their scheduled time.
+
+## Support Page (`/support`)
+
+`src/app/support/page.tsx` — Contact form that composes a mailto: link.
+
+- Fields: name, email, subject (dropdown), message
+- Submit opens the user's mail client with pre-filled subject/body
+- No backend required; no data is stored
+
+## IrisChat Enhancements
+
+- **No auto-open on Mission page**: the `useEffect(() => openIris(), [])` that previously ran on every visit to `/mission` has been removed. Iris only opens when the user explicitly clicks "Brief Iris" or the FAB.
+- **`iris:prefill` event**: Mission page dispatches `new CustomEvent('iris:prefill', { detail: { text } })` on the window. IrisChat listens and populates its input field. 150ms delay ensures the panel is open before the event fires.
+- **Task failure notification**: `ClientShell` subscribes to `useAgentsStore` and watches for newly-blocked tasks, showing a toast notification when one is detected.
+
+## Folder Organization
+
+```
+src/
+├── app/                     Next.js App Router pages
+│   ├── dashboard/           Main command center
+│   ├── mission/             Brief-input hub (new)
+│   ├── office/              Virtual office floor
+│   ├── agents/              Agent roster + editor
+│   ├── clients/             Client management
+│   ├── tasks/               Task list + detail [id]
+│   ├── pipeline/            Pipeline browser + editor [id] + runner
+│   ├── skills/              Skills library + editor [id]
+│   ├── analytics/           Analytics dashboards
+│   ├── outputs/             Saved deliverables
+│   ├── schedules/           Scheduled task CRUD (new)
+│   ├── users/               Super admin user management
+│   ├── support/             Contact form (new)
+│   ├── settings/            App settings + integrations
+│   ├── config/              JSON config editor
+│   ├── login/               Supabase Auth login gate
+│   └── api/                 API routes
+│       ├── chat/            Iris AI generation endpoint
+│       ├── state/           Shared state read/write
+│       ├── auth/            Session verification
+│       ├── skills/          Skills CRUD
+│       ├── pipelines/       Pipelines CRUD
+│       ├── agent-photos/    Avatar upload + serving
+│       ├── tasks/[id]/      Task execution retry/resume
+│       └── admin/           User management (super_admin only)
+│
+├── components/
+│   ├── agents/              AgentCard, AgentEditor, AgentBot, IrisChat
+│   ├── auth/                SessionGate
+│   ├── dashboard/           MetricsCards, AgentStrip, ActivityFeed, MissionQueue
+│   ├── layout/              Sidebar, TopBar, ClientShell
+│   ├── office/              OfficeFloor
+│   ├── onboarding/          OnboardingWizard (new)
+│   ├── outputs/             ArtifactOutputView
+│   └── ui/                  Toast, Modal, shared primitives
+│
+├── lib/
+│   ├── agents-store.ts      Main Zustand store (all app state)
+│   ├── agents-store/        Store slice files (defaults, actions, etc.)
+│   ├── types.ts             All TypeScript interfaces (single source of truth)
+│   ├── providers.ts         AI model/provider definitions
+│   ├── agent-templates.ts   DEFAULT_AGENTS seed data
+│   ├── agent-roles.ts       Role-to-agent and deliverable-to-agent mapping
+│   ├── task-output.ts       Deliverable title/output-spec/checklist generation
+│   ├── output-quality.ts    Structural quality validation before artifact save
+│   ├── output-html.ts       Markdown → HTML rendering for in-app outputs
+│   ├── pipeline-execution.ts Pipeline routing engine
+│   ├── skill-schema.ts      Skill TypeScript interfaces
+│   ├── skill-import.ts      Import skills from markdown
+│   ├── stores/
+│   │   ├── skills-store.ts  Skills store (Supabase-backed)
+│   │   └── analytics-store.ts
+│   ├── supabase/
+│   │   ├── browser.ts       Client-side Supabase + access token helper
+│   │   ├── server.ts        Server-side Supabase client
+│   │   ├── config.ts        Supabase env helpers
+│   │   ├── app-state.ts     Shared state read/write via Supabase
+│   │   └── relational-sync.ts Entity-level delta sync to relational tables
+│   └── server/
+│       ├── ai.ts            Text generation (Ollama + Gemini)
+│       ├── autonomous-task.ts Multi-agent autonomous task runner
+│       ├── task-channeling.ts Skill-driven lead/support assignment
+│       ├── task-execution.ts  Retry/resume execution helper
+│       ├── skills-catalog.ts  Merge config skills into Supabase
+│       └── execution-queue.ts In-process execution queue
+│
+├── config/
+│   ├── agents/              Individual agent JSON configs (seed/reference)
+│   ├── pipelines/           Pipeline JSON definitions
+│   ├── skills/              ~157 skill JSON files (seed/fallback)
+│   └── tools/               Tool registry JSON
+│
+└── styles/
+    └── globals.css          Design tokens, editor theme, glass morphism, animations
+```

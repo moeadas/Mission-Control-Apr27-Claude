@@ -1,4 +1,4 @@
-import type { AuthContext } from '@/lib/supabase/auth'
+import type { AuthContext } from '@/lib/auth/server'
 import { runTaskExecution } from '@/lib/server/task-execution'
 
 type QueueStatus = 'idle' | 'queued' | 'running' | 'completed' | 'failed'

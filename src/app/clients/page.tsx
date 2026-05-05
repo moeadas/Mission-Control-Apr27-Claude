@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/Button'
 import { Input, Textarea, Select } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { toast } from '@/components/ui/Toast'
-import { getSupabaseAccessToken } from '@/lib/supabase/browser'
+import { getSupabaseAccessToken } from '@/lib/auth/browser'
 import {
   BookOpen,
   FileImage,
