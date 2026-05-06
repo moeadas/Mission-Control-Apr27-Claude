@@ -146,7 +146,7 @@ export const INITIAL_AGENCY_SETTINGS: AgencySettings = {
   defaultProvider: 'ollama',
   defaultModel: 'minimax-m2.7:cloud',
   themeMode: 'dark',
-  onboardingComplete: false,
+  onboardingComplete: undefined,
   onboardingStep: 0,
 }
 
