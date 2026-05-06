@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { TopBar } from '@/components/layout/TopBar'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { ToastContainer } from '@/components/ui/Toast'
@@ -42,8 +42,6 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
   const setAuthenticatedUser = useAgentsStore((state) => state.setAuthenticatedUser)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const pathname = usePathname()
-  const supabase = useMemo(() => null as any, [])
-
   // ── Task failure notifications ──────────────────────────────────────────
   useEffect(() => {
     const seenFailedIds = new Set<string>()
@@ -111,65 +109,61 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
       })
       .catch(() => null)
 
-    supabase.auth.getSession()
-      .then(({ data }: any) => {
-        const accessToken = data.token
-        authHeaders = accessToken
-          ? { Authorization: `Bearer ${accessToken}` }
-          : {}
+    const accessToken = getStoredToken()
+    authHeaders = accessToken ? { Authorization: `Bearer ${accessToken}` } : {}
 
-        if (!accessToken) {
-          canSync = false
+    if (!accessToken) {
+      canSync = false
+      if (isMounted) {
+        setAuthenticatedUser(null)
+        setAppStateReady(true)
+      }
+    } else {
+      // Verify token and load user
+      fetch('/api/auth/session', { headers: authHeaders })
+        .then((response: any) => (response.ok ? response.json() : null))
+        .then((payload: any) => {
+          if (payload?.authenticated && isMounted) {
+            setAuthenticatedUser(payload.user)
+          }
+        })
+        .catch(() => {})
+
+      // Load full app state
+      fetch('/api/state', { cache: 'no-store', headers: authHeaders })
+        .then((response: any) => (response?.ok ? response.json() : null))
+        .then(async (payload: any) => {
+          if (!isMounted) return
+          if (payload?.state) {
+            hydrateAppState(payload.state)
+          }
+          latestUpdatedAt = payload?.updatedAt || null
+          const photoMap = latestPhotos || (await photosPromise)
+          if (photoMap && isMounted) {
+            hydrateAgentPhotos(photoMap)
+          }
+          canSync = payload?.connected === true
+          if (payload?.connected === true && payload?.state) {
+            lastSyncedSections = Object.fromEntries(
+              PERSISTED_STATE_KEYS.map((key) => [key, JSON.stringify((payload.state as any)[key])])
+            )
+            lastSyncedEntities = Object.fromEntries(
+              ENTITY_COLLECTION_KEYS.map((key) => [
+                key,
+                Object.fromEntries((((payload.state as any)[key] || []) as Array<{ id: string }>).map((item) => [item.id, JSON.stringify(item)])),
+              ])
+            )
+            lastSyncedSnapshot = JSON.stringify(payload.state)
+          }
+          setAppStateReady(true)
+        })
+        .catch(() => {
           if (isMounted) {
             setAuthenticatedUser(null)
             setAppStateReady(true)
           }
-          return null
-        }
-
-        fetch('/api/auth/session', { headers: authHeaders })
-          .then((response: any) => (response.ok ? response.json() : null))
-          .then((payload: any) => {
-            if (payload?.authenticated && isMounted) {
-              setAuthenticatedUser(payload.user)
-            }
-          })
-          .catch(() => {})
-
-        return fetch('/api/state', { cache: 'no-store', headers: authHeaders })
-      })
-      .then((response: any) => (response?.ok ? response.json() : null))
-      .then(async (payload: any) => {
-        if (!isMounted) return
-        if (payload?.state) {
-          hydrateAppState(payload.state)
-        }
-        latestUpdatedAt = payload?.updatedAt || null
-        const photoMap = latestPhotos || (await photosPromise)
-        if (photoMap && isMounted) {
-          hydrateAgentPhotos(photoMap)
-        }
-        canSync = payload?.connected === true
-        if (payload?.connected === true && payload?.state) {
-          lastSyncedSections = Object.fromEntries(
-            PERSISTED_STATE_KEYS.map((key) => [key, JSON.stringify((payload.state as any)[key])])
-          )
-          lastSyncedEntities = Object.fromEntries(
-            ENTITY_COLLECTION_KEYS.map((key) => [
-              key,
-              Object.fromEntries((((payload.state as any)[key] || []) as Array<{ id: string }>).map((item) => [item.id, JSON.stringify(item)])),
-            ])
-          )
-          lastSyncedSnapshot = JSON.stringify(payload.state)
-        }
-        setAppStateReady(true)
-      })
-      .catch(() => {
-        if (isMounted) {
-          setAuthenticatedUser(null)
-          setAppStateReady(true)
-        }
-      })
+        })
+    }
 
     const unsubscribe = useAgentsStore.subscribe((state) => {
       if (!canSync) return
@@ -269,7 +263,7 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
       if (saveTimer) clearTimeout(saveTimer)
       unsubscribe()
     }
-  }, [hydrateAgentPhotos, hydrateAppState, setAppStateReady, setAuthenticatedUser, supabase])
+  }, [hydrateAgentPhotos, hydrateAppState, setAppStateReady, setAuthenticatedUser])
 
   // Close mobile menu on resize to desktop
   useEffect(() => {
