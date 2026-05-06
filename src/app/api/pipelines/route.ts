@@ -35,6 +35,11 @@ export async function GET(request: NextRequest) {
       ORDER BY name ASC
     `
 
+    // Fall back to bundled config when DB has no rows yet (fresh install)
+    if (rows.length === 0) {
+      return NextResponse.json(pipelinesConfig.pipelines || [])
+    }
+
     return NextResponse.json(rows.map((row: any) => row.definition || {}))
   } catch (error) {
     console.error('Failed to load pipelines:', error)

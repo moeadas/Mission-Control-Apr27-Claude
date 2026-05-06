@@ -477,7 +477,8 @@ export const useAgentsStore = create<AgentsState>()(
           })
 
           return {
-            agents: normalized.agents || state.agents,
+            // Only use server agents if the DB actually has agents — don't override DEFAULT_AGENTS with empty array
+            agents: (normalized.agents && normalized.agents.length > 0) ? normalized.agents : state.agents,
             campaigns: normalized.campaigns || state.campaigns,
             clients: normalized.clients || state.clients,
             missions: normalized.missions || state.missions,
