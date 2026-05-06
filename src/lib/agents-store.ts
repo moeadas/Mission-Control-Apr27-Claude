@@ -483,7 +483,16 @@ export const useAgentsStore = create<AgentsState>()(
             missions: normalized.missions || state.missions,
             artifacts: normalized.artifacts || state.artifacts,
             conversations: state.conversations,
-            agencySettings: normalized.agencySettings ? { ...state.agencySettings, ...normalized.agencySettings } : state.agencySettings,
+            agencySettings: normalized.agencySettings
+              ? {
+                  ...state.agencySettings,
+                  ...normalized.agencySettings,
+                  // Once onboarding is dismissed locally, never let a server sync reset it
+                  onboardingComplete: state.agencySettings.onboardingComplete === true
+                    ? true
+                    : normalized.agencySettings.onboardingComplete,
+                }
+              : state.agencySettings,
             providerSettings: normalized.providerSettings
               ? normalizeProviderSettings({
                   ...state.providerSettings,
