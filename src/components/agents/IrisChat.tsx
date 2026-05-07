@@ -1057,11 +1057,7 @@ async function requestChat(
   onPipelineStart?: (info: { pipelineName: string; phases: string[]; deliverableType: string }) => void
 ) {
   try {
-    const supabase: any = null // migrated to REST API
     const token = getStoredToken()
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
     if (!token) {
       onError('Your session is not ready or has expired. Please sign in again and retry.')
       return
@@ -1295,11 +1291,7 @@ export function IrisChat() {
       : null
 
     const persistCurrentState = async () => {
-      const supabase: any = null // migrated to REST API
-    const token = getStoredToken()
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
+      const token = getStoredToken()
       if (!token) return
 
       const snapshot = createAppPersistenceSnapshot(useAgentsStore.getState())
@@ -1314,12 +1306,7 @@ export function IrisChat() {
     }
 
     const getSessionToken = async () => {
-      const supabase: any = null // migrated to REST API
-    const token = getStoredToken()
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      return token || null
+      return getStoredToken()
     }
 
     const waitForMissionSync = async () => {

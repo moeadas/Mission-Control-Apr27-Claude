@@ -1,10 +1,10 @@
 'use client'
 
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { Activity, Menu, Sun, Moon, RefreshCcw, LogOut } from 'lucide-react'
 import { useAgentsStore } from '@/lib/agents-store'
-import { getStoredToken } from '@/lib/auth/browser'
+import { clearStoredToken } from '@/lib/auth/browser'
 import { clsx } from 'clsx'
 
 interface TopBarProps {
@@ -13,7 +13,6 @@ interface TopBarProps {
 
 export function TopBar({ onMobileMenuToggle }: TopBarProps) {
   const [time, setTime] = useState('')
-  const supabase = useMemo(() => null as any, [])
   const themeMode = useAgentsStore((state) => state.agencySettings.themeMode)
   const setThemeMode = useAgentsStore((state) => state.setThemeMode)
   const missions = useAgentsStore((state) => state.missions)
@@ -114,8 +113,8 @@ export function TopBar({ onMobileMenuToggle }: TopBarProps) {
         </button>
 
         <button
-          onClick={async () => {
-            await supabase.auth.signOut()
+          onClick={() => {
+            clearStoredToken()
             window.location.href = '/login'
           }}
           className={clsx(

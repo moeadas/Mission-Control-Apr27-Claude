@@ -264,13 +264,12 @@ export default function TaskDetailPage() {
 
   useEffect(() => {
     let active = true
-    const supabase: any = null // migrated to REST API
     const token = getStoredToken()
 
-    supabase.auth.getSession().then(async ({ data }: any) => {
-      if (!data.token || !active) return
+    ;(async () => {
+      if (!token || !active) return
       const response = await fetch(`/api/tasks/${params.id}/execution`, {
-        headers: { Authorization: `Bearer ${data.token}` },
+        headers: { Authorization: `Bearer ${token}` },
         cache: 'no-store',
       }).catch(() => null)
 
@@ -279,7 +278,7 @@ export default function TaskDetailPage() {
       if (active) {
         setExecutionState(payload)
       }
-    })
+    })()
 
     return () => {
       active = false
@@ -298,13 +297,9 @@ export default function TaskDetailPage() {
 
     let cancelled = false
     let timer: ReturnType<typeof setTimeout> | null = null
-    const supabase: any = null // migrated to REST API
     const token = getStoredToken()
 
     const poll = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
       if (!token || cancelled) return
 
       const response = await fetch(`/api/tasks/${params.id}/execution`, {
@@ -336,11 +331,7 @@ export default function TaskDetailPage() {
   }, [executionBusy, executionState?.job?.status, executionState?.workflow?.status, mission.status, params.id])
 
   async function refreshSharedState() {
-    const supabase: any = null // migrated to REST API
     const token = getStoredToken()
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
     if (!token) return
 
     const response = await fetch('/api/state', {
@@ -359,11 +350,7 @@ export default function TaskDetailPage() {
     setExecutionBusy(action)
     setFeedback(null)
     try {
-      const supabase: any = null // migrated to REST API
-    const token = getStoredToken()
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
+      const token = getStoredToken()
       if (!token) throw new Error('Sign in required.')
 
       const response = await fetch(`/api/tasks/${mission.id}/execution`, {
@@ -437,11 +424,7 @@ export default function TaskDetailPage() {
         handoffNotes: `Revision requested: ${comment}`,
       })
 
-      const supabase: any = null // migrated to REST API
-    const token = getStoredToken()
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
+      const token = getStoredToken()
       if (!token) throw new Error('Sign in required.')
 
       const response = await fetch(`/api/tasks/${mission.id}/execution`, {

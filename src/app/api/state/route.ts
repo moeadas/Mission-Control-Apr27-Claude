@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-import { loadSharedAppState, saveSharedAppState, saveSharedAppStateDelta } from '@/lib/supabase/app-state'
+import { loadSharedAppState, saveSharedAppState, saveSharedAppStateDelta } from '@/lib/db/app-state'
 import { hasSupabaseBrowserConfig, hasSupabaseServerConfig } from '@/lib/db/config'
 import type { AppPersistencePatch, AppPersistenceSnapshot, EntityDeltaPatch } from '@/lib/agents-store'
 import { resolveAuthContextFromToken, saveUserProviderSettings } from '@/lib/auth/server'
-import { loadRelationalAppState } from '@/lib/supabase/relational-sync'
+import { loadRelationalAppState } from '@/lib/db/relational-sync'
 import { normalizeProviderSettings } from '@/lib/provider-settings'
 
 export const dynamic = 'force-dynamic'

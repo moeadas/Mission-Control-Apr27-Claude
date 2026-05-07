@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sort -t: -k2 -nr)",
+      "Bash(npx tsc *)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(node scripts/migrate-skills-to-folders.js)",
+      "Bash(node scripts/migrate-skills-to-folders.js --write)",
+      "Bash(node scripts/upgrade-skills-add-skill-md.js)",
+      "Bash(node scripts/upgrade-skills-add-skill-md.js --write)",
+      "Bash(cat)",
+      "Bash(node -e ' *)",
+      "Bash(node /tmp/smoke-registry.cjs)",
+      "Bash(rm -rf .next)",
+      "Bash(npx next *)",
+      "Bash(git rm *)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:3050/ -m 10)",
+      "Bash(curl -s -o /dev/null -w \"/login HTTP %{http_code}\\\\n\" http://localhost:3050/login -m 10)",
+      "Bash(curl -s -o /dev/null -w \"/dashboard HTTP %{http_code}\\\\n\" http://localhost:3050/dashboard -m 15)",
+      "Bash(curl -s -o /dev/null -w \"/api/skills \\(no auth\\) → HTTP %{http_code}\\\\n\" http://localhost:3050/api/skills -m 10)",
+      "Bash(curl -s -o /dev/null -w \"/login HTTP %{http_code}\\\\n\" http://localhost:3050/login -m 15)"
+    ]
+  }
+}

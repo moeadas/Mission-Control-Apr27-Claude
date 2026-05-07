@@ -59,7 +59,6 @@ export function GlobalTaskTracker() {
   const agents = useAgentsStore((state) => state.agents)
   const clients = useAgentsStore((state) => state.clients)
   const artifacts = useAgentsStore((state) => state.artifacts)
-  const supabase = useMemo(() => null as any, [])
   const token = getStoredToken()
 
   const [open, setOpen] = useState(false)
@@ -158,7 +157,7 @@ export function GlobalTaskTracker() {
       cancelled = true
       if (timer) clearTimeout(timer)
     }
-  }, [open, supabase, trackedMissions])
+  }, [open, token, trackedMissions])
 
   if (!trackedMissions.length) return null
 

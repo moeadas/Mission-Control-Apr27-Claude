@@ -143,8 +143,8 @@ export default function SettingsPage() {
   const [visualHealthMessage, setVisualHealthMessage] = useState<string>(
     providerSettings.visual?.verified ? 'Visual generation connected' : 'Visual generation not verified yet'
   )
-  const [supabaseStatus, setSupabaseStatus] = useState<'checking' | 'connected' | 'client-only' | 'not-configured' | 'error'>('checking')
-  const [supabaseUpdatedAt, setSupabaseUpdatedAt] = useState<string | null>(null)
+  const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'client-only' | 'not-configured' | 'error'>('checking')
+  const [dbUpdatedAt, setDbUpdatedAt] = useState<string | null>(null)
   const [oauthConnections, setOauthConnections] = useState<Record<string, boolean>>({
     google_docs: false,
     google_sheets: false,
@@ -195,16 +195,16 @@ export default function SettingsPage() {
     loadStatus()
       .then((payload) => {
         if (payload?.connected) {
-          setSupabaseStatus('connected')
-          setSupabaseUpdatedAt(payload.updatedAt || null)
+          setDbStatus('connected')
+          setDbUpdatedAt(payload.updatedAt || null)
         } else if (payload?.browserConfigured) {
-          setSupabaseStatus('client-only')
+          setDbStatus('client-only')
         } else {
-          setSupabaseStatus('not-configured')
+          setDbStatus('not-configured')
         }
       })
       .catch(() => {
-        setSupabaseStatus('error')
+        setDbStatus('error')
       })
   }, [])
 
@@ -246,14 +246,31 @@ export default function SettingsPage() {
       })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'Verification failed')
-      updateProviderSettings('ollama', {
+      const nextOllamaSettings = {
         verified: true,
         verifiedAt: new Date().toISOString(),
         enabled: true,
         availableModels: data.models || [],
         model: data.models?.[0] || providerSettings.ollama.model,
+      }
+      updateProviderSettings('ollama', nextOllamaSettings)
+      const nextProviderSettings = {
+        ...providerSettings,
+        ollama: {
+          ...providerSettings.ollama,
+          ...nextOllamaSettings,
+        },
+      }
+      const saveResponse = await fetch('/api/providers/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ providerSettings: nextProviderSettings }),
       })
-      toast.success(`Ollama connected${data.models?.length ? ` · ${data.models.length} model(s)` : ''}`)
+      if (!saveResponse.ok) {
+        const savePayload = await saveResponse.json().catch(() => null)
+        throw new Error(savePayload?.error || 'Ollama verified, but settings could not be persisted.')
+      }
+      toast.success(`Ollama connected${data.models?.length ? ` · ${data.models.length} model(s)` : ''} and saved`)
     } catch (error: any) {
       updateProviderSettings('ollama', { verified: false })
       toast.error(error.message || 'Could not verify Ollama')
@@ -598,21 +615,21 @@ export default function SettingsPage() {
                   <p className="text-xs text-text-secondary mt-1">Supabase sync makes tasks, outputs, and clients available across browsers.</p>
                 </div>
                 <span className={`text-[11px] font-mono ${
-                  supabaseStatus === 'connected'
+                  dbStatus === 'connected'
                     ? 'text-accent-cyan'
-                    : supabaseStatus === 'client-only'
+                    : dbStatus === 'client-only'
                     ? 'text-amber-400'
-                    : supabaseStatus === 'not-configured'
+                    : dbStatus === 'not-configured'
                     ? 'text-text-dim'
                     : 'text-red-400'
                 }`}>
-                  {supabaseStatus === 'checking'
+                  {dbStatus === 'checking'
                     ? 'Checking…'
-                    : supabaseStatus === 'connected'
+                    : dbStatus === 'connected'
                     ? 'Connected'
-                    : supabaseStatus === 'client-only'
+                    : dbStatus === 'client-only'
                     ? 'Client Only'
-                    : supabaseStatus === 'not-configured'
+                    : dbStatus === 'not-configured'
                     ? 'Not Configured'
                     : 'Error'}
                 </span>
@@ -621,16 +638,16 @@ export default function SettingsPage() {
                 <div className="rounded-xl border border-border bg-base p-4">
                   <p className="text-xs font-mono text-text-dim uppercase mb-1">Backend status</p>
                   <p className="text-sm text-text-primary">
-                    {supabaseStatus === 'connected'
+                    {dbStatus === 'connected'
                       ? 'Shared state sync is available.'
-                      : supabaseStatus === 'client-only'
+                      : dbStatus === 'client-only'
                       ? 'Supabase URL and publishable key are configured, but server sync still needs a rotated secret key.'
                       : 'The app is still using browser-local persistence until Supabase env vars are configured.'}
                   </p>
                 </div>
                 <div className="rounded-xl border border-border bg-base p-4">
                   <p className="text-xs font-mono text-text-dim uppercase mb-1">Last remote update</p>
-                  <p className="text-sm text-text-primary">{supabaseUpdatedAt ? new Date(supabaseUpdatedAt).toLocaleString() : 'No remote state yet'}</p>
+                  <p className="text-sm text-text-primary">{dbUpdatedAt ? new Date(dbUpdatedAt).toLocaleString() : 'No remote state yet'}</p>
                 </div>
               </div>
               <p className="mt-4 text-[11px] text-text-dim">

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef, useMemo } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { createAppPersistenceSnapshot, useAgentsStore } from '@/lib/agents-store'
 import { AgentBot } from '@/components/agents/AgentBot'
 import { SkillPicker } from '@/components/ui/SkillPicker'
@@ -70,7 +70,6 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
   const updateAgent = useAgentsStore((state) => state.updateAgent)
   const createAgent = useAgentsStore((state) => state.createAgent)
   const deleteAgent = useAgentsStore((state) => state.deleteAgent)
-  const supabase = useMemo(() => null as any, [])
   const token = getStoredToken()
 
   const isCreating = agentId === null
