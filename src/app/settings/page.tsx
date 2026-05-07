@@ -12,10 +12,97 @@ import { useAgentsStore } from '@/lib/agents-store'
 import { getProviderModels, MODEL_OPTIONS, PROVIDER_OPTIONS } from '@/lib/providers'
 import { ProviderFallback, ThemeMode } from '@/lib/types'
 import { getSupabaseAccessToken } from '@/lib/auth/browser'
+import { Lock } from 'lucide-react'
 import Link from 'next/link'
 
-type GeminiHealth = 'idle' | 'testing' | 'connected' | 'invalid'
-type VisualHealth = 'idle' | 'testing' | 'connected' | 'invalid'
+type ProviderHealth = 'idle' | 'testing' | 'connected' | 'invalid'
+type GeminiHealth = ProviderHealth
+type VisualHealth = ProviderHealth
+
+// ─── Password Change Card ─────────────────────────────────────────────────────
+function PasswordChangeCard() {
+  const [currentPw, setCurrentPw] = useState('')
+  const [newPw, setNewPw] = useState('')
+  const [confirmPw, setConfirmPw] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (newPw !== confirmPw) {
+      toast.error('New passwords do not match')
+      return
+    }
+    if (newPw.length < 8) {
+      toast.error('New password must be at least 8 characters')
+      return
+    }
+    setSaving(true)
+    try {
+      const token = await getSupabaseAccessToken()
+      const res = await fetch('/api/auth/password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ currentPassword: currentPw, newPassword: newPw }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error || 'Password change failed')
+      } else {
+        toast.success('Password changed successfully')
+        setCurrentPw('')
+        setNewPw('')
+        setConfirmPw('')
+      }
+    } catch {
+      toast.error('Password change failed')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Card>
+      <div className="flex items-center gap-2 mb-4">
+        <Lock size={16} className="text-text-secondary" />
+        <h2 className="text-sm font-heading font-semibold text-text-primary">Change Password</h2>
+      </div>
+      <form onSubmit={handleSubmit} className="grid md:grid-cols-3 gap-4">
+        <Input
+          label="Current Password"
+          type="password"
+          value={currentPw}
+          onChange={(e) => setCurrentPw(e.target.value)}
+          placeholder="Your current password"
+          required
+        />
+        <Input
+          label="New Password"
+          type="password"
+          value={newPw}
+          onChange={(e) => setNewPw(e.target.value)}
+          placeholder="At least 8 characters"
+          required
+        />
+        <Input
+          label="Confirm New Password"
+          type="password"
+          value={confirmPw}
+          onChange={(e) => setConfirmPw(e.target.value)}
+          placeholder="Repeat new password"
+          required
+        />
+        <div className="md:col-span-3 flex justify-end">
+          <Button type="submit" variant="primary" disabled={saving}>
+            {saving ? 'Saving…' : 'Update Password'}
+          </Button>
+        </div>
+      </form>
+    </Card>
+  )
+}
 
 export default function SettingsPage() {
   const agents = useAgentsStore((state) => state.agents)
@@ -33,12 +120,24 @@ export default function SettingsPage() {
   const hydrateAppState = useAgentsStore((state) => state.hydrateAppState)
 
   const [geminiKeyInput, setGeminiKeyInput] = useState('')
+  const [anthropicKeyInput, setAnthropicKeyInput] = useState('')
+  const [openAiKeyInput, setOpenAiKeyInput] = useState('')
   const [isVerifyingGemini, setIsVerifyingGemini] = useState(false)
   const [isVerifyingOllama, setIsVerifyingOllama] = useState(false)
   const [isVerifyingVisual, setIsVerifyingVisual] = useState(false)
+  const [isVerifyingAnthropic, setIsVerifyingAnthropic] = useState(false)
+  const [isVerifyingOpenAi, setIsVerifyingOpenAi] = useState(false)
   const [geminiHealth, setGeminiHealth] = useState<GeminiHealth>(providerSettings.gemini.verified ? 'connected' : 'idle')
   const [geminiHealthMessage, setGeminiHealthMessage] = useState<string>(
     providerSettings.gemini.verified ? 'Gemini connected' : 'Gemini not verified yet'
+  )
+  const [anthropicHealth, setAnthropicHealth] = useState<ProviderHealth>(providerSettings.anthropic?.verified ? 'connected' : 'idle')
+  const [anthropicHealthMessage, setAnthropicHealthMessage] = useState<string>(
+    providerSettings.anthropic?.verified ? 'Anthropic connected' : 'Anthropic not verified yet'
+  )
+  const [openAiHealth, setOpenAiHealth] = useState<ProviderHealth>(providerSettings.openai?.verified ? 'connected' : 'idle')
+  const [openAiHealthMessage, setOpenAiHealthMessage] = useState<string>(
+    providerSettings.openai?.verified ? 'OpenAI connected' : 'OpenAI not verified yet'
   )
   const [visualHealth, setVisualHealth] = useState<VisualHealth>(providerSettings.visual?.verified ? 'connected' : 'idle')
   const [visualHealthMessage, setVisualHealthMessage] = useState<string>(
@@ -139,7 +238,11 @@ export default function SettingsPage() {
       const response = await fetch('/api/providers/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ provider: 'ollama', baseUrl: providerSettings.ollama.baseUrl }),
+        body: JSON.stringify({
+          provider: 'ollama',
+          baseUrl: providerSettings.ollama.baseUrl,
+          apiKey: providerSettings.ollama.apiKey || '',
+        }),
       })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'Verification failed')
@@ -214,6 +317,124 @@ export default function SettingsPage() {
       toast.error(error.message || 'Could not verify Gemini')
     } finally {
       setIsVerifyingGemini(false)
+    }
+  }
+
+  const verifyAnthropic = async () => {
+    if (!anthropicKeyInput.trim()) {
+      toast.error('Paste an Anthropic API key first')
+      return
+    }
+    setIsVerifyingAnthropic(true)
+    setAnthropicHealth('testing')
+    setAnthropicHealthMessage('Testing Anthropic connection…')
+    try {
+      const token = await getSupabaseAccessToken()
+      const response = await fetch('/api/providers/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ provider: 'anthropic', apiKey: anthropicKeyInput.trim() }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Verification failed')
+      const nextSettings = {
+        enabled: true,
+        verified: true,
+        verifiedAt: new Date().toISOString(),
+        availableModels: data.models || providerSettings.anthropic?.availableModels || [],
+        model: providerSettings.anthropic?.model || data.models?.[0] || 'claude-sonnet-4-5',
+      }
+      updateProviderSettings('anthropic', nextSettings)
+      const nextProviderSettings = {
+        ...providerSettings,
+        anthropic: {
+          ...providerSettings.anthropic,
+          ...nextSettings,
+          apiKey: anthropicKeyInput.trim(),
+          maskedKey: `${anthropicKeyInput.trim().slice(0, 6)}...${anthropicKeyInput.trim().slice(-4)}`,
+        },
+      }
+      const saveResponse = await fetch('/api/providers/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ providerSettings: nextProviderSettings }),
+      })
+      if (!saveResponse.ok) {
+        const savePayload = await saveResponse.json().catch(() => null)
+        throw new Error(savePayload?.error || 'Anthropic verified, but settings could not be persisted.')
+      }
+      setAnthropicHealth('connected')
+      setAnthropicHealthMessage(`Anthropic connected · ${nextSettings.model}`)
+      setAnthropicKeyInput('')
+      toast.success('Anthropic verified and saved')
+    } catch (error: any) {
+      updateProviderSettings('anthropic', { verified: false })
+      setAnthropicHealth('invalid')
+      setAnthropicHealthMessage(error.message || 'Anthropic verification failed')
+      toast.error(error.message || 'Could not verify Anthropic')
+    } finally {
+      setIsVerifyingAnthropic(false)
+    }
+  }
+
+  const verifyOpenAi = async () => {
+    if (!openAiKeyInput.trim()) {
+      toast.error('Paste an OpenAI API key first')
+      return
+    }
+    setIsVerifyingOpenAi(true)
+    setOpenAiHealth('testing')
+    setOpenAiHealthMessage('Testing OpenAI connection…')
+    try {
+      const token = await getSupabaseAccessToken()
+      const response = await fetch('/api/providers/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({
+          provider: 'openai',
+          apiKey: openAiKeyInput.trim(),
+          baseUrl: providerSettings.openai?.baseUrl || 'https://api.openai.com',
+        }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Verification failed')
+      const nextSettings = {
+        enabled: true,
+        verified: true,
+        verifiedAt: new Date().toISOString(),
+        availableModels: data.models?.length ? data.models : (providerSettings.openai?.availableModels || ['gpt-4o', 'gpt-4o-mini']),
+        model: providerSettings.openai?.model || data.models?.[0] || 'gpt-4o',
+      }
+      updateProviderSettings('openai', nextSettings)
+      const nextProviderSettings = {
+        ...providerSettings,
+        openai: {
+          ...providerSettings.openai,
+          ...nextSettings,
+          apiKey: openAiKeyInput.trim(),
+          maskedKey: `${openAiKeyInput.trim().slice(0, 6)}...${openAiKeyInput.trim().slice(-4)}`,
+        },
+      }
+      const saveResponse = await fetch('/api/providers/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ providerSettings: nextProviderSettings }),
+      })
+      if (!saveResponse.ok) {
+        const savePayload = await saveResponse.json().catch(() => null)
+        throw new Error(savePayload?.error || 'OpenAI verified, but settings could not be persisted.')
+      }
+      setOpenAiHealth('connected')
+      setOpenAiHealthMessage(`OpenAI connected · ${nextSettings.model}`)
+      setOpenAiKeyInput('')
+      toast.success('OpenAI verified and saved')
+    } catch (error: any) {
+      updateProviderSettings('openai', { verified: false })
+      setOpenAiHealth('invalid')
+      setOpenAiHealthMessage(error.message || 'OpenAI verification failed')
+      toast.error(error.message || 'Could not verify OpenAI')
+    } finally {
+      setIsVerifyingOpenAi(false)
     }
   }
 
@@ -466,6 +687,8 @@ export default function SettingsPage() {
               </div>
             </Card>
 
+            <PasswordChangeCard />
+
             <Card>
               <div className="flex items-center justify-between mb-4">
                 <div>
@@ -473,7 +696,7 @@ export default function SettingsPage() {
                   <p className="text-xs text-text-secondary mt-1">Each user keeps their own Ollama and Gemini runtime settings.</p>
                 </div>
                 <span className="text-[11px] font-mono text-text-dim">
-                  {[providerSettings.ollama, providerSettings.gemini].filter((setting) => setting.verified).length} verified
+                  {[providerSettings.ollama, providerSettings.gemini, providerSettings.anthropic, providerSettings.openai].filter((s) => s?.verified).length} verified
                 </span>
               </div>
 
@@ -505,8 +728,10 @@ export default function SettingsPage() {
                 <Select
                   label="Fallback Runtime"
                   options={[
-                    { value: 'gemini', label: 'Google Gemini' },
                     { value: 'ollama', label: 'Ollama' },
+                    { value: 'gemini', label: 'Google Gemini' },
+                    { value: 'anthropic', label: 'Anthropic Claude' },
+                    { value: 'openai', label: 'OpenAI' },
                     { value: 'none', label: 'No fallback' },
                   ]}
                   value={providerSettings.routing.fallbackProvider}
@@ -553,19 +778,35 @@ export default function SettingsPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-sm font-medium text-text-primary">Ollama</h3>
-                      <p className="text-xs text-text-secondary">Primary local runtime on this machine. Each user can point to their own local Ollama app.</p>
+                      <p className="text-xs text-text-secondary">Local or self-hosted AI runtime. Each user can configure their own Ollama endpoint.</p>
                     </div>
                     <span className={`text-[11px] font-mono ${providerSettings.ollama.verified ? 'text-accent-cyan' : 'text-text-dim'}`}>
                       {providerSettings.ollama.verified ? 'Verified' : 'Unverified'}
                     </span>
                   </div>
+                  <div className="space-y-1">
+                    <Input
+                      label="Ollama Base URL"
+                      value={providerSettings.ollama.baseUrl}
+                      onChange={(e) => updateProviderSettings('ollama', { baseUrl: e.target.value, verified: false })}
+                      placeholder="http://localhost:11434"
+                    />
+                    <p className="text-[11px] text-text-dim leading-relaxed">
+                      Running on a <strong>VPS/server?</strong> Install Ollama on your server and the app will reach it automatically. Or point to any publicly accessible Ollama instance (e.g. <code className="bg-surface px-1 rounded">http://your-server-ip:11434</code>).
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <Input
+                      label="API Key (Ollama Cloud)"
+                      type="password"
+                      placeholder={providerSettings.ollama.maskedKey || 'Optional — for paid Ollama cloud accounts'}
+                      value={providerSettings.ollama.apiKey || ''}
+                      onChange={(e) => updateProviderSettings('ollama', { apiKey: e.target.value, maskedKey: e.target.value ? `${e.target.value.slice(0, 4)}...${e.target.value.slice(-4)}` : '', verified: false })}
+                    />
+                    <p className="text-[11px] text-text-dim">Leave blank for local Ollama. Required for Ollama Cloud paid accounts (sends <code className="bg-surface px-1 rounded">Authorization: Bearer &lt;key&gt;</code>).</p>
+                  </div>
                   <Input
-                    label="Base URL"
-                    value={providerSettings.ollama.baseUrl}
-                    onChange={(e) => updateProviderSettings('ollama', { baseUrl: e.target.value })}
-                  />
-                  <Input
-                    label="Context Window"
+                    label="Context Window Override"
                     type="number"
                     min="2048"
                     step="1024"
@@ -578,14 +819,28 @@ export default function SettingsPage() {
                     }
                   />
                   {providerSettings.ollama.model ? (
-                    <p className="text-[11px] text-text-secondary">Preferred model: {providerSettings.ollama.model}</p>
+                    <p className="text-[11px] text-text-secondary">Active model: <strong>{providerSettings.ollama.model}</strong></p>
                   ) : null}
-                  <p className="text-[11px] text-text-dim">
-                    Leave this empty to let Ollama choose the model default. Only override it if you know the model supports a larger context window.
-                  </p>
+                  {providerSettings.ollama.availableModels?.length ? (
+                    <div className="flex flex-wrap gap-1">
+                      {providerSettings.ollama.availableModels.map((m) => (
+                        <button
+                          key={m}
+                          onClick={() => updateProviderSettings('ollama', { model: m })}
+                          className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${
+                            providerSettings.ollama.model === m
+                              ? 'border-accent-cyan text-accent-cyan bg-accent-cyan/10'
+                              : 'border-border text-text-dim hover:border-text-secondary'
+                          }`}
+                        >
+                          {m}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                   <Button variant="secondary" onClick={verifyOllama} disabled={isVerifyingOllama}>
                     <RefreshCcw size={14} />
-                    {isVerifyingOllama ? 'Checking...' : 'Verify Ollama'}
+                    {isVerifyingOllama ? 'Checking…' : 'Verify & Fetch Models'}
                   </Button>
                 </div>
 
@@ -622,6 +877,114 @@ export default function SettingsPage() {
                   <Button variant="secondary" onClick={verifyGemini} disabled={isVerifyingGemini}>
                     <Sparkles size={14} />
                     {isVerifyingGemini ? 'Checking...' : 'Save & Verify Gemini'}
+                  </Button>
+                </div>
+
+                {/* Anthropic */}
+                <div className="p-4 rounded-2xl border border-border bg-base/60 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-medium text-text-primary">Anthropic Claude</h3>
+                      <p className="text-xs text-text-secondary">claude-opus-4-5, claude-sonnet-4-5, claude-haiku-4-5 and future models.</p>
+                    </div>
+                    <span className={`text-[11px] font-mono ${anthropicHealth === 'connected' ? 'text-accent-cyan' : anthropicHealth === 'testing' ? 'text-amber-400' : anthropicHealth === 'invalid' ? 'text-red-400' : 'text-text-dim'}`}>
+                      {anthropicHealth === 'connected' ? 'Connected' : anthropicHealth === 'testing' ? 'Testing…' : anthropicHealth === 'invalid' ? 'Invalid' : 'Unverified'}
+                    </span>
+                  </div>
+                  <Input
+                    label="Anthropic API Key"
+                    type="password"
+                    placeholder={providerSettings.anthropic?.maskedKey || 'Paste sk-ant-... key'}
+                    value={anthropicKeyInput}
+                    onChange={(e) => setAnthropicKeyInput(e.target.value)}
+                  />
+                  {providerSettings.anthropic?.maskedKey && (
+                    <p className="text-[11px] font-mono text-text-dim flex items-center gap-1.5">
+                      <KeyRound size={12} />
+                      Saved as {providerSettings.anthropic.maskedKey}
+                    </p>
+                  )}
+                  {providerSettings.anthropic?.verified && providerSettings.anthropic.availableModels?.length ? (
+                    <div className="flex flex-wrap gap-1">
+                      {providerSettings.anthropic.availableModels.map((m) => (
+                        <button
+                          key={m}
+                          onClick={() => updateProviderSettings('anthropic', { model: m })}
+                          className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${
+                            providerSettings.anthropic?.model === m
+                              ? 'border-accent-cyan text-accent-cyan bg-accent-cyan/10'
+                              : 'border-border text-text-dim hover:border-text-secondary'
+                          }`}
+                        >
+                          {m}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                  <div className="rounded-xl border border-border bg-base px-3 py-2">
+                    <p className="text-[11px] font-mono uppercase text-text-dim">Status</p>
+                    <p className="mt-1 text-sm text-text-primary">{anthropicHealthMessage}</p>
+                  </div>
+                  <Button variant="secondary" onClick={verifyAnthropic} disabled={isVerifyingAnthropic}>
+                    <Sparkles size={14} />
+                    {isVerifyingAnthropic ? 'Checking...' : 'Save & Verify Anthropic'}
+                  </Button>
+                </div>
+
+                {/* OpenAI */}
+                <div className="p-4 rounded-2xl border border-border bg-base/60 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-medium text-text-primary">OpenAI</h3>
+                      <p className="text-xs text-text-secondary">GPT-4o, GPT-4o-mini, and OpenAI-compatible endpoints (Groq, Together, etc.).</p>
+                    </div>
+                    <span className={`text-[11px] font-mono ${openAiHealth === 'connected' ? 'text-accent-cyan' : openAiHealth === 'testing' ? 'text-amber-400' : openAiHealth === 'invalid' ? 'text-red-400' : 'text-text-dim'}`}>
+                      {openAiHealth === 'connected' ? 'Connected' : openAiHealth === 'testing' ? 'Testing…' : openAiHealth === 'invalid' ? 'Invalid' : 'Unverified'}
+                    </span>
+                  </div>
+                  <Input
+                    label="OpenAI API Key"
+                    type="password"
+                    placeholder={providerSettings.openai?.maskedKey || 'Paste sk-... key'}
+                    value={openAiKeyInput}
+                    onChange={(e) => setOpenAiKeyInput(e.target.value)}
+                  />
+                  {providerSettings.openai?.maskedKey && (
+                    <p className="text-[11px] font-mono text-text-dim flex items-center gap-1.5">
+                      <KeyRound size={12} />
+                      Saved as {providerSettings.openai.maskedKey}
+                    </p>
+                  )}
+                  <Input
+                    label="Base URL (optional — for compatible endpoints)"
+                    placeholder="https://api.openai.com"
+                    value={providerSettings.openai?.baseUrl || ''}
+                    onChange={(e) => updateProviderSettings('openai', { baseUrl: e.target.value || 'https://api.openai.com' })}
+                  />
+                  {providerSettings.openai?.verified && providerSettings.openai.availableModels?.length ? (
+                    <div className="flex flex-wrap gap-1">
+                      {providerSettings.openai.availableModels.map((m) => (
+                        <button
+                          key={m}
+                          onClick={() => updateProviderSettings('openai', { model: m })}
+                          className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${
+                            providerSettings.openai?.model === m
+                              ? 'border-accent-cyan text-accent-cyan bg-accent-cyan/10'
+                              : 'border-border text-text-dim hover:border-text-secondary'
+                          }`}
+                        >
+                          {m}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                  <div className="rounded-xl border border-border bg-base px-3 py-2">
+                    <p className="text-[11px] font-mono uppercase text-text-dim">Status</p>
+                    <p className="mt-1 text-sm text-text-primary">{openAiHealthMessage}</p>
+                  </div>
+                  <Button variant="secondary" onClick={verifyOpenAi} disabled={isVerifyingOpenAi}>
+                    <Sparkles size={14} />
+                    {isVerifyingOpenAi ? 'Checking...' : 'Save & Verify OpenAI'}
                   </Button>
                 </div>
               </div>

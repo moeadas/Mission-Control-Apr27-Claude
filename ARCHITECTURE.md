@@ -1,6 +1,6 @@
 # Mission Control — Architecture
 
-> **Last Updated:** 2026-05-04 (quality gate fix)
+> **Last Updated:** 2026-05-07 (password change API + UI; deployed-version auto-refresh; multi-provider AI: Anthropic Claude + OpenAI + Ollama API key)
 > **Rule for contributors:** Update this file after every code change. Add new pages to the Page Structure table, new components to the Component Library, new store shape changes to State Management, etc.
 
 ## Overview
@@ -20,7 +20,9 @@ Current practical model:
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS with custom design system
 - **Animation**: CSS animations, Framer Motion patterns
-- **State**: Zustand (local persistence for structural app state) + Supabase-backed shared state
+- **State**: Zustand (local persistence for structural app state) + postgres.js-backed shared state (synced via `/api/state`)
+- **Auth**: Custom JWT (jose, HS256) + bcryptjs — no Supabase, no third-party auth service
+- **Database**: PostgreSQL via postgres.js tagged template literals (no ORM)
 - **Icons**: Lucide React
 - **AI Providers**: Ollama (local), Google Gemini
 
@@ -142,7 +144,7 @@ Accent Pink:       #f472b6
 | `/settings/integrations` | OAuth integrations (Google, Meta) |
 | `/support` | Support contact form (mailto-based) |
 | `/config` | JSON config editor |
-| `/login` | Supabase Auth login gate |
+| `/login` | Custom JWT login — POST `/api/auth/session` → JWT stored in `localStorage` via `getStoredToken()` |
 
 ## Virtual Office
 
@@ -188,7 +190,20 @@ Manages:
   - `qualityChecklist`
   - `handoffNotes`
 
-Persistence: Zustand with localStorage (persists agents, missions, clients, etc.)
+Persistence: Zustand with localStorage (local) + server sync via `/api/state` PUT/GET (remote). Auth token stored via `getStoredToken()` / `setStoredToken()` in `src/lib/auth/browser.ts`.
+
+### Auth Flow
+1. `POST /api/auth/session` → validates email/bcrypt hash in DB → returns signed JWT
+2. JWT stored in `localStorage` via `setStoredToken()`
+3. `ClientShell` reads token with `getStoredToken()` on mount, fetches `/api/auth/session` (GET) to verify, then `/api/state` to hydrate Zustand
+4. All authenticated API calls pass `Authorization: Bearer <token>` header
+5. Server routes verify JWT with `jose` `jwtVerify()`
+
+### Deployment
+- Docker multi-stage build: `deps` → `builder` (Next.js standalone) → `runner` (node:20-alpine)
+- Production VPS: `72.62.33.12` (Hostinger KVM 1, Ubuntu 24.04, 4 GB RAM)
+- Docker Compose: `postgres` (pg 16-alpine) + `app` (Next.js on port 3000)
+- `.env` on VPS holds `DB_PASSWORD`, `JWT_SECRET`, `SUPER_ADMIN_EMAIL`, `NEXT_PUBLIC_APP_URL`
 
 ### Iris Intelligence Layers
 
@@ -839,6 +854,8 @@ Pipeline and skill editing surfaces now use a shared editor theme layer from `sr
 - `/api/chat` now returns provider-aware service statuses (for example `503` for unavailable AI runtime) instead of flattening availability problems into generic `500` errors
 - `src/app/api/chat/route.ts` now also guards artifact-truth checks against missing artifact arrays, so a null-ish artifact payload no longer crashes the response assembly
 - `/api/state` now performs optimistic concurrency checks using the last known `updatedAt` value and returns `409 Conflict` if a stale browser tab tries to overwrite a newer shared-state snapshot
+- **Bug fixed**: `src/lib/supabase/app-state.ts` normalizes the `updated_at` column to ISO string after DB reads — postgres.js returns `TIMESTAMPTZ` as a `Date` object, which caused the 409 conflict check (`body.updatedAt !== currentRow.updated_at`) to always be `true` (string vs Date), blocking every PUT from ever committing. This was silently swallowed by `.catch(() => {})` in ClientShell, causing theme/settings changes to never persist.
+- **Bug fixed**: relational sync in `saveSharedAppState` / `saveSharedAppStateDelta` is now wrapped in try-catch (non-fatal) — a sync error no longer causes the PUT to return 500 and lose the already-committed JSON blob update
 - `src/components/ClientShell.tsx` now skips redundant `/api/state` writes when the serialized persistence snapshot has not actually changed
 - `src/components/ClientShell.tsx` now sends top-level `statePatch` payloads for changed collections/settings instead of always posting the full snapshot, which reduces unnecessary sync volume even though the server still stores a merged shared snapshot
 - Browser local persistence now stores a lighter snapshot:

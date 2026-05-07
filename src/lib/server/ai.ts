@@ -2,36 +2,79 @@ import { AIProvider, DeliverableType } from '@/lib/types'
 import { getDeliverableOutputSpec } from '@/lib/task-output'
 
 type VerifyPayload =
-  | { provider: 'ollama'; baseUrl: string }
+  | { provider: 'ollama'; baseUrl: string; apiKey?: string }
   | { provider: 'gemini'; apiKey: string }
   | { provider: 'gemini-image'; apiKey: string; model?: string }
+  | { provider: 'anthropic'; apiKey: string }
+  | { provider: 'openai'; apiKey: string; baseUrl?: string }
 
 export async function verifyProvider(payload: VerifyPayload) {
+  // ── Ollama ──────────────────────────────────────────────────────────────────
   if (payload.provider === 'ollama') {
     const baseUrl = payload.baseUrl.replace(/\/$/, '')
-    const response = await fetch(`${baseUrl}/api/tags`)
-    if (!response.ok) {
-      throw new Error('Could not reach Ollama.')
-    }
+    const headers: Record<string, string> = {}
+    if (payload.apiKey) headers['Authorization'] = `Bearer ${payload.apiKey}`
+    const response = await fetch(`${baseUrl}/api/tags`, { headers })
+    if (!response.ok) throw new Error('Could not reach Ollama. Check the URL and API key.')
     const data = await response.json()
-    const models = Array.isArray(data.models) ? data.models.map((model: { name: string }) => model.name) : []
+    const models = Array.isArray(data.models) ? data.models.map((m: { name: string }) => m.name) : []
     return { ok: true, models }
   }
 
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${payload.apiKey}`)
-  if (!response.ok) {
-    throw new Error('Gemini API key verification failed.')
+  // ── Anthropic ───────────────────────────────────────────────────────────────
+  if (payload.provider === 'anthropic') {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': payload.apiKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5',
+        max_tokens: 16,
+        messages: [{ role: 'user', content: 'Reply with exactly: ready.' }],
+      }),
+    })
+    if (!response.ok) {
+      const text = await response.text()
+      throw new Error(text || 'Anthropic API key verification failed.')
+    }
+    return {
+      ok: true,
+      models: ['claude-opus-4-5', 'claude-sonnet-4-5', 'claude-haiku-4-5'],
+    }
   }
+
+  // ── OpenAI ──────────────────────────────────────────────────────────────────
+  if (payload.provider === 'openai') {
+    const base = (payload.baseUrl || 'https://api.openai.com').replace(/\/$/, '')
+    const response = await fetch(`${base}/v1/models`, {
+      headers: { Authorization: `Bearer ${payload.apiKey}` },
+    })
+    if (!response.ok) {
+      const text = await response.text()
+      throw new Error(text || 'OpenAI API key verification failed.')
+    }
+    const data = await response.json()
+    const models = Array.isArray(data.data)
+      ? data.data
+          .map((m: { id: string }) => m.id)
+          .filter((id: string) => id.startsWith('gpt'))
+          .slice(0, 20)
+      : ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo']
+    return { ok: true, models }
+  }
+
+  // ── Gemini ──────────────────────────────────────────────────────────────────
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${payload.apiKey}`)
+  if (!response.ok) throw new Error('Gemini API key verification failed.')
   const data = await response.json()
   const models = Array.isArray(data.models)
-    ? data.models
-        .map((model: { name?: string }) => model.name?.replace('models/', ''))
-        .filter(Boolean)
+    ? data.models.map((model: { name?: string }) => model.name?.replace('models/', '')).filter(Boolean)
     : []
   const testModel = models.find((model: string) => model.includes('gemini-2.5-flash')) || models[0]
-  if (!testModel) {
-    throw new Error('Gemini API key is valid, but no text model is available.')
-  }
+  if (!testModel) throw new Error('Gemini API key is valid, but no text model is available.')
 
   const testResponse = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${testModel}:generateContent?key=${payload.apiKey}`,
@@ -44,15 +87,12 @@ export async function verifyProvider(payload: VerifyPayload) {
       }),
     }
   )
-
   if (!testResponse.ok) {
     const text = await testResponse.text()
     throw new Error(text || 'Gemini API responded, but a test generation failed.')
   }
-
   const testData = await testResponse.json()
-  const sample =
-    testData.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text || '').join('').trim() || ''
+  const sample = testData.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text || '').join('').trim() || ''
   return { ok: true, models, testModel, sample }
 }
 
@@ -196,7 +236,11 @@ export async function generateText(input: {
   maxTokens: number
   ollamaBaseUrl?: string
   ollamaContextWindow?: number
+  ollamaApiKey?: string
   geminiApiKey?: string
+  anthropicApiKey?: string
+  openAiApiKey?: string
+  openAiBaseUrl?: string
   timeoutMs?: number
 }) {
   // Bumped both defaults to 120s. Content-heavy chunks (calendar posts,
@@ -204,8 +248,95 @@ export async function generateText(input: {
   // tripping abort errors on /tasks/<id> retries before the model finished
   // streaming. The runtime caller can still pass a tighter timeoutMs when
   // it knows the chunk is small (e.g. selection/scheduling stages).
-  const timeoutMs = input.timeoutMs || (input.provider === 'gemini' ? 120000 : 120000)
+  const timeoutMs = input.timeoutMs || 120000
   const createAbortSignal = () => AbortSignal.timeout(timeoutMs)
+
+  // ── Anthropic ────────────────────────────────────────────────────────────────
+  if (input.provider === 'anthropic') {
+    const apiKey = input.anthropicApiKey || process.env.ANTHROPIC_API_KEY
+    if (!apiKey) throw new Error('Anthropic API key missing.')
+
+    const systemMessage = input.messages.find((m) => m.role === 'system')
+    const conversationMessages = input.messages.filter((m) => m.role !== 'system')
+
+    const body: Record<string, unknown> = {
+      model: input.model,
+      max_tokens: input.maxTokens,
+      temperature: input.temperature,
+      messages: conversationMessages.map((m) => ({ role: m.role, content: m.content })),
+    }
+    if (systemMessage) body.system = systemMessage.content
+
+    let response: Response
+    try {
+      response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify(body),
+        signal: createAbortSignal(),
+      })
+    } catch (error) {
+      if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) {
+        throw normalizeProviderError('anthropic', 504, `Anthropic request timed out after ${Math.round(timeoutMs / 1000)} seconds.`)
+      }
+      throw error
+    }
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      throw normalizeProviderError('anthropic', response.status, text)
+    }
+
+    const data = await response.json()
+    return (data.content as Array<{ type: string; text?: string }>)
+      ?.filter((b) => b.type === 'text')
+      .map((b) => b.text || '')
+      .join('') || ''
+  }
+
+  // ── OpenAI ───────────────────────────────────────────────────────────────────
+  if (input.provider === 'openai') {
+    const apiKey = input.openAiApiKey || process.env.OPENAI_API_KEY
+    if (!apiKey) throw new Error('OpenAI API key missing.')
+    const baseUrl = (input.openAiBaseUrl || 'https://api.openai.com').replace(/\/$/, '')
+
+    const body = {
+      model: input.model,
+      max_tokens: input.maxTokens,
+      temperature: input.temperature,
+      messages: input.messages.map((m) => ({ role: m.role, content: m.content })),
+    }
+
+    let response: Response
+    try {
+      response = await fetch(`${baseUrl}/v1/chat/completions`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify(body),
+        signal: createAbortSignal(),
+      })
+    } catch (error) {
+      if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) {
+        throw normalizeProviderError('openai', 504, `OpenAI request timed out after ${Math.round(timeoutMs / 1000)} seconds.`)
+      }
+      throw error
+    }
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      throw normalizeProviderError('openai', response.status, text)
+    }
+
+    const data = await response.json()
+    return data.choices?.[0]?.message?.content || ''
+  }
 
   if (input.provider === 'gemini') {
     if (!input.geminiApiKey) throw new Error('Gemini API key missing.')
@@ -275,7 +406,9 @@ export async function generateText(input: {
     return text
   }
 
-  const baseUrl = (input.ollamaBaseUrl || 'http://localhost:11434').replace(/\/$/, '')
+  // Priority: per-user setting → OLLAMA_BASE_URL env var → localhost fallback
+  // On VPS/Docker, set OLLAMA_BASE_URL=http://host.docker.internal:11434 in docker-compose.yml
+  const baseUrl = (input.ollamaBaseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434').replace(/\/$/, '')
   const isCloudModel = input.model.includes(':cloud')
   const configuredCtx =
     typeof input.ollamaContextWindow === 'number' && input.ollamaContextWindow > 0
@@ -308,11 +441,15 @@ export async function generateText(input: {
     },
   }
 
+  const ollamaHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
+  const ollamaApiKey = input.ollamaApiKey
+  if (ollamaApiKey) ollamaHeaders['Authorization'] = `Bearer ${ollamaApiKey}`
+
   let response: Response
   try {
     response = await fetch(`${baseUrl}/api/chat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: ollamaHeaders,
       body: JSON.stringify(ollamaPayload),
       signal: createAbortSignal(),
     })
@@ -328,7 +465,7 @@ export async function generateText(input: {
     try {
       response = await fetch(`${baseUrl}/api/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: ollamaHeaders,
         body: JSON.stringify(ollamaPayload),
         signal: createAbortSignal(),
       })
@@ -385,6 +522,19 @@ export function getFriendlyProviderError(error: unknown) {
         return "Ollama model error — the conversation may be too long for the model's context window. Try starting a new chat, or switch to a model with a larger context in Settings."
       }
       return `Ollama error: ${error.message || 'Unknown error. Check that Ollama is running and the model is available.'}`
+    }
+    if (error.provider === 'anthropic') {
+      if (isTimeout) return 'Anthropic timed out before returning a response. Re-run the task or switch to a faster model.'
+      if (error.status === 401) return 'Anthropic API key is invalid or expired. Update it in Settings → AI Providers.'
+      if (error.status === 429) return 'Anthropic rate limit hit. Wait a moment and retry, or upgrade your Anthropic plan.'
+      if (error.status === 529) return 'Anthropic is overloaded right now. Retry in a moment.'
+      return `Anthropic error: ${error.message || 'Unknown error.'}`
+    }
+    if (error.provider === 'openai') {
+      if (isTimeout) return 'OpenAI timed out before returning a response. Re-run the task or switch to a faster model.'
+      if (error.status === 401) return 'OpenAI API key is invalid or expired. Update it in Settings → AI Providers.'
+      if (error.status === 429) return 'OpenAI rate limit hit. Wait a moment and retry, or check your OpenAI usage limits.'
+      return `OpenAI error: ${error.message || 'Unknown error.'}`
     }
   }
 

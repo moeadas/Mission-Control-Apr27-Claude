@@ -33,7 +33,7 @@ export type AgentSpecialty =
   | 'ux-design'
   | 'brand'
 
-export type AIProvider = 'ollama' | 'gemini'
+export type AIProvider = 'ollama' | 'gemini' | 'anthropic' | 'openai'
 export type ProviderFallback = AIProvider | 'none'
 export type ProviderRuntimeMode = 'fast' | 'thinking' | 'compare'
 export type ImageProvider = 'gemini'
@@ -50,6 +50,12 @@ export type AgentModel =
   | 'gemini-1.5-flash'
   | 'gemini-1.5-pro'
   | 'gemini-1.0-pro'
+  | 'claude-opus-4-5'
+  | 'claude-sonnet-4-5'
+  | 'claude-haiku-4-5'
+  | 'gpt-4o'
+  | 'gpt-4o-mini'
+  | 'gpt-4-turbo'
   | (string & {})
 
 export interface ProviderOption {
@@ -387,11 +393,15 @@ export interface ProviderRoutingSettings {
   contentModels?: {
     ollama?: string
     gemini?: string
+    anthropic?: string
+    openai?: string
   }
 }
 
 export interface OllamaSettings extends ProviderSetting {
   baseUrl: string
+  apiKey?: string       // for Ollama Cloud authenticated access
+  maskedKey?: string
   availableModels: string[]
   contextWindow?: number
 }
@@ -400,6 +410,21 @@ export interface GeminiSettings extends ProviderSetting {
   apiKey: string
   maskedKey: string
   availableModels: string[]
+}
+
+export interface AnthropicSettings extends ProviderSetting {
+  apiKey: string
+  maskedKey: string
+  model?: string
+  availableModels: string[]
+}
+
+export interface OpenAISettings extends ProviderSetting {
+  apiKey: string
+  maskedKey: string
+  model?: string
+  availableModels: string[]
+  baseUrl?: string  // for OpenAI-compatible endpoints (Groq, Together, etc.)
 }
 
 export interface VisualGenerationSettings extends ProviderSetting {
@@ -428,6 +453,8 @@ export interface ProviderSettings {
   routing: ProviderRoutingSettings
   ollama: OllamaSettings
   gemini: GeminiSettings
+  anthropic: AnthropicSettings
+  openai: OpenAISettings
   visual: VisualGenerationSettings
   mcp: MCPSettings
 }

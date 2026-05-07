@@ -38,6 +38,11 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+      # Ollama: host.docker.internal resolves to the VPS host machine so that
+      # Ollama installed directly on the VPS is reachable from inside the container.
+      # Set OLLAMA_BASE_URL in .env to override (e.g. a remote Ollama instance).
+      # Users can also override per-account via Settings → AI Providers.
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       # AI providers
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
@@ -45,6 +50,10 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       META_APP_ID: ${META_APP_ID:-}
       META_APP_SECRET: ${META_APP_SECRET:-}
+    extra_hosts:
+      # Routes host.docker.internal → VPS host IP so the container can reach
+      # Ollama (or any other service) running directly on the host machine.
+      - "host.docker.internal:host-gateway"
     volumes:
       # Persist uploaded files (agent photos, client assets)
       - mc_uploads:/app/public/uploads

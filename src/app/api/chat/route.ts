@@ -300,9 +300,7 @@ export async function POST(req: NextRequest) {
             { role: 'system', content: leanSystemPrompt },
             ...recentMessages.map((message: any) => ({ role: message.role, content: message.content })),
           ],
-          ollamaBaseUrl: normalizedProviderSettings?.ollama?.baseUrl,
-          ollamaContextWindow: normalizedProviderSettings?.ollama?.contextWindow,
-          geminiApiKey: normalizedProviderSettings?.gemini?.apiKey,
+          ...providerKeys,
         })
 
         if (!responseText?.trim()) {
@@ -587,6 +585,18 @@ Orchestration trace:
       ...messages.map((message: any) => ({ role: message.role, content: message.content })),
     ] as const
 
+    // Collect all provider secrets from the auth-resolved settings once,
+    // then pass them uniformly to every generateText / executeAutonomousTask call.
+    const providerKeys = {
+      ollamaBaseUrl: normalizedProviderSettings?.ollama?.baseUrl,
+      ollamaContextWindow: normalizedProviderSettings?.ollama?.contextWindow,
+      ollamaApiKey: normalizedProviderSettings?.ollama?.apiKey,
+      geminiApiKey: normalizedProviderSettings?.gemini?.apiKey,
+      anthropicApiKey: normalizedProviderSettings?.anthropic?.apiKey,
+      openAiApiKey: normalizedProviderSettings?.openai?.apiKey,
+      openAiBaseUrl: normalizedProviderSettings?.openai?.baseUrl,
+    }
+
     let responseText = ''
     let executionSteps: any[] = []
     let qualityResult: { ok: boolean; score: number; issues: string[] } | null = null
@@ -594,7 +604,7 @@ Orchestration trace:
     let creativeFromTask: any = undefined
     let fallbackUsed = false
     let compareSummary: any = null
-    debugLog('Calling generateText', { provider: actualProvider, model: actualModel, ollamaBaseUrl: normalizedProviderSettings?.ollama?.baseUrl })
+    debugLog('Calling generateText', { provider: actualProvider, model: actualModel, ollamaBaseUrl: providerKeys.ollamaBaseUrl })
 
     try {
       if (missionId && canPersistMissionExecution) {
@@ -630,9 +640,7 @@ Orchestration trace:
           model: actualModel,
           temperature,
           maxTokens,
-          ollamaBaseUrl: normalizedProviderSettings?.ollama?.baseUrl,
-          ollamaContextWindow: normalizedProviderSettings?.ollama?.contextWindow,
-          geminiApiKey: normalizedProviderSettings?.gemini?.apiKey,
+          ...providerKeys,
           providerSettings: normalizedProviderSettings,
           deliverableType,
           executionPrompt,
@@ -718,9 +726,7 @@ Orchestration trace:
           temperature,
           maxTokens,
           messages: [...chatMessages],
-          ollamaBaseUrl: normalizedProviderSettings?.ollama?.baseUrl,
-          ollamaContextWindow: normalizedProviderSettings?.ollama?.contextWindow,
-          geminiApiKey: normalizedProviderSettings?.gemini?.apiKey,
+          ...providerKeys,
         })
       }
     } catch (error) {
@@ -746,9 +752,7 @@ Orchestration trace:
           model: actualModel,
           temperature,
           maxTokens,
-          ollamaBaseUrl: normalizedProviderSettings?.ollama?.baseUrl,
-          ollamaContextWindow: normalizedProviderSettings?.ollama?.contextWindow,
-          geminiApiKey: normalizedProviderSettings?.gemini?.apiKey,
+          ...providerKeys,
           providerSettings: normalizedProviderSettings,
           deliverableType,
           executionPrompt,
@@ -808,9 +812,7 @@ Orchestration trace:
           temperature,
           maxTokens,
           messages: [...chatMessages],
-          ollamaBaseUrl: normalizedProviderSettings?.ollama?.baseUrl,
-          ollamaContextWindow: normalizedProviderSettings?.ollama?.contextWindow,
-          geminiApiKey: normalizedProviderSettings?.gemini?.apiKey,
+          ...providerKeys,
         })
       }
     }
@@ -829,9 +831,7 @@ Orchestration trace:
           model: alternateRuntime.model,
           temperature,
           maxTokens,
-          ollamaBaseUrl: normalizedProviderSettings?.ollama?.baseUrl,
-          ollamaContextWindow: normalizedProviderSettings?.ollama?.contextWindow,
-          geminiApiKey: normalizedProviderSettings?.gemini?.apiKey,
+          ...providerKeys,
           providerSettings: normalizedProviderSettings,
           deliverableType,
           executionPrompt,

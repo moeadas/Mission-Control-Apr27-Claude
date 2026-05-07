@@ -423,11 +423,25 @@ async function generateContentFirstText(input: {
   messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>
   ollamaBaseUrl?: string
   ollamaContextWindow?: number
+  ollamaApiKey?: string
   geminiApiKey?: string
+  anthropicApiKey?: string
+  openAiApiKey?: string
+  openAiBaseUrl?: string
   providerSettings?: ProviderSettings
 }) {
   const isContentTask = input.deliverableType && CONTENT_GENERATION_DELIVERABLE_TYPES.has(input.deliverableType)
   const normalizedSettings = normalizeProviderSettings(input.providerSettings)
+
+  const providerKeys = {
+    ollamaBaseUrl: input.ollamaBaseUrl,
+    ollamaContextWindow: input.ollamaContextWindow,
+    ollamaApiKey: input.ollamaApiKey,
+    geminiApiKey: input.geminiApiKey,
+    anthropicApiKey: input.anthropicApiKey,
+    openAiApiKey: input.openAiApiKey,
+    openAiBaseUrl: input.openAiBaseUrl,
+  }
 
   // For content tasks we resolve the preferred provider+model through the
   // user-scoped Settings (DEFAULT_CONTENT_TASK_MODELS provides the fallback
@@ -447,9 +461,7 @@ async function generateContentFirstText(input: {
       temperature: input.temperature,
       maxTokens: input.maxTokens,
       messages: input.messages,
-      ollamaBaseUrl: input.ollamaBaseUrl,
-      ollamaContextWindow: input.ollamaContextWindow,
-      geminiApiKey: input.geminiApiKey,
+      ...providerKeys,
       // Content chunks (especially calendar posts at 4k tokens) regularly
       // exceed 30s on Ollama. Allow up to 120s before giving up and trying
       // the fallback runtime.
@@ -475,9 +487,7 @@ async function generateContentFirstText(input: {
       temperature: input.temperature,
       maxTokens: input.maxTokens,
       messages: input.messages,
-      ollamaBaseUrl: input.ollamaBaseUrl,
-      ollamaContextWindow: input.ollamaContextWindow,
-      geminiApiKey: input.geminiApiKey,
+      ...providerKeys,
       // Fallback path has the same headroom as the primary call. The
       // generic generateText default is 120s for both providers — we
       // pin it explicitly here for clarity.
@@ -711,7 +721,11 @@ async function runPipelineExecution(input: {
   model: string
   ollamaBaseUrl?: string
   ollamaContextWindow?: number
+  ollamaApiKey?: string
   geminiApiKey?: string
+  anthropicApiKey?: string
+  openAiApiKey?: string
+  openAiBaseUrl?: string
   clientContext: string
   clientProfile: ClientProfileMap
   agents: RuntimeAgent[]
@@ -788,7 +802,11 @@ async function runPipelineExecution(input: {
             ],
             ollamaBaseUrl: input.ollamaBaseUrl,
             ollamaContextWindow: input.ollamaContextWindow,
+            ollamaApiKey: input.ollamaApiKey,
             geminiApiKey: input.geminiApiKey,
+            anthropicApiKey: input.anthropicApiKey,
+            openAiApiKey: input.openAiApiKey,
+            openAiBaseUrl: input.openAiBaseUrl,
             providerSettings: input.providerSettings,
           })
 
@@ -838,7 +856,11 @@ export async function executeAutonomousTask(input: {
   maxTokens: number
   ollamaBaseUrl?: string
   ollamaContextWindow?: number
+  ollamaApiKey?: string
   geminiApiKey?: string
+  anthropicApiKey?: string
+  openAiApiKey?: string
+  openAiBaseUrl?: string
   providerSettings?: ProviderSettings
   deliverableType: DeliverableType
   executionPrompt: string
@@ -887,7 +909,11 @@ export async function executeAutonomousTask(input: {
           ],
           ollamaBaseUrl: input.ollamaBaseUrl,
           ollamaContextWindow: input.ollamaContextWindow,
+          ollamaApiKey: input.ollamaApiKey,
           geminiApiKey: input.geminiApiKey,
+          anthropicApiKey: input.anthropicApiKey,
+          openAiApiKey: input.openAiApiKey,
+          openAiBaseUrl: input.openAiBaseUrl,
           providerSettings: input.providerSettings,
         })
         return { text, provider: runtime.provider, model: runtime.model }
@@ -937,7 +963,11 @@ export async function executeAutonomousTask(input: {
           ],
           ollamaBaseUrl: input.ollamaBaseUrl,
           ollamaContextWindow: input.ollamaContextWindow,
+          ollamaApiKey: input.ollamaApiKey,
           geminiApiKey: input.geminiApiKey,
+          anthropicApiKey: input.anthropicApiKey,
+          openAiApiKey: input.openAiApiKey,
+          openAiBaseUrl: input.openAiBaseUrl,
           providerSettings: input.providerSettings,
         })
         return { text, provider: runtime.provider, model: runtime.model }
@@ -961,7 +991,11 @@ export async function executeAutonomousTask(input: {
       model: input.model,
       ollamaBaseUrl: input.ollamaBaseUrl,
       ollamaContextWindow: input.ollamaContextWindow,
+      ollamaApiKey: input.ollamaApiKey,
       geminiApiKey: input.geminiApiKey,
+      anthropicApiKey: input.anthropicApiKey,
+      openAiApiKey: input.openAiApiKey,
+      openAiBaseUrl: input.openAiBaseUrl,
       clientContext: input.clientContext,
       clientProfile,
       agents: input.agents,
@@ -1012,7 +1046,11 @@ export async function executeAutonomousTask(input: {
         ],
         ollamaBaseUrl: input.ollamaBaseUrl,
         ollamaContextWindow: input.ollamaContextWindow,
+        ollamaApiKey: input.ollamaApiKey,
         geminiApiKey: input.geminiApiKey,
+        anthropicApiKey: input.anthropicApiKey,
+        openAiApiKey: input.openAiApiKey,
+        openAiBaseUrl: input.openAiBaseUrl,
         providerSettings: input.providerSettings,
       })
 

@@ -142,12 +142,29 @@ export async function GET(request: NextRequest) {
         ? row.state
         : filterStateForUser(row.state, auth.userId)
       : null
-    const state = relationalState
-      ? {
-          ...(fallbackState || {}),
-          ...relationalState,
+
+    // Merge relational state over the JSON blob, but for entity collections
+    // (clients, missions, artifacts) only override the blob when the relational
+    // table actually has rows — an empty array means "not yet synced from client",
+    // not "the user deleted everything".
+    const mergeRelational = (
+      relational: Partial<AppPersistenceSnapshot> | null,
+      fallback: AppPersistenceSnapshot | null
+    ): AppPersistenceSnapshot | null => {
+      if (!relational) return fallback
+      const base = fallback || ({} as AppPersistenceSnapshot)
+      const entityKeys = ['clients', 'missions', 'artifacts', 'agents', 'conversations'] as const
+      const merged: any = { ...base, ...relational }
+      for (const key of entityKeys) {
+        const relArr = (relational as any)[key]
+        if (!relArr || (Array.isArray(relArr) && relArr.length === 0)) {
+          // Relational table empty — keep blob version if it has data
+          merged[key] = (base as any)[key] || relArr || []
         }
-      : fallbackState
+      }
+      return merged
+    }
+    const state = mergeRelational(relationalState, fallbackState)
     const providerSettings = mergeProviderSettings(state?.providerSettings, auth.providerSettings)
     const nextState = state
       ? { ...state, providerSettings }

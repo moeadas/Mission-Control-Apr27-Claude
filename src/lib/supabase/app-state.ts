@@ -11,6 +11,17 @@ interface StateRow {
   updated_at?: string
 }
 
+// postgres.js returns TIMESTAMPTZ as a Date object; normalize to ISO string so
+// string comparisons in the 409 conflict check always work correctly.
+function normalizeRow(row: any): StateRow {
+  return {
+    ...row,
+    updated_at: row.updated_at
+      ? (row.updated_at instanceof Date ? row.updated_at.toISOString() : String(row.updated_at))
+      : undefined,
+  }
+}
+
 export async function loadSharedAppState(agencyId = DEFAULT_AGENCY_ID): Promise<StateRow | null> {
   const db = getDb()
   const rows = await db`
@@ -19,7 +30,8 @@ export async function loadSharedAppState(agencyId = DEFAULT_AGENCY_ID): Promise<
     WHERE agency_id = ${agencyId}
     LIMIT 1
   `
-  return (rows[0] as StateRow | undefined) ?? null
+  const row = rows[0]
+  return row ? normalizeRow(row) : null
 }
 
 export async function saveSharedAppState(
@@ -35,9 +47,15 @@ export async function saveSharedAppState(
           updated_at = now()
     RETURNING agency_id, state, updated_at
   `
-  const row = rows[0] as StateRow | undefined
-  if (row) await syncSnapshotToRelationalTables(state)
-  return row ?? null
+  const row = rows[0]
+  if (row) {
+    try {
+      await syncSnapshotToRelationalTables(state)
+    } catch (syncErr) {
+      console.error('[app-state] relational sync failed (non-fatal):', syncErr)
+    }
+  }
+  return row ? normalizeRow(row) : null
 }
 
 export async function saveSharedAppStatePatch(
@@ -85,13 +103,19 @@ export async function saveSharedAppStateDelta(
           updated_at = now()
     RETURNING agency_id, state, updated_at
   `
-  const row = rows[0] as StateRow | undefined
+  const row = rows[0]
 
-  if (input.statePatch || input.entityPatch) {
-    await syncEntityDeltaToRelationalTables({ statePatch: input.statePatch, entityPatch: input.entityPatch }, nextState)
-  } else {
-    await syncSnapshotToRelationalTables(nextState)
+  // Relational sync is best-effort — the JSON blob is already committed above.
+  // A sync failure must not roll back the PUT or return 500 to the client.
+  try {
+    if (input.statePatch || input.entityPatch) {
+      await syncEntityDeltaToRelationalTables({ statePatch: input.statePatch, entityPatch: input.entityPatch }, nextState)
+    } else {
+      await syncSnapshotToRelationalTables(nextState)
+    }
+  } catch (syncErr) {
+    console.error('[app-state] relational sync failed (non-fatal):', syncErr)
   }
 
-  return row ?? null
+  return row ? normalizeRow(row) : null
 }

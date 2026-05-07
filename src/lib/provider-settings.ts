@@ -1,4 +1,4 @@
-import { AIProvider, ProviderFallback, ProviderSettings } from '@/lib/types'
+import { AIProvider, ProviderFallback, ProviderSettings, AnthropicSettings, OpenAISettings } from '@/lib/types'
 
 /**
  * Default per-provider model used for content-generation deliverables when
@@ -12,6 +12,8 @@ import { AIProvider, ProviderFallback, ProviderSettings } from '@/lib/types'
 export const DEFAULT_CONTENT_TASK_MODELS: Record<AIProvider, string> = {
   ollama: 'minimax-m2.7:cloud',
   gemini: 'gemini-2.5-pro',
+  anthropic: 'claude-sonnet-4-5',
+  openai: 'gpt-4o',
 }
 
 /**
@@ -24,10 +26,12 @@ export const DEFAULT_CONTENT_TASK_MODELS: Record<AIProvider, string> = {
 export function resolveContentTaskModel(settings: ProviderSettings | undefined, provider: AIProvider): string {
   const normalized = normalizeProviderSettings(settings)
   const overrides = normalized.routing.contentModels || {}
-  const override = overrides[provider]?.trim()
+  const override = (overrides as Record<string, string | undefined>)[provider]?.trim()
   if (override) return override
   if (provider === 'ollama' && normalized.ollama.model) return normalized.ollama.model
   if (provider === 'gemini' && normalized.gemini.model) return normalized.gemini.model
+  if (provider === 'anthropic' && normalized.anthropic.model) return normalized.anthropic.model
+  if (provider === 'openai' && normalized.openai.model) return normalized.openai.model
   return DEFAULT_CONTENT_TASK_MODELS[provider]
 }
 
@@ -40,12 +44,16 @@ export const DEFAULT_PROVIDER_SETTINGS: ProviderSettings = {
     contentModels: {
       ollama: 'minimax-m2.7:cloud',
       gemini: 'gemini-2.5-pro',
+      anthropic: 'claude-sonnet-4-5',
+      openai: 'gpt-4o',
     },
   },
   ollama: {
     enabled: true,
     verified: false,
     baseUrl: 'http://localhost:11434',
+    apiKey: '',
+    maskedKey: '',
     availableModels: ['glm-5.1:cloud', 'minimax-m2.7:cloud', 'llama3.2:latest'],
   },
   gemini: {
@@ -54,6 +62,23 @@ export const DEFAULT_PROVIDER_SETTINGS: ProviderSettings = {
     apiKey: '',
     maskedKey: '',
     availableModels: ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash'],
+  },
+  anthropic: {
+    enabled: false,
+    verified: false,
+    apiKey: '',
+    maskedKey: '',
+    model: 'claude-sonnet-4-5',
+    availableModels: ['claude-opus-4-5', 'claude-sonnet-4-5', 'claude-haiku-4-5'],
+  },
+  openai: {
+    enabled: false,
+    verified: false,
+    apiKey: '',
+    maskedKey: '',
+    model: 'gpt-4o',
+    availableModels: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'],
+    baseUrl: 'https://api.openai.com',
   },
   visual: {
     enabled: false,
@@ -113,16 +138,17 @@ export const CONTENT_GENERATION_DELIVERABLE_TYPES = new Set([
   'brand-guidelines',
 ])
 
+const VALID_PROVIDERS = new Set<AIProvider>(['ollama', 'gemini', 'anthropic', 'openai'])
+
 export function normalizeProviderSettings(input?: Partial<ProviderSettings> | null): ProviderSettings {
+  const fallback = input?.routing?.fallbackProvider
   return {
     routing: {
       ...DEFAULT_PROVIDER_SETTINGS.routing,
       ...(input?.routing || {}),
       fallbackProvider:
-        input?.routing?.fallbackProvider === 'ollama' ||
-        input?.routing?.fallbackProvider === 'gemini' ||
-        input?.routing?.fallbackProvider === 'none'
-          ? input.routing.fallbackProvider
+        fallback && (VALID_PROVIDERS.has(fallback as AIProvider) || fallback === 'none')
+          ? (fallback as ProviderFallback)
           : DEFAULT_PROVIDER_SETTINGS.routing.fallbackProvider,
       contentModels: {
         ...(DEFAULT_PROVIDER_SETTINGS.routing.contentModels || {}),
@@ -144,6 +170,22 @@ export function normalizeProviderSettings(input?: Partial<ProviderSettings> | nu
         Array.isArray(input?.gemini?.availableModels) && input?.gemini?.availableModels.length
           ? input!.gemini!.availableModels
           : DEFAULT_PROVIDER_SETTINGS.gemini.availableModels,
+    },
+    anthropic: {
+      ...DEFAULT_PROVIDER_SETTINGS.anthropic,
+      ...(input?.anthropic || {}),
+      availableModels:
+        Array.isArray(input?.anthropic?.availableModels) && input?.anthropic?.availableModels.length
+          ? input!.anthropic!.availableModels
+          : DEFAULT_PROVIDER_SETTINGS.anthropic.availableModels,
+    },
+    openai: {
+      ...DEFAULT_PROVIDER_SETTINGS.openai,
+      ...(input?.openai || {}),
+      availableModels:
+        Array.isArray(input?.openai?.availableModels) && input?.openai?.availableModels.length
+          ? input!.openai!.availableModels
+          : DEFAULT_PROVIDER_SETTINGS.openai.availableModels,
     },
     visual: {
       ...DEFAULT_PROVIDER_SETTINGS.visual,
@@ -179,11 +221,11 @@ export function isThinkingDeliverableType(deliverableType?: string) {
 }
 
 export function providerIsConfigured(settings: ProviderSettings, provider: AIProvider) {
-  if (provider === 'ollama') {
-    return settings.ollama.enabled !== false
-  }
-
-  return Boolean(settings.gemini.enabled && settings.gemini.verified && settings.gemini.apiKey)
+  if (provider === 'ollama') return settings.ollama.enabled !== false
+  if (provider === 'gemini') return Boolean(settings.gemini.enabled && settings.gemini.verified && settings.gemini.apiKey)
+  if (provider === 'anthropic') return Boolean(settings.anthropic.enabled && settings.anthropic.verified && settings.anthropic.apiKey)
+  if (provider === 'openai') return Boolean(settings.openai.enabled && settings.openai.verified && settings.openai.apiKey)
+  return false
 }
 
 export function resolveProviderModel(
@@ -193,22 +235,15 @@ export function resolveProviderModel(
 ) {
   if (preferredModel) {
     if (provider === 'gemini' && preferredModel.startsWith('gemini')) return preferredModel
-    if (provider === 'ollama' && !preferredModel.startsWith('gemini')) return preferredModel
+    if (provider === 'anthropic' && preferredModel.startsWith('claude')) return preferredModel
+    if (provider === 'openai' && preferredModel.startsWith('gpt')) return preferredModel
+    if (provider === 'ollama' && !preferredModel.startsWith('gemini') && !preferredModel.startsWith('claude') && !preferredModel.startsWith('gpt')) return preferredModel
   }
 
-  if (provider === 'gemini') {
-    return (
-      settings.gemini.model ||
-      settings.gemini.availableModels?.[0] ||
-      DEFAULT_PROVIDER_SETTINGS.gemini.availableModels[0]
-    )
-  }
-
-  return (
-    settings.ollama.model ||
-    settings.ollama.availableModels?.[0] ||
-    DEFAULT_PROVIDER_SETTINGS.ollama.availableModels[0]
-  )
+  if (provider === 'gemini') return settings.gemini.model || settings.gemini.availableModels?.[0] || DEFAULT_PROVIDER_SETTINGS.gemini.availableModels[0]
+  if (provider === 'anthropic') return settings.anthropic.model || settings.anthropic.availableModels?.[0] || DEFAULT_PROVIDER_SETTINGS.anthropic.availableModels[0]
+  if (provider === 'openai') return settings.openai.model || settings.openai.availableModels?.[0] || DEFAULT_PROVIDER_SETTINGS.openai.availableModels[0]
+  return settings.ollama.model || settings.ollama.availableModels?.[0] || DEFAULT_PROVIDER_SETTINGS.ollama.availableModels[0]
 }
 
 export function resolveTaskRuntime(input: {
@@ -297,11 +332,9 @@ export function resolveFallbackRuntime(input: {
 export function stripProviderSecrets(settings: ProviderSettings) {
   return {
     ...settings,
-    gemini: {
-      ...settings.gemini,
-      apiKey: '',
-    },
-    visual: settings.visual,
-    mcp: settings.mcp,
+    ollama: { ...settings.ollama, apiKey: '', maskedKey: settings.ollama.maskedKey || '' },
+    gemini: { ...settings.gemini, apiKey: '' },
+    anthropic: { ...settings.anthropic, apiKey: '' },
+    openai: { ...settings.openai, apiKey: '' },
   }
 }

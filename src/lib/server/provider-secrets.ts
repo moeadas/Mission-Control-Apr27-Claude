@@ -21,12 +21,29 @@ function mergeProviderSettings(primary?: Partial<ProviderSettings> | null, fallb
     ...(fallback || {}),
     ...(primary || {}),
     routing: { ...(fallback?.routing || {}), ...(primary?.routing || {}) },
-    ollama: { ...(fallback?.ollama || {}), ...(primary?.ollama || {}) },
+    ollama: {
+      ...(fallback?.ollama || {}),
+      ...(primary?.ollama || {}),
+      apiKey: primary?.ollama?.apiKey || fallback?.ollama?.apiKey || '',
+      maskedKey: primary?.ollama?.maskedKey || fallback?.ollama?.maskedKey || '',
+    },
     gemini: {
       ...(fallback?.gemini || {}),
       ...(primary?.gemini || {}),
       apiKey: primary?.gemini?.apiKey || fallback?.gemini?.apiKey || '',
       maskedKey: primary?.gemini?.maskedKey || fallback?.gemini?.maskedKey || '',
+    },
+    anthropic: {
+      ...(fallback?.anthropic || {}),
+      ...(primary?.anthropic || {}),
+      apiKey: primary?.anthropic?.apiKey || fallback?.anthropic?.apiKey || '',
+      maskedKey: primary?.anthropic?.maskedKey || fallback?.anthropic?.maskedKey || '',
+    },
+    openai: {
+      ...(fallback?.openai || {}),
+      ...(primary?.openai || {}),
+      apiKey: primary?.openai?.apiKey || fallback?.openai?.apiKey || '',
+      maskedKey: primary?.openai?.maskedKey || fallback?.openai?.maskedKey || '',
     },
     visual: { ...(fallback?.visual || {}), ...(primary?.visual || {}) },
     mcp: {

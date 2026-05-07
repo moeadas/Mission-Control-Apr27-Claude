@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 
 import { useAgentsStore } from '@/lib/agents-store'
 import { getStoredToken, clearStoredToken } from '@/lib/auth/browser'
+import { useVersionCheck } from '@/hooks/useVersionCheck'
 
 const PUBLIC_PATHS = new Set(['/login'])
 const ADMIN_ONLY_PREFIXES = ['/settings', '/config', '/skills', '/pipeline', '/users']
@@ -22,6 +23,8 @@ export function SessionGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const [ready, setReady] = useState(false)
   const setAuthenticatedUser = useAgentsStore((state) => state.setAuthenticatedUser)
+
+  useVersionCheck()
 
   useEffect(() => {
     let mounted = true

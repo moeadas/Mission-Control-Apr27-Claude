@@ -269,11 +269,7 @@ export async function runPipelineFromUI(input: {
   language?: 'en' | 'ar'
   runtimeMode?: 'fast' | 'thinking' | 'compare'
 }): Promise<{ taskId: string; pipelineName: string | null; deliverableType: string }> {
-  const supabase: any = null // migrated to REST API
-    const token = getStoredToken()
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
+  const token = getStoredToken()
   if (!token) {
     throw new Error('You need to sign in before starting a pipeline run.')
   }
