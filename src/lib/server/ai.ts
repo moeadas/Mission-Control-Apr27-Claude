@@ -11,7 +11,7 @@ type VerifyPayload =
 export async function verifyProvider(payload: VerifyPayload) {
   // ── Ollama ──────────────────────────────────────────────────────────────────
   if (payload.provider === 'ollama') {
-    const baseUrl = payload.baseUrl.replace(/\/$/, '')
+    const baseUrl = (payload.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434').replace(/\/$/, '')
     const headers: Record<string, string> = {}
     if (payload.apiKey) headers['Authorization'] = `Bearer ${payload.apiKey}`
     const response = await fetch(`${baseUrl}/api/tags`, { headers })

@@ -124,8 +124,14 @@ export async function savePersistedProviderSettings(userId: string, providerSett
     updatedAt: new Date().toISOString(),
   }
   await writeSecretsStore(store)
+  // Best-effort: write the Gemini key to .env.local for local dev convenience.
+  // In Docker the app directory is read-only, so we silently skip on EACCES.
   if (merged.gemini.apiKey) {
-    await writeLocalEnvGeminiKey(merged.gemini.apiKey)
+    try {
+      await writeLocalEnvGeminiKey(merged.gemini.apiKey)
+    } catch {
+      // read-only filesystem in production — ignore, key is already in the JSON store
+    }
   }
 }
 
