@@ -18,6 +18,8 @@ export const nowIso = () => new Date().toISOString()
 export const DEFAULT_PROVIDER_MODEL: Record<AIProvider, Agent['model']> = {
   ollama: 'llama3.2:latest',
   gemini: 'gemini-2.5-flash',
+  anthropic: 'claude-sonnet-4-5',
+  openai: 'gpt-4o',
 }
 
 export const VALID_DIVISIONS = new Set<Agent['division']>([
