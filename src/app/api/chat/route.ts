@@ -244,6 +244,19 @@ export async function POST(req: NextRequest) {
     const conversational = isConversationalMessage(userContent)
     const deliverableType = conversational ? 'status-report' : inferDeliverableType(userContent)
     const normalizedProviderSettings = normalizeProviderSettings(auth.providerSettings || providerSettings)
+
+    // Collect all provider secrets from the auth-resolved settings once,
+    // then pass them uniformly to every generateText / executeAutonomousTask call.
+    const providerKeys = {
+      ollamaBaseUrl: normalizedProviderSettings?.ollama?.baseUrl,
+      ollamaContextWindow: normalizedProviderSettings?.ollama?.contextWindow,
+      ollamaApiKey: normalizedProviderSettings?.ollama?.apiKey,
+      geminiApiKey: normalizedProviderSettings?.gemini?.apiKey,
+      anthropicApiKey: normalizedProviderSettings?.anthropic?.apiKey,
+      openAiApiKey: normalizedProviderSettings?.openai?.apiKey,
+      openAiBaseUrl: normalizedProviderSettings?.openai?.baseUrl,
+    }
+
     const selectedRuntime = resolveTaskRuntime({
       settings: normalizedProviderSettings,
       deliverableType,
@@ -584,18 +597,6 @@ Orchestration trace:
       { role: 'system', content: contextBits },
       ...messages.map((message: any) => ({ role: message.role, content: message.content })),
     ] as const
-
-    // Collect all provider secrets from the auth-resolved settings once,
-    // then pass them uniformly to every generateText / executeAutonomousTask call.
-    const providerKeys = {
-      ollamaBaseUrl: normalizedProviderSettings?.ollama?.baseUrl,
-      ollamaContextWindow: normalizedProviderSettings?.ollama?.contextWindow,
-      ollamaApiKey: normalizedProviderSettings?.ollama?.apiKey,
-      geminiApiKey: normalizedProviderSettings?.gemini?.apiKey,
-      anthropicApiKey: normalizedProviderSettings?.anthropic?.apiKey,
-      openAiApiKey: normalizedProviderSettings?.openai?.apiKey,
-      openAiBaseUrl: normalizedProviderSettings?.openai?.baseUrl,
-    }
 
     let responseText = ''
     let executionSteps: any[] = []
