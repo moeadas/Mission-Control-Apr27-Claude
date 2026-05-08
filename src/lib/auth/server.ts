@@ -47,10 +47,9 @@ export async function resolveAuthContextFromToken(token: string | null | undefin
     userId: payload.sub,
     email,
     role,
-    providerSettings: mergePersistedProviderSettings(
-      normalizeProviderSettings(undefined),
-      persistedProviderSettings
-    ),
+    // Normalize persisted settings against defaults — persisted values (verified, apiKey, etc.)
+    // must take priority over defaults so they are never wiped on load.
+    providerSettings: normalizeProviderSettings(persistedProviderSettings),
   }
 }
 
