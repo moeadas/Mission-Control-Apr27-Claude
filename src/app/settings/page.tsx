@@ -283,8 +283,8 @@ export default function SettingsPage() {
       if (!response.ok) throw new Error(data.error || 'Verification failed')
       const returnedModels: string[] = data.models || []
       // Preserve user's current model selection if it exists in the new model list
-      const currentModel = providerSettings.ollama.model
-      const selectedModel = returnedModels.includes(currentModel)
+      const currentModel = providerSettings.ollama.model || ''
+      const selectedModel = currentModel && returnedModels.includes(currentModel)
         ? currentModel
         : (returnedModels[0] || currentModel)
       const nextOllamaSettings = {
