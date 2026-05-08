@@ -231,6 +231,41 @@ export default function SettingsPage() {
     [agencySettings.defaultProvider]
   )
 
+  // Sort models from most capable to least capable based on param count + tier keywords
+  const sortModelsByCapability = (models: string[]): string[] => {
+    const score = (name: string): number => {
+      const lower = name.toLowerCase()
+      const m = lower.match(/[:\-](\d+(?:\.\d+)?)b(?:\b|$)/)
+      const billions = m ? parseFloat(m[1]) : 0
+      let tierBonus = 0
+      if (/-next\b/.test(lower)) tierBonus = 900
+      else if (/-ultra\b/.test(lower)) tierBonus = 800
+      else if (/-pro\b/.test(lower)) tierBonus = 700
+      else if (/-large\b/.test(lower)) tierBonus = 300
+      else if (/-flash\b/.test(lower)) tierBonus = 200
+      else if (/-mini\b/.test(lower)) tierBonus = -200
+      else if (/-small\b/.test(lower)) tierBonus = -200
+      else if (/-nano\b/.test(lower)) tierBonus = -300
+      return billions * 10 + tierBonus
+    }
+    return [...models].sort((a, b) => score(b) - score(a) || a.localeCompare(b))
+  }
+
+  // Save model selection for a provider to provider-secrets
+  const saveModelSelection = async (provider: 'ollama' | 'anthropic' | 'openai', model: string) => {
+    const token = await getSupabaseAccessToken()
+    if (!token) return
+    const nextProviderSettings = {
+      ...providerSettings,
+      [provider]: { ...providerSettings[provider], model },
+    }
+    await fetch('/api/providers/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ providerSettings: nextProviderSettings }),
+    })
+  }
+
   const verifyOllama = async () => {
     setIsVerifyingOllama(true)
     try {
@@ -246,12 +281,18 @@ export default function SettingsPage() {
       })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'Verification failed')
+      const returnedModels: string[] = data.models || []
+      // Preserve user's current model selection if it exists in the new model list
+      const currentModel = providerSettings.ollama.model
+      const selectedModel = returnedModels.includes(currentModel)
+        ? currentModel
+        : (returnedModels[0] || currentModel)
       const nextOllamaSettings = {
         verified: true,
         verifiedAt: new Date().toISOString(),
         enabled: true,
-        availableModels: data.models || [],
-        model: data.models?.[0] || providerSettings.ollama.model,
+        availableModels: sortModelsByCapability(returnedModels),
+        model: selectedModel,
       }
       updateProviderSettings('ollama', nextOllamaSettings)
       const nextProviderSettings = {
@@ -840,10 +881,14 @@ export default function SettingsPage() {
                   ) : null}
                   {providerSettings.ollama.availableModels?.length ? (
                     <div className="flex flex-wrap gap-1">
-                      {providerSettings.ollama.availableModels.map((m) => (
+                      {sortModelsByCapability(providerSettings.ollama.availableModels).map((m) => (
                         <button
                           key={m}
-                          onClick={() => updateProviderSettings('ollama', { model: m })}
+                          onClick={() => {
+                            updateProviderSettings('ollama', { model: m })
+                            saveModelSelection('ollama', m)
+                            toast.success(`Active model set to ${m}`)
+                          }}
                           className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${
                             providerSettings.ollama.model === m
                               ? 'border-accent-cyan text-accent-cyan bg-accent-cyan/10'
@@ -926,7 +971,11 @@ export default function SettingsPage() {
                       {providerSettings.anthropic.availableModels.map((m) => (
                         <button
                           key={m}
-                          onClick={() => updateProviderSettings('anthropic', { model: m })}
+                          onClick={() => {
+                            updateProviderSettings('anthropic', { model: m })
+                            saveModelSelection('anthropic', m)
+                            toast.success(`Anthropic model set to ${m}`)
+                          }}
                           className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${
                             providerSettings.anthropic?.model === m
                               ? 'border-accent-cyan text-accent-cyan bg-accent-cyan/10'
@@ -983,7 +1032,11 @@ export default function SettingsPage() {
                       {providerSettings.openai.availableModels.map((m) => (
                         <button
                           key={m}
-                          onClick={() => updateProviderSettings('openai', { model: m })}
+                          onClick={() => {
+                            updateProviderSettings('openai', { model: m })
+                            saveModelSelection('openai', m)
+                            toast.success(`OpenAI model set to ${m}`)
+                          }}
                           className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${
                             providerSettings.openai?.model === m
                               ? 'border-accent-cyan text-accent-cyan bg-accent-cyan/10'
