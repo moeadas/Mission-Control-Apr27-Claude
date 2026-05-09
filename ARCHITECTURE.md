@@ -1,6 +1,6 @@
 # Mission Control — Architecture
 
-> **Last Updated:** 2026-05-09 (multi-tenant SaaS foundation: plans/subscriptions DB, self-serve signup, per-tenant isolation, plan enforcement, Stripe-ready billing, superadmin dashboard)
+> **Last Updated:** 2026-05-09 (multi-tenant SaaS foundation + Scheduled Tasks backend — full DB persistence, execution engine, cron tick endpoint, API-backed frontend)
 > **Rule for contributors:** Update this file after every code change. Add new pages to the Page Structure table, new components to the Component Library, new store shape changes to State Management, etc.
 
 ## Overview
@@ -138,7 +138,7 @@ Accent Pink:       #f472b6
 | `/skills/[id]` | Individual skill editor |
 | `/analytics` | Analytics dashboards |
 | `/outputs` | Saved deliverables |
-| `/schedules` | Scheduled task CRUD — UI complete, execution requires backend cron (see Schedules section) |
+| `/schedules` | Scheduled task CRUD — DB-backed, real agent execution, cron-ready (see Schedules section) |
 | `/users` | Super admin user management (invite, role, activate/suspend) |
 | `/settings` | App settings with OAuth integrations |
 | `/settings/integrations` | OAuth integrations (Google, Meta) |
@@ -1238,21 +1238,51 @@ Three categories (Content & Copy, Strategy & Research, Creative & Campaigns) wit
 
 ## Schedules Page (`/schedules`)
 
-`src/app/schedules/page.tsx` — CRUD interface for scheduled automated tasks.
+`src/app/schedules/page.tsx` — Full API-backed scheduled task system.
 
-### What Works Today
-- Create, read, update, delete scheduled entries
-- Pause/resume a schedule
-- "Run Now" button for manual trigger
-- localStorage persistence (`schedules` key)
+### DB Table
+`scheduled_tasks` — tenant-scoped. Columns: `id`, `tenant_id`, `agent_id`, `name`, `description`, `task_type`, `prompt`, `frequency`, `day_of_week`, `day_of_month`, `time_hour`, `time_minute`, `status`, `next_run_at`, `last_run_at`, `last_run_status`, `last_run_output`, `run_count`, `created_at`, `updated_at`.
 
-### What Does NOT Work Yet (Requires Backend)
-Schedules are UI-only. For automatic execution to work you need:
-1. A real cron system: **Vercel Cron Jobs**, **Inngest**, or **Trigger.dev**
-2. A `POST /api/schedules/:id/run` API endpoint that loads the schedule, executes the task via the chat/autonomous pipeline, and saves the result
-3. Supabase persistence for schedule records (currently localStorage-only)
+Migration: `supabase/migrations/20260509_scheduled_tasks.sql`
 
-Until these are wired up, "Run Now" opens the Mission page and "automatic" schedules do nothing at their scheduled time.
+### API Endpoints
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/scheduled-tasks` | GET | List all tasks for tenant |
+| `/api/scheduled-tasks` | POST | Create task (requires `name`, `prompt`) |
+| `/api/scheduled-tasks/[id]` | PATCH | Update task fields / toggle status |
+| `/api/scheduled-tasks/[id]` | DELETE | Delete task |
+| `/api/scheduled-tasks/[id]/run` | POST | Execute task immediately via `generateText` |
+| `/api/scheduled-tasks/tick` | GET | Cron endpoint — runs all due tasks (auth: `CRON_SECRET` header) |
+
+### Execution Engine (`/run` and `/tick`)
+1. Loads the scheduled task + assigned agent from DB
+2. Loads tenant owner's `providerSettings` from `provider-secrets.json`
+3. Resolves provider/model via `resolveTaskRuntime()`
+4. Calls `generateText()` with a system prompt built from the agent's role + task type
+5. Stores `last_run_output`, `last_run_status`, increments `run_count`, recomputes `next_run_at`
+
+### VPS Cron Setup
+```bash
+# Add to VPS crontab (crontab -e as root):
+* * * * * curl -sf -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/scheduled-tasks/tick >> /tmp/cron-tick.log 2>&1
+```
+Set `CRON_SECRET` in `/opt/mission-control/.env.local`.
+
+### `computeNextRunAt` Logic (server-side)
+- **daily**: next occurrence of `time_hour:time_minute` (advances by 1 day if already past today's window)
+- **weekly**: next occurrence of `day_of_week` at `time_hour:time_minute` (corrects for target weekday, not naive +7d)
+- **monthly**: next occurrence of `day_of_month` at `time_hour:time_minute` (advances month if past)
+- **once**: returns null (task moves to `completed` after first run)
+
+### Frontend Features
+- Loads tasks from API on mount; no localStorage
+- Agent selector (assigns any configured agent, falls back to Iris)
+- Prompt / instructions field with task-type-aware placeholder
+- Run Now button triggers `/run` and shows output immediately in a modal
+- Output viewer (FileText icon) shows `last_run_output` + error state
+- Pause / resume via PATCH `{ status }`
+- Fixed `computeNextRun` weekly logic
 
 ## Support Page (`/support`)
 
