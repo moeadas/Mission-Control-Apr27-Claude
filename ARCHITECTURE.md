@@ -1,6 +1,6 @@
 # Mission Control — Architecture
 
-> **Last Updated:** 2026-05-09 (multi-tenant SaaS foundation + Scheduled Tasks backend — full DB persistence, execution engine, cron tick endpoint, API-backed frontend)
+> **Last Updated:** 2026-05-09 (multi-tenant SaaS foundation + Scheduled Tasks backend + Client Asset uploads with document text extraction)
 > **Rule for contributors:** Update this file after every code change. Add new pages to the Page Structure table, new components to the Component Library, new store shape changes to State Management, etc.
 
 ## Overview
@@ -1283,6 +1283,35 @@ Set `CRON_SECRET` in `/opt/mission-control/.env.local`.
 - Output viewer (FileText icon) shows `last_run_output` + error state
 - Pause / resume via PATCH `{ status }`
 - Fixed `computeNextRun` weekly logic
+
+## Client Asset Uploads
+
+### Upload API — `POST /api/client-assets/upload`
+- Accepts `multipart/form-data` with `file`, `clientId`, `assetType`
+- **Brand assets** (`logos`, `templates`, `referenceImages`, `fontFiles`): stored to `public/uploads/client-assets/[clientId]/[assetType]/[timestamp-filename]`, served statically via Next.js (Docker volume `mc_uploads`). Max 10MB.
+- **Knowledge documents** (`documents`): same storage, PLUS text is extracted and returned as `extractedText` / `extractedPreview`. Max 20MB.
+- **Text extraction by type**:
+  - `.pdf` — BT…ET block parser, extracts literal and hex PDF strings (no native library)
+  - `.txt`, `.md`, `.csv`, `.json`, `.html` — `buffer.toString('utf-8')`
+  - `.docx` — scans `<w:t>` XML tags inside the DOCX ZIP (no unzip library needed)
+- Extracted text is capped at 50,000 characters
+- URL format: `/uploads/client-assets/[clientId]/[assetType]/[filename]` (static, no proxying needed)
+
+### Legacy File Serving — `GET /api/client-assets/file/[filename]`
+- Reads from `public/uploads/clients/` flat directory (old structure)
+- Kept for backward compatibility with existing assets
+
+### Knowledge Hub — Document Upload UX (clients page)
+- "Upload Document" button in Knowledge Hub Assets section opens a file picker (`.pdf,.txt,.md,.csv,.json,.docx,.doc`)
+- On upload: title auto-filled from filename, `extractedInsights` auto-filled with full extracted text, summary auto-filled from preview, path set to URL, type detected from extension, status set to `synced`
+- User reviews and clicks "Add Asset" to commit — the `extractedInsights` field is what flows into AI prompts via `buildClientContext()`
+
+### How Client Data Reaches the AI
+`chat/route.ts` → `buildClientContext(client)` injects:
+- All brand kit properties (colors, fonts, visual keywords, look & feel, etc.)
+- All brand asset URLs (logos, templates, reference images)
+- All knowledge assets: `[title] ([type]): [summary] | Insights: [extractedInsights]`
+- The `extractedInsights` field from uploaded documents is the most powerful field — it injects raw document content directly into every AI prompt
 
 ## Support Page (`/support`)
 

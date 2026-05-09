@@ -139,6 +139,7 @@ export default function ClientsPage() {
   const [competitorInput, setCompetitorInput] = useState('')
   const [assetDraft, setAssetDraft] = useState<KnowledgeAsset>(EMPTY_ASSET)
   const [uploadingBrandAsset, setUploadingBrandAsset] = useState<string | null>(null)
+  const [uploadingKnowledgeDoc, setUploadingKnowledgeDoc] = useState(false)
 
   const selectedClient = clients.find((client) => client.id === selectedId) || null
 
@@ -322,6 +323,70 @@ export default function ClientsPage() {
       toast.error(error.message || 'Could not upload asset')
     } finally {
       setUploadingBrandAsset(null)
+    }
+  }
+
+  const uploadKnowledgeDocument = async (file: File) => {
+    if (!editingClient) return
+    setUploadingKnowledgeDoc(true)
+    try {
+      const token = await getSupabaseAccessToken()
+      if (!token) throw new Error('Your session expired. Please sign in again.')
+
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('clientId', selectedClient?.id || editingClient.name || 'client')
+      formData.append('assetType', 'documents')
+
+      const response = await fetch('/api/client-assets/upload', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      })
+
+      const payload = await response.json()
+      if (!response.ok) throw new Error(payload?.error || 'Upload failed')
+
+      // Detect asset type from extension
+      const ext = file.name.split('.').pop()?.toLowerCase() || ''
+      const assetTypeMap: Record<string, KnowledgeAsset['type']> = {
+        pdf: 'pdf',
+        doc: 'doc',
+        docx: 'doc',
+        txt: 'doc',
+        md: 'doc',
+        csv: 'sheet',
+        xlsx: 'sheet',
+        xls: 'sheet',
+        json: 'doc',
+      }
+      const detectedType = assetTypeMap[ext] || 'doc'
+
+      // Auto-fill title from filename (strip extension)
+      const autoTitle = file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ')
+
+      // Build summary from preview
+      const preview = payload.extractedPreview || ''
+      const autoSummary = preview ? `${preview.slice(0, 200)}…` : `Uploaded document: ${file.name}`
+
+      // Use extracted text as insights (the most important field for AI)
+      const autoInsights = payload.extractedText || ''
+
+      setAssetDraft((prev) => ({
+        ...prev,
+        title: prev.title || autoTitle,
+        type: detectedType,
+        path: payload.url,
+        summary: prev.summary || autoSummary,
+        extractedInsights: autoInsights || prev.extractedInsights,
+        status: 'synced',
+      }))
+
+      toast.success(`${file.name} uploaded — review and click "Add Asset" to save`)
+    } catch (error: any) {
+      toast.error(error.message || 'Could not upload document')
+    } finally {
+      setUploadingKnowledgeDoc(false)
     }
   }
 
@@ -862,17 +927,43 @@ export default function ClientsPage() {
             </div>
 
             <div className="border border-border rounded-2xl p-4 bg-base/50">
-              <div className="flex items-center gap-2 mb-3">
-                <LibraryBig size={14} className="text-accent-blue" />
-                <p className="text-xs font-mono text-text-dim uppercase">Knowledge Hub Assets</p>
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <div className="flex items-center gap-2">
+                  <LibraryBig size={14} className="text-accent-blue" />
+                  <p className="text-xs font-mono text-text-dim uppercase">Knowledge Hub Assets</p>
+                </div>
+                <label className="inline-flex items-center gap-2 text-xs text-accent-blue cursor-pointer hover:text-accent-cyan transition-colors">
+                  <FileText size={12} />
+                  {uploadingKnowledgeDoc ? 'Uploading…' : 'Upload Document'}
+                  <input
+                    type="file"
+                    className="hidden"
+                    disabled={uploadingKnowledgeDoc}
+                    accept=".pdf,.txt,.md,.csv,.json,.docx,.doc"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) uploadKnowledgeDocument(file)
+                      e.currentTarget.value = ''
+                    }}
+                  />
+                </label>
               </div>
+              <p className="text-[11px] text-text-dim mb-3">
+                Upload a PDF, Word doc, or text file — the content will be extracted and injected into every AI prompt for this client. Or add a URL/link manually.
+              </p>
               <div className="grid grid-cols-2 gap-3">
                 <Input label="Asset Title" value={assetDraft.title} onChange={(e) => setAssetDraft({ ...assetDraft, title: e.target.value })} />
                 <Select label="Type" options={ASSET_TYPE_OPTIONS} value={assetDraft.type} onChange={(e) => setAssetDraft({ ...assetDraft, type: e.target.value as KnowledgeAsset['type'] })} />
               </div>
-              <Input label="Path / URL" value={assetDraft.path || ''} onChange={(e) => setAssetDraft({ ...assetDraft, path: e.target.value })} className="mt-3" />
-              <Textarea label="Summary" value={assetDraft.summary} onChange={(e) => setAssetDraft({ ...assetDraft, summary: e.target.value })} className="min-h-[70px] mt-3" />
-              <Textarea label="Extracted Insights" value={assetDraft.extractedInsights || ''} onChange={(e) => setAssetDraft({ ...assetDraft, extractedInsights: e.target.value })} className="min-h-[70px] mt-3" />
+              <Input label="Path / URL" value={assetDraft.path || ''} onChange={(e) => setAssetDraft({ ...assetDraft, path: e.target.value })} className="mt-3" placeholder="Auto-filled after upload, or paste a URL" />
+              <Textarea label="Summary" value={assetDraft.summary} onChange={(e) => setAssetDraft({ ...assetDraft, summary: e.target.value })} className="min-h-[70px] mt-3" placeholder="Brief description of this document" />
+              <Textarea
+                label="Extracted Insights (used in AI prompts)"
+                value={assetDraft.extractedInsights || ''}
+                onChange={(e) => setAssetDraft({ ...assetDraft, extractedInsights: e.target.value })}
+                className="min-h-[100px] mt-3"
+                placeholder="Auto-extracted from uploaded file, or paste key excerpts manually. This text is injected into AI prompts."
+              />
               <Select label="Status" options={ASSET_STATUS_OPTIONS} value={assetDraft.status} onChange={(e) => setAssetDraft({ ...assetDraft, status: e.target.value as KnowledgeAsset['status'] })} />
               <div className="mt-3">
                 <Button variant="secondary" size="sm" onClick={addKnowledgeAsset}>
