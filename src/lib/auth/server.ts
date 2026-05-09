@@ -2,6 +2,7 @@ import { getDb } from '@/lib/db/client'
 import { verifyToken } from '@/lib/auth/jwt'
 import { loadPersistedProviderSettings, mergePersistedProviderSettings, savePersistedProviderSettings } from '@/lib/server/provider-secrets'
 import { normalizeProviderSettings } from '@/lib/provider-settings'
+import { getTenantIdForUser, createTenant, assignUserToTenant } from '@/lib/server/tenants'
 import type { ProviderSettings } from '@/lib/types'
 
 export function getSuperAdminEmail() {
@@ -13,6 +14,8 @@ export interface AuthContext {
   email: string
   role: 'super_admin' | 'member'
   providerSettings: ProviderSettings
+  /** UUID of the tenant (agencies row) this user belongs to. null for super_admin with no tenant. */
+  tenantId: string | null
 }
 
 export async function resolveAuthContextFromToken(token: string | null | undefined): Promise<AuthContext | null> {
@@ -32,7 +35,7 @@ export async function resolveAuthContextFromToken(token: string | null | undefin
       SET email = EXCLUDED.email,
           role  = EXCLUDED.role,
           updated_at = now()
-    RETURNING role, is_active
+    RETURNING role, is_active, tenant_id
   `
   const profile = rows[0]
   if (!profile?.is_active) return null
@@ -41,12 +44,26 @@ export async function resolveAuthContextFromToken(token: string | null | undefin
     ? 'super_admin'
     : profile.role === 'super_admin' ? 'super_admin' : 'member'
 
+  // Resolve tenantId: prefer JWT claim → profile column → auto-provision
+  let tenantId: string | null = payload.tenantId ?? profile.tenant_id ?? null
+
+  if (!tenantId && role !== 'super_admin') {
+    // Legacy user with no tenant: auto-provision a free tenant for them
+    tenantId = await createTenant({
+      name: email.split('@')[0],
+      ownerUserId: payload.sub,
+      planId: 'free',
+    })
+    await assignUserToTenant(payload.sub, tenantId)
+  }
+
   const persistedProviderSettings = await loadPersistedProviderSettings(payload.sub)
 
   return {
     userId: payload.sub,
     email,
     role,
+    tenantId,
     // Normalize persisted settings against defaults — persisted values (verified, apiKey, etc.)
     // must take priority over defaults so they are never wiped on load.
     providerSettings: normalizeProviderSettings(persistedProviderSettings),

@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs'
 import { resolveAuthContextFromToken } from '@/lib/auth/server'
 import { getDb } from '@/lib/db/client'
 import { signToken } from '@/lib/auth/jwt'
+import { getTenantIdForUser } from '@/lib/server/tenants'
 
 function getBearerToken(request: NextRequest) {
   const authHeader = request.headers.get('authorization') || ''
@@ -62,10 +63,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }
 
-    const token = await signToken({ sub: user.id, email: user.email, role: user.role })
+    const tenantId = await getTenantIdForUser(user.id) ?? undefined
+    const token = await signToken({ sub: user.id, email: user.email, role: user.role, tenantId })
     return NextResponse.json({
       token,
-      user: { id: user.id, email: user.email, role: user.role },
+      user: { id: user.id, email: user.email, role: user.role, tenantId },
     })
   } catch (error) {
     console.error('Login failed:', error)

@@ -26,6 +26,18 @@ function inferMissionPipelineMetadata(deliverableType: Mission['deliverableType'
 const DEFAULT_AGENCY_SLUG = 'default-agency'
 const DEFAULT_AGENCY_NAME = 'Default Agency'
 
+// ─── Tenant-aware agency resolver ───────────────────────────────────────────
+
+/**
+ * Resolve the agency/tenant id to use for DB queries.
+ * - If tenantId is provided (multi-tenant path), use it directly.
+ * - Otherwise fall back to the legacy DEFAULT_AGENCY_SLUG singleton.
+ */
+async function resolveAgencyId(tenantId?: string | null): Promise<string | null> {
+  if (tenantId) return tenantId
+  return getDefaultAgencyId()
+}
+
 function dedupeByKey<T>(items: T[], getKey: (item: T) => string) {
   const map = new Map<string, T>()
   for (const item of items) map.set(getKey(item), item)
@@ -341,9 +353,9 @@ async function upsert(table: string, rows: Record<string, any>[], conflictCol = 
 
 // ─── Sync snapshot ───────────────────────────────────────────────────────────
 
-export async function syncSnapshotToRelationalTables(state: AppPersistenceSnapshot) {
+export async function syncSnapshotToRelationalTables(state: AppPersistenceSnapshot, tenantId?: string | null) {
   const db = getDb()
-  const agencyId = await getDefaultAgencyId()
+  const agencyId = await resolveAgencyId(tenantId)
   if (!agencyId) return
 
   // Update agency settings blob
@@ -411,10 +423,11 @@ export async function syncSnapshotToRelationalTables(state: AppPersistenceSnapsh
 
 export async function syncEntityDeltaToRelationalTables(
   input: { statePatch?: AppPersistencePatch; entityPatch?: EntityDeltaPatch },
-  fullState: AppPersistenceSnapshot
+  fullState: AppPersistenceSnapshot,
+  tenantId?: string | null
 ) {
   const db = getDb()
-  const agencyId = await getDefaultAgencyId()
+  const agencyId = await resolveAgencyId(tenantId)
   if (!agencyId) return
 
   const statePatch = input.statePatch || {}
@@ -674,9 +687,15 @@ function mapConversationRows(conversationRows: any[], messageRows: any[]): Conve
 
 // ─── Load relational state ───────────────────────────────────────────────────
 
-export async function loadRelationalAppState(userId?: string, isSuperAdmin = false): Promise<Partial<AppPersistenceSnapshot> | null> {
+export async function loadRelationalAppState(userId?: string, isSuperAdmin = false, tenantId?: string | null): Promise<Partial<AppPersistenceSnapshot> | null> {
   const db = getDb()
-  const agency = await getDefaultAgency()
+  let agency: any
+  if (tenantId) {
+    const rows = await db`SELECT id, slug, name, settings FROM agencies WHERE id = ${tenantId}::uuid LIMIT 1`
+    agency = rows[0] ?? null
+  } else {
+    agency = await getDefaultAgency()
+  }
   if (!agency?.id) return null
 
   const agencyId = agency.id

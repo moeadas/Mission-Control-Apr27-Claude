@@ -19,6 +19,7 @@ import {
   Rocket,
   Calendar,
   HelpCircle,
+  ShieldCheck,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { getSupabaseAccessToken } from '@/lib/auth/browser'
@@ -47,6 +48,10 @@ const COMPANY_SETUP_NAV = [
 const SETTINGS_NAV = [
   { id: 'settings', label: 'Settings', icon: Settings, href: '/settings', color: '#71717a' },
   { id: 'support', label: 'Support', icon: HelpCircle, href: '/support', color: '#71717a' },
+]
+
+const SUPER_ADMIN_NAV = [
+  { id: 'admin-tenants', label: 'Tenants', icon: ShieldCheck, href: '/admin/tenants', color: '#a78bfa' },
 ]
 
 const ADMIN_ONLY_IDS = new Set(['pipeline', 'skills', 'users', 'settings', 'schedules'])
@@ -273,6 +278,24 @@ export function Sidebar({ collapsed = false, mobileOpen = false, onMobileClose }
             <SectionLabel label="Settings" collapsed={c} />
             <div className="space-y-1">
               {visibleSettings.map((item) => (
+                <NavItem
+                  key={item.id}
+                  item={item}
+                  isActive={isActive(item.href)}
+                  collapsed={c}
+                  onClick={isMobile ? onMobileClose : undefined}
+                />
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Super Admin */}
+        {isSuperAdmin && (
+          <>
+            <SectionLabel label="Super Admin" collapsed={c} />
+            <div className="space-y-1">
+              {SUPER_ADMIN_NAV.map((item) => (
                 <NavItem
                   key={item.id}
                   item={item}

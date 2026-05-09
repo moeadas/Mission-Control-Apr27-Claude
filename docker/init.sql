@@ -12,13 +12,23 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Add FK from agencies to users now that users table exists
+ALTER TABLE agencies
+  ADD CONSTRAINT IF NOT EXISTS fk_agencies_owner_user_id
+  FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE SET NULL;
+
 CREATE TABLE IF NOT EXISTS profiles (
   id         UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   email      TEXT NOT NULL,
   role       TEXT NOT NULL DEFAULT 'member',
   is_active  BOOLEAN NOT NULL DEFAULT true,
+  full_name  TEXT,
+  tenant_id  UUID REFERENCES agencies(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE INDEX IF NOT EXISTS idx_profiles_tenant_id ON profiles (tenant_id);
 
 -- ─── Core state blob ───────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS mission_control_state (
@@ -27,13 +37,35 @@ CREATE TABLE IF NOT EXISTS mission_control_state (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- ─── Plans ─────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS plans (
+  id                TEXT PRIMARY KEY,
+  name              TEXT NOT NULL,
+  max_agents        INT  NOT NULL DEFAULT 3,
+  price_monthly_usd NUMERIC(10,2) NOT NULL DEFAULT 0,
+  stripe_price_id   TEXT,
+  is_active         BOOLEAN NOT NULL DEFAULT true,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+INSERT INTO plans (id, name, max_agents, price_monthly_usd) VALUES
+  ('free',       'Free',       3,   0),
+  ('starter',    'Starter',    10,  49),
+  ('growth',     'Growth',     25,  99),
+  ('enterprise', 'Enterprise', -1,  299)
+ON CONFLICT (id) DO NOTHING;
+
 -- ─── Relational tables ─────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS agencies (
-  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  slug       TEXT UNIQUE NOT NULL,
-  name       TEXT NOT NULL,
-  settings   JSONB NOT NULL DEFAULT '{}',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug           TEXT UNIQUE NOT NULL,
+  name           TEXT NOT NULL,
+  settings       JSONB NOT NULL DEFAULT '{}',
+  owner_user_id  UUID,                            -- FK added after users table
+  plan_id        TEXT REFERENCES plans(id) DEFAULT 'free',
+  is_active      BOOLEAN NOT NULL DEFAULT true,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS agents (
@@ -204,3 +236,50 @@ CREATE TABLE IF NOT EXISTS knowledge_assets (
   created_at     TIMESTAMPTZ,
   updated_at     TIMESTAMPTZ
 );
+
+-- ─── Subscriptions ─────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS subscriptions (
+  id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id              UUID NOT NULL REFERENCES agencies(id) ON DELETE CASCADE,
+  plan_id                TEXT NOT NULL REFERENCES plans(id),
+  status                 TEXT NOT NULL DEFAULT 'active',
+  stripe_subscription_id TEXT,
+  stripe_customer_id     TEXT,
+  agent_limit            INT  NOT NULL DEFAULT 3,
+  current_agent_count    INT  NOT NULL DEFAULT 0,
+  billing_cycle_start    TIMESTAMPTZ,
+  billing_cycle_end      TIMESTAMPTZ,
+  trial_ends_at          TIMESTAMPTZ,
+  canceled_at            TIMESTAMPTZ,
+  created_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at             TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_subscriptions_tenant_id ON subscriptions (tenant_id);
+
+-- ─── Convenience view ──────────────────────────────────────────────────────
+CREATE OR REPLACE VIEW tenants AS
+  SELECT
+    a.id,
+    a.slug,
+    a.name,
+    a.settings,
+    a.owner_user_id,
+    a.plan_id,
+    a.is_active,
+    a.created_at,
+    a.updated_at,
+    s.status            AS subscription_status,
+    s.agent_limit,
+    s.current_agent_count,
+    s.stripe_customer_id
+  FROM agencies a
+  LEFT JOIN subscriptions s ON s.tenant_id = a.id;
+
+-- ─── Indexes ───────────────────────────────────────────────────────────────
+CREATE INDEX IF NOT EXISTS idx_agents_agency_id        ON agents        (agency_id);
+CREATE INDEX IF NOT EXISTS idx_clients_agency_id       ON clients       (agency_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_agency_id         ON tasks         (agency_id);
+CREATE INDEX IF NOT EXISTS idx_outputs_agency_id       ON outputs       (agency_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_agency_id ON conversations  (agency_id);
+CREATE INDEX IF NOT EXISTS idx_knowledge_agency_id     ON knowledge_assets (agency_id);

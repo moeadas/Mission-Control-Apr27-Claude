@@ -6,6 +6,7 @@ import type { AppPersistencePatch, AppPersistenceSnapshot, EntityDeltaPatch } fr
 import { resolveAuthContextFromToken, saveUserProviderSettings } from '@/lib/auth/server'
 import { loadRelationalAppState } from '@/lib/db/relational-sync'
 import { normalizeProviderSettings } from '@/lib/provider-settings'
+import { canAddAgent, syncAgentCount } from '@/lib/server/tenants'
 
 export const dynamic = 'force-dynamic'
 
@@ -135,8 +136,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ connected: false, error: 'Unauthorized' }, { status: 401 })
     }
 
-    const row = await loadSharedAppState()
-    const relationalState = await loadRelationalAppState(auth.userId, auth.role === 'super_admin')
+    const stateKey = auth.tenantId ?? undefined
+    const row = await loadSharedAppState(stateKey)
+    const relationalState = await loadRelationalAppState(auth.userId, auth.role === 'super_admin', auth.tenantId)
     const fallbackState = row?.state
       ? auth.role === 'super_admin'
         ? row.state
@@ -216,7 +218,33 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Missing state payload' }, { status: 400 })
     }
 
-    const currentRow = await loadSharedAppState()
+    const currentRow = await loadSharedAppState(auth.tenantId ?? undefined)
+
+    // ── Agent limit enforcement ─────────────────────────────────────────────
+    // Check when new agents are being upserted — canAddAgent queries the DB
+    // live so the count is always accurate.
+    if (body.entityPatch?.agents?.upserts?.length && auth.tenantId) {
+      const existingAgentIds = new Set(
+        (currentRow?.state?.agents || []).map((a: any) => a.id)
+      )
+      const newAgents = body.entityPatch.agents.upserts.filter(
+        (a: any) => !existingAgentIds.has(a.id)
+      )
+      if (newAgents.length > 0) {
+        const check = await canAddAgent(auth.tenantId)
+        if (!check.allowed) {
+          return NextResponse.json(
+            {
+              error: `Agent limit reached. Your ${check.limit}-agent plan is full (${check.current}/${check.limit}). Upgrade to add more agents.`,
+              code: 'AGENT_LIMIT_EXCEEDED',
+              limit: check.limit,
+              current: check.current,
+            },
+            { status: 402 }
+          )
+        }
+      }
+    }
     if (body.updatedAt && currentRow?.updated_at && body.updatedAt !== currentRow.updated_at) {
       return NextResponse.json(
         {
@@ -252,17 +280,26 @@ export async function PUT(request: NextRequest) {
         : mergeScopedState(currentRow?.state || null, nextIncomingState, auth.userId)
     const row =
       body.statePatch || body.entityPatch
-        ? await saveSharedAppStateDelta({
-            statePatch:
-              auth.role === 'super_admin'
-                ? {
-                    ...(body.statePatch || {}),
-                    providerSettings: normalizedProviderSettings,
-                  }
-                : body.statePatch,
-            entityPatch: body.entityPatch,
-          })
-        : await saveSharedAppState(nextState)
+        ? await saveSharedAppStateDelta(
+            {
+              statePatch:
+                auth.role === 'super_admin'
+                  ? {
+                      ...(body.statePatch || {}),
+                      providerSettings: normalizedProviderSettings,
+                    }
+                  : body.statePatch,
+              entityPatch: body.entityPatch,
+            },
+            undefined,
+            auth.tenantId
+          )
+        : await saveSharedAppState(nextState, undefined, auth.tenantId)
+
+    // Keep subscription.current_agent_count in sync (best-effort)
+    if (auth.tenantId && body.entityPatch?.agents) {
+      syncAgentCount(auth.tenantId).catch(() => {})
+    }
 
     return NextResponse.json({
       connected: true,

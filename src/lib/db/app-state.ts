@@ -36,12 +36,15 @@ export async function loadSharedAppState(agencyId = DEFAULT_AGENCY_ID): Promise<
 
 export async function saveSharedAppState(
   state: AppPersistenceSnapshot,
-  agencyId = DEFAULT_AGENCY_ID
+  agencyId = DEFAULT_AGENCY_ID,
+  tenantId?: string | null
 ): Promise<StateRow | null> {
   const db = getDb()
+  // Use tenantId as the blob key when available for per-tenant isolation
+  const stateKey = tenantId ?? agencyId
   const rows = await db`
     INSERT INTO ${db(APP_STATE_TABLE)} (agency_id, state, updated_at)
-    VALUES (${agencyId}, ${db.json(state as any)}, now())
+    VALUES (${stateKey}, ${db.json(state as any)}, now())
     ON CONFLICT (agency_id) DO UPDATE
       SET state = EXCLUDED.state,
           updated_at = now()
@@ -50,7 +53,7 @@ export async function saveSharedAppState(
   const row = rows[0]
   if (row) {
     try {
-      await syncSnapshotToRelationalTables(state)
+      await syncSnapshotToRelationalTables(state, tenantId)
     } catch (syncErr) {
       console.error('[app-state] relational sync failed (non-fatal):', syncErr)
     }
@@ -69,10 +72,12 @@ export async function saveSharedAppStatePatch(
 
 export async function saveSharedAppStateDelta(
   input: { statePatch?: AppPersistencePatch; entityPatch?: EntityDeltaPatch },
-  agencyId = DEFAULT_AGENCY_ID
+  agencyId = DEFAULT_AGENCY_ID,
+  tenantId?: string | null
 ): Promise<StateRow | null> {
   const db = getDb()
-  const current = await loadSharedAppState(agencyId)
+  const stateKey = tenantId ?? agencyId
+  const current = await loadSharedAppState(stateKey)
   const nextState = {
     ...(current?.state || {}),
     ...(input.statePatch || {}),
@@ -97,7 +102,7 @@ export async function saveSharedAppStateDelta(
 
   const rows = await db`
     INSERT INTO ${db(APP_STATE_TABLE)} (agency_id, state, updated_at)
-    VALUES (${agencyId}, ${db.json(nextState as any)}, now())
+    VALUES (${stateKey}, ${db.json(nextState as any)}, now())
     ON CONFLICT (agency_id) DO UPDATE
       SET state = EXCLUDED.state,
           updated_at = now()
@@ -109,9 +114,9 @@ export async function saveSharedAppStateDelta(
   // A sync failure must not roll back the PUT or return 500 to the client.
   try {
     if (input.statePatch || input.entityPatch) {
-      await syncEntityDeltaToRelationalTables({ statePatch: input.statePatch, entityPatch: input.entityPatch }, nextState)
+      await syncEntityDeltaToRelationalTables({ statePatch: input.statePatch, entityPatch: input.entityPatch }, nextState, tenantId)
     } else {
-      await syncSnapshotToRelationalTables(nextState)
+      await syncSnapshotToRelationalTables(nextState, tenantId)
     }
   } catch (syncErr) {
     console.error('[app-state] relational sync failed (non-fatal):', syncErr)
