@@ -1,6 +1,6 @@
 # Mission Control — Architecture
 
-> **Last Updated:** 2026-05-07 (password change API + UI; deployed-version auto-refresh; multi-provider AI: Anthropic Claude + OpenAI + Ollama API key)
+> **Last Updated:** 2026-05-09 (multi-tenant SaaS foundation: plans/subscriptions DB, self-serve signup, per-tenant isolation, plan enforcement, Stripe-ready billing, superadmin dashboard)
 > **Rule for contributors:** Update this file after every code change. Add new pages to the Page Structure table, new components to the Component Library, new store shape changes to State Management, etc.
 
 ## Overview
@@ -145,6 +145,7 @@ Accent Pink:       #f472b6
 | `/support` | Support contact form (mailto-based) |
 | `/config` | JSON config editor |
 | `/login` | Custom JWT login — POST `/api/auth/session` → JWT stored in `localStorage` via `getStoredToken()` |
+| `/admin/tenants` | Super-admin tenant management: list all tenants, usage stats, manual provisioning (super_admin only) |
 
 ## Virtual Office
 
@@ -193,11 +194,62 @@ Manages:
 Persistence: Zustand with localStorage (local) + server sync via `/api/state` PUT/GET (remote). Auth token stored via `getStoredToken()` / `setStoredToken()` in `src/lib/auth/browser.ts`.
 
 ### Auth Flow
-1. `POST /api/auth/session` → validates email/bcrypt hash in DB → returns signed JWT
-2. JWT stored in `localStorage` via `setStoredToken()`
-3. `ClientShell` reads token with `getStoredToken()` on mount, fetches `/api/auth/session` (GET) to verify, then `/api/state` to hydrate Zustand
-4. All authenticated API calls pass `Authorization: Bearer <token>` header
-5. Server routes verify JWT with `jose` `jwtVerify()`
+1. `POST /api/auth/session` → validates email/bcrypt hash in DB → returns signed JWT (now includes `tenantId`)
+2. `POST /api/auth/register` → self-serve signup: creates `users` row, `profiles` row, tenant (`agencies`), free `subscriptions` row, then returns JWT with `tenantId`
+3. JWT stored in `localStorage` via `setStoredToken()`
+4. `ClientShell` reads token on mount, fetches `/api/auth/session` (GET) to verify, then `/api/state` to hydrate Zustand
+5. All authenticated API calls pass `Authorization: Bearer <token>` header
+6. Server routes verify JWT with `jose` `jwtVerify()` via `resolveAuthContextFromToken()`
+7. `AuthContext` now carries `{ userId, email, role, providerSettings, tenantId }`
+
+### Multi-Tenant Architecture
+
+Every account belongs to a **tenant** (backed by the `agencies` table). All entity data is scoped by `agency_id` (= `tenant_id`).
+
+#### Database Tables (multi-tenant additions)
+
+| Table | Purpose |
+|-------|---------|
+| `plans` | Seeded plan tiers: free (3 agents), starter (10/$49), growth (25/$99), enterprise (unlimited/$299) |
+| `subscriptions` | One row per tenant. Tracks `plan_id`, `status`, `agent_limit`, `current_agent_count`, Stripe stub fields |
+| `agencies` | Existing table — now also stores `owner_user_id`, `plan_id`, `is_active`. Used as the tenant record |
+| `profiles` | Now has `tenant_id UUID → agencies(id)` — links a user to their tenant |
+| `tenants` view | `CREATE OR REPLACE VIEW tenants AS SELECT ... FROM agencies LEFT JOIN subscriptions` — convenience alias |
+
+#### Key files
+
+| File | Role |
+|------|------|
+| `src/lib/server/tenants.ts` | `createTenant`, `getTenantIdForUser`, `assignUserToTenant`, `canAddAgent`, `syncAgentCount`, `getTenantById` |
+| `src/lib/auth/server.ts` | `AuthContext.tenantId` — resolved from JWT claim → profile row → auto-provision for legacy users |
+| `src/lib/db/relational-sync.ts` | `resolveAgencyId(tenantId?)` — uses `tenantId` when present, falls back to `DEFAULT_AGENCY_SLUG` |
+| `src/lib/db/app-state.ts` | `loadSharedAppState`, `saveSharedAppState`, `saveSharedAppStateDelta` all accept optional `tenantId` |
+| `src/app/api/auth/register/route.ts` | Self-serve signup endpoint |
+| `src/app/api/billing/subscription/route.ts` | GET current plan + agent count |
+| `src/app/api/billing/upgrade/route.ts` | POST to change plan (direct DB now; Stripe checkout when `STRIPE_SECRET_KEY` is set) |
+| `src/app/api/billing/webhook/route.ts` | POST Stripe webhook handler (skeleton — handles checkout.session.completed, subscription.updated/deleted, invoice.payment_failed) |
+| `src/app/api/admin/tenants/route.ts` | GET list all tenants / POST provision tenant (super_admin only) |
+| `src/app/admin/tenants/page.tsx` | Superadmin tenant dashboard UI |
+
+#### Plan enforcement
+
+- `PUT /api/state` with `entityPatch.agents.upserts` triggers `canAddAgent(tenantId)` before writing
+- Returns `HTTP 402` with `{ code: "AGENT_LIMIT_EXCEEDED", limit, current }` when plan is full
+- `syncAgentCount(tenantId)` refreshes `subscriptions.current_agent_count` after every agent mutation
+- Enterprise plan uses `agent_limit = -1` (unlimited)
+
+#### Stripe integration (ready, not wired)
+
+The billing skeleton is complete. To activate Stripe:
+1. Set `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` env vars
+2. Uncomment the Stripe Checkout session block in `/api/billing/upgrade/route.ts`
+3. Uncomment the `stripe.webhooks.constructEvent()` verification in `/api/billing/webhook/route.ts`
+4. Add `stripe_price_id` to each plan row in the DB
+5. Pass `metadata: { tenant_id, plan_id }` in Checkout session creation
+
+#### Backward compatibility
+
+Legacy single-user deployments (no tenant) continue to work: `resolveAgencyId(null)` falls back to `getDefaultAgencyId()` which upserts the `default-agency` slug as before. Existing users get a tenant auto-provisioned on first login if none exists.
 
 ### Deployment
 - Docker multi-stage build: `deps` → `builder` (Next.js standalone) → `runner` (node:20-alpine)
