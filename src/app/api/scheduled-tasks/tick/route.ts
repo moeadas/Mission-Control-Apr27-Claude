@@ -128,7 +128,7 @@ async function runTask(db: any, task: any) {
     })
 
     const output = typeof result === 'string' ? result : (result as any)?.text || String(result)
-    const nextRunAt = computeNextRunAt(task)
+    const nextRunAt = computeNextRunAt(task as any)
 
     await db`
       UPDATE scheduled_tasks

@@ -138,7 +138,7 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
     const output = typeof result === 'string' ? result : (result as any)?.text || String(result)
 
     // Compute next run
-    const nextRunAt = computeNextRunAt(task)
+    const nextRunAt = computeNextRunAt(task as any)
 
     // Persist success
     const [updated] = await db`
