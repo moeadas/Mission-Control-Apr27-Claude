@@ -28,12 +28,10 @@ const nextConfig = {
       },
     ]
   },
+  // Prevent konva (canvas-based) from being bundled server-side
+  serverExternalPackages: ['konva', 'react-konva', 'use-image'],
   turbopack: {
     root: __dirname,
-    resolveAlias: {
-      // Konva ships a Node.js build that requires 'canvas'. Force the browser build everywhere.
-      'konva': 'konva/lib/index-browsers.js',
-    },
   },
   webpack(config) {
     config.resolve.alias['konva'] = 'konva/lib/index-browsers.js'
