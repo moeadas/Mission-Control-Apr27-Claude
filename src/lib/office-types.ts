@@ -1,42 +1,43 @@
 /**
  * office-types.ts — TypeScript interfaces for the Virtual Office Builder
+ * Scale: 1 tile = 50 cm real-world
  */
 
 export interface PlacedTile {
-  id: string          // unique instance UUID
-  assetId: string     // references OfficeFurnitureAsset.id
-  x: number           // grid column (0-indexed, leftmost)
-  y: number           // grid row (0-indexed, topmost)
-  rotation: number    // 0 | 90 | 180 | 270
+  id: string               // unique instance UUID
+  assetId: string          // references OfficeFurnitureAsset.id
+  x: number                // grid column (0-indexed, top-left of bounding box)
+  y: number                // grid row (0-indexed, top-left of bounding box)
+  rotation: number         // 0 | 90 | 180 | 270
+  primaryColor?: string    // overrides asset defaultColor (hex)
+  accentColor?: string     // secondary color override (hex)
+  assignedAgentId?: string // agent assigned to this specific item (desk, chair, etc.)
+  label?: string           // optional custom label e.g. "Moe's Desk"
 }
 
 export interface OfficeZone {
   id: string
   name: string
-  color: string       // hex
-  /** Tile coordinates this zone covers — used for visual painting */
+  color: string  // hex
+  /** Tile coordinates this zone covers — visual area labeling only */
   tiles: Array<{ x: number; y: number }>
-  /** Agent IDs assigned to work in this zone */
-  agentIds: string[]
 }
 
 export interface OfficeLayout {
-  version: 1
-  gridWidth: number    // default 26
-  gridHeight: number   // default 18
-  floorAssetId: string // tile used for empty cells, default 'floor-hardwood'
+  version: 2
+  gridWidth: number     // default 30
+  gridHeight: number    // default 20
+  floorAssetId: string  // asset id for floor tile
   tiles: PlacedTile[]
   zones: OfficeZone[]
-  /** MC Credits balance — stored separately in DB but included in GET response */
   mcCredits?: number
-  /** Asset IDs the tenant has purchased */
   ownedAssets?: string[]
 }
 
 export const DEFAULT_LAYOUT: OfficeLayout = {
-  version: 1,
-  gridWidth: 26,
-  gridHeight: 18,
+  version: 2,
+  gridWidth: 30,
+  gridHeight: 20,
   floorAssetId: 'floor-hardwood',
   tiles: [],
   zones: [],

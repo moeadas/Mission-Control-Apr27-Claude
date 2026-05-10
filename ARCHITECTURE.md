@@ -1,6 +1,6 @@
 # Mission Control — Architecture
 
-> **Last Updated:** 2026-05-10 (Virtual Office Builder — drag-and-place grid, SVG furniture, zone painter, MC Credits; unified solid form UI)
+> **Last Updated:** 2026-05-10 (Virtual Office Builder v2 — Konva.js canvas, drag-to-move, zoom toward cursor, per-item color picker, agent-to-item assignment, 6 templates, undo/redo)
 > **Rule for contributors:** Update this file after every code change. Add new pages to the Page Structure table, new components to the Component Library, new store shape changes to State Management, etc.
 
 ## Overview
@@ -128,7 +128,7 @@ Accent Pink:       #f472b6
 |-------|---------|
 | `/dashboard` | Main command center with agency stats, agent strip, activity feed, Getting Started checklist |
 | `/mission` | Start a Mission hub — plain-language brief input, category prompt starters, routes to IrisChat |
-| `/office` | Virtual Office Builder — 26×18 tile grid, drag-and-place SVG furniture, zone painter, agent assignment, MC Credits |
+| `/office` | Virtual Office Builder — Konva.js canvas, 30×20 tile grid (1 tile = 50 cm), drag-to-move furniture, zoom toward cursor, per-item color + agent assignment, 6 templates, undo/redo |
 | `/agents` | Agent roster; "Add Agent" opens multi-step AgentEditor drawer |
 | `/clients` | Client management |
 | `/tasks` | Task list and mission tracking |
@@ -150,34 +150,54 @@ Accent Pink:       #f472b6
 
 ## Virtual Office Builder
 
-The `/office` page is a fully interactive drag-and-place office builder. Users compose their own floor plan using furniture assets, paint named zones, and assign agents to zones.
+The `/office` page is a Konva.js-powered interactive office builder. Users drag-and-place SVG furniture on a 30×20 tile canvas (1 tile = 50 cm), paint named zones, and assign agents to specific items (desks, chairs).
+
+### Scale & Renderer
+- **1 tile = 50 cm** — all furniture sized realistically (standard desk = 3×2 tiles = 150×100 cm)
+- **Konva.js** (`react-konva`) renders a 3-layer Stage: floor/zones, furniture, UI
+- **SVG assets** loaded as blob URLs via `use-image`; colors tinted at runtime with `tintSvg()`
+- Grid: 30 tiles wide × 20 tiles tall
 
 ### Features
-- **26×18 tile grid** — each tile is 52px; zoom 50%–150%
-- **Asset palette** (left panel) — 31 top-down SVG furniture assets across 6 categories (Desks, Seating, Tables, Storage, Decor, Floors); 20 free, 11 premium (MC Credits required, or superadmin bypass)
-- **Tool modes**: Place, Erase, Zone Paint
-- **Rotation**: 0/90/180/270° for placed items; rotation-aware size swap (w↔h at 90°/270°)
-- **Zone painter** (right panel) — create named color-coded zones, paint floor tiles into zones, assign agents per zone; zone name labels appear on grid
-- **Agent assignment** — agents shown with avatar dots on furniture tiles in their assigned zones
-- **MC Credits** — in-app currency balance shown in palette header; superadmin sees ∞/ALL UNLOCKED
-- **Autosave** — debounced 1.5s after any layout change; persisted to `office_layouts` table
-- **Floor tile selection** — switch floor texture (hardwood, concrete, carpet, etc.) via Floors category
-- Idle agents roam through the central hall using smoother looping motion paths instead of stepped pixel movement
-- Clicking a room focuses that division and shows its roster
-- Clicking an agent opens a live detail panel for that person
-- Uses the shared avatar renderer, so uploaded agent photos appear automatically in the office
-- Office avatars use a frameless variant so uploaded PNG portraits sit directly on the map without rounded card containers
-- The room roster/detail panel lives in a dedicated right-side rail so it does not cover the main floor
-- Rooms show only division names and counts, not descriptive subtitles
-- Furniture and decor are rendered as simple desks, chairs, lounge seating, and plants to keep the map readable without feeling empty
-- The office map is arranged around a calmer central commons so the floor reads more like a natural top-view studio plan than a floating widget layout
+- **Drag-to-move** — placed items draggable with grid snapping (Konva native drag)
+- **Zoom toward cursor** — scroll wheel, Figma-style (scale + offset adjustment around pointer)
+- **Pan** — drag the canvas background when no item placing is active
+- **Rotation** — R key or inspector buttons (0/90/180/270°)
+- **Per-item color picker** — 16 presets + custom color input; stored as `primaryColor` on `PlacedTile`; SVG re-tinted on change
+- **Agent assignment** — assign any agent to assignable tiles (desks, chairs) via inspector dropdown; stored as `assignedAgentId` on `PlacedTile`; agents not zone-locked
+- **Zones** — visual space labeling only; painted tile-by-tile in zone tool mode; no agent restrictions
+- **50-step undo/redo** — Cmd/Ctrl+Z / Cmd/Ctrl+Shift+Z
+- **Delete** key removes selected item; **Arrow keys** nudge by 1 tile
+- **6 starter templates** — Startup Garage (10), Creative Studio (20), Scale-up (30), Tech Company (40), Corporate Floor (60), Coworking Space (50)
+- **LocalStorage auto-save** — layout saved on every change; server save via PUT /api/office-layout
+- **Export/Import JSON** — download/upload raw OfficeLayout JSON
 
-### Room Configuration
-Each room has:
-- Position coordinates (x, y, width, height)
-- Division color for visual identification
-- Agent avatars placed within
-- Agent count indicator
+### Key Files
+| File | Role |
+|------|------|
+| `src/components/office/OfficeBuilder.tsx` | Main Konva canvas component |
+| `src/lib/office-assets.ts` | SVG asset catalog + `tintSvg()` |
+| `src/lib/office-templates.ts` | 6 pre-built OfficeLayout presets |
+| `src/lib/office-types.ts` | `PlacedTile`, `OfficeZone`, `OfficeLayout` interfaces |
+| `src/app/api/office-layout/route.ts` | GET/PUT layout via `office_layouts` DB table |
+| `src/app/office/page.tsx` | Page wrapper with `isSuperAdmin` detection |
+
+### DB Schema (`office_layouts`)
+```sql
+CREATE TABLE office_layouts (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  agency_id   UUID NOT NULL REFERENCES agencies(id) ON DELETE CASCADE UNIQUE,
+  layout      JSONB NOT NULL,
+  mc_credits  INT NOT NULL DEFAULT 0,
+  owned_assets TEXT[] NOT NULL DEFAULT '{}',
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+```
+
+### Agent Assignment Model
+- Agents are assigned to **specific items** (desks, chairs) via `PlacedTile.assignedAgentId`
+- Zones are for visual labeling only — agents can freely communicate across zones
+- `OfficeFurnitureAsset.assignable = true` flags items that support agent assignment
 
 ## State Management
 

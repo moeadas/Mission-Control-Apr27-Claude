@@ -29,6 +29,9 @@
     "pptxgenjs": "^4.0.1",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
+    "konva": "^9.3.6",
+    "react-konva": "^19.0.7",
+    "use-image": "^1.1.1",
     "uuid": "^10.0.0",
     "zustand": "^4.5.4"
   },
