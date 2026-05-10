@@ -10,7 +10,7 @@ import { calculateCost } from '@/config/model-pricing'
 import type { TokenUsage } from '@/lib/server/ai'
 
 export interface TokenLogEntry {
-  tenantId: string
+  tenantId: string | null
   agentId?: string | null
   /** 'chat' | 'scheduled' | 'manual' | 'pipeline' */
   sourceType: string
@@ -22,6 +22,7 @@ export interface TokenLogEntry {
 }
 
 export async function logTokenUsage(db: any, entry: TokenLogEntry): Promise<void> {
+  if (!entry.tenantId) return
   try {
     const costUsd = calculateCost(entry.model, entry.usage.inputTokens, entry.usage.outputTokens)
     await db`
