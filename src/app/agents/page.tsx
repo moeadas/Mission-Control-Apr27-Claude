@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { ClientShell } from '@/components/ClientShell'
 import { AgentCard } from '@/components/agents/AgentCard'
 import { AgentEditor } from '@/components/agents/AgentEditor'
@@ -8,6 +8,13 @@ import { AgentBot } from '@/components/agents/AgentBot'
 import { useAgentsStore } from '@/lib/agents-store'
 import { Plus, Search, Bot, LayoutGrid, GitBranch } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { getStoredToken } from '@/lib/auth/browser'
+
+interface AgentUsage {
+  totalTokens: number
+  totalCostUsd: number
+  runCount: number
+}
 
 // ─── Org Chart Component ───────────────────────────────────────────────────
 
@@ -179,6 +186,31 @@ export default function AgentsPage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<string>('all')
   const [viewMode, setViewMode] = useState<'grid' | 'org'>('grid')
+  const [agentUsageMap, setAgentUsageMap] = useState<Record<string, AgentUsage>>({})
+
+  useEffect(() => {
+    const token = getStoredToken()
+    if (!token) return
+    fetch('/api/token-usage?period=30d', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data?.byAgent) return
+        const map: Record<string, AgentUsage> = {}
+        for (const entry of data.byAgent) {
+          if (entry.agent_id) {
+            map[entry.agent_id] = {
+              totalTokens: entry.total_tokens,
+              totalCostUsd: parseFloat(entry.total_cost_usd),
+              runCount: entry.run_count,
+            }
+          }
+        }
+        setAgentUsageMap(map)
+      })
+      .catch(() => {})
+  }, [])
 
   const filtered = agents.filter((a) => {
     const matchSearch =
@@ -297,6 +329,7 @@ export default function AgentsPage() {
                     key={agent.id}
                     agent={agent}
                     onEdit={() => openEditor(agent.id)}
+                    tokenUsage={agentUsageMap[agent.id]}
                   />
                 ))}
               </div>

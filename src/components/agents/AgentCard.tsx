@@ -7,6 +7,7 @@ import { Agent } from '@/lib/types'
 import { AgentBot } from './AgentBot'
 import { DIVISION_LABELS } from '@/lib/bot-animations'
 import { useAgentsStore } from '@/lib/agents-store'
+import { formatCost, formatTokens } from '@/config/model-pricing'
 
 const STATUS_CONFIG = {
   active: { label: 'Active', color: '#00d4aa' },
@@ -14,12 +15,19 @@ const STATUS_CONFIG = {
   paused: { label: 'Paused', color: '#555b73' },
 }
 
+interface AgentUsage {
+  totalTokens: number
+  totalCostUsd: number
+  runCount: number
+}
+
 interface AgentCardProps {
   agent: Agent
   onEdit?: () => void
+  tokenUsage?: AgentUsage
 }
 
-export function AgentCard({ agent, onEdit }: AgentCardProps) {
+export function AgentCard({ agent, onEdit, tokenUsage }: AgentCardProps) {
   const missions = useAgentsStore((state) => state.missions)
   const artifacts = useAgentsStore((state) => state.artifacts)
   const accentStrong = agent.color
@@ -69,7 +77,16 @@ export function AgentCard({ agent, onEdit }: AgentCardProps) {
         <div className="absolute inset-x-[12%] bottom-[24%] h-24 rounded-full bg-black/10 blur-2xl" />
         <div className="relative flex h-full flex-col">
           <div className="flex items-start justify-between">
-            <div />
+            {tokenUsage && tokenUsage.totalCostUsd > 0 ? (
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-black/20 px-2.5 py-1 text-[10px] font-mono text-white/80 backdrop-blur-sm">
+                <span className="text-[#00d4aa]">$</span>
+                {formatCost(tokenUsage.totalCostUsd).replace('$', '')}
+                <span className="text-white/50">·</span>
+                {formatTokens(tokenUsage.totalTokens)}
+              </div>
+            ) : (
+              <div />
+            )}
             <div className="inline-flex items-center gap-2 rounded-full bg-white/18 px-3 py-1.5 text-[10px] font-mono uppercase tracking-[0.16em] text-white/90 backdrop-blur-sm">
               <span className="h-2 w-2 rounded-full bg-white/80 shadow-[0_0_10px_rgba(255,255,255,0.6)]" />
               {completedTasksCount} completed
@@ -92,6 +109,9 @@ export function AgentCard({ agent, onEdit }: AgentCardProps) {
             <h3 className="truncate text-2xl font-black tracking-[-0.03em] text-white">{agent.name}</h3>
             <p className="mt-1 line-clamp-2 text-sm italic leading-6 text-white">{agent.role}</p>
             <p className="mt-1 text-sm font-semibold text-white">{divisionLabel}</p>
+            {agent.model && (
+              <p className="mt-1 text-[10px] text-white/60 font-mono">{agent.model}</p>
+            )}
 
             <button
               type="button"

@@ -4,16 +4,18 @@
  * Called every minute by a VPS crontab:
  *   * * * * * curl -sf -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/scheduled-tasks/tick
  *
- * Finds all active tasks whose next_run_at <= now, then fires each one by
- * calling the /run endpoint internally so all execution logic stays in one place.
+ * Finds all active tasks whose next_run_at <= now, then fires each one.
+ * Uses the agent's assigned provider/model as priority 0 in routing.
+ * Logs token usage after each run.
  *
  * Auth: Bearer token must match CRON_SECRET env var.
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db/client'
-import { generateText } from '@/lib/server/ai'
+import { generateTextWithUsage } from '@/lib/server/ai'
 import { normalizeProviderSettings, resolveTaskRuntime } from '@/lib/provider-settings'
 import { loadPersistedProviderSettings } from '@/lib/server/provider-secrets'
+import { logTokenUsage } from '@/lib/server/token-logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -83,7 +85,6 @@ function computeNextRunAt(task: {
 }
 
 async function runTask(db: any, task: any) {
-  // Mark as running
   await db`UPDATE scheduled_tasks SET last_run_at = now(), updated_at = now() WHERE id = ${task.id}`
 
   try {
@@ -105,15 +106,22 @@ async function runTask(db: any, task: any) {
     const ownerUserId = ownerProfile?.id || null
     const savedSettings = ownerUserId ? await loadPersistedProviderSettings(ownerUserId) : null
     const settings = normalizeProviderSettings(savedSettings || {})
-    const { provider, model } = resolveTaskRuntime({ settings, deliverableType: task.task_type })
+
+    // Agent's assigned provider/model is highest priority
+    const { provider, model } = resolveTaskRuntime({
+      settings,
+      deliverableType: task.task_type,
+      agentProvider: agent?.provider ?? null,
+      agentModel: agent?.model ?? null,
+    })
 
     const systemPrompt = buildAgentSystemPrompt(agent, task.task_type)
 
-    const result = await generateText({
+    const { text: output, usage } = await generateTextWithUsage({
       provider,
       model,
-      temperature: 0.7,
-      maxTokens: 4096,
+      temperature: agent?.temperature ?? 0.7,
+      maxTokens: agent?.max_tokens ?? 4096,
       ollamaBaseUrl: settings?.ollama?.baseUrl,
       ollamaContextWindow: settings?.ollama?.contextWindow,
       ollamaApiKey: settings?.ollama?.apiKey,
@@ -127,7 +135,17 @@ async function runTask(db: any, task: any) {
       ],
     })
 
-    const output = typeof result === 'string' ? result : (result as any)?.text || String(result)
+    // Log token usage (swallows errors)
+    logTokenUsage(db, {
+      tenantId: task.tenant_id,
+      agentId: task.agent_id ?? null,
+      sourceType: 'scheduled',
+      sourceId: task.id,
+      provider,
+      model,
+      usage,
+    })
+
     const nextRunAt = computeNextRunAt(task as any)
 
     await db`
@@ -165,7 +183,6 @@ export async function GET(req: NextRequest) {
   try {
     const db = getDb()
 
-    // Claim all due tasks atomically — set next_run_at to null to prevent double-fire
     const due = await db`
       UPDATE scheduled_tasks
       SET next_run_at = NULL

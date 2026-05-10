@@ -10,6 +10,7 @@ import type { AgencyDivision, AgentSpecialty } from '@/lib/types'
 import { getStoredToken } from '@/lib/auth/browser'
 import { getAgentArchitectureBundle, getAgentMemoryNote, getAgentSourceOfTruthPath, getProviderRoutingNote } from '@/lib/agent-architecture'
 import { v4 as uuidv4 } from 'uuid'
+import { MODEL_CATALOG } from '@/config/model-pricing'
 
 interface AgentEditorProps {
   agentId: string | null
@@ -17,6 +18,15 @@ interface AgentEditorProps {
 }
 
 const DIVISIONS: AgencyDivision[] = ['orchestration', 'client-services', 'creative', 'media', 'research', 'strategy']
+
+const PROVIDERS = [
+  { id: 'anthropic' as const, label: 'Anthropic', color: '#cc785c' },
+  { id: 'openai' as const, label: 'OpenAI', color: '#10a37f' },
+  { id: 'gemini' as const, label: 'Gemini', color: '#4285f4' },
+  { id: 'ollama' as const, label: 'Ollama (Local)', color: '#888888' },
+]
+
+type AIProvider = 'anthropic' | 'openai' | 'gemini' | 'ollama'
 const DIVISION_COLORS: Record<string, string> = {
   orchestration: '#a78bfa',
   'client-services': '#4f8ef7',
@@ -47,6 +57,8 @@ type FormData = {
   systemPrompt: string
   temperature: number
   maxTokens: number
+  provider: AIProvider
+  model: string
 }
 
 const DEFAULT_FORM: FormData = {
@@ -63,6 +75,8 @@ const DEFAULT_FORM: FormData = {
   systemPrompt: '',
   temperature: 0.7,
   maxTokens: 1536,
+  provider: 'gemini',
+  model: 'gemini-2.5-flash',
 }
 
 export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
@@ -109,6 +123,8 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
         systemPrompt: agent.systemPrompt || '',
         temperature: agent.temperature || 0.7,
         maxTokens: agent.maxTokens || 1536,
+        provider: (agent.provider as AIProvider) || 'gemini',
+        model: agent.model || 'gemini-2.5-flash',
       })
       setPhotoPreviewUrl(agent.photoUrl || null)
       latestPhotoUrlRef.current = agent.photoUrl || ''
@@ -164,8 +180,8 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
           systemPrompt: formData.systemPrompt,
           temperature: formData.temperature,
           maxTokens: formData.maxTokens,
-          provider: 'gemini',
-          model: 'gemini-2.5-flash',
+          provider: formData.provider,
+          model: formData.model,
           status: 'active',
           primaryOutputs: [],
           position: { x: 200, y: 200, room: 'creative' },
@@ -193,6 +209,8 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
           systemPrompt: formData.systemPrompt,
           temperature: formData.temperature,
           maxTokens: formData.maxTokens,
+          provider: formData.provider,
+          model: formData.model,
         })
 
         try {
@@ -633,6 +651,75 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
           {/* ── Step 3: AI Config ── */}
           {currentStepName === 'config' && (
             <>
+              {/* Provider selector */}
+              <div>
+                <label className="block text-sm font-medium mb-1 text-text-primary">AI Provider</label>
+                <p className="text-xs text-text-dim mb-2">Which provider this agent uses. Must have an API key configured in Settings.</p>
+                <div className="flex gap-2 flex-wrap">
+                  {PROVIDERS.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => {
+                        const defaultModel = MODEL_CATALOG.find((m) => m.provider === p.id)?.id || ''
+                        setFormData((prev) => ({ ...prev, provider: p.id, model: defaultModel }))
+                      }}
+                      className="px-4 py-2 rounded-xl text-sm font-medium transition-all"
+                      style={{
+                        backgroundColor: formData.provider === p.id ? p.color + '20' : 'var(--bg-elevated)',
+                        color: formData.provider === p.id ? p.color : 'var(--text-secondary)',
+                        border: `1px solid ${formData.provider === p.id ? p.color : 'var(--border)'}`,
+                      }}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Model selector */}
+              <div>
+                <label className="block text-sm font-medium mb-1 text-text-primary">Model</label>
+                <p className="text-xs text-text-dim mb-2">
+                  {formData.provider === 'ollama'
+                    ? 'Local model — free, runs on your machine'
+                    : 'More capable models cost more per token'}
+                </p>
+                <div className="space-y-1.5">
+                  {MODEL_CATALOG.filter((m) => m.provider === formData.provider).map((m) => {
+                    const tierColors: Record<string, string> = {
+                      powerful: '#cc785c',
+                      balanced: '#9b6dff',
+                      fast: '#00d4aa',
+                      local: '#888888',
+                    }
+                    const tierColor = tierColors[m.tier] || '#888'
+                    const isSelected = formData.model === m.id
+                    return (
+                      <button
+                        key={m.id}
+                        onClick={() => setFormData((prev) => ({ ...prev, model: m.id }))}
+                        className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-sm transition-all text-left"
+                        style={{
+                          backgroundColor: isSelected ? tierColor + '14' : 'var(--bg-elevated)',
+                          border: `1px solid ${isSelected ? tierColor : 'var(--border)'}`,
+                        }}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <span
+                            className="w-2 h-2 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: tierColor }}
+                          />
+                          <span className={isSelected ? 'font-medium' : ''} style={{ color: isSelected ? tierColor : 'var(--text-primary)' }}>
+                            {m.label}
+                          </span>
+                        </div>
+                        <span className="text-xs text-text-dim ml-3 text-right shrink-0">{m.note}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1 text-text-primary">Temperature</label>
@@ -705,6 +792,12 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
                     <p className="font-bold text-[#00d4aa]">{formData.responsibilities.length}</p>
                     <p className="text-text-dim">Tasks</p>
                   </div>
+                </div>
+                <div className="mt-3 pt-3 border-t border-border flex items-center justify-between text-xs">
+                  <span className="text-text-dim">Model</span>
+                  <span className="font-medium text-text-primary">
+                    {MODEL_CATALOG.find((m) => m.id === formData.model)?.label || formData.model || '—'}
+                  </span>
                 </div>
               </div>
             </>

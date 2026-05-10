@@ -303,6 +303,26 @@ CREATE TABLE IF NOT EXISTS scheduled_tasks (
 CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_tenant_id   ON scheduled_tasks (tenant_id);
 CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_next_run_at ON scheduled_tasks (next_run_at) WHERE status = 'active';
 
+-- ─── Token Usage ─────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS token_usage (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id     UUID NOT NULL REFERENCES agencies(id) ON DELETE CASCADE,
+  agent_id      TEXT,
+  source_type   TEXT NOT NULL DEFAULT 'chat',
+  source_id     TEXT,
+  provider      TEXT NOT NULL,
+  model         TEXT NOT NULL,
+  input_tokens  INT NOT NULL DEFAULT 0,
+  output_tokens INT NOT NULL DEFAULT 0,
+  total_tokens  INT NOT NULL DEFAULT 0,
+  cost_usd      NUMERIC(12, 8) NOT NULL DEFAULT 0,
+  created_at    TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_token_usage_tenant_id  ON token_usage(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_token_usage_agent_id   ON token_usage(agent_id) WHERE agent_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_token_usage_created_at ON token_usage(created_at DESC);
+
 -- ─── Indexes ───────────────────────────────────────────────────────────────
 CREATE INDEX IF NOT EXISTS idx_agents_agency_id        ON agents        (agency_id);
 CREATE INDEX IF NOT EXISTS idx_clients_agency_id       ON clients       (agency_id);

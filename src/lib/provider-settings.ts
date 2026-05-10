@@ -251,8 +251,28 @@ export function resolveTaskRuntime(input: {
   deliverableType?: string
   requestedProvider?: AIProvider
   requestedModel?: string
+  /** Agent's explicitly assigned provider — takes priority over all routing logic */
+  agentProvider?: AIProvider | null
+  /** Agent's explicitly assigned model — used when agentProvider is set */
+  agentModel?: string | null
 }) {
   const settings = normalizeProviderSettings(input.settings)
+
+  // Priority 0: agent has an explicit provider assigned and it's configured
+  if (input.agentProvider && input.agentProvider !== 'ollama' && providerIsConfigured(settings, input.agentProvider)) {
+    return {
+      provider: input.agentProvider,
+      model: input.agentModel || resolveProviderModel(settings, input.agentProvider),
+    }
+  }
+  // Ollama is always "configured" (no API key needed), so handle separately
+  if (input.agentProvider === 'ollama') {
+    return {
+      provider: 'ollama' as AIProvider,
+      model: input.agentModel || resolveProviderModel(settings, 'ollama'),
+    }
+  }
+
   const runtimeMode = settings.routing.runtimeMode || 'fast'
   const contentFirst =
     input.deliverableType && CONTENT_GENERATION_DELIVERABLE_TYPES.has(input.deliverableType)

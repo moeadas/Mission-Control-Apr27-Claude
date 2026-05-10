@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import {
   buildExecutionPrompt,
   generateText,
+  generateTextWithUsage,
   getFriendlyProviderError,
   inferDeliverableType,
   inferRoutingContext,
@@ -9,6 +10,7 @@ import {
   inferPipeline,
   getServerDeliverableSpec,
 } from '@/lib/server/ai'
+import { logTokenUsage } from '@/lib/server/token-logger'
 import { isConversationalMessage } from '@/lib/intents/intent-classifier'
 import { buildTaskExecutionPlan } from '@/lib/task-output'
 import { executeAutonomousTask } from '@/lib/server/autonomous-task'
@@ -721,13 +723,23 @@ Orchestration trace:
         renderedHtmlFromTask = result.renderedHtml
         creativeFromTask = result.creative
       } else {
-        responseText = await generateText({
+        const { text: statusText, usage: statusUsage } = await generateTextWithUsage({
           provider: actualProvider,
           model: actualModel,
           temperature,
           maxTokens,
           messages: [...chatMessages],
           ...providerKeys,
+        })
+        responseText = statusText
+        logTokenUsage(db, {
+          tenantId: auth.tenantId,
+          agentId: channelingPlan?.leadAgentId ?? null,
+          sourceType: 'chat',
+          sourceId: missionId ?? null,
+          provider: actualProvider,
+          model: actualModel,
+          usage: statusUsage,
         })
       }
     } catch (error) {
@@ -807,13 +819,23 @@ Orchestration trace:
         renderedHtmlFromTask = result.renderedHtml
         creativeFromTask = result.creative
       } else {
-        responseText = await generateText({
+        const { text: fallbackText, usage: fallbackUsage } = await generateTextWithUsage({
           provider: actualProvider,
           model: actualModel,
           temperature,
           maxTokens,
           messages: [...chatMessages],
           ...providerKeys,
+        })
+        responseText = fallbackText
+        logTokenUsage(db, {
+          tenantId: auth.tenantId,
+          agentId: channelingPlan?.leadAgentId ?? null,
+          sourceType: 'chat',
+          sourceId: missionId ?? null,
+          provider: actualProvider,
+          model: actualModel,
+          usage: fallbackUsage,
         })
       }
     }

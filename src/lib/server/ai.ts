@@ -228,7 +228,18 @@ function normalizeProviderError(provider: AIProvider, status: number, rawText: s
   return new ProviderError(provider, message, { status, code })
 }
 
-export async function generateText(input: {
+export interface TokenUsage {
+  inputTokens: number
+  outputTokens: number
+  totalTokens: number
+}
+
+export interface GenerateTextResult {
+  text: string
+  usage: TokenUsage
+}
+
+type GenerateTextInput = {
   provider: AIProvider
   model: string
   messages: Message[]
@@ -242,7 +253,13 @@ export async function generateText(input: {
   openAiApiKey?: string
   openAiBaseUrl?: string
   timeoutMs?: number
-}) {
+}
+
+/**
+ * generateTextWithUsage — full result including token usage for cost tracking.
+ * Use this in execution paths (chat, /run, /tick) where you want to log tokens.
+ */
+export async function generateTextWithUsage(input: GenerateTextInput): Promise<GenerateTextResult> {
   // Bumped both defaults to 120s. Content-heavy chunks (calendar posts,
   // long copy) regularly need 60s+ on Ollama; Gemini's previous 45s was
   // tripping abort errors on /tasks/<id> retries before the model finished
@@ -292,10 +309,13 @@ export async function generateText(input: {
     }
 
     const data = await response.json()
-    return (data.content as Array<{ type: string; text?: string }>)
+    const text = (data.content as Array<{ type: string; text?: string }>)
       ?.filter((b) => b.type === 'text')
       .map((b) => b.text || '')
       .join('') || ''
+    const inputTokens = data.usage?.input_tokens ?? 0
+    const outputTokens = data.usage?.output_tokens ?? 0
+    return { text, usage: { inputTokens, outputTokens, totalTokens: inputTokens + outputTokens } }
   }
 
   // ── OpenAI ───────────────────────────────────────────────────────────────────
@@ -335,7 +355,10 @@ export async function generateText(input: {
     }
 
     const data = await response.json()
-    return data.choices?.[0]?.message?.content || ''
+    const text = data.choices?.[0]?.message?.content || ''
+    const inputTokens = data.usage?.prompt_tokens ?? 0
+    const outputTokens = data.usage?.completion_tokens ?? 0
+    return { text, usage: { inputTokens, outputTokens, totalTokens: inputTokens + outputTokens } }
   }
 
   if (input.provider === 'gemini') {
@@ -403,7 +426,9 @@ export async function generateText(input: {
     const data = await response.json()
     const text =
       data.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text || '').join('') || ''
-    return text
+    const inputTokens = data.usageMetadata?.promptTokenCount ?? 0
+    const outputTokens = data.usageMetadata?.candidatesTokenCount ?? 0
+    return { text, usage: { inputTokens, outputTokens, totalTokens: inputTokens + outputTokens } }
   }
 
   // Priority: per-user setting → OLLAMA_BASE_URL env var → localhost fallback
@@ -483,7 +508,20 @@ export async function generateText(input: {
   }
 
   const data = await response.json()
-  return data.message?.content || ''
+  const text = data.message?.content || ''
+  const inputTokens = data.prompt_eval_count ?? 0
+  const outputTokens = data.eval_count ?? 0
+  return { text, usage: { inputTokens, outputTokens, totalTokens: inputTokens + outputTokens } }
+}
+
+/**
+ * generateText — backward-compatible wrapper.
+ * All existing callers that only need the text string can keep using this.
+ * New code that needs token tracking should use generateTextWithUsage().
+ */
+export async function generateText(input: GenerateTextInput): Promise<string> {
+  const result = await generateTextWithUsage(input)
+  return result.text
 }
 
 export function getFriendlyProviderError(error: unknown) {

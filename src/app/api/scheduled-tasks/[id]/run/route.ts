@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db/client'
 import { resolveAuthContextFromToken } from '@/lib/auth/server'
-import { generateText } from '@/lib/server/ai'
+import { generateTextWithUsage } from '@/lib/server/ai'
 import { normalizeProviderSettings, resolveTaskRuntime } from '@/lib/provider-settings'
+import { logTokenUsage } from '@/lib/server/token-logger'
 // auth.providerSettings is already loaded from provider-secrets in resolveAuthContextFromToken
 
 function getBearerToken(req: NextRequest) {
@@ -111,17 +112,22 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
       agent = a || null
     }
 
-    // Resolve provider settings from auth
+    // Resolve provider settings — agent's assigned provider/model takes priority
     const settings = normalizeProviderSettings(auth.providerSettings)
-    const { provider, model } = resolveTaskRuntime({ settings, deliverableType: task.task_type })
+    const { provider, model } = resolveTaskRuntime({
+      settings,
+      deliverableType: task.task_type,
+      agentProvider: agent?.provider ?? null,
+      agentModel: agent?.model ?? null,
+    })
 
     const systemPrompt = buildAgentSystemPrompt(agent, task.task_type)
 
-    const result = await generateText({
+    const { text: output, usage } = await generateTextWithUsage({
       provider,
       model,
-      temperature: 0.7,
-      maxTokens: 4096,
+      temperature: agent?.temperature ?? 0.7,
+      maxTokens: agent?.max_tokens ?? 4096,
       ollamaBaseUrl: settings?.ollama?.baseUrl,
       ollamaContextWindow: settings?.ollama?.contextWindow,
       ollamaApiKey: settings?.ollama?.apiKey,
@@ -135,7 +141,16 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
       ],
     })
 
-    const output = typeof result === 'string' ? result : (result as any)?.text || String(result)
+    // Log token usage (fire-and-forget, never blocks)
+    logTokenUsage(db, {
+      tenantId: auth.tenantId,
+      agentId: task.agent_id ?? null,
+      sourceType: 'scheduled',
+      sourceId: task.id,
+      provider,
+      model,
+      usage,
+    })
 
     // Compute next run
     const nextRunAt = computeNextRunAt(task as any)
@@ -155,7 +170,7 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
       RETURNING *
     `
 
-    return NextResponse.json({ task: updated, output })
+    return NextResponse.json({ task: updated, output, usage })
   } catch (err: any) {
     const errMsg = err?.message || 'Unknown execution error'
     console.error('[scheduled-tasks/run]', errMsg)
