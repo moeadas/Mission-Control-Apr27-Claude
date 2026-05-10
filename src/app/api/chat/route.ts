@@ -732,7 +732,7 @@ Orchestration trace:
           ...providerKeys,
         })
         responseText = statusText
-        logTokenUsage(db, {
+        logTokenUsage(getDb(), {
           tenantId: auth.tenantId,
           agentId: channelingPlan?.leadAgentId ?? null,
           sourceType: 'chat',
@@ -828,7 +828,7 @@ Orchestration trace:
           ...providerKeys,
         })
         responseText = fallbackText
-        logTokenUsage(db, {
+        logTokenUsage(getDb(), {
           tenantId: auth.tenantId,
           agentId: channelingPlan?.leadAgentId ?? null,
           sourceType: 'chat',
