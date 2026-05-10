@@ -77,16 +77,12 @@ export function AgentCard({ agent, onEdit, tokenUsage }: AgentCardProps) {
         <div className="absolute inset-x-[12%] bottom-[24%] h-24 rounded-full bg-black/10 blur-2xl" />
         <div className="relative flex h-full flex-col">
           <div className="flex items-start justify-between">
-            {tokenUsage && tokenUsage.totalCostUsd > 0 ? (
-              <div className="inline-flex items-center gap-1.5 rounded-full bg-black/20 px-2.5 py-1 text-[10px] font-mono text-white/80 backdrop-blur-sm">
-                <span className="text-[#00d4aa]">$</span>
-                {formatCost(tokenUsage.totalCostUsd).replace('$', '')}
-                <span className="text-white/50">·</span>
-                {formatTokens(tokenUsage.totalTokens)}
-              </div>
-            ) : (
-              <div />
-            )}
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-black/20 px-2.5 py-1 text-[10px] font-mono text-white/80 backdrop-blur-sm">
+              <span className="text-[#00d4aa]">$</span>
+              {tokenUsage ? formatCost(tokenUsage.totalCostUsd).replace('$', '') : '0.00'}
+              <span className="text-white/50">·</span>
+              {tokenUsage ? formatTokens(tokenUsage.totalTokens) : '0'}
+            </div>
             <div className="inline-flex items-center gap-2 rounded-full bg-white/18 px-3 py-1.5 text-[10px] font-mono uppercase tracking-[0.16em] text-white/90 backdrop-blur-sm">
               <span className="h-2 w-2 rounded-full bg-white/80 shadow-[0_0_10px_rgba(255,255,255,0.6)]" />
               {completedTasksCount} completed
