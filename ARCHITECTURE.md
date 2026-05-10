@@ -1,6 +1,6 @@
 # Mission Control — Architecture
 
-> **Last Updated:** 2026-05-09 (multi-tenant SaaS foundation + Scheduled Tasks backend + Client Asset uploads with document text extraction)
+> **Last Updated:** 2026-05-10 (token usage tracking + per-agent model selection)
 > **Rule for contributors:** Update this file after every code change. Add new pages to the Page Structure table, new components to the Component Library, new store shape changes to State Management, etc.
 
 ## Overview
@@ -24,7 +24,8 @@ Current practical model:
 - **Auth**: Custom JWT (jose, HS256) + bcryptjs — no Supabase, no third-party auth service
 - **Database**: PostgreSQL via postgres.js tagged template literals (no ORM)
 - **Icons**: Lucide React
-- **AI Providers**: Ollama (local), Google Gemini
+- **AI Providers**: Anthropic, OpenAI, Google Gemini, Ollama (local) — per-agent model selection supported
+- **Token Tracking**: `token_usage` DB table; `generateTextWithUsage()` captures input/output tokens; `logTokenUsage()` fire-and-forget logger; `/api/token-usage` endpoint returns 30d summary, byAgent, byModel
 
 ## Design System
 
@@ -1268,6 +1269,31 @@ Migration: `supabase/migrations/20260509_scheduled_tasks.sql`
 * * * * * curl -sf -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/scheduled-tasks/tick >> /tmp/cron-tick.log 2>&1
 ```
 Set `CRON_SECRET` in `/opt/mission-control/.env.local`.
+
+---
+
+## Token Usage Tracking
+
+### Overview
+Every AI generation call now captures token counts and estimated cost, stored in the `token_usage` table and surfaced in the UI.
+
+### Key Files
+- `src/config/model-pricing.ts` — pricing table for all models, `calculateCost()`, `formatCost()`, `formatTokens()`, `MODEL_CATALOG` (for UI pickers)
+- `src/lib/server/ai.ts` — `generateTextWithUsage()` returns `{ text, usage: TokenUsage }` with per-provider token extraction; `generateText()` is a backward-compatible thin wrapper
+- `src/lib/server/token-logger.ts` — `logTokenUsage(db, entry)` fire-and-forget insert (errors swallowed)
+- `src/app/api/token-usage/route.ts` — `GET /api/token-usage?period=7d|30d|all&agentId=<optional>` returns `{ summary, byAgent, byModel, recent }`
+
+### DB Table
+`token_usage` — Columns: `id`, `tenant_id`, `agent_id`, `source_type` (chat/scheduled), `source_id`, `provider`, `model`, `input_tokens`, `output_tokens`, `total_tokens`, `cost_usd`, `created_at`.
+
+Migration: `supabase/migrations/20260509_token_usage.sql`
+
+### Provider/Model Priority in resolveTaskRuntime
+Added Priority 0: if the agent has an assigned `provider`+`model`, those are used first, before any task-type routing logic. This allows fine-grained model assignment per agent (e.g. powerful model for research, fast model for social posts).
+
+### UI
+- **Agent Editor** Step 3 (AI Config): provider selector (Anthropic / OpenAI / Gemini / Ollama) + model picker using `MODEL_CATALOG`. Provider/model saved on agent record.
+- **Agent Cards** (`/agents`): cost badge (30d spend) + model name shown per card, fetched from `/api/token-usage`.
 
 ### `computeNextRunAt` Logic (server-side)
 - **daily**: next occurrence of `time_hour:time_minute` (advances by 1 day if already past today's window)
