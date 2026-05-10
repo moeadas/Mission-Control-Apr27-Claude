@@ -1,6 +1,6 @@
 # Mission Control — Architecture
 
-> **Last Updated:** 2026-05-10 (unified solid form UI — eliminated glass bleed on all modals)
+> **Last Updated:** 2026-05-10 (Virtual Office Builder — drag-and-place grid, SVG furniture, zone painter, MC Credits; unified solid form UI)
 > **Rule for contributors:** Update this file after every code change. Add new pages to the Page Structure table, new components to the Component Library, new store shape changes to State Management, etc.
 
 ## Overview
@@ -128,7 +128,7 @@ Accent Pink:       #f472b6
 |-------|---------|
 | `/dashboard` | Main command center with agency stats, agent strip, activity feed, Getting Started checklist |
 | `/mission` | Start a Mission hub — plain-language brief input, category prompt starters, routes to IrisChat |
-| `/office` | Minimal virtual office workspace with seated active agents and roaming idle agents |
+| `/office` | Virtual Office Builder — 26×18 tile grid, drag-and-place SVG furniture, zone painter, agent assignment, MC Credits |
 | `/agents` | Agent roster; "Add Agent" opens multi-step AgentEditor drawer |
 | `/clients` | Client management |
 | `/tasks` | Task list and mission tracking |
@@ -148,14 +148,20 @@ Accent Pink:       #f472b6
 | `/login` | Custom JWT login — POST `/api/auth/session` → JWT stored in `localStorage` via `getStoredToken()` |
 | `/admin/tenants` | Super-admin tenant management: list all tenants, usage stats, manual provisioning (super_admin only) |
 
-## Virtual Office
+## Virtual Office Builder
 
-The `/office` page now uses a lighter minimalist workspace inspired by isometric office layouts rather than the older game-map treatment.
+The `/office` page is a fully interactive drag-and-place office builder. Users compose their own floor plan using furniture assets, paint named zones, and assign agents to zones.
 
 ### Features
-- Top-down 2D floor-map layout with a simplified, calmer floor-plan treatment inspired by retro office maps
-- Division rooms for Orchestration, Client Services, Creative, Media, and Research
-- Active and paused agents sit inside their assigned rooms
+- **26×18 tile grid** — each tile is 52px; zoom 50%–150%
+- **Asset palette** (left panel) — 31 top-down SVG furniture assets across 6 categories (Desks, Seating, Tables, Storage, Decor, Floors); 20 free, 11 premium (MC Credits required, or superadmin bypass)
+- **Tool modes**: Place, Erase, Zone Paint
+- **Rotation**: 0/90/180/270° for placed items; rotation-aware size swap (w↔h at 90°/270°)
+- **Zone painter** (right panel) — create named color-coded zones, paint floor tiles into zones, assign agents per zone; zone name labels appear on grid
+- **Agent assignment** — agents shown with avatar dots on furniture tiles in their assigned zones
+- **MC Credits** — in-app currency balance shown in palette header; superadmin sees ∞/ALL UNLOCKED
+- **Autosave** — debounced 1.5s after any layout change; persisted to `office_layouts` table
+- **Floor tile selection** — switch floor texture (hardwood, concrete, carpet, etc.) via Floors category
 - Idle agents roam through the central hall using smoother looping motion paths instead of stepped pixel movement
 - Clicking a room focuses that division and shows its roster
 - Clicking an agent opens a live detail panel for that person
@@ -752,9 +758,12 @@ How it works:
 - `MissionQueue` - Active tasks
 
 ### Office Components
-- `OfficeFloor` - Minimal platform-based office renderer
-  - division platforms with soft layered surfaces
-  - seated desk occupancy for active agents
+- `OfficeBuilder` — full office builder UI (replaces OfficeFloor)
+  - props: `{ isSuperAdmin?: boolean }`
+  - grid canvas with floor tiles, zone overlays, furniture SVGs, agent dots
+  - left panel: category tabs + asset grid with lock/star/crown indicators
+  - right panel: Zones tab (add/rename/delete/paint/assign) + Agents tab (status view)
+  - bottom bar: hint strip + selected tile info + remove button
   - roaming commons paths for idle agents
   - room roster and selected-agent detail panel
 
@@ -890,14 +899,13 @@ All modals and dialogs use a shared set of CSS classes from `src/styles/globals.
 
 ## Office Experience
 
-- `src/components/office/OfficeFloor.tsx` now renders as a connected architectural floor plate with attached rooms and shared corridor spines
-- The office layout is intentionally flatter and cleaner, closer to a signage-grade top-view floor map than floating cards
-- Division names are rendered as one-line sign-style headers so labels stay clear of desks, chairs, and avatars and read more like room signage
-- Room frames now use soft architectural edges and light borders instead of heavy dark outlines
-- The office floor now carries a subtle light-gray tile grid across the full floor plate instead of isolated central path shapes
-- Furniture and greenery are intentionally simplified toward a minimalist top-view office language instead of decorative icon shapes
-- Active and paused agents are seated inside room seats that belong to their assigned division
-- Idle agents roam through corridor paths using smoother long-form motion loops
+- `src/components/office/OfficeBuilder.tsx` — the interactive office builder (replaced OfficeFloor)
+- Layout state is persisted to `office_layouts` DB table (per-tenant, JSONB), loaded on mount, autosaved on change
+- `occupiedMap: Map<cellKey, tileId>` — O(1) collision detection for placement validation
+- `zoneMap: Map<cellKey, zoneId>` — used for zone color overlays and agent-dot rendering
+- `previewCells` — cells the hovered asset would occupy; highlighted green (valid) or red (blocked/OOB)
+- `isAssetUnlocked(asset, isSuperAdmin, ownedAssets)` — free always unlocked; premium requires ownership or superadmin flag
+- `ZONE_COLORS` — 8-color palette cycling for new zones
 - The right-side detail rail shows the selected room and live agent roster from shared app state
 
 ## Agent Cards
@@ -1297,6 +1305,37 @@ Set `CRON_SECRET` in `/opt/mission-control/.env.local`.
 
 ---
 
+## Office Layouts DB
+
+### Table: `office_layouts`
+```sql
+CREATE TABLE IF NOT EXISTS office_layouts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL REFERENCES tenants(id),
+  layout jsonb NOT NULL DEFAULT '{"version":1,"gridWidth":26,"gridHeight":18,"floorAssetId":"floor-hardwood","tiles":[],"zones":[]}',
+  mc_credits integer NOT NULL DEFAULT 0,
+  owned_assets text[] NOT NULL DEFAULT '{}',
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now(),
+  UNIQUE(tenant_id)
+);
+```
+
+### API
+- `GET /api/office-layout` — returns `{ layout, mcCredits, ownedAssets }` (defaults if no row)
+- `PUT /api/office-layout` — upserts on `tenant_id` conflict; updates `layout` + `updated_at`
+
+### Key Types (`src/lib/office-types.ts`)
+- `PlacedTile` — `{ id, assetId, x, y, rotation }`
+- `OfficeZone` — `{ id, name, color, tiles: [{x,y}][], agentIds: string[] }`
+- `OfficeLayout` — `{ version:1, gridWidth, gridHeight, floorAssetId, tiles, zones }`
+
+### Asset Catalog (`src/lib/office-assets.ts`)
+31 SVG assets across 6 categories; tier `free` (20) or `premium` (11, priced 60–300 MC$).
+`isAssetUnlocked(asset, isSuperAdmin, ownedAssets)` — superadmin bypasses all locks.
+
+---
+
 ## Token Usage Tracking
 
 ### Overview
@@ -1414,7 +1453,7 @@ src/
 │   ├── auth/                SessionGate
 │   ├── dashboard/           MetricsCards, AgentStrip, ActivityFeed, MissionQueue
 │   ├── layout/              Sidebar, TopBar, ClientShell
-│   ├── office/              OfficeFloor
+│   ├── office/              OfficeBuilder (replaced OfficeFloor)
 │   ├── onboarding/          OnboardingWizard (new)
 │   ├── outputs/             ArtifactOutputView
 │   └── ui/                  Toast, Modal, shared primitives
