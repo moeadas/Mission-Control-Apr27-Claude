@@ -30,6 +30,14 @@ const nextConfig = {
   },
   turbopack: {
     root: __dirname,
+    resolveAlias: {
+      // Konva ships a Node.js build that requires 'canvas'. Force the browser build everywhere.
+      'konva': 'konva/lib/index-browsers.js',
+    },
+  },
+  webpack(config) {
+    config.resolve.alias['konva'] = 'konva/lib/index-browsers.js'
+    return config
   },
 }
 
