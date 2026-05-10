@@ -1,6 +1,6 @@
 # Mission Control — Architecture
 
-> **Last Updated:** 2026-05-10 (token usage tracking + per-agent model selection)
+> **Last Updated:** 2026-05-10 (unified solid form UI — eliminated glass bleed on all modals)
 > **Rule for contributors:** Update this file after every code change. Add new pages to the Page Structure table, new components to the Component Library, new store shape changes to State Management, etc.
 
 ## Overview
@@ -862,6 +862,31 @@ Pipeline and skill editing surfaces now use a shared editor theme layer from `sr
 ### Purpose
 - Keeps `/pipeline/[id]`, `/skills/[id]`, and modal editing surfaces visually aligned with the rest of Mission Control
 - Allows the same editor UI to switch cleanly between light mode and dark mode using the global theme variables
+
+## Unified Form Modal System
+
+All modals and dialogs use a shared set of CSS classes from `src/styles/globals.css` (section: "Unified Form Modal System"). This eliminates the glass bleed issue where semi-transparent `--bg-panel` (72% opacity) leaked the colorful background through modal surfaces.
+
+### Classes
+| Class | Purpose |
+|---|---|
+| `.form-backdrop` | Fixed overlay: `rgba(8,12,24,0.82)` + subtle `blur(3px)`. Dark enough to eliminate background bleed |
+| `.form-panel` | Fully solid `#ffffff` panel with `border-radius: 1.5rem` and strong shadow |
+| `.form-header` | `#f8fafc` header strip with bottom border — contains title + close button |
+| `.form-footer` | `#f8fafc` footer strip with top border — contains action buttons |
+| `.form-body` | Scrollable content area with `1.5rem` padding |
+| `.form-label` | Standardised field label (13px, 600 weight, `#374151`) |
+| `.form-hint` | Muted helper text below a label |
+| `.form-input` / `.form-textarea` / `.form-select` | Solid `#f8fafc` fields, `1.5px #e2e8f0` border, purple focus ring |
+| `.form-pill` / `.form-pill-active` | Pill selector buttons (frequency, division, provider, etc.) |
+| `.form-step-tab` / `-active` / `-done` | Step indicator tabs in multi-step forms |
+| `.form-close-btn` | Standardised close (X) button |
+| `.form-info-card` | Muted info/summary card inside a form body |
+
+### Files using this system
+- `src/components/agents/AgentEditor.tsx` — full multi-step agent creation/edit modal
+- `src/app/schedules/page.tsx` — `ScheduleModal` + `OutputModal`
+- `src/components/ui/Modal.tsx` — shared generic modal (used by clients page and support)
 
 ## Office Experience
 
