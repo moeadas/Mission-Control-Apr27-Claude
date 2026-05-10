@@ -8,7 +8,7 @@ function getBearerToken(req: NextRequest) {
   return h.toLowerCase().startsWith('bearer ') ? h.slice(7).trim() : null
 }
 
-// GET /api/office-layout — returns the tenant's saved layout (or default)
+// GET /api/office-layout — returns the agency's saved layout (or default)
 export async function GET(req: NextRequest) {
   const auth = await resolveAuthContextFromToken(getBearerToken(req))
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     const [row] = await db`
       SELECT layout, mc_credits, owned_assets
       FROM office_layouts
-      WHERE tenant_id = ${auth.tenantId}
+      WHERE agency_id = ${auth.tenantId}
       LIMIT 1
     `
     if (!row) {
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// PUT /api/office-layout — upsert the tenant's layout
+// PUT /api/office-layout — upsert the agency's layout
 export async function PUT(req: NextRequest) {
   const auth = await resolveAuthContextFromToken(getBearerToken(req))
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -57,9 +57,9 @@ export async function PUT(req: NextRequest) {
   const db = getDb()
   try {
     await db`
-      INSERT INTO office_layouts (tenant_id, layout, updated_at)
+      INSERT INTO office_layouts (agency_id, layout, updated_at)
       VALUES (${auth.tenantId}, ${JSON.stringify(layout)}, now())
-      ON CONFLICT (tenant_id) DO UPDATE
+      ON CONFLICT (agency_id) DO UPDATE
         SET layout = EXCLUDED.layout,
             updated_at = now()
     `
