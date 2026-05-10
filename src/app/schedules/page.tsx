@@ -187,22 +187,22 @@ function ScheduleModal({
   const placeholder = PROMPT_PLACEHOLDERS[form.task_type] || PROMPT_PLACEHOLDERS['custom']
 
   return (
-    <div className="fixed inset-0 bg-black/55 backdrop-blur-md flex items-center justify-center z-50 p-4">
-      <div className="bg-[var(--bg-panel)] rounded-2xl w-full max-w-2xl border border-[var(--border)] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="form-backdrop">
+      <div className="form-panel max-w-2xl max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] flex-shrink-0">
-          <h2 className="text-lg font-bold text-[var(--text-primary)]">
+        <div className="form-header">
+          <p className="form-header-title">
             {task ? 'Edit Schedule' : 'New Scheduled Task'}
-          </h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-dim)]">
+          </p>
+          <button onClick={onClose} className="form-close-btn">
             <X size={18} />
           </button>
         </div>
 
-        <div className="p-6 space-y-5 overflow-y-auto flex-1">
+        <div className="form-body space-y-5">
           {/* Name */}
           <div>
-            <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
+            <label className="form-label uppercase tracking-wider">
               Task Name <span className="text-red-400">*</span>
             </label>
             <input
@@ -210,7 +210,7 @@ function ScheduleModal({
               type="text"
               value={form.name}
               onChange={(e) => set('name', e.target.value)}
-              className="w-full rounded-[14px] border border-[var(--border)] bg-white/70 px-4 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-dim)] focus:border-[var(--accent-blue)] focus:outline-none"
+              className="form-input px-4 py-2.5"
               placeholder="e.g., Weekly Competitor Analysis"
             />
           </div>
@@ -218,7 +218,7 @@ function ScheduleModal({
           {/* Task type + Agent */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">Task Type</label>
+              <label className="form-label uppercase tracking-wider">Task Type</label>
               <div className="relative">
                 <select
                   value={form.task_type}
@@ -226,7 +226,7 @@ function ScheduleModal({
                     set('task_type', e.target.value)
                     if (!form.prompt) set('prompt', '')
                   }}
-                  className="w-full rounded-[14px] border border-[var(--border)] bg-white/70 px-4 py-2.5 text-sm text-[var(--text-primary)] focus:border-[var(--accent-blue)] focus:outline-none appearance-none pr-8"
+                  className="form-select px-4 py-2.5 appearance-none pr-8"
                 >
                   {TASK_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </select>
@@ -234,7 +234,7 @@ function ScheduleModal({
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
+              <label className="form-label uppercase tracking-wider">
                 <Bot size={11} className="inline mr-1" />
                 Agent (optional)
               </label>
@@ -242,7 +242,7 @@ function ScheduleModal({
                 <select
                   value={form.agent_id}
                   onChange={(e) => set('agent_id', e.target.value)}
-                  className="w-full rounded-[14px] border border-[var(--border)] bg-white/70 px-4 py-2.5 text-sm text-[var(--text-primary)] focus:border-[var(--accent-blue)] focus:outline-none appearance-none pr-8"
+                  className="form-select px-4 py-2.5 appearance-none pr-8"
                 >
                   <option value="">Iris (default)</option>
                   {agents.map((a) => <option key={a.id} value={a.id}>{a.name}{a.role ? ` — ${a.role}` : ''}</option>)}
@@ -254,14 +254,14 @@ function ScheduleModal({
 
           {/* Prompt / instructions */}
           <div>
-            <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
+            <label className="form-label uppercase tracking-wider">
               Prompt / Instructions <span className="text-red-400">*</span>
             </label>
             <textarea
               value={form.prompt}
               onChange={(e) => set('prompt', e.target.value)}
               rows={5}
-              className="w-full rounded-[14px] border border-[var(--border)] bg-white/70 px-4 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-dim)] focus:border-[var(--accent-blue)] focus:outline-none resize-none"
+              className="form-textarea px-4 py-2.5 resize-none"
               placeholder={placeholder}
             />
             <p className="text-[10px] text-[var(--text-dim)] mt-1">
@@ -271,32 +271,28 @@ function ScheduleModal({
 
           {/* Description */}
           <div>
-            <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
+            <label className="form-label uppercase tracking-wider">
               Internal Note (optional)
             </label>
             <input
               type="text"
               value={form.description}
               onChange={(e) => set('description', e.target.value)}
-              className="w-full rounded-[14px] border border-[var(--border)] bg-white/70 px-4 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-dim)] focus:border-[var(--accent-blue)] focus:outline-none"
+              className="form-input px-4 py-2.5"
               placeholder="What is this task for?"
             />
           </div>
 
           {/* Frequency */}
           <div>
-            <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">Frequency</label>
+            <label className="form-label uppercase tracking-wider mb-2">Frequency</label>
             <div className="flex gap-2 flex-wrap">
               {(['once', 'daily', 'weekly', 'monthly'] as ScheduleFrequency[]).map((f) => (
                 <button
                   key={f}
                   type="button"
                   onClick={() => set('frequency', f)}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium capitalize transition-all ${
-                    form.frequency === f
-                      ? 'bg-[var(--accent-blue)]/14 text-[var(--accent-blue)] border border-[var(--accent-blue)]/35'
-                      : 'bg-white/60 text-[var(--text-secondary)] border border-[var(--border)] hover:border-[var(--border-glow)]'
-                  }`}
+                  className={`form-pill capitalize ${form.frequency === f ? 'form-pill-active' : ''}`}
                 >
                   {f}
                 </button>
@@ -307,18 +303,14 @@ function ScheduleModal({
           {/* Weekly — day of week */}
           {form.frequency === 'weekly' && (
             <div>
-              <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">Day of Week</label>
+              <label className="form-label uppercase tracking-wider mb-2">Day of Week</label>
               <div className="flex gap-2">
                 {DAYS_OF_WEEK.map((day, i) => (
                   <button
                     key={day}
                     type="button"
                     onClick={() => set('day_of_week', i)}
-                    className={`flex-1 py-2 rounded-xl text-xs font-medium transition-all ${
-                      form.day_of_week === i
-                        ? 'bg-[var(--accent-purple)]/14 text-[var(--accent-purple)] border border-[var(--accent-purple)]/35'
-                        : 'bg-white/60 text-[var(--text-secondary)] border border-[var(--border)]'
-                    }`}
+                    className={`form-pill flex-1 py-2 text-xs ${form.day_of_week === i ? 'form-pill-active' : ''}`}
                   >
                     {day}
                   </button>
@@ -330,14 +322,14 @@ function ScheduleModal({
           {/* Monthly — day of month */}
           {form.frequency === 'monthly' && (
             <div>
-              <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">Day of Month</label>
+              <label className="form-label uppercase tracking-wider">Day of Month</label>
               <input
                 type="number"
                 min={1}
                 max={28}
                 value={form.day_of_month}
                 onChange={(e) => set('day_of_month', parseInt(e.target.value) || 1)}
-                className="w-24 rounded-[14px] border border-[var(--border)] bg-white/70 px-4 py-2.5 text-sm text-[var(--text-primary)] focus:border-[var(--accent-blue)] focus:outline-none"
+                className="form-input w-24 px-4 py-2.5"
               />
             </div>
           )}
@@ -345,7 +337,7 @@ function ScheduleModal({
           {/* Time */}
           {form.frequency !== 'once' && (
             <div>
-              <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">Run Time (24h)</label>
+              <label className="form-label uppercase tracking-wider">Run Time (24h)</label>
               <div className="flex items-center gap-2">
                 <input
                   type="number"
@@ -353,7 +345,7 @@ function ScheduleModal({
                   max={23}
                   value={form.time_hour}
                   onChange={(e) => set('time_hour', Math.max(0, Math.min(23, parseInt(e.target.value) || 0)))}
-                  className="w-20 rounded-[14px] border border-[var(--border)] bg-white/70 px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[var(--accent-blue)] focus:outline-none text-center"
+                  className="form-input w-20 px-3 py-2 text-center"
                 />
                 <span className="text-[var(--text-dim)] font-bold">:</span>
                 <input
@@ -363,7 +355,7 @@ function ScheduleModal({
                   step={15}
                   value={form.time_minute}
                   onChange={(e) => set('time_minute', Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
-                  className="w-20 rounded-[14px] border border-[var(--border)] bg-white/70 px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[var(--accent-blue)] focus:outline-none text-center"
+                  className="form-input w-20 px-3 py-2 text-center"
                 />
               </div>
             </div>
@@ -373,14 +365,14 @@ function ScheduleModal({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-[var(--border)] flex justify-end gap-3 flex-shrink-0">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-[var(--text-dim)] hover:text-[var(--text-primary)]">
+        <div className="form-footer justify-end gap-3">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-[#64748b] hover:text-[#374151]">
             Cancel
           </button>
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+            className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50 transition-opacity"
             style={{ background: 'linear-gradient(135deg, #4f8ef7, #2dd4bf)' }}
           >
             {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
@@ -396,24 +388,24 @@ function ScheduleModal({
 
 function OutputModal({ task, onClose }: { task: ScheduledTask; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 bg-black/55 backdrop-blur-md flex items-center justify-center z-50 p-4">
-      <div className="bg-[var(--bg-panel)] rounded-2xl w-full max-w-2xl border border-[var(--border)] shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] flex-shrink-0">
+    <div className="form-backdrop" onClick={onClose}>
+      <div className="form-panel max-w-2xl max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
+        <div className="form-header">
           <div>
-            <h2 className="text-base font-bold text-[var(--text-primary)]">Last Run Output</h2>
-            <p className="text-xs text-[var(--text-dim)] mt-0.5">{task.name} · {formatLastRun(task.last_run_at)}</p>
+            <p className="form-header-title">Last Run Output</p>
+            <p className="form-header-subtitle">{task.name} · {formatLastRun(task.last_run_at)}</p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-dim)]">
+          <button onClick={onClose} className="form-close-btn">
             <X size={18} />
           </button>
         </div>
-        <div className="p-6 overflow-y-auto flex-1">
+        <div className="form-body">
           {task.last_run_status === 'error' && (
             <div className="mb-3 px-4 py-2 bg-red-500/10 text-red-400 text-xs rounded-xl">
               ⚠ Run failed
             </div>
           )}
-          <pre className="text-sm text-[var(--text-primary)] whitespace-pre-wrap font-sans leading-relaxed">
+          <pre className="text-sm text-[#374151] whitespace-pre-wrap font-sans leading-relaxed">
             {task.last_run_output || 'No output available.'}
           </pre>
         </div>

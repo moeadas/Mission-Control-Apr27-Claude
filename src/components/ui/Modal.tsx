@@ -28,34 +28,27 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-      />
+    <div className="form-backdrop" onClick={onClose}>
       {/* Panel */}
       <div
         className={clsx(
-          'relative glass border border-border rounded-card shadow-2xl w-full animate-slide-up',
+          'form-panel max-h-[85vh]',
           size === 'sm' && 'max-w-sm',
           size === 'md' && 'max-w-lg',
           size === 'lg' && 'max-w-2xl',
           size === 'xl' && 'max-w-4xl'
         )}
+        onClick={(e) => e.stopPropagation()}
       >
         {title && (
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-            <h2 className="text-lg font-heading font-semibold text-text-primary">{title}</h2>
-            <button
-              onClick={onClose}
-              className="p-1 rounded-md text-text-secondary hover:text-text-primary hover:bg-card transition-colors"
-            >
+          <div className="form-header">
+            <p className="form-header-title">{title}</p>
+            <button onClick={onClose} className="form-close-btn">
               <X size={18} />
             </button>
           </div>
         )}
-        <div className="p-6 max-h-[80vh] overflow-y-auto">{children}</div>
+        <div className="form-body">{children}</div>
       </div>
     </div>
   )

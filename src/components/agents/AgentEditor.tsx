@@ -341,11 +341,11 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
   const currentStepName = STEPS[step].id
 
   return (
-    <div className="fixed inset-0 bg-black/55 backdrop-blur-md flex items-center justify-center z-50 p-4">
-      <div className="relative editor-theme bg-[var(--bg-panel)] rounded-2xl w-full max-w-3xl max-h-[92vh] overflow-hidden flex flex-col border border-border shadow-2xl">
+    <div className="form-backdrop">
+      <div className="form-panel max-w-3xl max-h-[92vh] editor-theme">
 
         {/* Header */}
-        <div className="p-5 border-b border-border flex items-center justify-between flex-shrink-0">
+        <div className="form-header">
           <div className="flex items-center gap-4">
             <AgentBot
               name={formData.name || (isCreating ? 'New' : agent?.name || 'Agent')}
@@ -355,21 +355,21 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
               size={40}
             />
             <div>
-              <h2 className="text-lg font-bold text-text-primary">
+              <p className="form-header-title">
                 {isCreating ? 'Add New Agent' : `Edit Agent`}
-              </h2>
-              <p className="text-xs text-text-secondary">
+              </p>
+              <p className="form-header-subtitle">
                 {formData.name || (isCreating ? 'Fill in the details below' : agent?.role)}
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-[var(--bg-hover)] rounded-lg text-text-dim hover:text-text-primary">
+          <button onClick={onClose} className="form-close-btn">
             <X size={20} />
           </button>
         </div>
 
         {/* Step indicators */}
-        <div className="flex-shrink-0 border-b border-border px-5 py-3">
+        <div className="flex-shrink-0 border-b border-[#e2e8f0] px-5 py-3 bg-white">
           <div className="flex items-center gap-1">
             {STEPS.map((s, i) => {
               const Icon = s.icon
@@ -379,23 +379,19 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
                 <React.Fragment key={s.id}>
                   <button
                     onClick={() => setStep(i)}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
-                      isCurrent
-                        ? 'bg-[#9b6dff]/14 text-[#9b6dff] border border-[#9b6dff]/30'
-                        : isCompleted
-                        ? 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                        : 'text-text-dim hover:text-text-secondary'
+                    className={`form-step-tab ${
+                      isCurrent ? 'form-step-tab-active' : isCompleted ? 'form-step-tab-done' : ''
                     }`}
                   >
                     <span className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold ${
-                      isCompleted ? 'bg-[#00d4aa]/20 text-[#00d4aa]' : isCurrent ? 'bg-[#9b6dff]/20 text-[#9b6dff]' : 'bg-[var(--bg-elevated)] text-text-dim'
+                      isCompleted ? 'bg-[#00d4aa]/20 text-[#00d4aa]' : isCurrent ? 'bg-[#9b6dff]/20 text-[#9b6dff]' : 'bg-[#f1f5f9] text-[#94a3b8]'
                     }`}>
                       {isCompleted ? <Check size={10} /> : i + 1}
                     </span>
                     <span className="hidden sm:block">{s.label}</span>
                   </button>
                   {i < STEPS.length - 1 && (
-                    <div className={`h-px flex-1 max-w-6 ${i < step ? 'bg-[#00d4aa]/40' : 'bg-[var(--border)]'}`} />
+                    <div className={`h-px flex-1 max-w-6 ${i < step ? 'bg-[#00d4aa]/40' : 'bg-[#e2e8f0]'}`} />
                   )}
                 </React.Fragment>
               )
@@ -404,30 +400,30 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
         </div>
 
         {/* Step content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+        <div className="form-body space-y-5">
 
           {/* ── Step 0: Identity ── */}
           {currentStepName === 'identity' && (
             <>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-text-primary">Name <span className="text-red-400">*</span></label>
+                  <label className="form-label">Name <span className="text-red-400">*</span></label>
                   <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-                    className="editor-input w-full px-3 py-2 text-sm"
+                    className="form-input px-3 py-2"
                     placeholder="e.g., Nova, Atlas, Maya"
                     autoFocus
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-text-primary">Role / Title</label>
+                  <label className="form-label">Role / Title</label>
                   <input
                     type="text"
                     value={formData.role}
                     onChange={(e) => setFormData((prev) => ({ ...prev, role: e.target.value }))}
-                    className="editor-input w-full px-3 py-2 text-sm"
+                    className="form-input px-3 py-2"
                     placeholder="e.g., Creative Director, SEO Specialist"
                   />
                 </div>
@@ -435,7 +431,7 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
 
               {/* Division */}
               <div>
-                <label className="block text-sm font-medium mb-2 text-text-primary">Division</label>
+                <label className="form-label mb-2">Division</label>
                 <div className="flex gap-2 flex-wrap">
                   {DIVISIONS.map((div) => (
                     <button
@@ -456,9 +452,9 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
 
               {/* Photo */}
               <div>
-                <label className="block text-sm font-medium mb-2 text-text-primary">Avatar Photo</label>
+                <label className="form-label mb-2">Avatar Photo</label>
                 <div className="flex items-center gap-5">
-                  <div className="rounded-2xl border border-border bg-[var(--bg-elevated)] p-3">
+                  <div className="rounded-2xl border border-[#e2e8f0] bg-[#f8fafc] p-3">
                     <AgentBot
                       name={formData.name || 'New'}
                       avatar={formData.name.slice(0, 2).toUpperCase() || 'NW'}
@@ -514,11 +510,11 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
 
               {/* Architecture notice for existing agents */}
               {architectureBundle && (
-                <div className="rounded-2xl border border-border bg-[var(--bg-elevated)] p-4">
+                <div className="form-info-card">
                   <p className="text-sm font-semibold text-text-primary mb-1">Architecture Source</p>
                   <p className="text-xs text-text-dim">
                     This agent loads from config files at{' '}
-                    <code className="text-[10px] bg-[var(--bg-panel)] px-1 py-0.5 rounded">
+                    <code className="text-[10px] bg-[#f1f5f9] px-1 py-0.5 rounded">
                       {getAgentSourceOfTruthPath(agentId!)}
                     </code>
                     . Edit behaviour there; use this editor for avatar & appearance changes.
@@ -532,39 +528,39 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
           {currentStepName === 'personality' && (
             <>
               <div>
-                <label className="block text-sm font-medium mb-1 text-text-primary">Bio</label>
-                <p className="text-xs text-text-dim mb-2">A short description of who this agent is and what makes them unique.</p>
+                <label className="form-label">Bio</label>
+                <p className="form-hint">A short description of who this agent is and what makes them unique.</p>
                 <textarea
                   value={formData.bio}
                   onChange={(e) => setFormData((prev) => ({ ...prev, bio: e.target.value }))}
                   rows={3}
-                  className="editor-textarea w-full px-3 py-2 text-sm resize-none"
+                  className="form-textarea px-3 py-2 resize-none"
                   placeholder="e.g., Nova is a data-driven creative strategist who blends analytical insight with bold visual thinking..."
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1 text-text-primary">Methodology</label>
-                <p className="text-xs text-text-dim mb-2">How does this agent approach work?</p>
+                <label className="form-label">Methodology</label>
+                <p className="form-hint">How does this agent approach work?</p>
                 <input
                   type="text"
                   value={formData.methodology}
                   onChange={(e) => setFormData((prev) => ({ ...prev, methodology: e.target.value }))}
-                  className="editor-input w-full px-3 py-2 text-sm"
+                  className="form-input px-3 py-2"
                   placeholder="e.g., Design Thinking + Agile, Research-first, Iterate fast"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1 text-text-primary">System Prompt</label>
-                <p className="text-xs text-text-dim mb-2">
+                <label className="form-label">System Prompt</label>
+                <p className="form-hint">
                   The AI instructions that define this agent's behavior. Leave blank to inherit global defaults.
                 </p>
                 <textarea
                   value={formData.systemPrompt}
                   onChange={(e) => setFormData((prev) => ({ ...prev, systemPrompt: e.target.value }))}
                   rows={7}
-                  className="editor-textarea w-full px-3 py-2 text-sm font-mono resize-none"
+                  className="form-textarea px-3 py-2 font-mono resize-none"
                   placeholder="You are [name], a [role] at a creative agency. You specialise in..."
                 />
               </div>
@@ -576,7 +572,7 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
             <>
               {/* Skills */}
               <div>
-                <label className="block text-sm font-medium mb-1 text-text-primary">Skills</label>
+                <label className="form-label">Skills</label>
                 <p className="text-xs text-text-dim mb-3">Select skills from the library. Each skill unlocks specialised capabilities.</p>
                 <SkillPicker
                   selectedSkillIds={formData.skills}
@@ -587,7 +583,7 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
 
               {/* Tools */}
               <div>
-                <label className="block text-sm font-medium mb-2 text-text-primary">Tools Access</label>
+                <label className="form-label mb-2">Tools Access</label>
                 <div className="flex flex-wrap gap-2">
                   {['web-search', 'analytics', 'document', 'spreadsheet', 'presentation', 'image-gen', 'figma', 'canva'].map((tool) => {
                     const isSelected = formData.tools.includes(tool)
@@ -616,8 +612,8 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
 
               {/* Responsibilities */}
               <div>
-                <label className="block text-sm font-medium mb-1 text-text-primary">Responsibilities</label>
-                <p className="text-xs text-text-dim mb-2">What is this agent accountable for?</p>
+                <label className="form-label">Responsibilities</label>
+                <p className="form-hint">What is this agent accountable for?</p>
                 <div className="space-y-1 mb-3">
                   {formData.responsibilities.length === 0 && (
                     <span className="text-xs text-text-dim italic">No responsibilities added yet</span>
@@ -653,8 +649,8 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
             <>
               {/* Provider selector */}
               <div>
-                <label className="block text-sm font-medium mb-1 text-text-primary">AI Provider</label>
-                <p className="text-xs text-text-dim mb-2">Which provider this agent uses. Must have an API key configured in Settings.</p>
+                <label className="form-label">AI Provider</label>
+                <p className="form-hint">Which provider this agent uses. Must have an API key configured in Settings.</p>
                 <div className="flex gap-2 flex-wrap">
                   {PROVIDERS.map((p) => (
                     <button
@@ -678,8 +674,8 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
 
               {/* Model selector */}
               <div>
-                <label className="block text-sm font-medium mb-1 text-text-primary">Model</label>
-                <p className="text-xs text-text-dim mb-2">
+                <label className="form-label">Model</label>
+                <p className="form-hint">
                   {formData.provider === 'ollama'
                     ? 'Local model — free, runs on your machine'
                     : 'More capable models cost more per token'}
@@ -722,8 +718,8 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-text-primary">Temperature</label>
-                  <p className="text-xs text-text-dim mb-2">0 = precise, 1 = creative. Default: 0.7</p>
+                  <label className="form-label">Temperature</label>
+                  <p className="form-hint">0 = precise, 1 = creative. Default: 0.7</p>
                   <input
                     type="number"
                     value={formData.temperature}
@@ -731,7 +727,7 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
                     step={0.05}
                     min={0}
                     max={1}
-                    className="editor-input w-full px-3 py-2 text-sm"
+                    className="form-input px-3 py-2"
                   />
                   <input
                     type="range"
@@ -748,8 +744,8 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-text-primary">Max Output Tokens</label>
-                  <p className="text-xs text-text-dim mb-2">How long responses can be. Default: 1536</p>
+                  <label className="form-label">Max Output Tokens</label>
+                  <p className="form-hint">How long responses can be. Default: 1536</p>
                   <input
                     type="number"
                     value={formData.maxTokens}
@@ -757,13 +753,13 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
                     min={256}
                     max={8192}
                     step={256}
-                    className="editor-input w-full px-3 py-2 text-sm"
+                    className="form-input px-3 py-2"
                   />
                 </div>
               </div>
 
               {/* Summary card */}
-              <div className="rounded-2xl border border-border bg-[var(--bg-elevated)] p-5 mt-4">
+              <div className="form-info-card mt-4" style={{ borderRadius: '1rem', padding: '1.25rem' }}>
                 <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">Agent Summary</p>
                 <div className="flex items-center gap-4 mb-4">
                   <AgentBot
@@ -780,20 +776,20 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-3 text-center text-xs">
-                  <div className="bg-[var(--bg-panel)] rounded-xl p-2">
+                  <div className="bg-[#f1f5f9] rounded-xl p-2">
                     <p className="font-bold text-[#9b6dff]">{formData.skills.length}</p>
                     <p className="text-text-dim">Skills</p>
                   </div>
-                  <div className="bg-[var(--bg-panel)] rounded-xl p-2">
+                  <div className="bg-[#f1f5f9] rounded-xl p-2">
                     <p className="font-bold text-[#4f8ef7]">{formData.tools.length}</p>
                     <p className="text-text-dim">Tools</p>
                   </div>
-                  <div className="bg-[var(--bg-panel)] rounded-xl p-2">
+                  <div className="bg-[#f1f5f9] rounded-xl p-2">
                     <p className="font-bold text-[#00d4aa]">{formData.responsibilities.length}</p>
                     <p className="text-text-dim">Tasks</p>
                   </div>
                 </div>
-                <div className="mt-3 pt-3 border-t border-border flex items-center justify-between text-xs">
+                <div className="mt-3 pt-3 border-t border-[#e2e8f0] flex items-center justify-between text-xs">
                   <span className="text-text-dim">Model</span>
                   <span className="font-medium text-text-primary">
                     {MODEL_CATALOG.find((m) => m.id === formData.model)?.label || formData.model || '—'}
@@ -805,7 +801,7 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
         </div>
 
         {/* Footer navigation */}
-        <div className="p-5 border-t border-border flex items-center justify-between flex-shrink-0 gap-2">
+        <div className="form-footer">
           <div className="flex items-center gap-2">
             <button
               onClick={() => (step === 0 ? onClose() : setStep((s) => s - 1))}
@@ -867,26 +863,24 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
 
       {/* Delete confirmation overlay */}
       {confirmingDelete && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm rounded-2xl z-10">
-          <div
-            className="bg-[var(--bg-panel)] border border-[var(--border)] rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl"
-          >
+        <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm rounded-[1.5rem] z-10">
+          <div className="bg-white border border-[#e2e8f0] rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl">
             <div className="flex items-center gap-3 mb-4">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/12">
                 <AlertTriangle size={20} className="text-red-400" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-[var(--text-primary)]">Delete {agent?.name}?</h3>
-                <p className="text-xs text-[var(--text-secondary)] mt-0.5">This cannot be undone.</p>
+                <h3 className="text-sm font-bold text-[#0f172a]">Delete {agent?.name}?</h3>
+                <p className="text-xs text-[#64748b] mt-0.5">This cannot be undone.</p>
               </div>
             </div>
-            <p className="text-sm text-[var(--text-secondary)] mb-5 leading-relaxed">
+            <p className="text-sm text-[#64748b] mb-5 leading-relaxed">
               The agent will be removed from your roster and all active missions they are assigned to.
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setConfirmingDelete(false)}
-                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium border border-[var(--border)] text-[var(--text-secondary)] hover:bg-white/50 transition-all"
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium border border-[#e2e8f0] text-[#64748b] hover:bg-[#f8fafc] transition-all"
               >
                 Cancel
               </button>
