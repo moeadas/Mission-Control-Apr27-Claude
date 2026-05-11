@@ -1,8 +1,10 @@
 /**
  * /api/admin/plans — Subscription plan management (super_admin only)
  *
- * GET   — list all plans
- * PATCH — update a plan's name, price, max_agents, or active status
+ * GET    — list all plans
+ * POST   — create a new custom plan
+ * PATCH  — update a plan's name, price, max_agents, or active status
+ * DELETE — soft-delete (deactivate) a custom plan
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db/client'
@@ -140,5 +142,94 @@ export async function PATCH(request: NextRequest) {
   } catch (err) {
     console.error('PATCH /api/admin/plans error:', err)
     return NextResponse.json({ error: 'Failed to update plan' }, { status: 500 })
+  }
+}
+
+// ─── POST /api/admin/plans ─────────────────────────────────────────────────────
+export async function POST(request: NextRequest) {
+  try {
+    const auth = await requireSuperAdmin(request)
+    if (!auth) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+    const body = await request.json() as {
+      id?: string
+      name?: string
+      maxAgents?: number
+      priceMonthlyUsd?: number
+      stripePriceId?: string
+    }
+
+    const name = body.name?.trim()
+    if (!name) return NextResponse.json({ error: 'name is required' }, { status: 400 })
+
+    // Generate slug-style ID from name if not provided
+    const rawId = body.id?.trim() ||
+      name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 30)
+
+    const maxAgents = typeof body.maxAgents === 'number' ? body.maxAgents : 10
+    const priceMonthlyUsd = typeof body.priceMonthlyUsd === 'number' ? body.priceMonthlyUsd : 0
+    const stripePriceId = body.stripePriceId?.trim() || null
+
+    const db = getDb()
+
+    // Ensure ID uniqueness
+    const existing = await db`SELECT id FROM plans WHERE id = ${rawId} LIMIT 1`
+    const planId = existing.length > 0 ? `${rawId}_${Date.now().toString(36)}` : rawId
+
+    const rows = await db`
+      INSERT INTO plans (id, name, max_agents, price_monthly_usd, stripe_price_id, is_active)
+      VALUES (${planId}, ${name}, ${maxAgents}, ${priceMonthlyUsd}, ${stripePriceId}, true)
+      RETURNING id, name, max_agents, price_monthly_usd, stripe_price_id, is_active
+    `
+    const p = rows[0]
+
+    return NextResponse.json({
+      ok: true,
+      plan: {
+        id: p.id,
+        name: p.name,
+        maxAgents: p.max_agents,
+        priceMonthlyUsd: Number(p.price_monthly_usd),
+        stripePriceId: p.stripe_price_id || '',
+        isActive: p.is_active,
+        subscriberCount: 0,
+      },
+    }, { status: 201 })
+  } catch (err) {
+    console.error('POST /api/admin/plans error:', err)
+    return NextResponse.json({ error: 'Failed to create plan' }, { status: 500 })
+  }
+}
+
+// ─── DELETE /api/admin/plans ───────────────────────────────────────────────────
+export async function DELETE(request: NextRequest) {
+  try {
+    const auth = await requireSuperAdmin(request)
+    if (!auth) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+    if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
+
+    // Prevent deleting built-in plans
+    const builtIn = new Set(['free', 'starter', 'growth', 'enterprise'])
+    if (builtIn.has(id)) {
+      return NextResponse.json({ error: 'Cannot delete built-in plans — deactivate them instead' }, { status: 400 })
+    }
+
+    // Check for active subscribers
+    const db = getDb()
+    const subs = await db`SELECT COUNT(*)::int AS cnt FROM subscriptions WHERE plan_id = ${id}`
+    if (subs[0]?.cnt > 0) {
+      return NextResponse.json({
+        error: `Cannot delete plan with ${subs[0].cnt} active subscriber(s) — deactivate it instead`,
+      }, { status: 409 })
+    }
+
+    await db`DELETE FROM plans WHERE id = ${id}`
+    return NextResponse.json({ ok: true })
+  } catch (err) {
+    console.error('DELETE /api/admin/plans error:', err)
+    return NextResponse.json({ error: 'Failed to delete plan' }, { status: 500 })
   }
 }

@@ -122,6 +122,61 @@ function FurnitureTile({ tile, asset, tileSize, isSelected, draggable, onSelect,
   )
 }
 
+// ─── Template mini preview ────────────────────────────────────────────────────
+
+function TemplateMiniPreview({ layout, width = 260, height = 87 }: {
+  layout: OfficeLayout
+  width?: number
+  height?: number
+}) {
+  const gw = layout.gridWidth || 30
+  const gh = layout.gridHeight || 20
+  const sx = width / gw
+  const sy = height / gh
+
+  return (
+    <svg width={width} height={height} style={{ display: 'block' }}>
+      <rect width={width} height={height} fill="#1e2435"/>
+      {/* Subtle grid */}
+      {Array.from({ length: 7 }, (_, i) => (
+        <line key={`v${i}`} x1={(i + 1) * (width / 7)} y1={0} x2={(i + 1) * (width / 7)} y2={height}
+          stroke="rgba(255,255,255,0.04)" strokeWidth={1}/>
+      ))}
+      {Array.from({ length: 4 }, (_, i) => (
+        <line key={`h${i}`} x1={0} y1={(i + 1) * (height / 4)} x2={width} y2={(i + 1) * (height / 4)}
+          stroke="rgba(255,255,255,0.04)" strokeWidth={1}/>
+      ))}
+      {/* Zones */}
+      {layout.zones.map(z =>
+        z.tiles.map(t => (
+          <rect
+            key={`${z.id}-${t.x}-${t.y}`}
+            x={t.x * sx} y={t.y * sy}
+            width={sx + 0.5} height={sy + 0.5}
+            fill={z.color + '55'}
+          />
+        ))
+      )}
+      {/* Furniture dots */}
+      {layout.tiles.map(t => {
+        const asset = OFFICE_ASSETS.find(a => a.id === t.assetId)
+        if (!asset) return null
+        const [w, h] = asset.size
+        return (
+          <rect
+            key={t.id}
+            x={t.x * sx + 0.5} y={t.y * sy + 0.5}
+            width={Math.max(1.5, w * sx - 1)} height={Math.max(1.5, h * sy - 1)}
+            fill={t.primaryColor ?? asset.defaultColor}
+            rx={0.8}
+            opacity={0.9}
+          />
+        )
+      })}
+    </svg>
+  )
+}
+
 // ─── Colour presets ───────────────────────────────────────────────────────────
 
 const COLOR_PRESETS = [
@@ -551,6 +606,12 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
     setShowTemplates(false)
   }
 
+  const applyBlankLayout = useCallback(() => {
+    pushHistory({ version: 2, gridWidth: 30, gridHeight: 20, floorAssetId: 'floor-hardwood', tiles: [], zones: [], mcCredits: 0, ownedAssets: [] })
+    setShowTemplates(false)
+    setPendingTemplateId(null)
+  }, [pushHistory])
+
   // ── Filtered assets ───────────────────────────────────────────────────────
   const filteredAssets = useMemo(() => {
     const q = searchQuery.toLowerCase()
@@ -598,55 +659,81 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
 
       {/* ── Left sidebar ─────────────────────────────────────────────────── */}
       <div className="w-64 flex flex-col border-r border-white/10 bg-[#151922] overflow-hidden shrink-0">
-        <div className="px-3 py-3 border-b border-white/10">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-white/60 uppercase tracking-wider">Assets</span>
+
+        {/* Header: search + layouts button */}
+        <div className="px-3 pt-3 pb-2 border-b border-white/10">
+          <div className="flex items-center gap-2">
+            <input type="text" placeholder="Search assets…" value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="flex-1 px-2 py-1.5 rounded bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50"/>
             <button onClick={() => setShowTemplates(true)}
-              className="text-xs px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white transition-colors">
-              Templates
+              className="shrink-0 px-2.5 py-1.5 rounded bg-indigo-600/80 hover:bg-indigo-500 text-white text-xs font-medium transition-colors border border-indigo-500/40 whitespace-nowrap">
+              ⚡ Layouts
             </button>
           </div>
-          <input type="text" placeholder="Search assets…" value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="w-full px-2 py-1.5 rounded bg-white/5 border border-white/10 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/30"/>
         </div>
 
+        {/* Category tabs — visually distinct section */}
         {!searchQuery && (
-          <div className="flex flex-col gap-0.5 px-2 py-2 border-b border-white/10 overflow-y-auto max-h-40">
-            {ASSET_CATEGORIES.map(cat => (
-              <button key={cat.id} onClick={() => setActiveCategoryId(cat.id)}
-                className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm text-left transition-colors ${
-                  activeCategoryId === cat.id ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white/80 hover:bg-white/5'}`}>
-                <span className="text-base">{cat.icon}</span>
-                <span>{cat.label}</span>
-              </button>
-            ))}
+          <div className="shrink-0 bg-[#0d1018] border-b-2 border-white/10">
+            <p className="px-3 pt-2 pb-1 text-[9px] font-mono uppercase tracking-[0.22em] text-white/25 select-none">Categories</p>
+            <div className="flex flex-col gap-px px-2 pb-2">
+              {ASSET_CATEGORIES.map(cat => (
+                <button key={cat.id} onClick={() => setActiveCategoryId(cat.id)}
+                  className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs text-left transition-all border ${
+                    activeCategoryId === cat.id
+                      ? 'bg-indigo-600/20 text-indigo-200 border-indigo-500/35 font-semibold'
+                      : 'text-white/40 hover:text-white/70 hover:bg-white/[0.04] border-transparent'}`}>
+                  <span className="text-sm leading-none w-4 text-center">{cat.icon}</span>
+                  <span className="leading-none">{cat.label}</span>
+                  {activeCategoryId === cat.id && (
+                    <span className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0"/>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto px-2 py-2 space-y-1">
-          {filteredAssets.map(asset => (
-            <button key={asset.id}
-              onClick={() => { setPlacingAsset(asset); setTool('select') }}
-              className={`w-full flex items-center gap-2 px-2 py-2 rounded text-left text-sm transition-colors ${
-                placingAsset?.id === asset.id
-                  ? 'bg-indigo-600/40 border border-indigo-500/50 text-white'
-                  : 'hover:bg-white/5 text-white/70 hover:text-white'}`}
-              title={`${asset.size[0] * 0.5}m × ${asset.size[1] * 0.5}m — click or drag to place`}>
-              <span className="w-4 h-4 rounded shrink-0 border border-white/20" style={{ background: asset.defaultColor }}/>
-              <span className="flex-1 truncate">{asset.name}</span>
-              {asset.tier === 'premium' && <span className="text-xs text-yellow-400 shrink-0">★</span>}
-            </button>
-          ))}
-          {filteredAssets.length === 0 && (
-            <p className="text-white/30 text-xs text-center py-4">No assets found</p>
-          )}
+        {/* Asset items — clearly different section */}
+        <div className="flex-1 overflow-y-auto bg-[#151922]">
+          <p className="px-3 pt-2.5 pb-1 text-[9px] font-mono uppercase tracking-[0.22em] text-white/25 select-none">
+            {searchQuery
+              ? `Results for "${searchQuery}"`
+              : ASSET_CATEGORIES.find(c => c.id === activeCategoryId)?.label ?? 'Assets'}
+          </p>
+          <div className="px-2 pb-2 space-y-1">
+            {filteredAssets.map(asset => (
+              <button key={asset.id}
+                onClick={() => { setPlacingAsset(asset); setTool('select') }}
+                className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition-all border ${
+                  placingAsset?.id === asset.id
+                    ? 'bg-indigo-600/30 border-indigo-500/50 text-white shadow-[0_0_8px_rgba(99,102,241,0.2)]'
+                    : 'bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.07] hover:border-white/15 text-white/60 hover:text-white'}`}
+                title={`${asset.size[0] * 0.5}m × ${asset.size[1] * 0.5}m — click or drag to place`}>
+                <span
+                  className="w-5 h-5 rounded-md shrink-0 flex-shrink-0"
+                  style={{ background: asset.defaultColor, boxShadow: `0 1px 4px ${asset.defaultColor}80` }}
+                />
+                <span className="flex-1 text-xs truncate font-medium">{asset.name}</span>
+                <span className="text-[9px] text-white/20 shrink-0 font-mono tabular-nums">{asset.size[0]}×{asset.size[1]}</span>
+                {asset.tier === 'premium' && <span className="text-[10px] text-yellow-400/70 shrink-0 ml-0.5">★</span>}
+              </button>
+            ))}
+            {filteredAssets.length === 0 && (
+              <p className="text-white/25 text-xs text-center py-6">No assets found</p>
+            )}
+          </div>
         </div>
 
+        {/* Active placing indicator */}
         {placingAsset && (
-          <div className="px-3 py-2 bg-indigo-900/40 border-t border-indigo-500/30 text-xs text-indigo-300">
-            Placing: <strong>{placingAsset.name}</strong>
-            <br/><span className="text-indigo-400">Click or drag to fill • Esc to cancel</span>
+          <div className="px-3 py-2.5 bg-indigo-900/50 border-t border-indigo-500/30 flex items-center gap-2.5">
+            <span className="w-4 h-4 rounded-md shrink-0" style={{ background: placingAsset.defaultColor }}/>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-indigo-100 truncate">{placingAsset.name}</p>
+              <p className="text-[10px] text-indigo-400">Drag to paint  •  Esc to cancel</p>
+            </div>
           </div>
         )}
       </div>
@@ -867,15 +954,16 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
       {showTemplates && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
           onClick={() => { setShowTemplates(false); setPendingTemplateId(null) }}>
-          <div className="bg-[#1a2035] border border-white/10 rounded-xl p-6 w-[680px] max-h-[80vh] overflow-y-auto shadow-2xl"
+          <div className="bg-[#1a2035] border border-white/10 rounded-xl p-6 w-[760px] max-h-[85vh] overflow-y-auto shadow-2xl"
             onClick={e => e.stopPropagation()}>
+
             <div className="flex items-center justify-between mb-1">
-              <h2 className="text-lg font-semibold text-white">Starter Templates</h2>
+              <h2 className="text-lg font-semibold text-white">Layouts & Templates</h2>
               <button onClick={() => { setShowTemplates(false); setPendingTemplateId(null) }}
-                className="text-white/40 hover:text-white text-lg">✕</button>
+                className="text-white/40 hover:text-white text-xl leading-none">✕</button>
             </div>
             <p className="text-sm text-white/40 mb-5">
-              Choose a layout to preview. Your current layout won't be replaced until you confirm.
+              Click a template to preview it — your layout stays unchanged until you confirm.
             </p>
 
             {/* Confirmation banner */}
@@ -883,39 +971,76 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
               <div className="mb-4 p-3 rounded-lg bg-amber-900/30 border border-amber-500/40 flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-amber-300">
-                    Apply "{OFFICE_TEMPLATES.find(t => t.id === pendingTemplateId)?.name}"?
+                    Apply &ldquo;{OFFICE_TEMPLATES.find(t => t.id === pendingTemplateId)?.name}&rdquo;?
                   </p>
                   <p className="text-xs text-amber-400/70 mt-0.5">
-                    This will replace your current layout (undo available).
+                    This replaces your current layout — you can undo with ⌘Z.
                   </p>
                 </div>
-                <div className="flex gap-2 ml-4">
+                <div className="flex gap-2 ml-4 shrink-0">
                   <button onClick={() => setPendingTemplateId(null)}
                     className="px-3 py-1 rounded text-sm bg-white/10 hover:bg-white/20 text-white transition-colors">
                     Cancel
                   </button>
                   <button onClick={confirmTemplate}
                     className="px-3 py-1 rounded text-sm bg-indigo-600 hover:bg-indigo-500 text-white transition-colors">
-                    Apply
+                    Apply Template
                   </button>
                 </div>
               </div>
             )}
 
+            {/* Blank layout option */}
+            <div className="mb-5">
+              <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-white/30 mb-2">Start Fresh</p>
+              <button onClick={applyBlankLayout}
+                className="w-full flex items-center gap-4 p-3 rounded-lg border border-dashed border-white/20 hover:border-indigo-500/50 hover:bg-indigo-950/30 transition-all text-left group">
+                <div className="w-[120px] h-[40px] rounded-md bg-[#1e2435] border border-white/10 flex items-center justify-center shrink-0 overflow-hidden">
+                  <svg width="120" height="40" style={{ display: 'block' }}>
+                    <rect width="120" height="40" fill="#1e2435"/>
+                    {Array.from({ length: 5 }, (_, i) => (
+                      <line key={`v${i}`} x1={(i + 1) * 20} y1={0} x2={(i + 1) * 20} y2={40}
+                        stroke="rgba(255,255,255,0.06)" strokeWidth={1}/>
+                    ))}
+                    {Array.from({ length: 2 }, (_, i) => (
+                      <line key={`h${i}`} x1={0} y1={(i + 1) * (40 / 3)} x2={120} y2={(i + 1) * (40 / 3)}
+                        stroke="rgba(255,255,255,0.06)" strokeWidth={1}/>
+                    ))}
+                    <text x="60" y="24" textAnchor="middle" fill="rgba(255,255,255,0.2)" fontSize="11" fontFamily="system-ui">empty canvas</text>
+                  </svg>
+                </div>
+                <div>
+                  <p className="font-semibold text-white/80 group-hover:text-white text-sm">New Blank Layout</p>
+                  <p className="text-xs text-white/35 mt-0.5">Start with an empty grid — full creative control from scratch.</p>
+                </div>
+              </button>
+            </div>
+
+            {/* Templates grid */}
+            <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-white/30 mb-2">Starter Templates</p>
             <div className="grid grid-cols-2 gap-3">
               {OFFICE_TEMPLATES.map(tpl => (
                 <button key={tpl.id} onClick={() => requestTemplate(tpl.id)}
-                  className={`text-left p-4 rounded-lg border transition-all ${
+                  className={`text-left rounded-lg border transition-all overflow-hidden ${
                     pendingTemplateId === tpl.id
-                      ? 'bg-indigo-900/40 border-indigo-500/60'
-                      : 'bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20'}`}>
-                  <div className="text-2xl mb-2">{tpl.emoji}</div>
-                  <div className="font-medium text-white text-sm">{tpl.name}</div>
-                  <div className="text-xs text-white/40 mt-1 leading-snug">{tpl.description}</div>
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-indigo-900/50 text-indigo-300">~{tpl.capacity} people</span>
-                    {tpl.tags.slice(0,2).map(tag =>
-                      <span key={tag} className="text-xs px-1.5 py-0.5 rounded bg-white/5 text-white/40">{tag}</span>)}
+                      ? 'bg-indigo-900/40 border-indigo-500/60 ring-1 ring-indigo-500/40'
+                      : 'bg-white/[0.03] hover:bg-white/[0.06] border-white/10 hover:border-white/20'}`}>
+                  {/* Mini layout preview */}
+                  <div className="border-b border-white/10 overflow-hidden">
+                    <TemplateMiniPreview layout={tpl.layout} width={342} height={114}/>
+                  </div>
+                  <div className="p-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-base leading-none">{tpl.emoji}</span>
+                      <span className="font-semibold text-white text-sm">{tpl.name}</span>
+                    </div>
+                    <p className="text-xs text-white/40 leading-snug">{tpl.description}</p>
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-indigo-900/50 text-indigo-300">~{tpl.capacity} people</span>
+                      {tpl.tags.slice(0, 2).map(tag => (
+                        <span key={tag} className="text-xs px-1.5 py-0.5 rounded bg-white/5 text-white/35">{tag}</span>
+                      ))}
+                    </div>
                   </div>
                 </button>
               ))}

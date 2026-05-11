@@ -11,10 +11,10 @@ import {
   Check,
   X,
   ShieldCheck,
-  Infinity,
+  Plus,
+  Trash2,
 } from 'lucide-react'
 import { ClientShell } from '@/components/ClientShell'
-import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { toast } from '@/components/ui/Toast'
 import { getStoredToken } from '@/lib/auth/browser'
@@ -30,22 +30,18 @@ interface Plan {
   subscriberCount: number
 }
 
+const BUILT_IN_PLANS = new Set(['free', 'starter', 'growth', 'enterprise'])
+
+const PLAN_COLORS: Record<string, { bg: string; border: string }> = {
+  free:       { bg: 'bg-slate-500/10',  border: 'border-slate-500/20' },
+  starter:    { bg: 'bg-blue-500/10',   border: 'border-blue-500/20' },
+  growth:     { bg: 'bg-violet-500/10', border: 'border-violet-500/20' },
+  enterprise: { bg: 'bg-amber-500/10',  border: 'border-amber-500/20' },
+}
+const DEFAULT_COLOR = { bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' }
+
 const PLAN_ICONS: Record<string, string> = {
-  free: '🆓',
-  starter: '🚀',
-  growth: '📈',
-  enterprise: '🏢',
-}
-
-const PLAN_COLORS: Record<string, { bg: string; border: string; badge: string }> = {
-  free:       { bg: 'bg-slate-500/10',   border: 'border-slate-500/20',   badge: 'bg-slate-500/20 text-slate-300' },
-  starter:    { bg: 'bg-blue-500/10',    border: 'border-blue-500/20',    badge: 'bg-blue-500/20 text-blue-300' },
-  growth:     { bg: 'bg-violet-500/10',  border: 'border-violet-500/20',  badge: 'bg-violet-500/20 text-violet-300' },
-  enterprise: { bg: 'bg-amber-500/10',   border: 'border-amber-500/20',   badge: 'bg-amber-500/20 text-amber-300' },
-}
-
-function getPlanColor(id: string) {
-  return PLAN_COLORS[id] || PLAN_COLORS.starter
+  free: '🆓', starter: '🚀', growth: '📈', enterprise: '🏢',
 }
 
 interface EditingState {
@@ -59,10 +55,12 @@ interface EditingState {
 function PlanCard({
   plan,
   onSave,
+  onDelete,
   saving,
 }: {
   plan: Plan
   onSave: (id: string, updates: Partial<EditingState>) => Promise<void>
+  onDelete: (id: string) => Promise<void>
   saving: boolean
 }) {
   const [editing, setEditing] = useState(false)
@@ -74,19 +72,13 @@ function PlanCard({
     isActive: plan.isActive,
   })
 
-  const color = getPlanColor(plan.id)
+  const color = PLAN_COLORS[plan.id] || DEFAULT_COLOR
+  const isBuiltIn = BUILT_IN_PLANS.has(plan.id)
 
   const handleSave = async () => {
-    await onSave(plan.id, {
-      name: form.name,
-      priceMonthlyUsd: form.priceMonthlyUsd,
-      maxAgents: form.maxAgents,
-      stripePriceId: form.stripePriceId,
-      isActive: form.isActive,
-    })
+    await onSave(plan.id, form)
     setEditing(false)
   }
-
   const handleCancel = () => {
     setForm({
       name: plan.name,
@@ -99,7 +91,7 @@ function PlanCard({
   }
 
   return (
-    <div className={`rounded-2xl border p-5 ${color.bg} ${color.border} relative overflow-hidden`}>
+    <div className={`rounded-2xl border p-5 ${color.bg} ${color.border} relative`}>
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
@@ -114,38 +106,44 @@ function PlanCard({
             ) : (
               <h3 className="text-sm font-semibold text-white">{plan.name}</h3>
             )}
-            <p className="text-[11px] text-white/40 font-mono mt-0.5">plan_id: {plan.id}</p>
+            <p className="text-[10px] text-white/40 font-mono mt-0.5">{plan.id}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           {!plan.isActive && (
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 border border-red-500/30">
               Inactive
             </span>
           )}
           {!editing ? (
-            <button
-              onClick={() => setEditing(true)}
-              className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors"
-            >
-              <Edit3 size={14} />
-            </button>
+            <>
+              <button
+                onClick={() => setEditing(true)}
+                className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+                title="Edit plan"
+              >
+                <Edit3 size={13} />
+              </button>
+              {!isBuiltIn && (
+                <button
+                  onClick={() => onDelete(plan.id)}
+                  disabled={saving}
+                  className="p-1.5 rounded-lg text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-40"
+                  title="Delete plan"
+                >
+                  <Trash2 size={13} />
+                </button>
+              )}
+            </>
           ) : (
-            <div className="flex items-center gap-1">
-              <button
-                onClick={handleCancel}
-                className="p-1.5 rounded-lg text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-              >
-                <X size={14} />
+            <>
+              <button onClick={handleCancel} className="p-1.5 rounded-lg text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-colors">
+                <X size={13} />
               </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="p-1.5 rounded-lg text-white/40 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors disabled:opacity-50"
-              >
-                <Check size={14} />
+              <button onClick={handleSave} disabled={saving} className="p-1.5 rounded-lg text-white/40 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors disabled:opacity-50">
+                <Check size={13} />
               </button>
-            </div>
+            </>
           )}
         </div>
       </div>
@@ -159,9 +157,7 @@ function PlanCard({
               <input
                 value={form.priceMonthlyUsd}
                 onChange={(e) => setForm((f) => ({ ...f, priceMonthlyUsd: e.target.value }))}
-                type="number"
-                min="0"
-                step="1"
+                type="number" min="0" step="1"
                 className="bg-white/10 border border-white/20 rounded-lg pl-6 pr-2 py-1.5 text-lg font-bold text-white w-28 focus:outline-none focus:ring-1 focus:ring-white/30"
               />
             </div>
@@ -169,9 +165,7 @@ function PlanCard({
           </div>
         ) : (
           <div className="flex items-end gap-1">
-            <span className="text-3xl font-bold text-white">
-              ${plan.priceMonthlyUsd === 0 ? '0' : plan.priceMonthlyUsd.toFixed(0)}
-            </span>
+            <span className="text-3xl font-bold text-white">${plan.priceMonthlyUsd === 0 ? '0' : plan.priceMonthlyUsd.toFixed(0)}</span>
             <span className="text-white/40 text-sm mb-1">/ month</span>
           </div>
         )}
@@ -189,19 +183,15 @@ function PlanCard({
               <input
                 value={form.maxAgents}
                 onChange={(e) => setForm((f) => ({ ...f, maxAgents: e.target.value }))}
-                type="number"
-                min="-1"
-                className="bg-white/10 border border-white/20 rounded px-2 py-0.5 text-sm font-semibold text-white w-20 focus:outline-none focus:ring-1 focus:ring-white/30"
+                type="number" min="-1"
+                className="bg-white/10 border border-white/20 rounded px-2 py-0.5 text-sm font-semibold text-white w-16 focus:outline-none"
               />
-              <span className="text-[10px] text-white/30">(-1 = ∞)</span>
+              <span className="text-[10px] text-white/30">(-1=∞)</span>
             </div>
           ) : (
-            <p className="text-lg font-bold text-white flex items-center gap-1">
-              {plan.maxAgents === -1 ? <Infinity size={20} /> : plan.maxAgents}
-            </p>
+            <p className="text-lg font-bold text-white">{plan.maxAgents === -1 ? '∞' : plan.maxAgents}</p>
           )}
         </div>
-
         <div className="rounded-xl bg-white/5 border border-white/10 p-3">
           <div className="flex items-center gap-1.5 mb-1">
             <Users size={12} className="text-white/40" />
@@ -211,7 +201,7 @@ function PlanCard({
         </div>
       </div>
 
-      {/* Stripe Price ID */}
+      {/* Stripe */}
       <div className="mb-4">
         <p className="text-[10px] text-white/40 uppercase tracking-wide font-mono mb-1">Stripe Price ID</p>
         {editing ? (
@@ -222,9 +212,7 @@ function PlanCard({
             className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-xs font-mono text-white placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-white/30"
           />
         ) : (
-          <p className="text-xs font-mono text-white/50">
-            {plan.stripePriceId || <span className="text-white/20 italic">not configured</span>}
-          </p>
+          <p className="text-xs font-mono text-white/50">{plan.stripePriceId || <span className="text-white/20 italic">not configured</span>}</p>
         )}
       </div>
 
@@ -235,25 +223,34 @@ function PlanCard({
             onClick={() => setForm((f) => ({ ...f, isActive: !f.isActive }))}
             className={`w-9 h-5 rounded-full transition-colors ${form.isActive ? 'bg-emerald-500' : 'bg-white/20'} relative cursor-pointer`}
           >
-            <div
-              className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${form.isActive ? 'translate-x-4' : 'translate-x-0.5'}`}
-            />
+            <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${form.isActive ? 'translate-x-4' : 'translate-x-0.5'}`} />
           </div>
           <span className="text-xs text-white/60">{form.isActive ? 'Plan active' : 'Plan inactive'}</span>
         </label>
       )}
-
-      {saving && editing && (
-        <p className="text-xs text-white/40 mt-2 animate-pulse">Saving…</p>
-      )}
     </div>
   )
+}
+
+interface NewPlanForm {
+  name: string
+  priceMonthlyUsd: string
+  maxAgents: string
+  stripePriceId: string
 }
 
 export default function PlansPage() {
   const [plans, setPlans] = useState<Plan[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
+  const [showNewForm, setShowNewForm] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [newForm, setNewForm] = useState<NewPlanForm>({
+    name: '',
+    priceMonthlyUsd: '0',
+    maxAgents: '10',
+    stripePriceId: '',
+  })
 
   const authHeaders = (): Record<string, string> => {
     const token = getStoredToken()
@@ -293,7 +290,7 @@ export default function PlansPage() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to save')
-      toast.success(`${data.plan.name} plan updated`)
+      toast.success(`${data.plan.name} updated`)
       await loadPlans()
     } catch (err: any) {
       toast.error(err.message)
@@ -303,10 +300,53 @@ export default function PlansPage() {
     }
   }
 
-  const totalRevenuePotential = plans.reduce(
-    (sum, p) => sum + p.priceMonthlyUsd * p.subscriberCount,
-    0
-  )
+  const handleCreate = async () => {
+    if (!newForm.name.trim()) { toast.error('Plan name is required'); return }
+    setCreating(true)
+    try {
+      const res = await fetch('/api/admin/plans', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({
+          name: newForm.name.trim(),
+          priceMonthlyUsd: parseFloat(newForm.priceMonthlyUsd) || 0,
+          maxAgents: parseInt(newForm.maxAgents, 10) || 10,
+          stripePriceId: newForm.stripePriceId.trim() || undefined,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to create')
+      toast.success(`"${data.plan.name}" plan created`)
+      setNewForm({ name: '', priceMonthlyUsd: '0', maxAgents: '10', stripePriceId: '' })
+      setShowNewForm(false)
+      await loadPlans()
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!confirm(`Delete the "${plans.find((p) => p.id === id)?.name}" plan? This cannot be undone.`)) return
+    setSaving(id)
+    try {
+      const res = await fetch(`/api/admin/plans?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to delete')
+      toast.success('Plan deleted')
+      await loadPlans()
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  const totalRevenuePotential = plans.reduce((sum, p) => sum + p.priceMonthlyUsd * p.subscriberCount, 0)
   const totalSubscribers = plans.reduce((sum, p) => sum + p.subscriberCount, 0)
 
   return (
@@ -320,45 +360,99 @@ export default function PlansPage() {
             </div>
             <div>
               <h1 className="text-xl font-semibold text-white">Subscription Plans</h1>
-              <p className="text-sm text-white/40">Super Admin · Edit pricing, limits, and plan details</p>
+              <p className="text-sm text-white/40">Super Admin · Edit pricing, limits, and create custom plans</p>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={loadPlans} disabled={loading}>
-            <RefreshCcw className={`w-4 h-4 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={loadPlans} disabled={loading}>
+              <RefreshCcw className={`w-4 h-4 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Button size="sm" onClick={() => setShowNewForm((v) => !v)}>
+              <Plus className="w-4 h-4 mr-1.5" />
+              New Plan
+            </Button>
+          </div>
         </div>
 
-        {/* Summary */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-          <div className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-center gap-4">
-            <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center">
-              <CreditCard className="w-4 h-4 text-white/60" />
+        {/* Summary stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          {[
+            { icon: CreditCard, label: 'Active Plans', value: plans.filter((p) => p.isActive).length },
+            { icon: Users, label: 'Total Subscribers', value: totalSubscribers },
+            { icon: DollarSign, label: 'MRR Potential', value: `$${totalRevenuePotential.toLocaleString()}` },
+          ].map(({ icon: Icon, label, value }) => (
+            <div key={label} className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-center gap-4">
+              <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center">
+                <Icon className="w-4 h-4 text-white/60" />
+              </div>
+              <div>
+                <p className="text-[10px] text-white/40 uppercase tracking-wide">{label}</p>
+                <p className="text-xl font-semibold text-white">{value}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-[10px] text-white/40 uppercase tracking-wide">Active Plans</p>
-              <p className="text-xl font-semibold text-white">{plans.filter((p) => p.isActive).length}</p>
-            </div>
-          </div>
-          <div className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-center gap-4">
-            <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center">
-              <Users className="w-4 h-4 text-white/60" />
-            </div>
-            <div>
-              <p className="text-[10px] text-white/40 uppercase tracking-wide">Total Subscribers</p>
-              <p className="text-xl font-semibold text-white">{totalSubscribers}</p>
-            </div>
-          </div>
-          <div className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-center gap-4">
-            <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center">
-              <DollarSign className="w-4 h-4 text-white/60" />
-            </div>
-            <div>
-              <p className="text-[10px] text-white/40 uppercase tracking-wide">MRR Potential</p>
-              <p className="text-xl font-semibold text-white">${totalRevenuePotential.toLocaleString()}</p>
-            </div>
-          </div>
+          ))}
         </div>
+
+        {/* Create new plan form */}
+        {showNewForm && (
+          <div className="mb-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                <Plus size={15} className="text-emerald-400" />
+                Create New Plan
+              </h3>
+              <button onClick={() => setShowNewForm(false)} className="text-white/30 hover:text-white/60 transition-colors">
+                <X size={15} />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+              <div className="sm:col-span-2">
+                <label className="text-[10px] text-white/40 uppercase tracking-wide font-mono block mb-1">Plan Name *</label>
+                <input
+                  value={newForm.name}
+                  onChange={(e) => setNewForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder='e.g. "Agency Pro"'
+                  className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-white/40 uppercase tracking-wide font-mono block mb-1">Price ($/mo)</label>
+                <input
+                  value={newForm.priceMonthlyUsd}
+                  onChange={(e) => setNewForm((f) => ({ ...f, priceMonthlyUsd: e.target.value }))}
+                  type="number" min="0" step="1"
+                  className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-white/40 uppercase tracking-wide font-mono block mb-1">Agent Limit (-1=∞)</label>
+                <input
+                  value={newForm.maxAgents}
+                  onChange={(e) => setNewForm((f) => ({ ...f, maxAgents: e.target.value }))}
+                  type="number" min="-1"
+                  className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                />
+              </div>
+              <div className="sm:col-span-4">
+                <label className="text-[10px] text-white/40 uppercase tracking-wide font-mono block mb-1">Stripe Price ID (optional)</label>
+                <input
+                  value={newForm.stripePriceId}
+                  onChange={(e) => setNewForm((f) => ({ ...f, stripePriceId: e.target.value }))}
+                  placeholder="price_xxx"
+                  className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm font-mono text-white placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setShowNewForm(false)}>Cancel</Button>
+              <Button size="sm" disabled={creating || !newForm.name.trim()} onClick={handleCreate}>
+                <Plus size={14} className="mr-1.5" />
+                {creating ? 'Creating…' : 'Create Plan'}
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Plans grid */}
         {loading ? (
@@ -370,6 +464,7 @@ export default function PlansPage() {
                 key={plan.id}
                 plan={plan}
                 onSave={handleSave}
+                onDelete={handleDelete}
                 saving={saving === plan.id}
               />
             ))}
@@ -377,7 +472,7 @@ export default function PlansPage() {
         )}
 
         <p className="mt-6 text-xs text-white/20 text-center">
-          Price changes apply to new subscriptions only. Existing subscribers keep their current rate.
+          Price changes apply to new subscriptions only. Built-in plans (free, starter, growth, enterprise) cannot be deleted.
         </p>
       </div>
     </ClientShell>
