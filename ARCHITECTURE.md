@@ -1,6 +1,6 @@
 # Mission Control — Architecture
 
-> **Last Updated:** 2026-05-10 (Virtual Office Builder v2 — Konva.js canvas, drag-to-move, zoom toward cursor, per-item color picker, agent-to-item assignment, 6 templates, undo/redo)
+> **Last Updated:** 2026-05-11 (Multi-user per tenant + subscription pricing settings for super admin)
 > **Rule for contributors:** Update this file after every code change. Add new pages to the Page Structure table, new components to the Component Library, new store shape changes to State Management, etc.
 
 ## Overview
@@ -140,13 +140,15 @@ Accent Pink:       #f472b6
 | `/analytics` | Analytics dashboards |
 | `/outputs` | Saved deliverables |
 | `/schedules` | Scheduled task CRUD — DB-backed, real agent execution, cron-ready (see Schedules section) |
-| `/users` | Super admin user management (invite, role, activate/suspend) |
+| `/team` | Team Management — admin/super_admin can add members to own tenant, set roles, suspend/activate |
+| `/users` | Super admin platform-level user management (all users, ownership assignment) |
 | `/settings` | App settings with OAuth integrations |
 | `/settings/integrations` | OAuth integrations (Google, Meta) |
 | `/support` | Support contact form (mailto-based) |
 | `/config` | JSON config editor |
 | `/login` | Custom JWT login — POST `/api/auth/session` → JWT stored in `localStorage` via `getStoredToken()` |
 | `/admin/tenants` | Super-admin tenant management: list all tenants, usage stats, manual provisioning (super_admin only) |
+| `/admin/plans` | Super-admin subscription pricing editor — inline edit name, price, agent limit, Stripe price ID per plan |
 
 ## Virtual Office Builder
 
@@ -256,7 +258,11 @@ Every account belongs to a **tenant** (backed by the `agencies` table). All enti
 | `src/app/api/billing/upgrade/route.ts` | POST to change plan (direct DB now; Stripe checkout when `STRIPE_SECRET_KEY` is set) |
 | `src/app/api/billing/webhook/route.ts` | POST Stripe webhook handler (skeleton — handles checkout.session.completed, subscription.updated/deleted, invoice.payment_failed) |
 | `src/app/api/admin/tenants/route.ts` | GET list all tenants / POST provision tenant (super_admin only) |
+| `src/app/api/admin/plans/route.ts` | GET / PATCH plan pricing (super_admin only) |
+| `src/app/api/tenant/users/route.ts` | GET/POST/PATCH/DELETE tenant-scoped user management (admin + super_admin) |
 | `src/app/admin/tenants/page.tsx` | Superadmin tenant dashboard UI |
+| `src/app/admin/plans/page.tsx` | Superadmin pricing editor — inline edit per plan |
+| `src/app/team/page.tsx` | Team Management — add members to own tenant, role/status management |
 
 #### Plan enforcement
 
@@ -516,7 +522,7 @@ Task detail UI now surfaces:
   - inspect workspace users and roles
   - create direct users with a temporary password
   - send Supabase email invites
-  - change user role between `member` and `super_admin`
+  - change user role between `member`, `admin`, and `super_admin`
   - activate or suspend users
   - backfill legacy unowned records to the super admin
   - reassign client ownership
@@ -1241,7 +1247,8 @@ COMPANY_SETUP_NAV    — Agents, Clients, Skills, Pipelines, Schedules, Users
 SETTINGS_NAV         — Settings, Support
 ```
 
-- Admin-only IDs (`pipeline`, `skills`, `users`, `settings`, `schedules`) are hidden for non-`super_admin` users
+- Role-gated sidebar items: `super_admin` only: `users`; `admin` or above: `pipeline`, `skills`, `settings`, `schedules`, `team`
+- `admin` = company-level admin (own tenant); `super_admin` = platform-level (all tenants)
 - "Start a Mission" uses a purple gradient highlight variant that stays on one line (no badge text)
 - Active non-highlight items use a green-tinted active state
 
