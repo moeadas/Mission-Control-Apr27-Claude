@@ -42,6 +42,7 @@ const COMPANY_SETUP_NAV = [
   { id: 'skills', label: 'Skills', icon: BookOpen, href: '/skills', color: '#fbbf24' },
   { id: 'pipeline', label: 'Pipelines', icon: GitBranch, href: '/pipeline', color: '#2dd4bf' },
   { id: 'schedules', label: 'Schedules', icon: Calendar, href: '/schedules', color: '#22d3ee' },
+  { id: 'team', label: 'Team', icon: Users, href: '/team', color: '#34d399' },
   { id: 'users', label: 'Users', icon: Shield, href: '/users', color: '#f472b6' },
 ]
 
@@ -52,9 +53,13 @@ const SETTINGS_NAV = [
 
 const SUPER_ADMIN_NAV = [
   { id: 'admin-tenants', label: 'Tenants', icon: ShieldCheck, href: '/admin/tenants', color: '#a78bfa' },
+  { id: 'admin-plans', label: 'Pricing', icon: Shield, href: '/admin/plans', color: '#fbbf24' },
 ]
 
-const ADMIN_ONLY_IDS = new Set(['pipeline', 'skills', 'users', 'settings', 'schedules'])
+// IDs visible only to super_admin
+const SUPER_ADMIN_ONLY_IDS = new Set(['users'])
+// IDs visible to admin + super_admin (not plain members)
+const ADMIN_OR_ABOVE_IDS = new Set(['pipeline', 'skills', 'settings', 'schedules', 'team'])
 
 interface SidebarProps {
   collapsed?: boolean
@@ -191,20 +196,23 @@ function SectionLabel({ label, collapsed }: { label: string; collapsed?: boolean
 export function Sidebar({ collapsed = false, mobileOpen = false, onMobileClose }: SidebarProps) {
   const pathname = usePathname()
   const currentUser = useAgentsStore((state) => state.currentUser)
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+  const [role, setRole] = useState<'super_admin' | 'admin' | 'member'>('member')
+
+  const isSuperAdmin = role === 'super_admin'
+  const isAdminOrAbove = role === 'super_admin' || role === 'admin'
 
   useEffect(() => {
     let active = true
 
     const loadRole = async () => {
       if (currentUser?.role) {
-        if (active) setIsSuperAdmin(currentUser.role === 'super_admin')
+        if (active) setRole(currentUser.role as 'super_admin' | 'admin' | 'member')
         return
       }
 
       const token = await getSupabaseAccessToken()
       if (!token) {
-        if (active) setIsSuperAdmin(false)
+        if (active) setRole('member')
         return
       }
 
@@ -214,12 +222,13 @@ export function Sidebar({ collapsed = false, mobileOpen = false, onMobileClose }
 
       if (!active) return
       if (!response.ok) {
-        setIsSuperAdmin(false)
+        setRole('member')
         return
       }
 
       const payload = await response.json()
-      setIsSuperAdmin(payload?.user?.role === 'super_admin')
+      const r = payload?.user?.role
+      if (active) setRole(r === 'super_admin' ? 'super_admin' : r === 'admin' ? 'admin' : 'member')
     }
 
     loadRole()
@@ -227,12 +236,20 @@ export function Sidebar({ collapsed = false, mobileOpen = false, onMobileClose }
   }, [currentUser?.role])
 
   const visibleCompanySetup = useMemo(
-    () => COMPANY_SETUP_NAV.filter((item) => isSuperAdmin || !ADMIN_ONLY_IDS.has(item.id)),
-    [isSuperAdmin]
+    () => COMPANY_SETUP_NAV.filter((item) => {
+      if (SUPER_ADMIN_ONLY_IDS.has(item.id)) return isSuperAdmin
+      if (ADMIN_OR_ABOVE_IDS.has(item.id)) return isAdminOrAbove
+      return true
+    }),
+    [isSuperAdmin, isAdminOrAbove]
   )
   const visibleSettings = useMemo(
-    () => SETTINGS_NAV.filter((item) => isSuperAdmin || !ADMIN_ONLY_IDS.has(item.id)),
-    [isSuperAdmin]
+    () => SETTINGS_NAV.filter((item) => {
+      if (SUPER_ADMIN_ONLY_IDS.has(item.id)) return isSuperAdmin
+      if (ADMIN_OR_ABOVE_IDS.has(item.id)) return isAdminOrAbove
+      return true
+    }),
+    [isSuperAdmin, isAdminOrAbove]
   )
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')

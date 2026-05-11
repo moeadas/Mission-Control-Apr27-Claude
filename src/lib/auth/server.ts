@@ -12,7 +12,7 @@ export function getSuperAdminEmail() {
 export interface AuthContext {
   userId: string
   email: string
-  role: 'super_admin' | 'member'
+  role: 'super_admin' | 'admin' | 'member'
   providerSettings: ProviderSettings
   /** UUID of the tenant (agencies row) this user belongs to. null for super_admin with no tenant. */
   tenantId: string | null
@@ -40,9 +40,11 @@ export async function resolveAuthContextFromToken(token: string | null | undefin
   const profile = rows[0]
   if (!profile?.is_active) return null
 
-  const role: 'super_admin' | 'member' = email === superAdminEmail
+  const role: 'super_admin' | 'admin' | 'member' = email === superAdminEmail
     ? 'super_admin'
-    : profile.role === 'super_admin' ? 'super_admin' : 'member'
+    : profile.role === 'super_admin' ? 'super_admin'
+    : profile.role === 'admin' ? 'admin'
+    : 'member'
 
   // Resolve tenantId: prefer JWT claim → profile column → auto-provision
   let tenantId: string | null = payload.tenantId ?? profile.tenant_id ?? null
