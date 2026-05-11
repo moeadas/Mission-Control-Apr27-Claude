@@ -6,7 +6,11 @@ import { getTenantIdForUser, createTenant, assignUserToTenant } from '@/lib/serv
 import type { ProviderSettings } from '@/lib/types'
 
 export function getSuperAdminEmail() {
-  return (process.env.SUPER_ADMIN_EMAIL || 'moeadas@yahoo.com').trim().toLowerCase()
+  const email = process.env.SUPER_ADMIN_EMAIL?.trim().toLowerCase()
+  if (!email) {
+    throw new Error('SUPER_ADMIN_EMAIL env var is not set. Configure it before starting the server.')
+  }
+  return email
 }
 
 export interface AuthContext {

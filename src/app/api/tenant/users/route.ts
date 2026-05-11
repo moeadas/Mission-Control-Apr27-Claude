@@ -8,6 +8,7 @@
  * PATCH  — update role / active status of a user within the same tenant
  * DELETE — remove a user from the tenant (profile.tenant_id → null)
  */
+import crypto from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 
@@ -112,7 +113,7 @@ export async function POST(request: NextRequest) {
     // Create new user — do NOT create a new tenant for them
     const role: 'admin' | 'member' = body.role === 'admin' ? 'admin' : 'member'
     const temporaryPassword = body.password?.trim() ||
-      `${Math.random().toString(36).slice(2, 8)}A!9${Math.random().toString(36).slice(2, 6)}`
+      crypto.randomBytes(12).toString('base64url').slice(0, 14) + 'A!9'
     const passwordHash = await bcrypt.hash(temporaryPassword, 12)
     const fullName = body.fullName?.trim() || ''
 

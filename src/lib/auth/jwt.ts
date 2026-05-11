@@ -4,7 +4,10 @@ const ALG = 'HS256'
 const EXPIRY = '7d'
 
 function getSecret() {
-  const raw = process.env.JWT_SECRET || 'dev-secret-change-in-production-minimum-32-chars!!'
+  const raw = process.env.JWT_SECRET
+  if (!raw || raw.length < 32) {
+    throw new Error('JWT_SECRET env var is missing or shorter than 32 characters. Set it before starting the server.')
+  }
   return new TextEncoder().encode(raw)
 }
 

@@ -26,21 +26,32 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const fileName = request.nextUrl.searchParams.get('fileName')
+  const rawFileName = request.nextUrl.searchParams.get('fileName')
 
-  if (!fileName || fileName.includes('/') || fileName.includes('\\')) {
+  // Reject path traversal and header-injection characters
+  if (
+    !rawFileName ||
+    rawFileName.includes('/') ||
+    rawFileName.includes('\\') ||
+    /[\r\n\0]/.test(rawFileName)
+  ) {
     return NextResponse.json({ error: 'A valid fileName is required.' }, { status: 400 })
   }
 
+  // Strip any remaining characters that could escape the Content-Disposition header
+  const safeFileName = rawFileName.replace(/[^\w.\-_ ]/g, '_')
+  // RFC 5987 percent-encode for the filename* parameter (handles unicode + special chars safely)
+  const encodedFileName = encodeURIComponent(safeFileName)
+
   try {
-    const filePath = path.join(GENERATED_ROOT, fileName)
+    const filePath = path.join(GENERATED_ROOT, safeFileName)
     const buffer = await readFile(filePath)
-    const ext = fileName.split('.').pop() || ''
+    const ext = safeFileName.split('.').pop() || ''
 
     return new NextResponse(buffer, {
       headers: {
         'Content-Type': CONTENT_TYPES[ext] || 'application/octet-stream',
-        'Content-Disposition': `attachment; filename="${fileName}"`,
+        'Content-Disposition': `attachment; filename="${safeFileName}"; filename*=UTF-8''${encodedFileName}`,
         'Cache-Control': 'no-store',
       },
     })

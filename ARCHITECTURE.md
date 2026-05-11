@@ -1,6 +1,6 @@
 # Mission Control — Architecture
 
-> **Last Updated:** 2026-05-11 (Multi-user per tenant + subscription pricing settings for super admin)
+> **Last Updated:** 2026-05-11 (OfficeBuilder v4 + security audit fixes C4/C5/C10/H9/H12)
 > **Rule for contributors:** Update this file after every code change. Add new pages to the Page Structure table, new components to the Component Library, new store shape changes to State Management, etc.
 
 ## Overview
@@ -160,7 +160,7 @@ The `/office` page is a Konva.js-powered interactive office builder. Users drag-
 - **SVG assets** loaded as blob URLs via `use-image`; colors tinted at runtime with `tintSvg()`
 - Grid: 30 tiles wide × 20 tiles tall
 
-### Features
+### Features (v4)
 - **Drag-to-move** — placed items draggable with grid snapping (Konva native drag)
 - **Zoom toward cursor** — scroll wheel, Figma-style (scale + offset adjustment around pointer)
 - **Pan** — drag the canvas background when no item placing is active
@@ -170,7 +170,10 @@ The `/office` page is a Konva.js-powered interactive office builder. Users drag-
 - **Zones** — visual space labeling only; painted tile-by-tile in zone tool mode; no agent restrictions
 - **50-step undo/redo** — Cmd/Ctrl+Z / Cmd/Ctrl+Shift+Z
 - **Delete** key removes selected item; **Arrow keys** nudge by 1 tile
+- **Template selection modal** — "Layouts & Templates" with full-width SVG minimap previews (`TemplateMiniPreview` renders zones as colored tiles + furniture dots); "New Blank Layout" dashed-card option at top; confirmation banner before applying
 - **6 starter templates** — Startup Garage (10), Creative Studio (20), Scale-up (30), Tech Company (40), Corporate Floor (60), Coworking Space (50)
+- **Left palette visual separation** — categories section (`#0d1018` bg, mono-caps CATEGORIES label, indigo active state) vs items section (`#151922` bg, card-style bordered buttons with glow on selected)
+- **Realistic SVG furniture** — all 13+ core assets use drop shadows (offset rect), depth strips (right/bottom darker rects), sheen gradients (transparent overlay), grain lines (desks), spoke wheels (chairs), etc. Gradient IDs are safe because each SVG is in its own Blob URL document
 - **LocalStorage auto-save** — layout saved on every change; server save via PUT /api/office-layout
 - **Export/Import JSON** — download/upload raw OfficeLayout JSON
 
@@ -1011,12 +1014,22 @@ All modals and dialogs use a shared set of CSS classes from `src/styles/globals.
 
 ## Security Notes
 
+### Audit Fixes (2026-05-11)
+- **C4 — JWT secret**: `src/lib/auth/jwt.ts` `getSecret()` now throws at call-time if `JWT_SECRET` env var is missing or shorter than 32 chars — no hardcoded fallback
+- **C5 — Super admin email**: `getSuperAdminEmail()` in `src/lib/auth/server.ts` now throws if `SUPER_ADMIN_EMAIL` is unset — no hardcoded personal email in committed code
+- **C10-a — SQL bug**: `tick/route.ts` JOIN fixed: `profiles.id` IS the user ID (no `user_id` column); was `JOIN users u ON u.id = p.user_id`
+- **C10-b — failed task resurrection**: error catch block in `runTask()` now calls `computeNextRunAt(task)` and writes it back — failed recurring tasks continue to execute on schedule
+- **H9 — Content-Disposition injection**: `api/artifacts/download/route.ts` strips `\r\n\0` and non-word characters from filename before setting header; uses RFC 5987 `filename*=UTF-8''...` encoding
+- **H12 — weak temp passwords**: both user-creation routes (`api/admin/users`, `api/tenant/users`) now use `crypto.randomBytes(12).toString('base64url')` instead of `Math.random()`
+
+### Required env vars (server will throw if missing)
+- `JWT_SECRET` — minimum 32 characters
+- `SUPER_ADMIN_EMAIL` — must be set before first request
+
+### Legacy notes
 - `SUPER_ADMIN_EMAIL` is now configurable through environment variables instead of being hardcoded as an unchangeable code constant
 - `.env.local.example` now documents the required runtime variables, including `SUPER_ADMIN_EMAIL`
 - Client-supplied brand/context values now pass through prompt-safety sanitization before they are injected into AI prompts or template interpolation
-- The remaining planned security hardening items are:
-  - deeper entity-level sync beyond the current core collections
-  - fuller background execution infrastructure beyond request/response lifecycles
 
 ### Runtime Selection Rules
 

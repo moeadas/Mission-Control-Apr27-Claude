@@ -96,9 +96,10 @@ async function runTask(db: any, task: any) {
     }
 
     // Load provider settings for the tenant's owner
+    // profiles.id = users.id (no separate user_id column)
     const [ownerProfile] = await db`
       SELECT u.id FROM profiles p
-      JOIN users u ON u.id = p.user_id
+      JOIN users u ON u.id = p.id
       WHERE p.tenant_id = ${task.tenant_id}
       ORDER BY u.created_at ASC
       LIMIT 1
@@ -162,9 +163,14 @@ async function runTask(db: any, task: any) {
     return { id: task.id, status: 'success' }
   } catch (err: any) {
     const errMsg = err?.message || 'Unknown error'
+    const nextRunAt = computeNextRunAt(task as any)
     await db`
       UPDATE scheduled_tasks
-      SET last_run_status = 'error', last_run_output = ${errMsg}, run_count = run_count + 1, updated_at = now()
+      SET last_run_status = 'error',
+          last_run_output = ${errMsg},
+          run_count       = run_count + 1,
+          next_run_at     = ${nextRunAt?.toISOString() ?? null},
+          updated_at      = now()
       WHERE id = ${task.id}
     `
     return { id: task.id, status: 'error', error: errMsg }

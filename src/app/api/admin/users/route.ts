@@ -1,3 +1,4 @@
+import crypto from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest) {
     const superAdminEmail = getSuperAdminEmail()
     const role = email === superAdminEmail ? 'super_admin' : body.role === 'super_admin' ? 'super_admin' : 'member'
     const temporaryPassword = body.password?.trim() ||
-      `${Math.random().toString(36).slice(2, 8)}A!9${Math.random().toString(36).slice(2, 6)}`
+      crypto.randomBytes(12).toString('base64url').slice(0, 14) + 'A!9'
 
     const passwordHash = await bcrypt.hash(temporaryPassword, 12)
     const db = getDb()
