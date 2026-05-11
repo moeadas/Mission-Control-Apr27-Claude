@@ -194,12 +194,17 @@ function FurnitureTileWrapper(props: FurnitureTileProps) {
   const ph = h * tileSize
 
   const handleDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => {
-    // Position is the centre; convert back to grid top-left
+    // Convert dragged centre position back to grid top-left
     const newCX = e.target.x()
     const newCY = e.target.y()
-    const newX = Math.round((newCX - pw / 2) / tileSize)
-    const newY = Math.round((newCY - ph / 2) / tileSize)
-    props.onDragEnd(tile.id, Math.max(0, newX), Math.max(0, newY))
+    const snappedX = Math.max(0, Math.round((newCX - pw / 2) / tileSize))
+    const snappedY = Math.max(0, Math.round((newCY - ph / 2) / tileSize))
+    // Snap the Konva node to the grid immediately (avoids visual jump on re-render)
+    e.target.position({
+      x: snappedX * tileSize + pw / 2,
+      y: snappedY * tileSize + ph / 2,
+    })
+    props.onDragEnd(tile.id, snappedX, snappedY)
   }
 
   return (
@@ -210,6 +215,15 @@ function FurnitureTileWrapper(props: FurnitureTileProps) {
       offsetY={0}
       rotation={tile.rotation}
       draggable
+      dragBoundFunc={(pos) => {
+        // Clamp so the tile can't be dragged outside the grid
+        const maxX = (GRID_W - w) * tileSize + pw / 2
+        const maxY = (GRID_H - h) * tileSize + ph / 2
+        return {
+          x: Math.max(pw / 2, Math.min(maxX, pos.x)),
+          y: Math.max(ph / 2, Math.min(maxY, pos.y)),
+        }
+      }}
       onClick={() => props.onSelect(tile.id)}
       onTap={() => props.onSelect(tile.id)}
       onDragEnd={handleDragEnd}
@@ -849,7 +863,16 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
             y={offset.y}
             onWheel={handleWheel}
             draggable={tool === 'select' && !placingAsset}
-            onDragMove={(e: Konva.KonvaEventObject<DragEvent>) => setOffset({ x: e.target.x(), y: e.target.y() })}
+            onDragMove={(e: Konva.KonvaEventObject<DragEvent>) => {
+              // Only update offset when the Stage itself is being panned,
+              // NOT when a child tile is being dragged (events bubble up).
+              if (e.target !== stageRef.current) return
+              setOffset({ x: e.target.x(), y: e.target.y() })
+            }}
+            onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
+              if (e.target !== stageRef.current) return
+              setOffset({ x: e.target.x(), y: e.target.y() })
+            }}
             onClick={handleStageClick}
           >
             {/* Layer 1: Floor + Zones + Grid */}
