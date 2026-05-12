@@ -7,7 +7,7 @@ import { SKILL_CATEGORIES, type Skill } from '@/lib/skill-schema'
 import Link from 'next/link'
 import { Plus, Search, BookOpen, Star, Edit, ListChecks, Workflow, Zap } from 'lucide-react'
 import { clsx } from 'clsx'
-import { getSupabaseAccessToken } from '@/lib/auth/browser'
+import { getAuthToken } from '@/lib/auth/browser'
 
 const CATEGORY_ALIASES: Record<string, string> = {
   'strategy & planning': 'strategy',
@@ -34,7 +34,7 @@ export default function SkillsPage() {
   const [showSkillPackages, setShowSkillPackages] = useState(false)
 
   const loadSkills = async () => {
-    const token = await getSupabaseAccessToken()
+    const token = await getAuthToken()
     const response = await fetch('/api/skills', {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })

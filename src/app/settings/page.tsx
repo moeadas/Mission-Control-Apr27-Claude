@@ -11,7 +11,7 @@ import { toast } from '@/components/ui/Toast'
 import { useAgentsStore } from '@/lib/agents-store'
 import { getProviderModels, MODEL_OPTIONS, PROVIDER_OPTIONS } from '@/lib/providers'
 import { ProviderFallback, ThemeMode } from '@/lib/types'
-import { getSupabaseAccessToken } from '@/lib/auth/browser'
+import { getAuthToken } from '@/lib/auth/browser'
 import { Lock } from 'lucide-react'
 import Link from 'next/link'
 
@@ -38,7 +38,7 @@ function PasswordChangeCard() {
     }
     setSaving(true)
     try {
-      const token = await getSupabaseAccessToken()
+      const token = await getAuthToken()
       const res = await fetch('/api/auth/password', {
         method: 'POST',
         headers: {
@@ -184,7 +184,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     const loadStatus = async () => {
-      const token = await getSupabaseAccessToken()
+      const token = await getAuthToken()
       const response = await fetch('/api/state', {
         cache: 'no-store',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -210,7 +210,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     const loadProviderSettings = async () => {
-      const token = await getSupabaseAccessToken()
+      const token = await getAuthToken()
       if (!token) return
       const response = await fetch('/api/providers/settings', {
         cache: 'no-store',
@@ -253,7 +253,7 @@ export default function SettingsPage() {
 
   // Save model selection for a provider to provider-secrets
   const saveModelSelection = async (provider: 'ollama' | 'anthropic' | 'openai', model: string) => {
-    const token = await getSupabaseAccessToken()
+    const token = await getAuthToken()
     if (!token) return
     const nextProviderSettings = {
       ...providerSettings,
@@ -269,7 +269,7 @@ export default function SettingsPage() {
   const verifyOllama = async () => {
     setIsVerifyingOllama(true)
     try {
-      const token = await getSupabaseAccessToken()
+      const token = await getAuthToken()
       const response = await fetch('/api/providers/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
@@ -329,7 +329,7 @@ export default function SettingsPage() {
     setGeminiHealth('testing')
     setGeminiHealthMessage('Testing Gemini connection…')
     try {
-      const token = await getSupabaseAccessToken()
+      const token = await getAuthToken()
       const response = await fetch('/api/providers/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
@@ -387,7 +387,7 @@ export default function SettingsPage() {
     setAnthropicHealth('testing')
     setAnthropicHealthMessage('Testing Anthropic connection…')
     try {
-      const token = await getSupabaseAccessToken()
+      const token = await getAuthToken()
       const response = await fetch('/api/providers/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
@@ -444,7 +444,7 @@ export default function SettingsPage() {
     setOpenAiHealth('testing')
     setOpenAiHealthMessage('Testing OpenAI connection…')
     try {
-      const token = await getSupabaseAccessToken()
+      const token = await getAuthToken()
       const response = await fetch('/api/providers/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
@@ -507,7 +507,7 @@ export default function SettingsPage() {
     setVisualHealth('testing')
     setVisualHealthMessage('Testing branded image generation…')
     try {
-      const token = await getSupabaseAccessToken()
+      const token = await getAuthToken()
       const response = await fetch('/api/providers/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },

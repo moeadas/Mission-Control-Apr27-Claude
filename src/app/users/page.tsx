@@ -7,7 +7,7 @@ import { ClientShell } from '@/components/ClientShell'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { useAgentsStore } from '@/lib/agents-store'
-import { getSupabaseAccessToken } from '@/lib/auth/browser'
+import { getAuthToken } from '@/lib/auth/browser'
 import { toast } from '@/components/ui/Toast'
 
 interface AdminUser {
@@ -64,7 +64,7 @@ export default function UsersPage() {
   const loadAdminData = async () => {
     setLoading(true)
     try {
-      const token = await getSupabaseAccessToken()
+      const token = await getAuthToken()
       const response = await fetch('/api/admin/users', {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       })
@@ -83,7 +83,7 @@ export default function UsersPage() {
   }, [])
 
   const reloadSharedState = async () => {
-    const token = await getSupabaseAccessToken()
+    const token = await getAuthToken()
     const response = await fetch('/api/state', {
       cache: 'no-store',
       headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -96,7 +96,7 @@ export default function UsersPage() {
   const handleBackfill = async () => {
     setSavingKey('backfill')
     try {
-      const token = await getSupabaseAccessToken()
+      const token = await getAuthToken()
       const response = await fetch('/api/admin/backfill-ownership', {
         method: 'POST',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -118,7 +118,7 @@ export default function UsersPage() {
     const opKey = `${entityType}:${entityId}`
     setSavingKey(opKey)
     try {
-      const token = await getSupabaseAccessToken()
+      const token = await getAuthToken()
       const response = await fetch('/api/admin/assignments', {
         method: 'POST',
         headers: {
@@ -152,7 +152,7 @@ export default function UsersPage() {
 
     setSavingKey('create-user')
     try {
-      const token = await getSupabaseAccessToken()
+      const token = await getAuthToken()
       const response = await fetch('/api/admin/users', {
         method: 'POST',
         headers: {
@@ -197,7 +197,7 @@ export default function UsersPage() {
     const opKey = `user:${userId}`
     setSavingKey(opKey)
     try {
-      const token = await getSupabaseAccessToken()
+      const token = await getAuthToken()
       const response = await fetch('/api/admin/users', {
         method: 'PATCH',
         headers: {

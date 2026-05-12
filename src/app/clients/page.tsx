@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/Button'
 import { Input, Textarea, Select } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { toast } from '@/components/ui/Toast'
-import { getSupabaseAccessToken } from '@/lib/auth/browser'
+import { getAuthToken } from '@/lib/auth/browser'
 import {
   BookOpen,
   FileImage,
@@ -273,7 +273,7 @@ export default function ClientsPage() {
     if (!editingClient) return
     setUploadingBrandAsset(type)
     try {
-      const token = await getSupabaseAccessToken()
+      const token = await getAuthToken()
       if (!token) throw new Error('Your session expired. Please sign in again.')
 
       const formData = new FormData()
@@ -330,7 +330,7 @@ export default function ClientsPage() {
     if (!editingClient) return
     setUploadingKnowledgeDoc(true)
     try {
-      const token = await getSupabaseAccessToken()
+      const token = await getAuthToken()
       if (!token) throw new Error('Your session expired. Please sign in again.')
 
       const formData = new FormData()

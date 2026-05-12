@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { toast } from '@/components/ui/Toast'
-import { getSupabaseAccessToken } from '@/lib/auth/browser'
+import { getAuthToken } from '@/lib/auth/browser'
 import { useAgentsStore } from '@/lib/agents-store'
 import {
   Building2,
@@ -75,7 +75,7 @@ export default function AdminTenantsPage() {
   const fetchTenants = async () => {
     setLoading(true)
     try {
-      const token = await getSupabaseAccessToken()
+      const token = await getAuthToken()
       const res = await fetch('/api/admin/tenants', {
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -96,7 +96,7 @@ export default function AdminTenantsPage() {
     if (!form.ownerEmail || !form.companyName) return
     setProvisioning(true)
     try {
-      const token = await getSupabaseAccessToken()
+      const token = await getAuthToken()
       const res = await fetch('/api/admin/tenants', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },

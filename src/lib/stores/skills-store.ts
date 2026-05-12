@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 
 import { type Skill, SKILL_CATEGORIES } from '@/lib/skill-schema'
-import { getSupabaseAccessToken } from '@/lib/auth/browser'
+import { getAuthToken } from '@/lib/auth/browser'
 
 export interface SkillDefinition extends Skill {}
 
@@ -59,7 +59,7 @@ function buildCollections(skills: SkillDefinition[]) {
 }
 
 async function authorizedFetch(input: string, init: RequestInit = {}) {
-  const token = await getSupabaseAccessToken()
+  const token = await getAuthToken()
   return fetch(input, {
     ...init,
     headers: {

@@ -15,14 +15,7 @@ export function clearStoredToken() {
   localStorage.removeItem(TOKEN_KEY)
 }
 
-// Drop-in replacement used by ClientShell and other components
-export async function getSupabaseAccessToken(): Promise<string | null> {
+/** Returns the current JWT from localStorage, or null if not logged in. */
+export async function getAuthToken(): Promise<string | null> {
   return getStoredToken()
-}
-
-// Compatibility shim — callers that previously used the Supabase browser client
-// can still import this without breaking. It returns null since there is no
-// Supabase client; those callers should use getStoredToken() / fetch() instead.
-export function getSupabaseBrowserClient(): null {
-  return null
 }

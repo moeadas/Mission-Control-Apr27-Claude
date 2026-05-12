@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { ClientShell } from '@/components/ClientShell'
 import { useAgentsStore } from '@/lib/agents-store'
-import { getSupabaseAccessToken } from '@/lib/auth/browser'
+import { getAuthToken } from '@/lib/auth/browser'
 import {
   Calendar,
   Plus,
@@ -103,7 +103,7 @@ const STATUS_CONFIG: Record<ScheduleStatus, { label: string; color: string; bg: 
 // ─── API helpers ─────────────────────────────────────────────────────────────
 
 async function apiFetch(path: string, opts: RequestInit = {}) {
-  const token = await getSupabaseAccessToken()
+  const token = await getAuthToken()
   return fetch(path, {
     ...opts,
     headers: {

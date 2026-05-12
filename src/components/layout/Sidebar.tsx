@@ -22,7 +22,7 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 import { clsx } from 'clsx'
-import { getSupabaseAccessToken } from '@/lib/auth/browser'
+import { getAuthToken } from '@/lib/auth/browser'
 import { useAgentsStore } from '@/lib/agents-store'
 
 // ─── Navigation structure ────────────────────────────────────────────────────
@@ -210,7 +210,7 @@ export function Sidebar({ collapsed = false, mobileOpen = false, onMobileClose }
         return
       }
 
-      const token = await getSupabaseAccessToken()
+      const token = await getAuthToken()
       if (!token) {
         if (active) setRole('member')
         return

@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { getArtifactFamily, getDefaultCreativeSpec, getSupportedExportFormats } from '@/lib/artifacts'
 import { useAgentsStore } from '@/lib/agents-store'
-import { getSupabaseAccessToken } from '@/lib/auth/browser'
+import { getAuthToken } from '@/lib/auth/browser'
 import { Artifact, ArtifactExport, CreativeArtifactSpec } from '@/lib/types'
 import { ArtifactOutputView } from '@/components/outputs/ArtifactOutputView'
 import { useSearchParams } from 'next/navigation'
@@ -221,7 +221,7 @@ export default function OutputsPage() {
     setFeedback(null)
 
     try {
-      const token = await getSupabaseAccessToken()
+      const token = await getAuthToken()
       if (!token) {
         throw new Error('Your session expired. Please sign in again and retry the export.')
       }

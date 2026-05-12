@@ -6,7 +6,7 @@ import { SKILL_CATEGORIES, DIFFICULTY_LEVELS, FREEDOM_LEVELS, type Skill } from 
 import { ClientShell } from '@/components/ClientShell'
 import { Save, Plus, Trash2, X, ChevronDown, ChevronRight, BookOpen, Workflow, ListChecks, Lightbulb, FileText, MessageSquare, Settings } from 'lucide-react'
 import { clsx } from 'clsx'
-import { getSupabaseAccessToken } from '@/lib/auth/browser'
+import { getAuthToken } from '@/lib/auth/browser'
 
 interface SkillEditorProps {
   isModal?: boolean
@@ -49,7 +49,7 @@ export default function SkillEditorPage({ isModal, onClose }: SkillEditorProps &
   useEffect(() => {
     if (skillId && !isNew) {
       const loadSkill = async () => {
-        const token = await getSupabaseAccessToken()
+        const token = await getAuthToken()
         const response = await fetch(`/api/skills/${skillId}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         })
@@ -138,7 +138,7 @@ export default function SkillEditorPage({ isModal, onClose }: SkillEditorProps &
         id: normalizedId,
         name: skill.name || normalizedId,
       }
-      const token = await getSupabaseAccessToken()
+      const token = await getAuthToken()
       const response = await fetch(!isNew ? `/api/skills/${skillId}` : '/api/skills', {
         method: !isNew ? 'PUT' : 'POST',
         headers: {

@@ -3,7 +3,7 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react'
 import { Archive, CheckCircle2, AlertCircle, Upload, Loader2 } from 'lucide-react'
 
-import { getSupabaseAccessToken } from '@/lib/auth/browser'
+import { getAuthToken } from '@/lib/auth/browser'
 
 type ImportResult = {
   fileName: string
@@ -36,7 +36,7 @@ export function SkillImporter({ onImported }: SkillImporterProps) {
 
       for (const file of queue) {
         try {
-          const token = await getSupabaseAccessToken()
+          const token = await getAuthToken()
           const formData = new FormData()
           formData.append('file', file)
 
