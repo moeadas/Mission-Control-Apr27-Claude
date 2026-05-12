@@ -141,6 +141,8 @@ export default function SettingsPage() {
   )
   const [metaTokenInput, setMetaTokenInput] = useState('')
   const [metaAccountIdInput, setMetaAccountIdInput] = useState(providerSettings.meta?.adAccountId || '')
+  const [metaDiscoveredAccounts, setMetaDiscoveredAccounts] = useState<{ id: string; name: string }[]>([])
+  const [showMetaGuide, setShowMetaGuide] = useState(false)
   const [isVerifyingMeta, setIsVerifyingMeta] = useState(false)
   const [metaHealth, setMetaHealth] = useState<ProviderHealth>(providerSettings.meta?.verified ? 'connected' : 'idle')
   const [metaHealthMessage, setMetaHealthMessage] = useState<string>(
@@ -521,14 +523,19 @@ export default function SettingsPage() {
     setMetaHealthMessage('Verifying Meta token…')
     try {
       const authToken = await getAuthToken()
-      // Quick verify: list ad accounts with the provided token
+      // Quick verify: list ALL ad accounts accessible to this token
       const verifyRes = await fetch(
-        `https://graph.facebook.com/v20.0/me/adaccounts?fields=id,name&limit=5&access_token=${token || providerSettings.meta?.accessToken}`
+        `https://graph.facebook.com/v20.0/me/adaccounts?fields=id,name,account_status&limit=50&access_token=${token || providerSettings.meta?.accessToken}`
       )
       const verifyData = await verifyRes.json()
       if (!verifyRes.ok || verifyData.error) {
         throw new Error(verifyData.error?.message || 'Invalid Meta access token')
       }
+      const accounts: { id: string; name: string }[] = verifyData.data || []
+      setMetaDiscoveredAccounts(accounts)
+      // Auto-select first account if nothing set yet
+      const defaultAccountId = accountId || providerSettings.meta?.adAccountId || accounts[0]?.id || ''
+      if (defaultAccountId && !metaAccountIdInput) setMetaAccountIdInput(defaultAccountId)
       const maskedToken = token
         ? `${token.slice(0, 6)}…${token.slice(-4)}`
         : providerSettings.meta?.maskedToken || ''
@@ -538,7 +545,7 @@ export default function SettingsPage() {
         verifiedAt: new Date().toISOString(),
         accessToken: token || providerSettings.meta?.accessToken || '',
         maskedToken,
-        adAccountId: accountId || providerSettings.meta?.adAccountId || '',
+        adAccountId: defaultAccountId,
         businessId: providerSettings.meta?.businessId || '',
       }
       updateProviderSettings('meta' as any, nextMeta)
@@ -550,10 +557,9 @@ export default function SettingsPage() {
       })
       if (!saveRes.ok) throw new Error('Token verified but settings could not be saved')
       setMetaHealth('connected')
-      const accountCount = verifyData.data?.length ?? 0
-      setMetaHealthMessage(`Meta connected · ${accountCount} ad account(s)`)
+      setMetaHealthMessage(`Meta connected · ${accounts.length} ad account(s) found`)
       setMetaTokenInput('')
-      toast.success('Meta Ads connected and saved')
+      toast.success(`Meta Ads connected · ${accounts.length} account(s) available`)
     } catch (err: any) {
       setMetaHealth('invalid')
       setMetaHealthMessage(err.message || 'Meta verification failed')
@@ -1179,12 +1185,52 @@ export default function SettingsPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-sm font-medium text-text-primary">Meta Business</h3>
-                      <p className="text-xs text-text-secondary">Connect your Meta Ads account to enable the campaign dashboard, anomaly alerts, and AI optimisation.</p>
+                      <p className="text-xs text-text-secondary">Connect via a long-lived access token. All ad accounts linked to that token are available in the Ads dashboard.</p>
                     </div>
                     <span className={`text-[11px] font-mono ${metaHealth === 'connected' ? 'text-accent-cyan' : metaHealth === 'testing' ? 'text-amber-400' : metaHealth === 'invalid' ? 'text-red-400' : 'text-text-dim'}`}>
                       {metaHealth === 'connected' ? 'Connected' : metaHealth === 'testing' ? 'Testing…' : metaHealth === 'invalid' ? 'Invalid' : 'Unverified'}
                     </span>
                   </div>
+
+                  {/* How to get a token — collapsible guide */}
+                  <div className="rounded-xl border border-border bg-base overflow-hidden">
+                    <button
+                      onClick={() => setShowMetaGuide(v => !v)}
+                      className="w-full flex items-center justify-between px-3 py-2 text-xs text-text-secondary hover:text-text-primary transition-colors"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <Download size={11} />
+                        How to get a Meta access token
+                      </span>
+                      <span className="font-mono text-[10px]">{showMetaGuide ? '▲' : '▼'}</span>
+                    </button>
+                    {showMetaGuide && (
+                      <div className="px-3 pb-3 space-y-2 border-t border-border text-[11px] text-text-secondary leading-relaxed">
+                        <p className="mt-2"><strong className="text-text-primary">Option A — Graph API Explorer (quickest):</strong></p>
+                        <ol className="list-decimal list-inside space-y-1 pl-1">
+                          <li>Go to <a href="https://developers.facebook.com/tools/explorer/" target="_blank" rel="noopener noreferrer" className="text-accent-blue underline">developers.facebook.com/tools/explorer</a></li>
+                          <li>Select your Meta App (or create one at developers.facebook.com)</li>
+                          <li>Click <strong className="text-text-primary">Generate Access Token</strong> and grant <code className="bg-base px-1 rounded">ads_read</code>, <code className="bg-base px-1 rounded">ads_management</code>, <code className="bg-base px-1 rounded">business_management</code></li>
+                          <li>Copy the token — note: it expires in ~1 hour</li>
+                        </ol>
+                        <p className="mt-2"><strong className="text-text-primary">Option B — Long-lived token (recommended for production):</strong></p>
+                        <ol className="list-decimal list-inside space-y-1 pl-1">
+                          <li>Get a short-lived user token from the Explorer (step above)</li>
+                          <li>Exchange it: <code className="bg-base px-1 rounded text-[10px]">GET /oauth/access_token?grant_type=fb_exchange_token&client_id=APP_ID&client_secret=APP_SECRET&fb_exchange_token=SHORT_TOKEN</code></li>
+                          <li>Result is valid for 60 days — paste it here</li>
+                        </ol>
+                        <p className="mt-2"><strong className="text-text-primary">Option C — System User token (never expires):</strong></p>
+                        <ol className="list-decimal list-inside space-y-1 pl-1">
+                          <li>In Meta Business Manager → Settings → System Users</li>
+                          <li>Create a System User with <strong className="text-text-primary">Analyst</strong> or <strong className="text-text-primary">Admin</strong> role</li>
+                          <li>Click <strong className="text-text-primary">Generate New Token</strong> → select your app → grant ads permissions</li>
+                          <li>This token never expires — ideal for Mission Control</li>
+                        </ol>
+                        <p className="text-text-dim mt-1">All accounts accessible to the token will appear in the Ads dashboard automatically — no need to specify account IDs manually.</p>
+                      </div>
+                    )}
+                  </div>
+
                   <Input
                     label="Meta Access Token"
                     type="password"
@@ -1198,17 +1244,42 @@ export default function SettingsPage() {
                       Saved as {providerSettings.meta.maskedToken}
                     </p>
                   )}
-                  <Input
-                    label="Ad Account ID (e.g. act_123456789)"
-                    placeholder="act_123456789"
-                    value={metaAccountIdInput}
-                    onChange={(e) => setMetaAccountIdInput(e.target.value)}
-                  />
+
+                  {/* Default account — shown after verify or if accounts discovered */}
+                  {(metaDiscoveredAccounts.length > 0 || providerSettings.meta?.verified) && (
+                    <div>
+                      <label className="text-xs font-mono text-text-secondary uppercase tracking-wider block mb-1.5">
+                        Default Ad Account <span className="text-text-dim normal-case">(optional — dashboard shows all accounts)</span>
+                      </label>
+                      {metaDiscoveredAccounts.length > 0 ? (
+                        <select
+                          value={metaAccountIdInput}
+                          onChange={(e) => setMetaAccountIdInput(e.target.value)}
+                          className="w-full bg-base border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-blue"
+                        >
+                          <option value="">— None (use first available) —</option>
+                          {metaDiscoveredAccounts.map(a => (
+                            <option key={a.id} value={a.id}>{a.name} ({a.id})</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <Input
+                          placeholder="act_123456789 (optional)"
+                          value={metaAccountIdInput}
+                          onChange={(e) => setMetaAccountIdInput(e.target.value)}
+                        />
+                      )}
+                      {metaDiscoveredAccounts.length > 0 && (
+                        <p className="text-[11px] text-text-dim mt-1">{metaDiscoveredAccounts.length} account(s) found — all are available in the Ads dashboard regardless of this default.</p>
+                      )}
+                    </div>
+                  )}
+
                   <div className="rounded-xl border border-border bg-base px-3 py-2">
                     <p className="text-[11px] font-mono uppercase text-text-dim">Status</p>
                     <p className="mt-1 text-sm text-text-primary">{metaHealthMessage}</p>
                   </div>
-                  <div className="flex gap-3">
+                  <div className="flex gap-3 flex-wrap">
                     <Button variant="secondary" onClick={saveMeta} disabled={isVerifyingMeta}>
                       <Check size={14} />
                       {isVerifyingMeta ? 'Verifying…' : 'Save & Verify Meta'}

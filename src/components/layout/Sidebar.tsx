@@ -21,6 +21,7 @@ import {
   HelpCircle,
   ShieldCheck,
   Megaphone,
+  Database,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { getAuthToken } from '@/lib/auth/browser'
@@ -56,6 +57,7 @@ const SETTINGS_NAV = [
 const SUPER_ADMIN_NAV = [
   { id: 'admin-tenants', label: 'Tenants', icon: ShieldCheck, href: '/admin/tenants', color: '#a78bfa' },
   { id: 'admin-plans', label: 'Pricing', icon: Shield, href: '/admin/plans', color: '#fbbf24' },
+  { id: 'admin-backups', label: 'Backups', icon: Database, href: '/admin/backups', color: '#3b82f6' },
 ]
 
 // IDs visible only to super_admin

@@ -29,6 +29,9 @@ import {
   Target,
   Trash2,
   Users,
+  Download,
+  ShieldAlert,
+  Loader2,
 } from 'lucide-react'
 
 const INDUSTRY_COLORS: Record<string, string> = {
@@ -140,6 +143,9 @@ export default function ClientsPage() {
   const [assetDraft, setAssetDraft] = useState<KnowledgeAsset>(EMPTY_ASSET)
   const [uploadingBrandAsset, setUploadingBrandAsset] = useState<string | null>(null)
   const [uploadingKnowledgeDoc, setUploadingKnowledgeDoc] = useState(false)
+  const [confirmHardDelete, setConfirmHardDelete] = useState<string | null>(null)
+  const [hardDeleting, setHardDeleting] = useState(false)
+  const [exportingId, setExportingId] = useState<string | null>(null)
 
   const selectedClient = clients.find((client) => client.id === selectedId) || null
 
@@ -219,6 +225,55 @@ export default function ClientsPage() {
     if (selectedId === id) setSelectedId(null)
     toast.success(`${client?.name || 'Client'} removed`)
     setConfirmDelete(null)
+  }
+
+  const handleExport = async (clientId: string) => {
+    setExportingId(clientId)
+    try {
+      const token = await getAuthToken()
+      const res = await fetch(`/api/admin/clients/${clientId}/export`, {
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Export failed')
+      }
+      const blob = await res.blob()
+      const disposition = res.headers.get('content-disposition') || ''
+      const match = disposition.match(/filename="([^"]+)"/)
+      const filename = match ? match[1] : `client-export-${clientId}.json`
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = filename
+      a.click()
+      URL.revokeObjectURL(a.href)
+      toast.success('Client data exported')
+    } catch (err: any) {
+      toast.error(err.message || 'Export failed')
+    } finally {
+      setExportingId(null)
+    }
+  }
+
+  const handleHardDelete = async (clientId: string) => {
+    setHardDeleting(true)
+    try {
+      const token = await getAuthToken()
+      const res = await fetch(`/api/admin/clients/${clientId}/delete`, {
+        method: 'DELETE',
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Delete failed')
+      deleteClient(clientId)
+      if (selectedId === clientId) setSelectedId(null)
+      toast.success(`${data.deleted || 'Client'} permanently deleted`)
+      setConfirmHardDelete(null)
+    } catch (err: any) {
+      toast.error(err.message || 'Delete failed')
+    } finally {
+      setHardDeleting(false)
+    }
   }
 
   const addCompetitor = () => {
@@ -464,10 +519,29 @@ export default function ClientsPage() {
                       </a>
                     )}
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <Button variant="secondary" size="sm" onClick={() => openEdit(selectedClient)}>Edit Brief</Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handleExport(selectedClient.id)}
+                      disabled={exportingId === selectedClient.id}
+                    >
+                      {exportingId === selectedClient.id
+                        ? <Loader2 size={12} className="animate-spin" />
+                        : <Download size={12} />}
+                      Export Data
+                    </Button>
                     <Button variant="danger" size="sm" onClick={() => setConfirmDelete(selectedClient.id)}>
                       <Trash2 size={12} /> Remove
+                    </Button>
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      onClick={() => setConfirmHardDelete(selectedClient.id)}
+                      style={{ background: '#7f1d1d20', borderColor: '#ef444460', color: '#f87171' }}
+                    >
+                      <ShieldAlert size={12} /> Hard Delete
                     </Button>
                   </div>
                 </div>
@@ -1000,6 +1074,29 @@ export default function ClientsPage() {
         <div className="flex justify-end gap-3">
           <Button variant="secondary" onClick={() => setConfirmDelete(null)}>Cancel</Button>
           <Button variant="danger" onClick={() => confirmDelete && handleDelete(confirmDelete)}>Remove Client</Button>
+        </div>
+      </Modal>
+
+      <Modal isOpen={!!confirmHardDelete} onClose={() => !hardDeleting && setConfirmHardDelete(null)} title="Permanently Delete Client?" size="sm">
+        <div className="flex items-start gap-3 mb-4 p-3 rounded-xl" style={{ background: '#ef444410', border: '1px solid #ef444430' }}>
+          <ShieldAlert size={16} style={{ color: '#f87171', flexShrink: 0, marginTop: 1 }} />
+          <p className="text-sm" style={{ color: '#fca5a5' }}>
+            This permanently erases <strong>all data</strong> for this client from the database — tasks, outputs, conversations, knowledge assets, and uploaded files. This cannot be undone.
+          </p>
+        </div>
+        <p className="text-sm text-text-secondary mb-4">
+          Use this for GDPR right-to-erasure requests. Export the client data first if you need a record.
+        </p>
+        <div className="flex justify-end gap-3">
+          <Button variant="secondary" onClick={() => setConfirmHardDelete(null)} disabled={hardDeleting}>Cancel</Button>
+          <Button
+            variant="danger"
+            onClick={() => confirmHardDelete && handleHardDelete(confirmHardDelete)}
+            disabled={hardDeleting}
+          >
+            {hardDeleting ? <Loader2 size={13} className="animate-spin" /> : <ShieldAlert size={13} />}
+            {hardDeleting ? 'Deleting…' : 'Permanently Delete'}
+          </Button>
         </div>
       </Modal>
     </ClientShell>

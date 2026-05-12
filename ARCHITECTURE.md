@@ -1562,3 +1562,43 @@ src/
 └── styles/
     └── globals.css          Design tokens, editor theme, glass morphism, animations
 ```
+
+## System Backups (`/admin/backups`)
+
+Super-admin-only backup management. Backups are stored in `process.cwd()/backups/` on the VPS.
+
+**API routes:**
+- `GET /api/admin/backup` — list `.tar.gz` archives in `/backups/`
+- `POST /api/admin/backup` — create a new backup (DB dump + uploads)
+- `GET /api/admin/backup/download/[filename]` — stream archive as attachment
+- `DELETE /api/admin/backup/[filename]` — delete an archive
+
+**Backup contents:**
+- Full DB export (all tables as JSON rows via postgres.js) — no `pg_dump` required
+- `public/uploads/` directory walk (files ≤50 MB each)
+- Packed as ustar `.tar.gz` using Node.js built-ins (no external packages)
+
+**Security:** Only accessible when `auth.email === getSuperAdminEmail()`. Archives are unencrypted — download and store offline.
+
+**UI page:** `src/app/admin/backups/page.tsx` — stats (count/size/latest), Create Backup button, archive list with Download + Delete.
+
+---
+
+## Client Privacy (GDPR Export & Hard Delete)
+
+**Export** (`GET /api/admin/clients/[id]/export`):
+- Fetches client + knowledge_assets + tasks + outputs + conversations (with messages) in parallel
+- Strips `agency_id` and `tenant_id` from all records
+- Returns downloadable `client-export-{id}-{date}.json`
+- Requires auth + agency_id match
+
+**Hard Delete** (`DELETE /api/admin/clients/[id]/delete`):
+- Cascade order: messages → conversations → task_assignments → tasks → outputs → knowledge_assets → clients row
+- Also removes `public/uploads/client-assets/{clientId}/` directory
+- Requires auth + agency_id match
+- UI shows a prominent warning modal distinguishing this from the soft "Remove" action
+
+**UI buttons** on `/clients` page (client detail view):
+- **Export Data** — downloads JSON, useful before any erasure
+- **Hard Delete** — triggers confirmation modal with erasure warning (distinct from soft Remove)
+
