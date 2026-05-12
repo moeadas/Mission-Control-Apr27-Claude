@@ -1,4 +1,4 @@
-import { AIProvider, ProviderFallback, ProviderSettings, AnthropicSettings, OpenAISettings } from '@/lib/types'
+import { AIProvider, ProviderFallback, ProviderSettings, AnthropicSettings, OpenAISettings, MetaAdsSettings, HiggsFieldSettings } from '@/lib/types'
 
 /**
  * Default per-provider model used for content-generation deliverables when
@@ -108,6 +108,21 @@ export const DEFAULT_PROVIDER_SETTINGS: ProviderSettings = {
       endpoint: '',
     },
   },
+  meta: {
+    enabled: false,
+    verified: false,
+    accessToken: '',
+    maskedToken: '',
+    adAccountId: '',
+    businessId: '',
+  },
+  higgsfield: {
+    enabled: false,
+    verified: false,
+    apiKey: '',
+    maskedKey: '',
+    workspaceId: '',
+  },
 }
 
 export const THINKING_DELIVERABLE_TYPES = new Set([
@@ -212,6 +227,14 @@ export function normalizeProviderSettings(input?: Partial<ProviderSettings> | nu
         ...DEFAULT_PROVIDER_SETTINGS.mcp.accessibilityProbe,
         ...(input?.mcp?.accessibilityProbe || {}),
       },
+    },
+    meta: {
+      ...DEFAULT_PROVIDER_SETTINGS.meta!,
+      ...(input?.meta || {}),
+    },
+    higgsfield: {
+      ...DEFAULT_PROVIDER_SETTINGS.higgsfield!,
+      ...(input?.higgsfield || {}),
     },
   }
 }
@@ -356,5 +379,11 @@ export function stripProviderSecrets(settings: ProviderSettings) {
     gemini: { ...settings.gemini, apiKey: '' },
     anthropic: { ...settings.anthropic, apiKey: '' },
     openai: { ...settings.openai, apiKey: '' },
+    meta: settings.meta
+      ? { ...settings.meta, accessToken: '', maskedToken: settings.meta.maskedToken || '' }
+      : undefined,
+    higgsfield: settings.higgsfield
+      ? { ...settings.higgsfield, apiKey: '', maskedKey: settings.higgsfield.maskedKey || '' }
+      : undefined,
   }
 }

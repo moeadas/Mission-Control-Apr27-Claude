@@ -20,6 +20,7 @@ import {
   Calendar,
   HelpCircle,
   ShieldCheck,
+  Megaphone,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { getAuthToken } from '@/lib/auth/browser'
@@ -33,6 +34,7 @@ const PRIMARY_NAV = [
   { id: 'office', label: 'Virtual Office', icon: Building2, href: '/office', color: '#2dd4bf' },
   { id: 'tasks', label: 'Tasks', icon: ListTodo, href: '/tasks', color: '#fb923c' },
   { id: 'analytics', label: 'Analytics', icon: BarChart3, href: '/analytics', color: '#a78bfa' },
+  { id: 'ads', label: 'Meta Ads', icon: Megaphone, href: '/ads', color: '#3b82f6' },
   { id: 'outputs', label: 'Output', icon: FileText, href: '/outputs', color: '#60a5fa' },
 ]
 

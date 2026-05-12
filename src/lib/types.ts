@@ -449,6 +449,25 @@ export interface MCPSettings {
   accessibilityProbe: MCPConnectorSettings
 }
 
+export interface MetaAdsSettings {
+  enabled: boolean
+  verified: boolean
+  verifiedAt?: string
+  accessToken: string
+  maskedToken?: string
+  adAccountId: string   // e.g. "act_123456789"
+  businessId?: string
+}
+
+export interface HiggsFieldSettings {
+  enabled: boolean
+  verified: boolean
+  verifiedAt?: string
+  apiKey: string
+  maskedKey?: string
+  workspaceId?: string  // optional — defaults to first available workspace
+}
+
 export interface ProviderSettings {
   routing: ProviderRoutingSettings
   ollama: OllamaSettings
@@ -457,6 +476,8 @@ export interface ProviderSettings {
   openai: OpenAISettings
   visual: VisualGenerationSettings
   mcp: MCPSettings
+  meta?: MetaAdsSettings
+  higgsfield?: HiggsFieldSettings
 }
 
 export interface AgencySettings {

@@ -50,6 +50,18 @@ function mergeProviderSettings(primary?: Partial<ProviderSettings> | null, fallb
       ...(fallback?.mcp || {}),
       ...(primary?.mcp || {}),
     },
+    meta: {
+      ...(fallback?.meta || {}),
+      ...(primary?.meta || {}),
+      accessToken: primary?.meta?.accessToken || fallback?.meta?.accessToken || '',
+      maskedToken: primary?.meta?.maskedToken || fallback?.meta?.maskedToken || '',
+    },
+    higgsfield: {
+      ...(fallback?.higgsfield || {}),
+      ...(primary?.higgsfield || {}),
+      apiKey: primary?.higgsfield?.apiKey || fallback?.higgsfield?.apiKey || '',
+      maskedKey: primary?.higgsfield?.maskedKey || fallback?.higgsfield?.maskedKey || '',
+    },
   } as Partial<ProviderSettings>)
 }
 

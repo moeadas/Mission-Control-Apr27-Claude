@@ -1,6 +1,6 @@
 # Mission Control — Architecture
 
-> **Last Updated:** 2026-05-11 (OfficeBuilder v4 + security audit fixes C4/C5/C10/H9/H12)
+> **Last Updated:** 2026-05-12 (Meta Ads + Higgsfield Phase 1 integration)
 > **Rule for contributors:** Update this file after every code change. Add new pages to the Page Structure table, new components to the Component Library, new store shape changes to State Management, etc.
 
 ## Overview
@@ -1011,6 +1011,31 @@ All modals and dialogs use a shared set of CSS classes from `src/styles/globals.
 - Provider secrets are therefore no longer conceptually shared across all users of the workspace
 - Raw Gemini keys are no longer persisted into browser localStorage snapshots; only masked/provider-safe values remain in browser persistence
 - The authenticated server-side provider profile is now the trusted source for runtime selection
+
+## Phase 1 Integrations (2026-05-12)
+
+### Meta Ads Integration
+- **Credentials**: `MetaAdsSettings` added to `src/lib/types.ts` and `ProviderSettings` — stores `accessToken`, `maskedToken`, `adAccountId`, `businessId`
+- **API routes** (`src/app/api/integrations/meta/`):
+  - `accounts/route.ts` — lists ad accounts accessible to the stored token (`GET /me/adaccounts`)
+  - `campaigns/route.ts` — campaign list with budget, status, dates
+  - `insights/route.ts` — impressions, clicks, spend, CTR, CPM, CPC, reach; supports `datePreset` and `level` params
+  - `optimize/route.ts` — POST: feeds campaign + insights data to the AI runtime and returns structured optimisation recommendations with priority, category, quick-wins, and watch-out lists
+- **Dashboard**: `src/app/ads/page.tsx` — KPI summary cards, campaign performance table, date preset selector, account selector, AI Optimise button, AI analysis panel
+- **Sidebar**: "Meta Ads" entry added to `PRIMARY_NAV` in `Sidebar.tsx` (icon: `Megaphone`)
+- **Settings**: Meta Business card added — access token input, ad account ID input, live verify against Graph API, masked token display
+
+### Higgsfield Video Generation
+- **Credentials**: `HiggsFieldSettings` added to `src/lib/types.ts` — stores `apiKey`, `maskedKey`, `workspaceId`
+- **API routes** (`src/app/api/integrations/higgsfield/`):
+  - `generate/route.ts` — POST: submits a video generation job (prompt, model, aspect ratio, duration, optional reference image)
+  - `status/route.ts` — GET: polls job status by `jobId`, returns `videoUrl` when complete
+- **Video panel**: embedded directly in the `/ads` page — prompt input, aspect ratio selector (16:9/9:16/1:1), duration selector, auto-polling for status with inline video preview
+- **Settings**: Higgsfield card added — API key input, verify against `/v1/workspaces`, masked key display
+
+### ProviderSettings extensions
+- `normalizeProviderSettings()` and `mergeProviderSettings()` in `provider-settings.ts` / `provider-secrets.ts` now merge `meta` and `higgsfield` sections with secret preservation
+- `stripProviderSecrets()` redacts `accessToken` and `apiKey` for client-side delivery
 
 ## Security Notes
 

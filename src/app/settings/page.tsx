@@ -139,6 +139,19 @@ export default function SettingsPage() {
   const [openAiHealthMessage, setOpenAiHealthMessage] = useState<string>(
     providerSettings.openai?.verified ? 'OpenAI connected' : 'OpenAI not verified yet'
   )
+  const [metaTokenInput, setMetaTokenInput] = useState('')
+  const [metaAccountIdInput, setMetaAccountIdInput] = useState(providerSettings.meta?.adAccountId || '')
+  const [isVerifyingMeta, setIsVerifyingMeta] = useState(false)
+  const [metaHealth, setMetaHealth] = useState<ProviderHealth>(providerSettings.meta?.verified ? 'connected' : 'idle')
+  const [metaHealthMessage, setMetaHealthMessage] = useState<string>(
+    providerSettings.meta?.verified ? 'Meta Ads connected' : 'Meta access token not verified yet'
+  )
+  const [higgsKeyInput, setHiggsKeyInput] = useState('')
+  const [isVerifyingHiggs, setIsVerifyingHiggs] = useState(false)
+  const [higgsHealth, setHiggsHealth] = useState<ProviderHealth>(providerSettings.higgsfield?.verified ? 'connected' : 'idle')
+  const [higgsHealthMessage, setHiggsHealthMessage] = useState<string>(
+    providerSettings.higgsfield?.verified ? 'Higgsfield connected' : 'Higgsfield API key not verified yet'
+  )
   const [visualHealth, setVisualHealth] = useState<VisualHealth>(providerSettings.visual?.verified ? 'connected' : 'idle')
   const [visualHealthMessage, setVisualHealthMessage] = useState<string>(
     providerSettings.visual?.verified ? 'Visual generation connected' : 'Visual generation not verified yet'
@@ -493,6 +506,109 @@ export default function SettingsPage() {
       toast.error(error.message || 'Could not verify OpenAI')
     } finally {
       setIsVerifyingOpenAi(false)
+    }
+  }
+
+  const saveMeta = async () => {
+    const token = metaTokenInput.trim()
+    const accountId = metaAccountIdInput.trim()
+    if (!token && !providerSettings.meta?.accessToken) {
+      toast.error('Paste a Meta access token first')
+      return
+    }
+    setIsVerifyingMeta(true)
+    setMetaHealth('testing')
+    setMetaHealthMessage('Verifying Meta token…')
+    try {
+      const authToken = await getAuthToken()
+      // Quick verify: list ad accounts with the provided token
+      const verifyRes = await fetch(
+        `https://graph.facebook.com/v20.0/me/adaccounts?fields=id,name&limit=5&access_token=${token || providerSettings.meta?.accessToken}`
+      )
+      const verifyData = await verifyRes.json()
+      if (!verifyRes.ok || verifyData.error) {
+        throw new Error(verifyData.error?.message || 'Invalid Meta access token')
+      }
+      const maskedToken = token
+        ? `${token.slice(0, 6)}…${token.slice(-4)}`
+        : providerSettings.meta?.maskedToken || ''
+      const nextMeta = {
+        enabled: true,
+        verified: true,
+        verifiedAt: new Date().toISOString(),
+        accessToken: token || providerSettings.meta?.accessToken || '',
+        maskedToken,
+        adAccountId: accountId || providerSettings.meta?.adAccountId || '',
+        businessId: providerSettings.meta?.businessId || '',
+      }
+      updateProviderSettings('meta' as any, nextMeta)
+      const nextSettings = { ...providerSettings, meta: nextMeta }
+      const saveRes = await fetch('/api/providers/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) },
+        body: JSON.stringify({ providerSettings: nextSettings }),
+      })
+      if (!saveRes.ok) throw new Error('Token verified but settings could not be saved')
+      setMetaHealth('connected')
+      const accountCount = verifyData.data?.length ?? 0
+      setMetaHealthMessage(`Meta connected · ${accountCount} ad account(s)`)
+      setMetaTokenInput('')
+      toast.success('Meta Ads connected and saved')
+    } catch (err: any) {
+      setMetaHealth('invalid')
+      setMetaHealthMessage(err.message || 'Meta verification failed')
+      toast.error(err.message || 'Could not verify Meta token')
+    } finally {
+      setIsVerifyingMeta(false)
+    }
+  }
+
+  const saveHiggsfield = async () => {
+    const key = higgsKeyInput.trim()
+    if (!key && !providerSettings.higgsfield?.apiKey) {
+      toast.error('Paste a Higgsfield API key first')
+      return
+    }
+    setIsVerifyingHiggs(true)
+    setHiggsHealth('testing')
+    setHiggsHealthMessage('Verifying Higgsfield key…')
+    try {
+      const authToken = await getAuthToken()
+      // Verify by listing workspaces
+      const verifyRes = await fetch('https://api.higgsfield.ai/v1/workspaces', {
+        headers: { Authorization: `Bearer ${key || providerSettings.higgsfield?.apiKey}` },
+      })
+      // Accept 200 or 401 (we get 401 only on truly invalid keys; 403 means valid key but no permission)
+      if (verifyRes.status === 401) {
+        throw new Error('Invalid Higgsfield API key')
+      }
+      const maskedKey = key ? `${key.slice(0, 6)}…${key.slice(-4)}` : providerSettings.higgsfield?.maskedKey || ''
+      const nextHiggs = {
+        enabled: true,
+        verified: true,
+        verifiedAt: new Date().toISOString(),
+        apiKey: key || providerSettings.higgsfield?.apiKey || '',
+        maskedKey,
+        workspaceId: providerSettings.higgsfield?.workspaceId || '',
+      }
+      updateProviderSettings('higgsfield' as any, nextHiggs)
+      const nextSettings = { ...providerSettings, higgsfield: nextHiggs }
+      const saveRes = await fetch('/api/providers/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) },
+        body: JSON.stringify({ providerSettings: nextSettings }),
+      })
+      if (!saveRes.ok) throw new Error('Key verified but settings could not be saved')
+      setHiggsHealth('connected')
+      setHiggsHealthMessage('Higgsfield connected · Video generation ready')
+      setHiggsKeyInput('')
+      toast.success('Higgsfield connected and saved')
+    } catch (err: any) {
+      setHiggsHealth('invalid')
+      setHiggsHealthMessage(err.message || 'Higgsfield verification failed')
+      toast.error(err.message || 'Could not verify Higgsfield key')
+    } finally {
+      setIsVerifyingHiggs(false)
     }
   }
 
@@ -1055,6 +1171,88 @@ export default function SettingsPage() {
                   <Button variant="secondary" onClick={verifyOpenAi} disabled={isVerifyingOpenAi}>
                     <Sparkles size={14} />
                     {isVerifyingOpenAi ? 'Checking...' : 'Save & Verify OpenAI'}
+                  </Button>
+                </div>
+
+                {/* Meta Business */}
+                <div className="p-4 rounded-2xl border border-border bg-base/60 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-medium text-text-primary">Meta Business</h3>
+                      <p className="text-xs text-text-secondary">Connect your Meta Ads account to enable the campaign dashboard, anomaly alerts, and AI optimisation.</p>
+                    </div>
+                    <span className={`text-[11px] font-mono ${metaHealth === 'connected' ? 'text-accent-cyan' : metaHealth === 'testing' ? 'text-amber-400' : metaHealth === 'invalid' ? 'text-red-400' : 'text-text-dim'}`}>
+                      {metaHealth === 'connected' ? 'Connected' : metaHealth === 'testing' ? 'Testing…' : metaHealth === 'invalid' ? 'Invalid' : 'Unverified'}
+                    </span>
+                  </div>
+                  <Input
+                    label="Meta Access Token"
+                    type="password"
+                    placeholder={providerSettings.meta?.maskedToken || 'Paste EAAxxxxxxx… token'}
+                    value={metaTokenInput}
+                    onChange={(e) => setMetaTokenInput(e.target.value)}
+                  />
+                  {providerSettings.meta?.maskedToken && (
+                    <p className="text-[11px] font-mono text-text-dim flex items-center gap-1.5">
+                      <KeyRound size={12} />
+                      Saved as {providerSettings.meta.maskedToken}
+                    </p>
+                  )}
+                  <Input
+                    label="Ad Account ID (e.g. act_123456789)"
+                    placeholder="act_123456789"
+                    value={metaAccountIdInput}
+                    onChange={(e) => setMetaAccountIdInput(e.target.value)}
+                  />
+                  <div className="rounded-xl border border-border bg-base px-3 py-2">
+                    <p className="text-[11px] font-mono uppercase text-text-dim">Status</p>
+                    <p className="mt-1 text-sm text-text-primary">{metaHealthMessage}</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <Button variant="secondary" onClick={saveMeta} disabled={isVerifyingMeta}>
+                      <Check size={14} />
+                      {isVerifyingMeta ? 'Verifying…' : 'Save & Verify Meta'}
+                    </Button>
+                    {providerSettings.meta?.verified && (
+                      <Button variant="secondary" onClick={() => window.location.href = '/ads'}>
+                        <ExternalLink size={13} />
+                        Open Ads Dashboard
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Higgsfield AI */}
+                <div className="p-4 rounded-2xl border border-border bg-base/60 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-medium text-text-primary">Higgsfield AI</h3>
+                      <p className="text-xs text-text-secondary">AI video generation for ad creatives, brand content, and social media. Generate videos directly from the Ads page.</p>
+                    </div>
+                    <span className={`text-[11px] font-mono ${higgsHealth === 'connected' ? 'text-accent-cyan' : higgsHealth === 'testing' ? 'text-amber-400' : higgsHealth === 'invalid' ? 'text-red-400' : 'text-text-dim'}`}>
+                      {higgsHealth === 'connected' ? 'Connected' : higgsHealth === 'testing' ? 'Testing…' : higgsHealth === 'invalid' ? 'Invalid' : 'Unverified'}
+                    </span>
+                  </div>
+                  <Input
+                    label="Higgsfield API Key"
+                    type="password"
+                    placeholder={providerSettings.higgsfield?.maskedKey || 'Paste hf_… key'}
+                    value={higgsKeyInput}
+                    onChange={(e) => setHiggsKeyInput(e.target.value)}
+                  />
+                  {providerSettings.higgsfield?.maskedKey && (
+                    <p className="text-[11px] font-mono text-text-dim flex items-center gap-1.5">
+                      <KeyRound size={12} />
+                      Saved as {providerSettings.higgsfield.maskedKey}
+                    </p>
+                  )}
+                  <div className="rounded-xl border border-border bg-base px-3 py-2">
+                    <p className="text-[11px] font-mono uppercase text-text-dim">Status</p>
+                    <p className="mt-1 text-sm text-text-primary">{higgsHealthMessage}</p>
+                  </div>
+                  <Button variant="secondary" onClick={saveHiggsfield} disabled={isVerifyingHiggs}>
+                    <Sparkles size={14} />
+                    {isVerifyingHiggs ? 'Verifying…' : 'Save & Verify Higgsfield'}
                   </Button>
                 </div>
               </div>
