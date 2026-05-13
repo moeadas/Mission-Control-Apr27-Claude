@@ -1,6 +1,6 @@
 # Mission Control — Architecture
 
-> **Last Updated:** 2026-05-12 (Meta Ads + Higgsfield Phase 1 integration)
+> **Last Updated:** 2026-05-13 (OfficeBuilder v5 — Konva.js replaced with pure React/DOM/pointer-events rewrite)
 > **Rule for contributors:** Update this file after every code change. Add new pages to the Page Structure table, new components to the Component Library, new store shape changes to State Management, etc.
 
 ## Overview
@@ -128,7 +128,7 @@ Accent Pink:       #f472b6
 |-------|---------|
 | `/dashboard` | Main command center with agency stats, agent strip, activity feed, Getting Started checklist |
 | `/mission` | Start a Mission hub — plain-language brief input, category prompt starters, routes to IrisChat |
-| `/office` | Virtual Office Builder — Konva.js canvas, 30×20 tile grid (1 tile = 50 cm), drag-to-move furniture, zoom toward cursor, per-item color + agent assignment, 6 templates, undo/redo |
+| `/office` | Virtual Office Builder — pure React/DOM/pointer-events canvas, 30×20 tile grid (1 tile = 50 cm), drag-to-move furniture, multi-select + rubber-band, zoom toward cursor, per-item color + agent assignment, 6 templates, undo/redo |
 | `/agents` | Agent roster; "Add Agent" opens multi-step AgentEditor drawer |
 | `/clients` | Client management |
 | `/tasks` | Task list and mission tracking |
@@ -152,35 +152,39 @@ Accent Pink:       #f472b6
 
 ## Virtual Office Builder
 
-The `/office` page is a Konva.js-powered interactive office builder. Users drag-and-place SVG furniture on a 30×20 tile canvas (1 tile = 50 cm), paint named zones, and assign agents to specific items (desks, chairs).
+The `/office` page is a pure React/DOM/pointer-events interactive office builder (rewritten 2026-05-13 — replaced Konva.js). Users drag-and-place SVG furniture on a 30×20 tile canvas (1 tile = 50 cm), paint named zones, and assign agents to specific items (desks, chairs).
 
 ### Scale & Renderer
 - **1 tile = 50 cm** — all furniture sized realistically (standard desk = 3×2 tiles = 150×100 cm)
-- **Konva.js** (`react-konva`) renders a 3-layer Stage: floor/zones, furniture, UI
-- **SVG assets** loaded as blob URLs via `use-image`; colors tinted at runtime with `tintSvg()`
+- **Pure React/DOM** — world container uses CSS `transform: translate scale` with `transform-origin: 0 0`; no Konva/canvas/WebGL
+- **SVG assets** loaded as data URLs (`data:image/svg+xml;charset=utf-8,...`); colors tinted at runtime with `tintSvg()`; cached in a module-level Map
+- **Pointer Events API** — `onPointerDown/Move/Up` + `setPointerCapture` for reliable cross-device drag tracking
 - Grid: 30 tiles wide × 20 tiles tall
 
-### Features (v4)
-- **Drag-to-move** — placed items draggable with grid snapping (Konva native drag)
-- **Zoom toward cursor** — scroll wheel, Figma-style (scale + offset adjustment around pointer)
-- **Pan** — drag the canvas background when no item placing is active
+### Features (v5 — pure React rewrite)
+- **Click-to-place** — click palette item to activate, ghost preview follows cursor, click canvas to place
+- **Drag-to-move** — single or multi-item drag with live position update; snaps to grid on pointer release
+- **Multi-select** — Shift+click to add/remove; rubber-band (click-drag on empty canvas) draws selection rect and captures overlapping tiles
+- **Ctrl+A** — select all placed tiles
+- **Delete selected** — Del/Backspace removes all selected tiles at once
+- **Rubber-band selection** — drag on empty space draws a blue rect; all tiles intersecting it become selected
+- **Floating multi-select HUD** — shown when 2+ tiles selected; shows count + keyboard hints
+- **Zoom toward cursor** — scroll wheel, Figma-style (`transform: scale` + pan adjustment around pointer)
+- **Pan** — Space+drag or middle-mouse drag; no conflict with tile interactions
 - **Rotation** — R key or inspector buttons (0/90/180/270°)
-- **Per-item color picker** — 16 presets + custom color input; stored as `primaryColor` on `PlacedTile`; SVG re-tinted on change
-- **Agent assignment** — assign any agent to assignable tiles (desks, chairs) via inspector dropdown; stored as `assignedAgentId` on `PlacedTile`; agents not zone-locked
-- **Zones** — visual space labeling only; painted tile-by-tile in zone tool mode; no agent restrictions
-- **50-step undo/redo** — Cmd/Ctrl+Z / Cmd/Ctrl+Shift+Z
-- **Delete** key removes selected item; **Arrow keys** nudge by 1 tile
-- **Template selection modal** — "Layouts & Templates" with full-width SVG minimap previews (`TemplateMiniPreview` renders zones as colored tiles + furniture dots); "New Blank Layout" dashed-card option at top; confirmation banner before applying
-- **6 starter templates** — Startup Garage (10), Creative Studio (20), Scale-up (30), Tech Company (40), Corporate Floor (60), Coworking Space (50)
-- **Left palette visual separation** — categories section (`#0d1018` bg, mono-caps CATEGORIES label, indigo active state) vs items section (`#151922` bg, card-style bordered buttons with glow on selected)
-- **Realistic SVG furniture** — all 13+ core assets use drop shadows (offset rect), depth strips (right/bottom darker rects), sheen gradients (transparent overlay), grain lines (desks), spoke wheels (chairs), etc. Gradient IDs are safe because each SVG is in its own Blob URL document
+- **Arrow keys** — nudge selected tile(s) by 1 grid cell
+- **50-step undo/redo** — Cmd/Ctrl+Z / Cmd/Ctrl+Shift+Z; ref-based history avoids stale closures
+- **Per-item color picker** — 16 presets + custom hex input; stored as `primaryColor` on `PlacedTile`
+- **Agent assignment** — dropdown in inspector; stored as `assignedAgentId` on `PlacedTile`
+- **Template selection modal** — minimap previews, blank layout option, confirmation banner
+- **6 starter templates** — Startup Garage, Creative Studio, Scale-up, Tech Company, Corporate Floor, Coworking Space
 - **LocalStorage auto-save** — layout saved on every change; server save via PUT /api/office-layout
 - **Export/Import JSON** — download/upload raw OfficeLayout JSON
 
 ### Key Files
 | File | Role |
 |------|------|
-| `src/components/office/OfficeBuilder.tsx` | Main Konva canvas component |
+| `src/components/office/OfficeBuilder.tsx` | Main pure-React canvas component (~920 lines) |
 | `src/lib/office-assets.ts` | SVG asset catalog + `tintSvg()` |
 | `src/lib/office-templates.ts` | 6 pre-built OfficeLayout presets |
 | `src/lib/office-types.ts` | `PlacedTile`, `OfficeZone`, `OfficeLayout` interfaces |
