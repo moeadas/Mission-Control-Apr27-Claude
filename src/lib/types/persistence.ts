@@ -61,6 +61,11 @@ export interface ChatMessage {
       multiSelect?: boolean
       options: Array<{ label: string; value: string }>
     } | null
+    action?: {
+      type: 'CREATE_CLIENT'
+      draft: Record<string, any>
+      missingFields: string[]
+    } | null
   }
 }
 

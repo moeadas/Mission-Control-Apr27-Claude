@@ -1,6 +1,6 @@
 # Mission Control — Architecture
 
-> **Last Updated:** 2026-05-13 (OfficeBuilder v5 — Konva.js replaced with pure React/DOM/pointer-events rewrite)
+> **Last Updated:** 2026-05-14 (Iris client onboarding — chat brief extraction → ClientBriefPreviewCard → addClient)
 > **Rule for contributors:** Update this file after every code change. Add new pages to the Page Structure table, new components to the Component Library, new store shape changes to State Management, etc.
 
 ## Overview
@@ -1485,6 +1485,29 @@ Added Priority 0: if the agent has an assigned `provider`+`model`, those are use
 - **No auto-open on Mission page**: the `useEffect(() => openIris(), [])` that previously ran on every visit to `/mission` has been removed. Iris only opens when the user explicitly clicks "Brief Iris" or the FAB.
 - **`iris:prefill` event**: Mission page dispatches `new CustomEvent('iris:prefill', { detail: { text } })` on the window. IrisChat listens and populates its input field. 150ms delay ensures the panel is open before the event fires.
 - **Task failure notification**: `ClientShell` subscribes to `useAgentsStore` and watches for newly-blocked tasks, showing a toast notification when one is detected.
+
+## Iris Client Onboarding (2026-05-14)
+
+Users can paste a client brief (text, PDF content, or Word doc text) directly into Iris chat. Iris will extract structured client fields using AI and render a preview card with a "Create Client" button.
+
+**Flow:**
+1. User pastes brief text in Iris chat (or attaches a file that gets extracted to text)
+2. `detectClientBriefIntent(content)` in `/api/chat/route.ts` detects the intent via explicit keywords or long text with ≥4 brief-like keywords
+3. `extractClientFieldsFromText()` runs in parallel with the AI response generation (no extra latency)
+4. The response `meta.action = { type: 'CREATE_CLIENT', draft, missingFields }` is returned in both conversational and NDJSON paths
+5. `ChatMessage.meta.action` stores the extracted draft (persisted in Zustand conversation state)
+6. `ClientBriefPreviewCard` renders below the assistant message showing extracted fields and missing field warnings
+7. "Create Client" button calls `addClient()` from `useAgentsStore` — client appears immediately in the Clients section
+8. Card switches to "✓ Client created" state; user can go to Clients to fill in missing fields
+
+**New files:**
+- `src/app/api/iris/parse-client-brief/route.ts` — `extractClientFieldsFromText()` AI extraction + `POST /api/iris/parse-client-brief` endpoint
+- `ClientBriefPreviewCard` component in `IrisChat.tsx`
+
+**Modified files:**
+- `src/app/api/chat/route.ts` — `detectClientBriefIntent()` function + parallel extraction + `meta.action` in both response paths
+- `src/lib/types/persistence.ts` — `ChatMessage.meta.action` field added
+- `src/components/agents/IrisChat.tsx` — `addClient` subscription + `createdBriefMsgIds` state + card render
 
 ## Folder Organization
 

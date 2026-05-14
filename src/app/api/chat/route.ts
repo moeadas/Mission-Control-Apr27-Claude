@@ -23,6 +23,31 @@ import { validateDeliverableQuality } from '@/lib/output-quality'
 import { insertTaskRun, upsertWorkflowExecutionState } from '@/lib/server/task-execution'
 import { loadConfigSkillCategories, mergeDbSkillsWithConfig } from '@/lib/server/skills-catalog'
 import { buildTaskChannelingPlan } from '@/lib/server/task-channeling'
+import { extractClientFieldsFromText } from '@/app/api/iris/parse-client-brief/route'
+
+function detectClientBriefIntent(content: string): boolean {
+  // Explicit intent signals
+  const explicitPatterns = [
+    /\b(add|onboard|create|new)\s+(a\s+)?(new\s+)?client\b/i,
+    /\bclient\s+brief\b/i,
+    /\bhere'?s?\s+(the\s+)?(brief|info|details)\s+(for|about)\b/i,
+    /\bclient\s+onboarding\b/i,
+    /\bwant\s+to\s+(add|create|onboard)\b.*\bclient\b/i,
+    /\b(brand|company)\s+brief\b/i,
+    /\bnew\s+(brand|company|client)\s+(info|details|overview|profile)\b/i,
+  ]
+  if (explicitPatterns.some((p) => p.test(content))) return true
+
+  // Implicit: long pasted text containing multiple brief-like signals
+  if (content.length > 400) {
+    const lower = content.toLowerCase()
+    const briefKeywords = ['mission', 'vision', 'brand', 'industry', 'audience', 'product', 'service', 'competitor', 'tone', 'value proposition', 'target market', 'usp', 'unique selling']
+    const matchCount = briefKeywords.filter((kw) => lower.includes(kw)).length
+    if (matchCount >= 4) return true
+  }
+
+  return false
+}
 
 // DEBUG: Log incoming requests
 function debugLog(label: string, data: any) {
@@ -268,6 +293,24 @@ export async function POST(req: NextRequest) {
     let actualProvider = selectedRuntime.provider
     let actualModel = selectedRuntime.model
 
+    // Detect client brief intent and kick off extraction in parallel with AI response
+    type ClientBriefAction = { type: 'CREATE_CLIENT'; draft: Record<string, any>; missingFields: string[] }
+    let clientBriefActionPromise: Promise<ClientBriefAction | null> | null = null
+    if (detectClientBriefIntent(userContent)) {
+      const briefRuntime = resolveTaskRuntime({
+        settings: normalizedProviderSettings,
+        deliverableType: 'status-report',
+        requestedProvider: 'anthropic',
+        requestedModel: '',
+      })
+      clientBriefActionPromise = extractClientFieldsFromText(userContent, providerKeys, briefRuntime)
+        .then((result) => ({ type: 'CREATE_CLIENT' as const, ...result }))
+        .catch((err) => {
+          console.warn('[CHAT] Client brief extraction failed:', err?.message || err)
+          return null
+        })
+    }
+
     debugLog('Provider payload', {
       requestedProvider: provider,
       requestedModel: model,
@@ -325,6 +368,7 @@ export async function POST(req: NextRequest) {
           )
         }
 
+        const clientBriefAction = clientBriefActionPromise ? await clientBriefActionPromise : null
         return NextResponse.json({
           response: responseText,
           meta: {
@@ -347,6 +391,7 @@ export async function POST(req: NextRequest) {
             model: actualModel,
             fallbackUsed: false,
             conversational: true,
+            action: clientBriefAction,
           },
         })
       } catch (err: any) {
@@ -943,6 +988,7 @@ Orchestration trace:
     }
     const renderedHtml = renderedHtmlFromTask || buildArtifactHtml(responseText)
 
+    const clientBriefAction = clientBriefActionPromise ? await clientBriefActionPromise : null
     const meta = {
       routedAgentId: routing.routedAgentId,
       leadAgentId: channelingPlan.leadAgentId,
@@ -968,6 +1014,7 @@ Orchestration trace:
       model: actualModel,
       fallbackUsed,
       compareSummary,
+      action: clientBriefAction,
     }
 
     // Build NDJSON response: pipeline_start chunk (if applicable) then done chunk.

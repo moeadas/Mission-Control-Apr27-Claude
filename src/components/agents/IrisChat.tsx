@@ -1179,6 +1179,100 @@ async function queueMissionExecution(
   return response.json().catch(() => null)
 }
 
+const BRIEF_FIELD_LABELS: Record<string, string> = {
+  name: 'Client Name',
+  industry: 'Industry',
+  website: 'Website',
+  description: 'Company Overview',
+  missionStatement: 'Mission Statement',
+  brandPromise: 'Brand Promise',
+  targetAudiences: 'Target Audiences',
+  productsAndServices: 'Products & Services',
+  usp: 'Unique Selling Proposition',
+  toneOfVoice: 'Tone of Voice',
+  competitors: 'Competitors',
+  notes: 'Notes',
+}
+
+const BRIEF_DISPLAY_FIELDS = [
+  'name', 'industry', 'website', 'description', 'missionStatement',
+  'brandPromise', 'targetAudiences', 'usp', 'toneOfVoice', 'competitors',
+]
+
+function ClientBriefPreviewCard({
+  draft,
+  missingFields,
+  onCreateClient,
+  created,
+}: {
+  draft: Record<string, any>
+  missingFields: string[]
+  onCreateClient: () => void
+  created: boolean
+}) {
+  return (
+    <div className="mt-3 rounded-xl border border-[#2a2d38] bg-[#0d0f16] overflow-hidden text-xs">
+      {/* Header */}
+      <div className="px-4 py-2.5 border-b border-[#2a2d38] flex items-center gap-2 bg-[#111420]">
+        <div className="w-5 h-5 rounded-md bg-[#9b6dff]/20 flex items-center justify-center flex-shrink-0">
+          <svg width="11" height="11" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="1" y="1" width="12" height="12" rx="2" stroke="#9b6dff" strokeWidth="1.5"/>
+            <path d="M4 5h6M4 7.5h6M4 10h3" stroke="#9b6dff" strokeWidth="1.2" strokeLinecap="round"/>
+          </svg>
+        </div>
+        <span className="font-semibold text-white text-[11px] tracking-wide">Client Brief Extracted</span>
+        {missingFields.length === 0 && (
+          <span className="ml-auto text-[10px] text-green-400 font-medium">All required fields found</span>
+        )}
+      </div>
+      {/* Fields */}
+      <div className="px-4 py-3 space-y-2 max-h-64 overflow-y-auto">
+        {BRIEF_DISPLAY_FIELDS.map((field) => {
+          const val = draft[field]
+          if (!val || (Array.isArray(val) && val.length === 0)) return null
+          const displayVal = Array.isArray(val) ? val.join(', ') : String(val)
+          return (
+            <div key={field} className="flex gap-2.5">
+              <span className="text-gray-500 w-28 flex-shrink-0 pt-px">{BRIEF_FIELD_LABELS[field] || field}</span>
+              <span className="text-gray-200 flex-1 line-clamp-2 leading-relaxed">{displayVal}</span>
+            </div>
+          )
+        })}
+      </div>
+      {/* Missing fields warning */}
+      {missingFields.length > 0 && (
+        <div className="px-4 py-2 border-t border-[#2a2d38] bg-amber-500/5">
+          <p className="text-[10px] text-amber-400/80 leading-relaxed">
+            <span className="font-semibold">Missing:</span>{' '}
+            {missingFields.map((f) => BRIEF_FIELD_LABELS[f] || f).join(', ')}.{' '}
+            You can fill these in from the Clients section after creating.
+          </p>
+        </div>
+      )}
+      {/* Action */}
+      <div className="px-4 py-3 border-t border-[#2a2d38]">
+        {created ? (
+          <div className="flex items-center gap-1.5 text-green-400 text-[11px] font-medium">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+              <circle cx="6.5" cy="6.5" r="6" stroke="#4ade80" strokeWidth="1.2"/>
+              <path d="M3.5 6.5L5.5 8.5L9.5 4.5" stroke="#4ade80" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Client created — visit the Clients section to complete the profile.
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={onCreateClient}
+            className="px-4 py-2 bg-[#9b6dff] text-white text-[11px] font-semibold rounded-lg hover:bg-[#8b5cf6] active:scale-95 transition-all"
+          >
+            Create Client
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export function IrisChat() {
   const isIrisOpen = useAgentsStore((state) => state.isIrisOpen)
   const closeIris = useAgentsStore((state) => state.closeIris)
@@ -1206,6 +1300,7 @@ export function IrisChat() {
   const setChatStatus = useAgentsStore((state) => state.setChatStatus)
   const rememberAgentWork = useAgentsStore((state) => state.rememberAgentWork)
   const deleteConversation = useAgentsStore((state) => state.deleteConversation)
+  const addClient = useAgentsStore((state) => state.addClient)
 
   const [input, setInput] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -1214,6 +1309,7 @@ export function IrisChat() {
   const [multiSelectPending, setMultiSelectPending] = useState<Record<string, string[]>>({})
   const [attachedText, setAttachedText] = useState<string>('')
   const [activePipelineInfo, setActivePipelineInfo] = useState<{ name: string; deliverableType: string } | null>(null)
+  const [createdBriefMsgIds, setCreatedBriefMsgIds] = useState<Set<string>>(new Set())
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -1923,6 +2019,40 @@ export function IrisChat() {
                           </div>
                         )
                       })() : null}
+                      {!isUser && msg.meta?.action?.type === 'CREATE_CLIENT' ? (
+                        <ClientBriefPreviewCard
+                          draft={msg.meta.action.draft}
+                          missingFields={msg.meta.action.missingFields}
+                          created={createdBriefMsgIds.has(msg.id)}
+                          onCreateClient={() => {
+                            const d = msg.meta?.action?.draft || {}
+                            addClient({
+                              name: d.name || '',
+                              industry: d.industry || '',
+                              website: d.website || '',
+                              description: d.description || '',
+                              missionStatement: d.missionStatement || '',
+                              brandPromise: d.brandPromise || '',
+                              targetAudiences: d.targetAudiences || '',
+                              productsAndServices: d.productsAndServices || '',
+                              usp: d.usp || '',
+                              competitiveLandscape: d.competitiveLandscape || '',
+                              keyMessages: d.keyMessages || '',
+                              toneOfVoice: d.toneOfVoice || '',
+                              operationalDetails: d.operationalDetails || '',
+                              objectionHandling: d.objectionHandling || '',
+                              brandIdentityNotes: d.brandIdentityNotes || '',
+                              strategicPriorities: d.strategicPriorities || '',
+                              competitors: Array.isArray(d.competitors) ? d.competitors : [],
+                              knowledgeAssets: [],
+                              notes: d.notes || '',
+                              // addClient merges with DEFAULT_CLIENT_BRAND_KIT internally
+                              brandKit: {} as any,
+                            })
+                            setCreatedBriefMsgIds((prev) => new Set([...prev, msg.id]))
+                          }}
+                        />
+                      ) : null}
                       {!isUser && msg.meta?.missionId ? (
                         <div className="mt-3 flex items-center gap-2">
                           <a
