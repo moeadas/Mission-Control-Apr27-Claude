@@ -1204,11 +1204,13 @@ function ClientBriefPreviewCard({
   missingFields,
   onCreateClient,
   created,
+  error,
 }: {
   draft: Record<string, any>
   missingFields: string[]
   onCreateClient: () => void
   created: boolean
+  error?: string
 }) {
   return (
     <div className="mt-3 rounded-xl border border-[#2a2d38] bg-[#0d0f16] overflow-hidden text-xs">
@@ -1260,13 +1262,24 @@ function ClientBriefPreviewCard({
             Client created — visit the Clients section to complete the profile.
           </div>
         ) : (
-          <button
-            type="button"
-            onClick={onCreateClient}
-            className="px-4 py-2 bg-[#9b6dff] text-white text-[11px] font-semibold rounded-lg hover:bg-[#8b5cf6] active:scale-95 transition-all"
-          >
-            Create Client
-          </button>
+          <div className="flex flex-col gap-2">
+            {error && (
+              <div className="flex items-start gap-1.5 text-red-400 text-[11px]">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="mt-px flex-shrink-0">
+                  <circle cx="6" cy="6" r="5.5" stroke="#f87171" strokeWidth="1.1"/>
+                  <path d="M6 3.5V6.5M6 8.5V8.4" stroke="#f87171" strokeWidth="1.3" strokeLinecap="round"/>
+                </svg>
+                {error}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={onCreateClient}
+              className="px-4 py-2 bg-[#9b6dff] text-white text-[11px] font-semibold rounded-lg hover:bg-[#8b5cf6] active:scale-95 transition-all"
+            >
+              Create Client
+            </button>
+          </div>
         )}
       </div>
     </div>
@@ -1310,6 +1323,22 @@ export function IrisChat() {
   const [attachedText, setAttachedText] = useState<string>('')
   const [activePipelineInfo, setActivePipelineInfo] = useState<{ name: string; deliverableType: string } | null>(null)
   const [createdBriefMsgIds, setCreatedBriefMsgIds] = useState<Set<string>>(new Set())
+  const [briefClientError, setBriefClientError] = useState<Record<string, string>>({})
+
+  // Force-persist the full state snapshot to the server immediately.
+  // Called after addClient so the new client survives a page refresh
+  // even if the ClientShell debounced auto-sync hasn't fired yet.
+  const persistStateNow = useCallback(async () => {
+    const token = getStoredToken()
+    if (!token) return
+    const snapshot = createAppPersistenceSnapshot(useAgentsStore.getState())
+    await fetch('/api/state', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ state: snapshot }),
+    }).catch(() => null)
+  }, [])
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -2077,10 +2106,18 @@ export function IrisChat() {
                           draft={msg.meta.action.draft}
                           missingFields={msg.meta.action.missingFields}
                           created={createdBriefMsgIds.has(msg.id)}
+                          error={briefClientError[msg.id]}
                           onCreateClient={() => {
                             const d = msg.meta?.action?.draft || {}
+                            if (!d.name?.trim()) {
+                              setBriefClientError((prev) => ({
+                                ...prev,
+                                [msg.id]: 'Client name is required — the brief extraction may have missed it. Please add the client manually.',
+                              }))
+                              return
+                            }
                             addClient({
-                              name: d.name || '',
+                              name: d.name,
                               industry: d.industry || '',
                               website: d.website || '',
                               description: d.description || '',
@@ -2103,6 +2140,7 @@ export function IrisChat() {
                               brandKit: {} as any,
                             })
                             setCreatedBriefMsgIds((prev) => new Set([...prev, msg.id]))
+                            persistStateNow()
                           }}
                         />
                       ) : null}
