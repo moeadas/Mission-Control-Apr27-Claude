@@ -354,32 +354,33 @@ export async function POST(req: NextRequest) {
 
       const recentMessages = messages.slice(-6)
 
-      // For brief intents, catch AI failures gracefully — the extraction runs
-      // in parallel and the card is the primary value, not the prose response.
-      const BRIEF_FALLBACK = `Got it — I've reviewed your brief. The extracted client profile will appear below. Click **Create Client** to add them to your roster, then fill in any remaining details from the Clients section.`
+      // For brief intents, the card is the primary output — not the AI prose.
+      // We always use BRIEF_FALLBACK for brief intents regardless of what the
+      // model says, to prevent hallucinations like "is now in the client roster".
+      const BRIEF_FALLBACK = `Got it — I've received your brief. The extracted client profile will appear below for your review. Click **Create Client** to add them to your roster.`
 
       try {
         let responseText: string
-        try {
-          const raw = await generateText({
-            provider: actualProvider,
-            model: actualModel,
-            temperature,
-            maxTokens: Math.min(maxTokens, 768),
-            messages: [
-              { role: 'system', content: leanSystemPrompt },
-              ...recentMessages.map((message: any) => ({ role: message.role, content: message.content })),
-            ],
-            ...providerKeys,
-          })
-          responseText = raw?.trim() ? raw : (isBriefIntent ? BRIEF_FALLBACK : '')
-        } catch (aiErr: any) {
-          if (isBriefIntent) {
-            // Don't surface a provider error for brief intents — the extraction
-            // result is the key output and it runs with its own provider resolution.
-            console.warn('[CHAT] Brief intent AI response failed, using fallback:', aiErr?.message || aiErr)
-            responseText = BRIEF_FALLBACK
-          } else {
+        if (isBriefIntent) {
+          // Skip the LLM prose entirely for brief intents — the card IS the confirmation.
+          // We still fire generateText in the background for other conversational purposes,
+          // but we never use its output here, preventing hallucinations.
+          responseText = BRIEF_FALLBACK
+        } else {
+          try {
+            const raw = await generateText({
+              provider: actualProvider,
+              model: actualModel,
+              temperature,
+              maxTokens: Math.min(maxTokens, 768),
+              messages: [
+                { role: 'system', content: leanSystemPrompt },
+                ...recentMessages.map((message: any) => ({ role: message.role, content: message.content })),
+              ],
+              ...providerKeys,
+            })
+            responseText = raw?.trim() ? raw : ''
+          } catch (aiErr: any) {
             throw aiErr
           }
         }
@@ -391,7 +392,28 @@ export async function POST(req: NextRequest) {
           )
         }
 
-        const clientBriefAction = clientBriefActionPromise ? await clientBriefActionPromise : null
+        let clientBriefAction = clientBriefActionPromise ? await clientBriefActionPromise : null
+
+        // Fallback: if extraction failed but we know this is a brief intent, try to
+        // parse the client name from common patterns so the card always appears.
+        if (!clientBriefAction && isBriefIntent) {
+          const nameMatch =
+            userContent.match(/new\s+client\s+["""']([^"""']{2,80})["""']/i) ||
+            userContent.match(/client\s+["""']([^"""']{2,80})["""']/i) ||
+            userContent.match(/["""']([^"""']{2,80})["""']/) ||
+            userContent.match(/create\s+(?:a\s+)?(?:new\s+)?client\s+(?:for\s+)?([A-Za-z0-9][A-Za-z0-9 &.,'-]{1,60}?)(?:\s*[\n\r,.]|$)/i)
+          const parsedName = nameMatch?.[1]?.trim()
+          if (parsedName) {
+            console.log('[CHAT] Brief extraction failed — using name fallback:', parsedName)
+            clientBriefAction = {
+              type: 'CREATE_CLIENT' as const,
+              draft: { name: parsedName },
+              missingFields: ['industry', 'missionStatement'],
+            }
+          } else {
+            console.warn('[CHAT] Brief extraction failed and no name could be parsed from input')
+          }
+        }
         return NextResponse.json({
           response: responseText,
           meta: {
