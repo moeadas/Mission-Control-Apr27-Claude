@@ -268,7 +268,10 @@ export async function POST(req: NextRequest) {
 
     const latestUser = [...messages].reverse().find((message) => message.role === 'user')
     const userContent = latestUser?.content || ''
-    const conversational = isConversationalMessage(userContent)
+    // Client brief intent forces conversational path — we never want to route a
+    // pasted brief through executeAutonomousTask (which may fail on Ollama etc.)
+    const isBriefIntent = detectClientBriefIntent(userContent)
+    const conversational = isConversationalMessage(userContent) || isBriefIntent
     const deliverableType = conversational ? 'status-report' : inferDeliverableType(userContent)
     const normalizedProviderSettings = normalizeProviderSettings(auth.providerSettings || providerSettings)
 
@@ -293,10 +296,10 @@ export async function POST(req: NextRequest) {
     let actualProvider = selectedRuntime.provider
     let actualModel = selectedRuntime.model
 
-    // Detect client brief intent and kick off extraction in parallel with AI response
+    // Kick off brief extraction in parallel with AI response (isBriefIntent already computed above)
     type ClientBriefAction = { type: 'CREATE_CLIENT'; draft: Record<string, any>; missingFields: string[] }
     let clientBriefActionPromise: Promise<ClientBriefAction | null> | null = null
-    if (detectClientBriefIntent(userContent)) {
+    if (isBriefIntent) {
       const briefRuntime = resolveTaskRuntime({
         settings: normalizedProviderSettings,
         deliverableType: 'status-report',
@@ -339,27 +342,47 @@ export async function POST(req: NextRequest) {
         '',
         `RULES:`,
         `1. Answer questions about the agency, team, clients, and capabilities directly.`,
-        `2. Never promise to route to or check with another agent in chat mode.`,
-        `3. When the user wants a deliverable, ask them to give the specific request and then execute it.`,
-        `4. For status questions, answer honestly based on what you know.`,
+        `2. NEVER promise to route to, flag, or check with another agent. Agents are internal execution modules — you do NOT message them or simulate their replies.`,
+        `3. NEVER roleplay or simulate messages to/from other agents (e.g. do NOT write "Flagging Piper now..." or pretend an agent replied). This is strictly forbidden.`,
+        `4. When the user wants a deliverable, ask them to give the specific request and then execute it.`,
+        `5. For status questions, answer honestly based on what you know.`,
+        `6. If the user shares a client brief or company overview, confirm receipt in 1-2 sentences ONLY. Do NOT list out all the extracted details — the app will display them in a preview card automatically.`,
+        `7. If the user sends a vague follow-up like "yes", "ok", "try again", or "confirmed" without clear context, ask them what they'd like to do next. Never fabricate an action based on ambiguous input.`,
       ]
         .filter(Boolean)
         .join('\n')
 
       const recentMessages = messages.slice(-6)
 
+      // For brief intents, catch AI failures gracefully — the extraction runs
+      // in parallel and the card is the primary value, not the prose response.
+      const BRIEF_FALLBACK = `Got it — I've reviewed your brief. The extracted client profile will appear below. Click **Create Client** to add them to your roster, then fill in any remaining details from the Clients section.`
+
       try {
-        const responseText = await generateText({
-          provider: actualProvider,
-          model: actualModel,
-          temperature,
-          maxTokens: Math.min(maxTokens, 768),
-          messages: [
-            { role: 'system', content: leanSystemPrompt },
-            ...recentMessages.map((message: any) => ({ role: message.role, content: message.content })),
-          ],
-          ...providerKeys,
-        })
+        let responseText: string
+        try {
+          const raw = await generateText({
+            provider: actualProvider,
+            model: actualModel,
+            temperature,
+            maxTokens: Math.min(maxTokens, 768),
+            messages: [
+              { role: 'system', content: leanSystemPrompt },
+              ...recentMessages.map((message: any) => ({ role: message.role, content: message.content })),
+            ],
+            ...providerKeys,
+          })
+          responseText = raw?.trim() ? raw : (isBriefIntent ? BRIEF_FALLBACK : '')
+        } catch (aiErr: any) {
+          if (isBriefIntent) {
+            // Don't surface a provider error for brief intents — the extraction
+            // result is the key output and it runs with its own provider resolution.
+            console.warn('[CHAT] Brief intent AI response failed, using fallback:', aiErr?.message || aiErr)
+            responseText = BRIEF_FALLBACK
+          } else {
+            throw aiErr
+          }
+        }
 
         if (!responseText?.trim()) {
           return NextResponse.json(

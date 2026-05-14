@@ -1,6 +1,6 @@
 # Mission Control — Architecture
 
-> **Last Updated:** 2026-05-14 (Iris client onboarding — chat brief extraction → ClientBriefPreviewCard → addClient)
+> **Last Updated:** 2026-05-14 (Fix Iris client onboarding — forced brief routing, prompt guardrails, rich error cards with retry)
 > **Rule for contributors:** Update this file after every code change. Add new pages to the Page Structure table, new components to the Component Library, new store shape changes to State Management, etc.
 
 ## Overview

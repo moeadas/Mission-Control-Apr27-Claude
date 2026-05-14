@@ -66,6 +66,8 @@ export interface ChatMessage {
       draft: Record<string, any>
       missingFields: string[]
     } | null
+    isError?: boolean
+    errorReason?: string
   }
 }
 

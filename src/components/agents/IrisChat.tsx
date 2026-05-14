@@ -1663,9 +1663,14 @@ export function IrisChat() {
         setActivePipelineInfo(null)
         addAssistantMessage(
           conversationId,
-          `Iris could not complete that request.\n\nReason: ${err}`,
+          `Request failed`,
           'iris',
-          { missionId: createdMissionId || undefined, handoffNotes: err }
+          {
+            missionId: createdMissionId || undefined,
+            handoffNotes: err,
+            isError: true,
+            errorReason: String(err),
+          }
         )
         if (createdMissionId) {
           updateMission(createdMissionId, {
@@ -1935,12 +1940,60 @@ export function IrisChat() {
                         <AgentBot name={irisVisual.name} avatar={irisVisual.avatar} photoUrl={irisVisual.photoUrl} color={irisVisual.color} status="active" animation="idle" size={28} />
                       </div>
                     )}
-                  <div className={clsx('max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed', 
-                      isUser 
-                        ? 'bg-[#9b6dff] text-white rounded-tr-sm' 
-                        : 'bg-[#1a1d26] text-gray-200 border border-[#2a2d38] rounded-tl-sm'
+                  <div className={clsx('max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed',
+                      isUser
+                        ? 'bg-[#9b6dff] text-white rounded-tr-sm'
+                        : msg.meta?.isError
+                          ? 'bg-[#1a1d26] border border-red-500/30 rounded-tl-sm'
+                          : 'bg-[#1a1d26] text-gray-200 border border-[#2a2d38] rounded-tl-sm'
                     )}>
-                      <p className="whitespace-pre-wrap">{msg.content}</p>
+                      {!isUser && msg.meta?.isError ? (() => {
+                        const reason = msg.meta.errorReason || 'Unknown error'
+                        const isOllama = reason.toLowerCase().includes('ollama')
+                        const isAuth = reason.toLowerCase().includes('unauthorized') || reason.toLowerCase().includes('401')
+                        const isTimeout = reason.toLowerCase().includes('timeout') || reason.toLowerCase().includes('timed out')
+                        // Find last user message before this error for retry
+                        const prevUserMsg = activeConv?.messages.slice(0, i).reverse().find((m) => m.role === 'user')
+                        return (
+                          <div>
+                            <div className="flex items-center gap-2 mb-2">
+                              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="flex-shrink-0">
+                                <circle cx="7" cy="7" r="6" stroke="#f87171" strokeWidth="1.3"/>
+                                <path d="M7 4v3.5M7 9.5v.5" stroke="#f87171" strokeWidth="1.4" strokeLinecap="round"/>
+                              </svg>
+                              <span className="text-red-400 text-[11px] font-semibold">Request failed</span>
+                            </div>
+                            <p className="text-gray-400 text-[11px] font-mono bg-[#0d0f14] rounded px-2 py-1.5 break-all mb-2">{reason}</p>
+                            {(isOllama || isAuth) && (
+                              <p className="text-[10px] text-amber-400/80 mb-2">
+                                {isOllama && isAuth
+                                  ? '💡 Ollama is running but requires an API key. Check Settings → Ollama API Key, or switch to Anthropic/OpenAI.'
+                                  : isOllama
+                                  ? '💡 Ollama may not be running. Check Settings → Providers or switch to Anthropic/OpenAI.'
+                                  : '💡 Provider authentication failed. Check your API key in Settings → Providers.'}
+                              </p>
+                            )}
+                            {isTimeout && (
+                              <p className="text-[10px] text-amber-400/80 mb-2">💡 The request timed out. The model may be overloaded — try again in a moment.</p>
+                            )}
+                            {prevUserMsg && chatStatus === 'idle' && (
+                              <button
+                                type="button"
+                                onClick={() => executeTaskRequest(activeConversationId!, prevUserMsg.content)}
+                                className="mt-1 px-3 py-1.5 rounded-lg bg-[#2a2d38] hover:bg-[#3a3f50] text-[11px] text-gray-300 hover:text-white transition-colors flex items-center gap-1.5"
+                              >
+                                <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                                  <path d="M1 5.5A4.5 4.5 0 1 0 5.5 1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                                  <path d="M1 1v4.5H5.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                                Retry request
+                              </button>
+                            )}
+                          </div>
+                        )
+                      })() : (
+                        <p className="whitespace-pre-wrap">{msg.content}</p>
+                      )}
                       {!isUser && msg.meta?.intakePrompt ? (() => {
                         const ip = msg.meta.intakePrompt
                         const isMulti = ip.multiSelect === true
