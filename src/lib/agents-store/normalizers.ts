@@ -93,7 +93,7 @@ export function normalizeAgent(agent: Partial<Agent> & Record<string, any>): Age
       provider,
       model,
       temperature: 0.7,
-      maxTokens: 1024,
+      maxTokens: 4096,
       tools: [],
       skills: [],
       responsibilities: [],
@@ -131,7 +131,7 @@ export function normalizeAgent(agent: Partial<Agent> & Record<string, any>): Age
     systemPrompt: agent.systemPrompt || template?.systemPrompt || '',
     methodology: agent.methodology || template?.methodology || '',
     temperature: typeof agent.temperature === 'number' ? agent.temperature : template?.temperature || 0.7,
-    maxTokens: typeof agent.maxTokens === 'number' ? agent.maxTokens : template?.maxTokens || 1024,
+    maxTokens: typeof agent.maxTokens === 'number' ? agent.maxTokens : template?.maxTokens || 4096,
     workload: typeof agent.workload === 'number' ? agent.workload : template?.workload,
     position: {
       x: typeof agent.position?.x === 'number' ? agent.position.x : template?.position.x || 300,

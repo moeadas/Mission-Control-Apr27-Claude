@@ -74,7 +74,7 @@ const DEFAULT_FORM: FormData = {
   color: '#00d4aa',
   systemPrompt: '',
   temperature: 0.7,
-  maxTokens: 1536,
+  maxTokens: 4096,
   provider: 'gemini',
   model: 'gemini-2.5-flash',
 }
@@ -145,7 +145,7 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
         color: agent.color,
         systemPrompt: agent.systemPrompt || '',
         temperature: agent.temperature || 0.7,
-        maxTokens: agent.maxTokens || 1536,
+        maxTokens: agent.maxTokens || 4096,
         provider: (agent.provider as AIProvider) || 'gemini',
         model: agent.model || 'gemini-2.5-flash',
       })

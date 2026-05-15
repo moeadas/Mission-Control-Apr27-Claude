@@ -343,7 +343,7 @@ export async function executeCreativeAssetTask(input: {
     agentId: finn.id,
     prompt: buildConceptPrompt(input.clientProfile, input.request),
     temperature: 0.55,
-    maxTokens: Math.min(input.maxTokens, 1400),
+    maxTokens: input.maxTokens,
   })
   executionSteps.push(
     createStep({
@@ -362,7 +362,7 @@ export async function executeCreativeAssetTask(input: {
     agentId: echo.id,
     prompt: buildCopyPrompt(input.clientProfile, input.request),
     temperature: 0.5,
-    maxTokens: Math.min(input.maxTokens, 1000),
+    maxTokens: input.maxTokens,
   })
   executionSteps.push(
     createStep({
@@ -381,7 +381,7 @@ export async function executeCreativeAssetTask(input: {
     agentId: lyra.id,
     prompt: buildNanoBananaPrompt(input.clientProfile, input.request, concept.text, copy.text),
     temperature: 0.55,
-    maxTokens: Math.min(input.maxTokens, 1800),
+    maxTokens: input.maxTokens,
   })
   const packText = composeCreativeProductionPack({
     request: input.request,

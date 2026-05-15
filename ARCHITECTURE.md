@@ -1,6 +1,6 @@
 # Mission Control — Architecture
 
-> **Last Updated:** 2026-05-14 (Fix Create Client: name validation, force-persist after addClient, error display in brief card)
+> **Last Updated:** 2026-05-15 (Fix #87: dynamic Ollama model list in AgentEditor, agent provider/model honored via Priority 0 in resolveTaskRuntime, removed all hardcoded minimax-m2.7:cloud defaults from provider-settings.ts and route.ts)
 > **Rule for contributors:** Update this file after every code change. Add new pages to the Page Structure table, new components to the Component Library, new store shape changes to State Management, etc.
 
 ## Overview

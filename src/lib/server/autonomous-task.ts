@@ -781,7 +781,7 @@ async function runPipelineExecution(input: {
             provider: runtime.provider,
             model: runtime.model,
             temperature: 0.45,
-            maxTokens: Math.min(input.maxTokens, 1200),
+            maxTokens: input.maxTokens,
             messages: [
               {
                 role: 'system',
@@ -1028,7 +1028,7 @@ export async function executeAutonomousTask(input: {
         provider: runtime.provider,
         model: runtime.model,
         temperature: 0.45,
-        maxTokens: Math.min(input.maxTokens, 900),
+        maxTokens: input.maxTokens,
         messages: [
           {
             role: 'system',
@@ -1084,7 +1084,7 @@ export async function executeAutonomousTask(input: {
     provider: leadRuntime.provider,
     model: leadRuntime.model,
     temperature: input.temperature,
-    maxTokens: Math.min(input.maxTokens, 2200),
+    maxTokens: input.maxTokens,
     messages: [
       {
         role: 'system',
@@ -1116,7 +1116,7 @@ export async function executeAutonomousTask(input: {
       provider: leadRuntime.provider,
       model: leadRuntime.model,
       temperature: Math.min(input.temperature, 0.45),
-      maxTokens: Math.min(input.maxTokens, 2200),
+      maxTokens: input.maxTokens,
       messages: [
         {
           role: 'system',
@@ -1194,7 +1194,7 @@ export async function executeAutonomousTask(input: {
       provider: leadRuntime.provider,
       model: leadRuntime.model,
       temperature: Math.min(input.temperature, 0.45),
-      maxTokens: Math.min(input.maxTokens, 2200),
+      maxTokens: input.maxTokens,
       messages: [
         {
           role: 'system',
