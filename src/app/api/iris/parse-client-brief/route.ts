@@ -33,12 +33,108 @@ export const CLIENT_FIELD_LABELS: Record<string, string> = {
   notes: 'Notes',
 }
 
+const ENRICHABLE_FIELDS = [
+  'website',
+  'description',
+  'industry',
+  'missionStatement',
+  'brandPromise',
+  'targetAudiences',
+  'productsAndServices',
+  'usp',
+  'competitiveLandscape',
+  'keyMessages',
+  'toneOfVoice',
+  'strategicPriorities',
+]
+
+/**
+ * Second-pass enrichment: after document extraction, ask the AI to fill in
+ * any remaining empty fields using its knowledge of the company/industry.
+ * This works especially well when combined with Gemini grounding.
+ */
+async function enrichClientBriefWithResearch(
+  draft: Record<string, any>,
+  providerKeys: Record<string, any>,
+  runtime: { provider: string; model: string }
+): Promise<Record<string, any>> {
+  const name = draft.name?.trim() || ''
+  if (!name) return draft
+
+  const emptyFields = ENRICHABLE_FIELDS.filter((k) => {
+    const v = draft[k]
+    return !v || (typeof v === 'string' && !v.trim())
+  })
+
+  if (emptyFields.length === 0) return draft
+
+  const alreadyFilled = Object.entries(draft)
+    .filter(([k, v]) => v && typeof v === 'string' && v.trim() && k !== 'notes')
+    .map(([k, v]) => `${k}: ${String(v).slice(0, 300)}`)
+    .join('\n')
+
+  const prompt = `You are a business analyst building a marketing agency client profile for "${name}".
+
+Using your knowledge of this company and industry, fill in the following missing profile fields as accurately and completely as possible. For fields you cannot determine precisely, use reasonable industry-informed estimates — do not leave fields blank.
+
+Already extracted from their documents:
+${alreadyFilled || '(only company name is known)'}
+
+Fill in ONLY these missing fields — return as valid JSON, no markdown, no explanation:
+${emptyFields.map((f) => `"${f}": string`).join('\n')}
+"competitors": array of competitor company names (add or supplement existing list)
+
+JSON only:`
+
+  try {
+    const raw = await generateText({
+      provider: runtime.provider as AIProvider,
+      model: runtime.model,
+      temperature: 0.2,
+      maxTokens: 2000,
+      messages: [{ role: 'user', content: prompt }],
+      ...providerKeys,
+    })
+
+    const cleaned = raw
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```\s*$/, '')
+      .trim()
+
+    const researched = JSON.parse(cleaned)
+    const enriched = { ...draft }
+
+    for (const key of emptyFields) {
+      const val = researched[key]
+      if (val && typeof val === 'string' && val.trim()) {
+        enriched[key] = val
+      }
+    }
+
+    // Merge competitors list
+    if (Array.isArray(researched.competitors) && researched.competitors.length > 0) {
+      const existing: string[] = Array.isArray(draft.competitors) ? draft.competitors : []
+      enriched.competitors = [...new Set([...existing, ...researched.competitors.map((c: any) => String(c))])]
+    }
+
+    return enriched
+  } catch (e) {
+    console.error('[parse-client-brief] enrichment error:', e)
+    return draft
+  }
+}
+
 export async function extractClientFieldsFromText(
   briefText: string,
   providerKeys: Record<string, any>,
   runtime: { provider: string; model: string }
 ): Promise<{ draft: Record<string, any>; missingFields: string[] }> {
-  const prompt = `You are extracting a structured client brief from the text below. Extract as many fields as possible. Return ONLY valid JSON — no markdown, no code fences, no extra text.
+  // Detect whether there is real document content or just a placeholder reference
+  const hasSubstantialContent = briefText.length > 200 &&
+    !briefText.match(/^\[File:.*\]$/) &&
+    !briefText.match(/^\[Image file:.*\]$/)
+
+  const prompt = `You are extracting a structured client brief from the text below. Extract as many fields as possible from the provided content. Return ONLY valid JSON — no markdown, no code fences, no extra text.
 
 Fields to extract:
 - name: string (company/client name) — REQUIRED
@@ -48,7 +144,7 @@ Fields to extract:
 - missionStatement: string (mission, vision, or brand philosophy) — REQUIRED
 - brandPromise: string (core brand promise or value proposition)
 - targetAudiences: string (target customers/audiences description)
-- productsAndServices: string (products or services offered)
+- productsAndServices: string (products or services offered, include pricing if mentioned)
 - usp: string (unique selling proposition or key differentiator)
 - competitiveLandscape: string (competitor info, market position)
 - keyMessages: string (key brand messages or talking points)
@@ -62,7 +158,7 @@ Fields to extract:
 
 Source text:
 ---
-${briefText.slice(0, 10000)}
+${briefText.slice(0, 12000)}
 ---
 
 JSON only:`
@@ -82,12 +178,24 @@ JSON only:`
     .replace(/\s*```\s*$/, '')
     .trim()
 
-  const draft = JSON.parse(cleaned)
+  let draft = JSON.parse(cleaned)
 
   if (!Array.isArray(draft.competitors)) {
     draft.competitors = typeof draft.competitors === 'string' && draft.competitors
       ? draft.competitors.split(/[,;]/).map((s: string) => s.trim()).filter(Boolean)
       : []
+  }
+
+  // Pass 2: enrich with AI knowledge for any fields still empty.
+  // Always run when content is thin (just a name). Run for rich docs too
+  // as long as 3+ enrichable fields remain empty — documents rarely cover
+  // all profile fields (competitive landscape, tone of voice, etc.).
+  const shouldEnrich =
+    !hasSubstantialContent ||
+    ENRICHABLE_FIELDS.filter((k) => !draft[k] || !String(draft[k]).trim()).length >= 3
+
+  if (shouldEnrich) {
+    draft = await enrichClientBriefWithResearch(draft, providerKeys, runtime)
   }
 
   const missingFields = REQUIRED_FIELDS.filter((key) => {

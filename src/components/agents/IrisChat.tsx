@@ -1376,21 +1376,51 @@ export function IrisChat() {
     if (isIrisOpen) setTimeout(() => inputRef.current?.focus(), 300)
   }, [isIrisOpen])
 
-  // Extract text from files
+  // Extract text from files — handles DOCX (JSZip), plain text, and images
   const extractFileText = async (file: File): Promise<string> => {
-    return new Promise((resolve) => {
-      if (file.type.startsWith('text/') || file.type === 'application/json') {
+    const isDocx =
+      file.name.toLowerCase().endsWith('.docx') ||
+      file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+
+    if (isDocx) {
+      try {
+        const JSZip = (await import('jszip')).default
+        const arrayBuffer = await file.arrayBuffer()
+        const zip = await JSZip.loadAsync(arrayBuffer)
+        const docXmlFile = zip.file('word/document.xml')
+        if (docXmlFile) {
+          const xml = await docXmlFile.async('string')
+          // Extract text from each <w:p> paragraph element
+          const paragraphs: string[] = []
+          const paraMatches = xml.match(/<w:p[ >][\s\S]*?<\/w:p>/g) || []
+          for (const para of paraMatches) {
+            const textParts = [...para.matchAll(/<w:t[^>]*>([\s\S]*?)<\/w:t>/g)]
+            const text = textParts.map((m) => m[1]).join('').trim()
+            if (text) paragraphs.push(text)
+          }
+          if (paragraphs.length > 0) return paragraphs.join('\n')
+        }
+        return `[Empty document: ${file.name}]`
+      } catch (e) {
+        console.error('[IrisChat] DOCX parse error:', e)
+        return `[Could not read DOCX: ${file.name}]`
+      }
+    }
+
+    if (file.type.startsWith('text/') || file.type === 'application/json') {
+      return new Promise((resolve) => {
         const reader = new FileReader()
         reader.onload = () => resolve(reader.result as string)
         reader.onerror = () => resolve(`[Could not read file: ${file.name}]`)
         reader.readAsText(file)
-      } else if (file.type.startsWith('image/')) {
-        // For images, we'll include a placeholder - actual vision would need API support
-        resolve(`[Image file: ${file.name} - ${(file.size / 1024).toFixed(1)}KB]`)
-      } else {
-        resolve(`[File: ${file.name} - ${(file.size / 1024).toFixed(1)}KB - ${file.type}]`)
-      }
-    })
+      })
+    }
+
+    if (file.type.startsWith('image/')) {
+      return `[Image file: ${file.name} - ${(file.size / 1024).toFixed(1)}KB]`
+    }
+
+    return `[File: ${file.name} - ${(file.size / 1024).toFixed(1)}KB - ${file.type}]`
   }
 
   const handleFileAttach = async (e: React.ChangeEvent<HTMLInputElement>) => {
