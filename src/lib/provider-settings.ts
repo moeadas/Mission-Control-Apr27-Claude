@@ -10,7 +10,7 @@ import { AIProvider, ProviderFallback, ProviderSettings, AnthropicSettings, Open
  * without touching code, and so a single edit changes every site.
  */
 export const DEFAULT_CONTENT_TASK_MODELS: Record<AIProvider, string> = {
-  ollama: 'minimax-m2.7:cloud',
+  ollama: '', // empty — resolveContentTaskModel falls through to settings.ollama.model or availableModels[0]
   gemini: 'gemini-2.5-pro',
   anthropic: 'claude-sonnet-4-5',
   openai: 'gpt-4o',
@@ -42,7 +42,7 @@ export const DEFAULT_PROVIDER_SETTINGS: ProviderSettings = {
     useGeminiForThinking: true,
     runtimeMode: 'fast',
     contentModels: {
-      ollama: 'minimax-m2.7:cloud',
+      ollama: '',
       gemini: 'gemini-2.5-pro',
       anthropic: 'claude-sonnet-4-5',
       openai: 'gpt-4o',
@@ -54,7 +54,7 @@ export const DEFAULT_PROVIDER_SETTINGS: ProviderSettings = {
     baseUrl: 'http://localhost:11434',
     apiKey: '',
     maskedKey: '',
-    availableModels: ['glm-5.1:cloud', 'minimax-m2.7:cloud', 'llama3.2:latest'],
+    availableModels: [],
   },
   gemini: {
     enabled: false,

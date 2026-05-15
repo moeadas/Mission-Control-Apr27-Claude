@@ -84,7 +84,30 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
   const updateAgent = useAgentsStore((state) => state.updateAgent)
   const createAgent = useAgentsStore((state) => state.createAgent)
   const deleteAgent = useAgentsStore((state) => state.deleteAgent)
+  const providerSettings = useAgentsStore((state) => state.providerSettings)
   const token = getStoredToken()
+
+  // Build merged model list: static catalog + dynamic installed models from providerSettings
+  function getMergedModels(prov: string) {
+    const catalogModels = MODEL_CATALOG.filter((m) => m.provider === prov)
+    const catalogIds = new Set(catalogModels.map((m) => m.id))
+    const dynamic: string[] =
+      prov === 'ollama' ? (providerSettings.ollama?.availableModels || [])
+      : prov === 'gemini' ? (providerSettings.gemini?.availableModels || [])
+      : prov === 'anthropic' ? (providerSettings.anthropic?.availableModels || [])
+      : prov === 'openai' ? (providerSettings.openai?.availableModels || [])
+      : []
+    const extra = dynamic
+      .filter((id) => !catalogIds.has(id))
+      .map((id) => ({
+        id,
+        label: id,
+        provider: prov as any,
+        tier: 'local' as const,
+        note: 'Installed on your Ollama server',
+      }))
+    return [...catalogModels, ...extra]
+  }
 
   const isCreating = agentId === null
   const agent = isCreating ? null : agents.find((a) => a.id === agentId)
@@ -656,7 +679,8 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
                     <button
                       key={p.id}
                       onClick={() => {
-                        const defaultModel = MODEL_CATALOG.find((m) => m.provider === p.id)?.id || ''
+                        const merged = getMergedModels(p.id)
+                        const defaultModel = merged[0]?.id || ''
                         setFormData((prev) => ({ ...prev, provider: p.id, model: defaultModel }))
                       }}
                       className="px-4 py-2 rounded-xl text-sm font-medium transition-all"
@@ -677,11 +701,11 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
                 <label className="form-label">Model</label>
                 <p className="form-hint">
                   {formData.provider === 'ollama'
-                    ? 'Local model — free, runs on your machine'
+                    ? 'Shows models from your Ollama server. Verify Ollama in Settings to refresh the list.'
                     : 'More capable models cost more per token'}
                 </p>
                 <div className="space-y-1.5">
-                  {MODEL_CATALOG.filter((m) => m.provider === formData.provider).map((m) => {
+                  {getMergedModels(formData.provider).map((m) => {
                     const tierColors: Record<string, string> = {
                       powerful: '#cc785c',
                       balanced: '#9b6dff',
@@ -713,6 +737,24 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
                       </button>
                     )
                   })}
+                </div>
+                {/* Custom model — for any model not in the list (e.g. newly pulled Ollama models) */}
+                <div className="mt-3">
+                  <p className="text-[11px] text-text-dim mb-1.5">
+                    Model not listed? Enter the exact model ID:
+                  </p>
+                  <input
+                    type="text"
+                    placeholder={formData.provider === 'ollama' ? 'e.g. kimi-k2:latest' : 'e.g. custom-model-id'}
+                    value={getMergedModels(formData.provider).some((m) => m.id === formData.model) ? '' : formData.model}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, model: e.target.value }))}
+                    className="form-input px-3 py-2 text-sm w-full"
+                  />
+                  {formData.model && !getMergedModels(formData.provider).some((m) => m.id === formData.model) && (
+                    <p className="text-[11px] text-[#9b6dff] mt-1">
+                      ✓ Using custom model: <span className="font-mono">{formData.model}</span>
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -792,7 +834,7 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
                 <div className="mt-3 pt-3 border-t border-[#e2e8f0] flex items-center justify-between text-xs">
                   <span className="text-text-dim">Model</span>
                   <span className="font-medium text-text-primary">
-                    {MODEL_CATALOG.find((m) => m.id === formData.model)?.label || formData.model || '—'}
+                    {getMergedModels(formData.provider).find((m) => m.id === formData.model)?.label || formData.model || '—'}
                   </span>
                 </div>
               </div>

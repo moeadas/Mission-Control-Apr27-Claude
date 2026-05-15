@@ -236,7 +236,7 @@ export async function POST(req: NextRequest) {
     requestBody = await req.json()
     const {
       provider = 'ollama',
-      model = 'minimax-m2.7:cloud',
+      model = '',
       temperature = 0.7,
       maxTokens = 4096,
       messages,
@@ -290,8 +290,12 @@ export async function POST(req: NextRequest) {
     const selectedRuntime = resolveTaskRuntime({
       settings: normalizedProviderSettings,
       deliverableType,
-      requestedProvider: provider,
+      requestedProvider: provider as any,
       requestedModel: model,
+      // Pass as Priority-0 agent overrides so the agent's explicit provider+model
+      // always wins over global routing logic (content-first, thinking, etc.)
+      agentProvider: provider as any || null,
+      agentModel: model || null,
     })
     let actualProvider = selectedRuntime.provider
     let actualModel = selectedRuntime.model
