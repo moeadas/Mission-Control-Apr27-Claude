@@ -49,6 +49,46 @@ const ENRICHABLE_FIELDS = [
 ]
 
 /**
+ * Attempt to recover a valid object from a truncated JSON string.
+ * Tries progressively more aggressive recovery strategies so a
+ * mid-response cut-off doesn't lose all the fields we already parsed.
+ */
+function recoverPartialJson(raw: string): Record<string, any> {
+  // 1. Happy path
+  try { return JSON.parse(raw) } catch {}
+
+  const s = raw.trimEnd()
+
+  // 2. Remove trailing comma + close object
+  try { return JSON.parse(s.replace(/,\s*$/, '') + '}') } catch {}
+
+  // 3. Remove trailing incomplete string value then close
+  try {
+    const cut = s.replace(/,?\s*"[^"]*"\s*:\s*"[^"]*$/, '').replace(/,\s*$/, '')
+    return JSON.parse(cut + '}')
+  } catch {}
+
+  // 4. Cut at last complete comma-newline boundary then close
+  const lastBoundary = Math.max(s.lastIndexOf(',\n'), s.lastIndexOf(',\r\n'))
+  if (lastBoundary > 5) {
+    try { return JSON.parse(s.slice(0, lastBoundary) + '}') } catch {}
+  }
+
+  // 5. Last resort: regex-extract all complete string and array fields
+  const obj: Record<string, any> = {}
+  const strPat = /"([a-zA-Z]\w*)"\s*:\s*"((?:[^"\\]|\\.)*)"/g
+  let m: RegExpExecArray | null
+  while ((m = strPat.exec(raw)) !== null) {
+    obj[m[1]] = m[2].replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\"/g, '"').replace(/\\\\/g, '\\')
+  }
+  const arrPat = /"([a-zA-Z]\w*)"\s*:\s*(\[[^\]]*\])/g
+  while ((m = arrPat.exec(raw)) !== null) {
+    try { obj[m[1]] = JSON.parse(m[2]) } catch { obj[m[1]] = [] }
+  }
+  return obj
+}
+
+/**
  * Second-pass enrichment: after document extraction, ask the AI to fill in
  * any remaining empty fields using its knowledge of the company/industry.
  * This works especially well when combined with Gemini grounding.
@@ -91,7 +131,7 @@ JSON only:`
       provider: runtime.provider as AIProvider,
       model: runtime.model,
       temperature: 0.2,
-      maxTokens: 2000,
+      maxTokens: 4096,
       messages: [{ role: 'user', content: prompt }],
       ...providerKeys,
     })
@@ -101,7 +141,7 @@ JSON only:`
       .replace(/\s*```\s*$/, '')
       .trim()
 
-    const researched = JSON.parse(cleaned)
+    const researched = recoverPartialJson(cleaned)
     const enriched = { ...draft }
 
     for (const key of emptyFields) {
@@ -129,10 +169,15 @@ export async function extractClientFieldsFromText(
   providerKeys: Record<string, any>,
   runtime: { provider: string; model: string }
 ): Promise<{ draft: Record<string, any>; missingFields: string[] }> {
+  // If the message has an [Attached files context] section, prefer that block
+  // so the extraction prompt doesn't get polluted by the user's chat preamble.
+  const attachedSectionMatch = briefText.match(/\[Attached files context\]\s*\n([\s\S]+)/i)
+  const sourceText = attachedSectionMatch ? attachedSectionMatch[1].trim() : briefText
+
   // Detect whether there is real document content or just a placeholder reference
-  const hasSubstantialContent = briefText.length > 200 &&
-    !briefText.match(/^\[File:.*\]$/) &&
-    !briefText.match(/^\[Image file:.*\]$/)
+  const hasSubstantialContent = sourceText.length > 200 &&
+    !sourceText.match(/^\[File:.*\]$/) &&
+    !sourceText.match(/^\[Image file:.*\]$/)
 
   const prompt = `You are extracting a structured client brief from the text below. Extract as many fields as possible from the provided content. Return ONLY valid JSON — no markdown, no code fences, no extra text.
 
@@ -158,7 +203,7 @@ Fields to extract:
 
 Source text:
 ---
-${briefText.slice(0, 12000)}
+${sourceText.slice(0, 14000)}
 ---
 
 JSON only:`
@@ -167,7 +212,7 @@ JSON only:`
     provider: runtime.provider as AIProvider,
     model: runtime.model,
     temperature: 0.1,
-    maxTokens: 2048,
+    maxTokens: 4096,
     messages: [{ role: 'user', content: prompt }],
     ...providerKeys,
   })
@@ -178,7 +223,7 @@ JSON only:`
     .replace(/\s*```\s*$/, '')
     .trim()
 
-  let draft = JSON.parse(cleaned)
+  let draft = recoverPartialJson(cleaned)
 
   if (!Array.isArray(draft.competitors)) {
     draft.competitors = typeof draft.competitors === 'string' && draft.competitors
