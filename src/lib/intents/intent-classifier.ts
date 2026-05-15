@@ -196,6 +196,17 @@ export function inferDeliverableType(content: string): DeliverableType {
     return lower.includes('research') || lower.includes('analysis') ? 'research-brief' : 'strategy-brief'
   }
 
+  // Explicit social post patterns always resolve to campaign-copy.
+  // This short-circuits the score system so that phrasing like "create a post
+  // image for Instagram" (which could score creative-asset via "post image")
+  // never accidentally routes to the creative-asset engine.
+  if (
+    /\b(instagram post|facebook post|linkedin post|social post|single post|carousel post|caption)\b/.test(lower) &&
+    !/\b(content calendar|30[- ]?day|monthly content|weekly content plan|editorial calendar)\b/.test(lower)
+  ) {
+    return 'campaign-copy'
+  }
+
   const candidates = DELIVERABLE_REGISTRY.filter((spec) => spec.patterns.length > 0).sort(
     (a, b) => b.priority - a.priority
   )
@@ -214,7 +225,12 @@ export function inferDeliverableType(content: string): DeliverableType {
     }
 
     if (spec.id === 'creative-asset' && score > 0) {
-      if (
+      // Hard-dampen if the request is clearly asking for a social post (text copy),
+      // not image/visual generation. The social-post early-return above catches most
+      // cases; this handles edge cases like "create a post image for our Instagram".
+      if (/\b(instagram post|facebook post|linkedin post|social post|single post|caption)\b/.test(lower)) {
+        score *= 0.05
+      } else if (
         !/\b(post|caption|instagram|facebook|linkedin|social|ad|banner|display|poster|creative|visual|image|artwork|design)\b/.test(
           lower
         )

@@ -881,7 +881,16 @@ export async function executeAutonomousTask(input: {
   const pipelineOutputs: Record<string, string> = {}
   const clientProfile = buildClientProfileMap(input.clientContext, input.clientProfile)
 
-  if (input.deliverableType === 'creative-asset') {
+  // Safety guard: if the request explicitly asks for a social post (instagram/
+  // facebook/linkedin post, caption) with no image-generation intent, treat it
+  // as campaign-copy even if the deliverable type was misclassified upstream.
+  // The creative-asset engine produces a production brief, not post copy.
+  const lowerRequest = (input.request || '').toLowerCase()
+  const isSocialPostRequest =
+    /\b(instagram post|facebook post|linkedin post|social post|single post|caption)\b/.test(lowerRequest) &&
+    !/\b(generate image|create image|image for|visual for|design for|artwork|mockup|banner|infographic)\b/.test(lowerRequest)
+
+  if (input.deliverableType === 'creative-asset' && !isSocialPostRequest) {
     const creativeResult = await executeCreativeAssetTask({
       request: input.request,
       clientProfile,
