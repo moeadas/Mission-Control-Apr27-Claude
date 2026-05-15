@@ -58,7 +58,6 @@ Return ONLY the JSON object, no markdown fences.`
       provider: runtime.provider,
       model: runtime.model,
       temperature: 0.3,
-      maxTokens: 2048,
       messages: [{ role: 'user', content: prompt }],
       ollamaBaseUrl: settings.ollama.baseUrl,
       ollamaApiKey: settings.ollama.apiKey,

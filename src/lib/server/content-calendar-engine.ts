@@ -61,7 +61,7 @@ type GenerateStage = (input: {
   agentId: string
   prompt: string
   temperature: number
-  maxTokens: number
+  maxTokens?: number
 }) => Promise<{ text: string; provider: AIProvider; model: string }>
 
 type StageRuntime = {
@@ -203,7 +203,7 @@ async function generateJsonStage<T>(input: {
   agentId: string
   prompt: string
   temperature: number
-  maxTokens: number
+  maxTokens?: number
   generateStage: GenerateStage
   repairHint: string
   stage: string
@@ -1034,7 +1034,7 @@ export async function executeAutomatedContentCalendar(input: {
   agentsById: Map<string, RuntimeAgent>
   selectedSkillsByAgent?: Record<string, string[]>
   generateStage: GenerateStage
-  maxTokens: number
+  maxTokens?: number
   hooks?: RuntimeHooks
 }) {
   const executionSteps: ArtifactExecutionStep[] = []
@@ -1162,7 +1162,7 @@ export async function executeAutomatedContentCalendar(input: {
       agentId: maya.id,
       prompt: tighter,
       temperature: attempt === 0 ? 0.55 : 0.7,
-      maxTokens: Math.min(input.maxTokens, 4000),
+      maxTokens: input.maxTokens,
       generateStage: input.generateStage,
       stage: `ideas:${pillar.toLowerCase()}${attempt > 0 ? `:retry${attempt}` : ''}`,
       repairHint: `Return exactly ${perPillarTarget} ${pillar} ideas in a top-level "ideas" array. Each idea needs title, description, primaryPlatform, and contentType — the system will assign ids automatically.`,
@@ -1284,7 +1284,7 @@ export async function executeAutomatedContentCalendar(input: {
       agentId: maya.id,
       prompt: buildIdeaSelectionPrompt(input.clientProfile, input.request, generatedIdeas, selectedIdeaTarget),
       temperature: 0.35,
-      maxTokens: Math.min(input.maxTokens, 4000),
+      maxTokens: input.maxTokens,
       generateStage: input.generateStage,
       stage: 'idea-selection',
       repairHint:
@@ -1386,7 +1386,7 @@ export async function executeAutomatedContentCalendar(input: {
       agentId: echo.id,
       prompt: buildHooksPrompt(input.clientProfile, input.request, chunk),
       temperature: 0.55,
-      maxTokens: Math.min(input.maxTokens, 4000),
+      maxTokens: input.maxTokens,
       generateStage: input.generateStage,
       stage: 'hooks',
       repairHint:
@@ -1405,7 +1405,7 @@ export async function executeAutomatedContentCalendar(input: {
         agentId: echo.id,
         prompt: buildHooksPrompt(input.clientProfile, input.request, chunk),
         temperature: 0.35,
-        maxTokens: Math.min(input.maxTokens, 4000),
+        maxTokens: input.maxTokens,
         generateStage: input.generateStage,
         stage: 'hooks-repair',
         repairHint:
@@ -1463,7 +1463,7 @@ export async function executeAutomatedContentCalendar(input: {
       agentId: echo.id,
       prompt: buildHookSelectionPrompt(input.clientProfile, input.request, selectedIdeas, hooks),
       temperature: 0.35,
-      maxTokens: Math.min(input.maxTokens, 4000),
+      maxTokens: input.maxTokens,
       generateStage: input.generateStage,
       stage: 'hook-selection',
       repairHint:
@@ -1557,7 +1557,7 @@ export async function executeAutomatedContentCalendar(input: {
       agentId: echo.id,
       prompt: buildPostsPrompt(input.clientProfile, input.request, chunk),
       temperature: 0.55,
-      maxTokens: Math.min(input.maxTokens, 4000),
+      maxTokens: input.maxTokens,
       generateStage: input.generateStage,
       stage: 'posts',
       repairHint:
@@ -1582,7 +1582,7 @@ export async function executeAutomatedContentCalendar(input: {
         agentId: echo.id,
         prompt: buildPostsPrompt(input.clientProfile, input.request, chunk),
         temperature: 0.35,
-        maxTokens: Math.min(input.maxTokens, 4000),
+        maxTokens: input.maxTokens,
         generateStage: input.generateStage,
         stage: 'posts-repair',
         repairHint:
@@ -1652,7 +1652,7 @@ export async function executeAutomatedContentCalendar(input: {
       agentId: nova.id,
       prompt: buildCalendarPrompt(input.clientProfile, input.request, posts),
       temperature: 0.35,
-      maxTokens: Math.min(input.maxTokens, 4000),
+      maxTokens: input.maxTokens,
       generateStage: input.generateStage,
       stage: 'calendar',
       repairHint:
@@ -1721,7 +1721,7 @@ export async function executeAutomatedContentCalendar(input: {
       agentId: lyra.id,
       prompt: buildVisualsPrompt(input.clientProfile, input.request, chunk),
       temperature: 0.45,
-      maxTokens: Math.min(input.maxTokens, 4000),
+      maxTokens: input.maxTokens,
       generateStage: input.generateStage,
       stage: 'visuals',
       repairHint:
@@ -1743,7 +1743,7 @@ export async function executeAutomatedContentCalendar(input: {
         agentId: lyra.id,
         prompt: buildVisualsPrompt(input.clientProfile, input.request, chunk),
         temperature: 0.3,
-        maxTokens: Math.min(input.maxTokens, 4000),
+        maxTokens: input.maxTokens,
         generateStage: input.generateStage,
         stage: 'visuals-repair',
         repairHint:

@@ -131,7 +131,6 @@ JSON only:`
       provider: runtime.provider as AIProvider,
       model: runtime.model,
       temperature: 0.2,
-      maxTokens: 4096,
       messages: [{ role: 'user', content: prompt }],
       ...providerKeys,
     })
@@ -212,7 +211,6 @@ JSON only:`
     provider: runtime.provider as AIProvider,
     model: runtime.model,
     temperature: 0.1,
-    maxTokens: 4096,
     messages: [{ role: 'user', content: prompt }],
     ...providerKeys,
   })

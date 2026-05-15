@@ -244,7 +244,7 @@ type GenerateTextInput = {
   model: string
   messages: Message[]
   temperature: number
-  maxTokens: number
+  maxTokens?: number
   ollamaBaseUrl?: string
   ollamaContextWindow?: number
   ollamaApiKey?: string
@@ -278,10 +278,10 @@ export async function generateTextWithUsage(input: GenerateTextInput): Promise<G
 
     const body: Record<string, unknown> = {
       model: input.model,
-      max_tokens: input.maxTokens,
       temperature: input.temperature,
       messages: conversationMessages.map((m) => ({ role: m.role, content: m.content })),
     }
+    if (input.maxTokens) body.max_tokens = input.maxTokens
     if (systemMessage) body.system = systemMessage.content
 
     let response: Response
@@ -324,12 +324,12 @@ export async function generateTextWithUsage(input: GenerateTextInput): Promise<G
     if (!apiKey) throw new Error('OpenAI API key missing.')
     const baseUrl = (input.openAiBaseUrl || 'https://api.openai.com').replace(/\/$/, '')
 
-    const body = {
+    const body: Record<string, unknown> = {
       model: input.model,
-      max_tokens: input.maxTokens,
       temperature: input.temperature,
       messages: input.messages.map((m) => ({ role: m.role, content: m.content })),
     }
+    if (input.maxTokens) body.max_tokens = input.maxTokens
 
     let response: Response
     try {
@@ -379,7 +379,7 @@ export async function generateTextWithUsage(input: GenerateTextInput): Promise<G
       contents,
       generationConfig: {
         temperature: input.temperature,
-        maxOutputTokens: input.maxTokens,
+        ...(input.maxTokens ? { maxOutputTokens: input.maxTokens } : {}),
       },
     }
 
@@ -461,7 +461,7 @@ export async function generateTextWithUsage(input: GenerateTextInput): Promise<G
     stream: false,
     options: {
       temperature: input.temperature,
-      num_predict: input.maxTokens,
+      ...(input.maxTokens ? { num_predict: input.maxTokens } : {}),
       ...(numCtx ? { num_ctx: numCtx } : {}),
     },
   }

@@ -419,7 +419,7 @@ async function generateContentFirstText(input: {
   provider: AIProvider
   model: string
   temperature: number
-  maxTokens: number
+  maxTokens?: number
   messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>
   ollamaBaseUrl?: string
   ollamaContextWindow?: number
@@ -733,7 +733,7 @@ async function runPipelineExecution(input: {
   qualityChecklist: string[]
   skillLookup: Map<string, SkillRef>
   selectedSkillsByAgent?: Record<string, string[]>
-  maxTokens: number
+  maxTokens?: number
   providerSettings?: ProviderSettings
   hooks?: ExecutionHooks
 }) {
@@ -853,7 +853,7 @@ export async function executeAutonomousTask(input: {
   provider: AIProvider
   model: string
   temperature: number
-  maxTokens: number
+  maxTokens?: number
   ollamaBaseUrl?: string
   ollamaContextWindow?: number
   ollamaApiKey?: string

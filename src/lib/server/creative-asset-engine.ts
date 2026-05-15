@@ -15,7 +15,7 @@ type GenerateStage = (input: {
   agentId: string
   prompt: string
   temperature: number
-  maxTokens: number
+  maxTokens?: number
 }) => Promise<{ text: string; provider: AIProvider; model: string }>
 
 function truncate(value: string, max = 2400) {
@@ -323,7 +323,7 @@ export async function executeCreativeAssetTask(input: {
   agentsById: Map<string, RuntimeAgent>
   selectedSkillsByAgent?: Record<string, string[]>
   generateStage: GenerateStage
-  maxTokens: number
+  maxTokens?: number
   geminiApiKey?: string
   visualModel?: string
   visualEnabled?: boolean
