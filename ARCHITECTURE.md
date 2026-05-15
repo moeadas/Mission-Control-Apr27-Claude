@@ -1,6 +1,6 @@
 # Mission Control — Architecture
 
-> **Last Updated:** 2026-05-15 (Fix #89: IrisChat extracts real text from .docx attachments via JSZip; parse-client-brief adds a second-pass AI enrichment to fill empty profile fields from training knowledge)
+> **Last Updated:** 2026-05-15 (Fix #89b: parse-client-brief raises maxTokens to 4096, adds recoverPartialJson() to salvage truncated AI responses, strips [Attached files context] preamble before extraction)
 > **Rule for contributors:** Update this file after every code change. Add new pages to the Page Structure table, new components to the Component Library, new store shape changes to State Management, etc.
 
 ## Overview
