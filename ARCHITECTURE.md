@@ -1,6 +1,6 @@
 # Mission Control — Architecture
 
-> **Last Updated:** 2026-05-15 (Fix #89b: parse-client-brief raises maxTokens to 4096, adds recoverPartialJson() to salvage truncated AI responses, strips [Attached files context] preamble before extraction)
+> **Last Updated:** 2026-05-15 (Fix #91: three-layer guard prevents Instagram/social post requests from routing to creative-asset engine; Fix #90: maxTokens made optional — providers use model defaults when unset)
 > **Rule for contributors:** Update this file after every code change. Add new pages to the Page Structure table, new components to the Component Library, new store shape changes to State Management, etc.
 
 ## Overview
@@ -1209,6 +1209,34 @@ Four systemic issues were fixed to make pipelines and skills actually fire durin
 - Simple social posts (`isSimplePost = true`) now require **zero** structural H2 headers — a plain caption passes cleanly
 - Minimum word count check (≥ 8 words) still catches genuinely empty outputs
 - `short-form-copy` (bios, taglines) also emptied of required sections — these are prose, not documents
+
+## Fix #91 — Social Post → Campaign-Copy Routing (2026-05-15)
+
+**Problem:** Requests like "create an Instagram post about X" were producing a full *Creative Asset Production Pack* document instead of clean post copy. Root cause: `inferDeliverableType` could score `creative-asset` higher than `campaign-copy` when phrasing like "post image" or visual nouns appeared in the request.
+
+**Three-layer fix:**
+
+### Layer 1 — Early-return in classifier (`src/lib/intents/intent-classifier.ts`)
+- Before the score loop, an explicit regex check for social post patterns (`instagram post`, `facebook post`, `linkedin post`, `social post`, `single post`, `caption`) short-circuits classification and returns `campaign-copy` immediately.
+- Excludes content-calendar phrasings (`30-day`, `content calendar`, etc.) so those still go through full scoring.
+
+### Layer 2 — Strengthened creative-asset damper (`src/lib/intents/intent-classifier.ts`)
+- When `creative-asset` scores > 0 and the request contains social post keywords, the score is multiplied by **0.05** (near-zero), making it impossible to win.
+- Previously the damper only fired when social keywords were absent; now it fires when they are present.
+
+### Layer 3 — Executor safety guard (`src/lib/server/autonomous-task.ts`)
+- Added `isSocialPostRequest` boolean check before calling `executeCreativeAssetTask`.
+- If the deliverable type arrives as `creative-asset` but the request text clearly matches a social post pattern (and contains no image-generation intent), the guard bypasses `executeCreativeAssetTask` entirely and falls through to the general agent path — which produces campaign-copy output.
+
+**Result:** Instagram/Facebook/LinkedIn/social post requests always produce the clean 4-section format (Objective / Post Copy / CTA / Hashtags) and never produce the Creative Asset Production Pack.
+
+---
+
+## Fix #90 — maxTokens Optional (2026-05-15)
+
+`maxTokens` is now optional throughout the provider layer. When omitted, each provider uses its own model default (e.g. Anthropic 8192, OpenAI 4096). This prevents accidental truncation on models with large context windows and removes the need to specify it for every call site. Updated files: `src/lib/server/ai.ts`, `src/lib/provider-settings.ts`, and any route that previously hard-coded a token ceiling.
+
+---
 
 ## Build & Deployment
 
