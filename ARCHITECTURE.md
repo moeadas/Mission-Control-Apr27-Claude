@@ -1,6 +1,6 @@
 # Mission Control — Architecture
 
-> **Last Updated:** 2026-05-15 (Fix #88: removed all hardcoded Math.min maxToken caps from autonomous-task.ts, creative-asset-engine.ts; raised all agent template/default maxTokens to 4096; agent output now limited only by per-agent config, not hidden internal caps)
+> **Last Updated:** 2026-05-15 (Fix #89: IrisChat extracts real text from .docx attachments via JSZip; parse-client-brief adds a second-pass AI enrichment to fill empty profile fields from training knowledge)
 > **Rule for contributors:** Update this file after every code change. Add new pages to the Page Structure table, new components to the Component Library, new store shape changes to State Management, etc.
 
 ## Overview
