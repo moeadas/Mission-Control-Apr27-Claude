@@ -296,17 +296,14 @@ export async function POST(req: NextRequest) {
     let actualProvider = selectedRuntime.provider
     let actualModel = selectedRuntime.model
 
-    // Kick off brief extraction in parallel with AI response (isBriefIntent already computed above)
+    // Kick off brief extraction in parallel with AI response (isBriefIntent already computed above).
+    // IMPORTANT: use actualProvider/actualModel (same as the chat response) so extraction
+    // always uses the same working provider — not a separate briefRuntime that may fall back
+    // to a different/unavailable provider.
     type ClientBriefAction = { type: 'CREATE_CLIENT'; draft: Record<string, any>; missingFields: string[] }
     let clientBriefActionPromise: Promise<ClientBriefAction | null> | null = null
     if (isBriefIntent) {
-      const briefRuntime = resolveTaskRuntime({
-        settings: normalizedProviderSettings,
-        deliverableType: 'status-report',
-        requestedProvider: 'anthropic',
-        requestedModel: '',
-      })
-      clientBriefActionPromise = extractClientFieldsFromText(userContent, providerKeys, briefRuntime)
+      clientBriefActionPromise = extractClientFieldsFromText(userContent, providerKeys, { provider: actualProvider, model: actualModel })
         .then((result) => ({ type: 'CREATE_CLIENT' as const, ...result }))
         .catch((err) => {
           console.warn('[CHAT] Client brief extraction failed:', err?.message || err)
@@ -329,30 +326,67 @@ export async function POST(req: NextRequest) {
     }
 
     if (conversational) {
-      const agentRoster = agents.slice(0, 10).map((agent: any) => `${agent.name} (${agent.role})`).join(', ')
-      const leanSystemPrompt = [
-        `ROLE: You are Iris, Chief of Staff at Mission Control — a virtual creative and digital media agency.`,
-        `PURPOSE: You help the agency owner manage their team, answer questions, and kick off tasks.`,
-        '',
-        `TEAM: ${agentRoster}.`,
-        clients.length ? `CLIENTS: ${clients.map((client: any) => client.name).join(', ')}.` : '',
-        missions.length ? `ACTIVE WORK: ${missions.slice(0, 5).map((mission: any) => mission.title).join(', ')}.` : '',
-        '',
-        `RESPONSE FORMAT: Short, warm, professional. 1-3 sentences for simple questions. Use markdown for lists.`,
-        '',
-        `RULES:`,
-        `1. Answer questions about the agency, team, clients, and capabilities directly.`,
-        `2. NEVER promise to route to, flag, or check with another agent. Agents are internal execution modules — you do NOT message them or simulate their replies.`,
-        `3. NEVER roleplay or simulate messages to/from other agents (e.g. do NOT write "Flagging Piper now..." or pretend an agent replied). This is strictly forbidden.`,
-        `4. When the user wants a deliverable, ask them to give the specific request and then execute it.`,
-        `5. For status questions, answer honestly based on what you know.`,
-        `6. If the user shares a client brief or company overview, confirm receipt in 1-2 sentences ONLY. Do NOT list out all the extracted details — the app will display them in a preview card automatically.`,
-        `7. If the user sends a vague follow-up like "yes", "ok", "try again", or "confirmed" without clear context, ask them what they'd like to do next. Never fabricate an action based on ambiguous input.`,
+      // Build rich agent context — name, role, specialty, and skills
+      const agentLines = agents.slice(0, 15).map((agent: any) => {
+        const skills = Array.isArray(agent.skills) && agent.skills.length
+          ? ` | Skills: ${agent.skills.slice(0, 6).join(', ')}`
+          : ''
+        const specialty = agent.specialty ? ` — ${agent.specialty}` : ''
+        return `• ${agent.name} (${agent.role})${specialty}${skills}`
+      }).join('\n')
+
+      // Build client context — name, industry, description, USP
+      const clientLines = clients.slice(0, 10).map((client: any) => {
+        const parts = [client.name]
+        if (client.industry) parts.push(client.industry)
+        if (client.description) parts.push(client.description.slice(0, 120))
+        if (client.usp) parts.push(`USP: ${client.usp.slice(0, 80)}`)
+        if (client.website) parts.push(client.website)
+        return `• ${parts.join(' | ')}`
+      }).join('\n')
+
+      // Build active missions context
+      const missionLines = missions.slice(0, 8).map((mission: any) =>
+        `• ${mission.title}${mission.status ? ` [${mission.status}]` : ''}${mission.clientId ? '' : ''}`
+      ).join('\n')
+
+      const irisSystemPrompt = [
+        `You are Iris — Chief of Staff, strategic brain, and operational lead of Mission Control, a full-service virtual creative and digital media agency.`,
+        ``,
+        `You are the most capable and knowledgeable entity in this agency. You combine the intelligence of a seasoned CMO, senior strategist, creative director, and technical lead — all with complete situational awareness of the agency's team, clients, active work, and capabilities.`,
+        ``,
+        `== YOUR CAPABILITIES ==`,
+        `You can handle any of the following directly in conversation:`,
+        `• Marketing strategy, brand positioning, content strategy, campaign planning`,
+        `• Copywriting, ad copy, email sequences, social media content, SEO content`,
+        `• Creative direction — brief writing, concept development, creative reviews`,
+        `• Brand analysis — audit briefs, review tone of voice, assess competitive position`,
+        `• Business strategy — go-to-market, growth plans, audience segmentation`,
+        `• Technical guidance — web, funnels, landing pages, analytics, pixel setup`,
+        `• Data analysis and performance insights`,
+        `• Detailed answers on any marketing, business, creative, or digital topic`,
+        ``,
+        `== AGENCY TEAM ==`,
+        agentLines || 'No agents configured.',
+        ``,
+        clients.length ? `== CLIENTS ==\n${clientLines}` : '',
+        missions.length ? `== ACTIVE WORK ==\n${missionLines}` : '',
+        ``,
+        `== HOW TO RESPOND ==`,
+        `1. Answer with expert depth and confidence. You are a highly capable AI Chief of Staff — never deflect or give shallow answers.`,
+        `2. Match response length to the question. Simple questions → concise. Strategic or complex questions → thorough.`,
+        `3. For deliverable tasks (write a campaign, build a strategy, draft content), execute them fully — do not just describe what you would do.`,
+        `4. Use markdown — headers, bullets, bold — when it improves readability.`,
+        `5. NEVER simulate, roleplay, or generate fake replies from other agents. They are execution modules, not chat participants.`,
+        `6. NEVER promise to "check with" or "flag to" another agent. You are the decision-maker.`,
+        `7. NEVER say the agency has done something it hasn't. Be honest about what requires a user action.`,
+        `8. CLIENT BRIEF RULE: If the user shares a client brief or asks to add/create a client, respond ONLY with: "Got it — I've received your brief. The extracted client profile will appear below for your review. Click **Create Client** to add them to your roster." Do not summarise the brief or list the details.`,
+        `9. If a follow-up message is vague (e.g. "yes", "ok", "go ahead") without clear context, ask a focused clarifying question.`,
       ]
-        .filter(Boolean)
+        .filter((line) => line !== null && line !== undefined)
         .join('\n')
 
-      const recentMessages = messages.slice(-6)
+      const recentMessages = messages.slice(-8)
 
       // For brief intents, the card is the primary output — not the AI prose.
       // We always use BRIEF_FALLBACK for brief intents regardless of what the
@@ -372,9 +406,9 @@ export async function POST(req: NextRequest) {
               provider: actualProvider,
               model: actualModel,
               temperature,
-              maxTokens: Math.min(maxTokens, 768),
+              maxTokens,
               messages: [
-                { role: 'system', content: leanSystemPrompt },
+                { role: 'system', content: irisSystemPrompt },
                 ...recentMessages.map((message: any) => ({ role: message.role, content: message.content })),
               ],
               ...providerKeys,
