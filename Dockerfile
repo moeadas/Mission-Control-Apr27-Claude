@@ -23,6 +23,12 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # Tell next.config.mjs to use standalone output
 ENV DOCKER_BUILD=1
 
+# Raise the Node heap for the build step. The VPS has 4 GB RAM but the default
+# Node max-old-space-size (~1.5 GB) is too tight for a Next 16 build of this
+# codebase — the previous build OOMed with "Ineffective mark-compacts near heap
+# limit". 3 GB fits comfortably within VPS RAM + swap.
+ENV NODE_OPTIONS=--max-old-space-size=3072
+
 RUN npm run build
 
 # ─── Stage 3: runner ──────────────────────────────────────────────────────────
