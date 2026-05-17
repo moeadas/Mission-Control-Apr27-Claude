@@ -29,6 +29,13 @@ import { TokenBudgetExceededError, assertTokenBudget } from '@/lib/server/token-
 import { getTenantContentDefaults } from '@/lib/server/content-defaults'
 import { looksLikeBoilerplateResponse } from '@/lib/server/text-utils'
 
+// Long-running route — multi-stage autonomous-task pipelines on big cloud
+// models can legitimately take 2-4 minutes. Without this, Next 16 kills the
+// request before the LLM finishes. (Proper fix: H-41/H-42 enqueue-and-poll
+// pattern + SSE streaming — tracked as a future batch.)
+export const maxDuration = 300
+export const dynamic = 'force-dynamic'
+
 function detectClientBriefIntent(content: string): boolean {
   // Explicit intent signals
   const explicitPatterns = [
