@@ -28,6 +28,7 @@ import { checkRateLimit, getClientIp } from '@/lib/server/rate-limit'
 import { TokenBudgetExceededError, assertTokenBudget } from '@/lib/server/token-budgets'
 import { getTenantContentDefaults } from '@/lib/server/content-defaults'
 import { looksLikeBoilerplateResponse } from '@/lib/server/text-utils'
+import { emitTaskEvent } from '@/lib/server/task-events'
 
 // Long-running route — multi-stage autonomous-task pipelines on big cloud
 // models can legitimately take 2-4 minutes. Without this, Next 16 kills the
@@ -775,6 +776,19 @@ Orchestration trace:
           },
           startedAt: new Date().toISOString(),
         })
+        // Batch M: open the SSE timeline with a running event so the Live
+        // Task Tracker stops showing "Waiting for execution" before the
+        // first phase emits.
+        if (auth.tenantId) {
+          void emitTaskEvent({
+            taskId: missionId,
+            tenantId: auth.tenantId,
+            type: 'running',
+            progress: 8,
+            message: 'Iris is preparing the request and routing it to the right specialists.',
+            payload: { deliverableType, leadAgentId: channelingPlan.leadAgentId },
+          })
+        }
       }
 
       if (deliverableType !== 'status-report') {
@@ -809,6 +823,17 @@ Orchestration trace:
                     progress,
                     context: { source: 'chat', phaseId: phase.id },
                   })
+                  // Batch M: emit task-event so SSE subscribers (IrisChat, Live Task Tracker) get a live frame.
+                  if (auth.tenantId) {
+                    void emitTaskEvent({
+                      taskId: missionId,
+                      tenantId: auth.tenantId,
+                      type: 'phase_start',
+                      phase: phase.name,
+                      progress,
+                      message: `Phase started: ${phase.name}`,
+                    })
+                  }
                 },
                 onActivityStart: async ({ phase, activity, agent, runtime, progress }) => {
                   await insertTaskRun({
@@ -835,6 +860,19 @@ Orchestration trace:
                       activeAgentName: agent.name,
                     },
                   })
+                  if (auth.tenantId) {
+                    void emitTaskEvent({
+                      taskId: missionId,
+                      tenantId: auth.tenantId,
+                      type: 'activity_start',
+                      phase: phase.name,
+                      activity: activity.name,
+                      agentId: agent.id,
+                      progress,
+                      message: `${agent.name} → ${activity.name}`,
+                      payload: { provider: runtime.provider, model: runtime.model },
+                    })
+                  }
                 },
                 onActivityComplete: async ({ phase, activity, agent, runtime, summary, outputIds, progress }) => {
                   await insertTaskRun({
@@ -855,6 +893,18 @@ Orchestration trace:
                     progress,
                     context: { source: 'chat', phaseId: phase.id, activityId: activity.id },
                   })
+                  if (auth.tenantId) {
+                    void emitTaskEvent({
+                      taskId: missionId,
+                      tenantId: auth.tenantId,
+                      type: 'activity_complete',
+                      phase: phase.name,
+                      activity: activity.name,
+                      agentId: agent.id,
+                      progress,
+                      message: `Completed ${activity.name}`,
+                    })
+                  }
                 },
               }
             : undefined,
@@ -1084,6 +1134,25 @@ Orchestration trace:
           completedAt: new Date().toISOString(),
         },
       })
+      // Batch M: close the SSE timeline so subscribers stop polling.
+      if (auth.tenantId) {
+        void emitTaskEvent({
+          taskId: missionId,
+          tenantId: auth.tenantId,
+          type: hasUsableDeliverable && qualityResult?.ok !== false ? 'done' : 'error',
+          progress: hasUsableDeliverable ? 100 : 0,
+          message:
+            qualityResult?.ok === false
+              ? `Quality gate flagged issues (${qualityResult.score}/100): ${qualityResult.issues.join(' | ')}`
+              : hasUsableDeliverable
+                ? 'Deliverable ready.'
+                : 'No usable deliverable was generated.',
+          payload: {
+            qualityScore: qualityResult?.score,
+            qualityIssues: qualityResult?.issues || [],
+          },
+        })
+      }
     }
     const renderedHtml = renderedHtmlFromTask || buildArtifactHtml(responseText)
 
@@ -1145,7 +1214,7 @@ Orchestration trace:
     if (requestBody?.missionId) {
       try {
         const db = getDb()
-        const taskRows = await db`SELECT id FROM tasks WHERE id = ${requestBody.missionId} LIMIT 1`
+        const taskRows = await db`SELECT id, agency_id FROM tasks WHERE id = ${requestBody.missionId} LIMIT 1`
         if (taskRows[0]?.id) {
           await insertTaskRun({
             taskId: requestBody.missionId,
@@ -1162,6 +1231,17 @@ Orchestration trace:
             progress: 8,
             context: { error: err instanceof Error ? err.message : 'Chat execution failed.' },
           })
+          // Batch M: tell SSE subscribers the run is over.
+          const tenantId = taskRows[0].agency_id as string | undefined
+          if (tenantId) {
+            await emitTaskEvent({
+              taskId: requestBody.missionId,
+              tenantId,
+              type: 'error',
+              progress: 0,
+              message: err instanceof Error ? err.message : 'Chat execution failed.',
+            })
+          }
         }
       } catch {}
     }

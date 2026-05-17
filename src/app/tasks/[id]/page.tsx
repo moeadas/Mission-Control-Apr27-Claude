@@ -66,6 +66,20 @@ export default function TaskDetailPage() {
   const [executionBusy, setExecutionBusy] = useState<'retry' | 'resume' | null>(null)
   const [reviewComment, setReviewComment] = useState('')
   const [reviewBusy, setReviewBusy] = useState<'approve' | 'changes' | null>(null)
+  // Batch M: real-time SSE feed of task_events so the Live Task Tracker
+  // updates as the runner emits phase/activity/agent progress, instead of
+  // waiting on the 1.8s `/execution` poll. Stream closes on done/error.
+  const [liveEvents, setLiveEvents] = useState<Array<{
+    id: number
+    event_type: string
+    phase: string | null
+    activity: string | null
+    agent_id: string | null
+    progress: number | null
+    message: string | null
+    created_at: string
+  }>>([])
+  const [liveStreamActive, setLiveStreamActive] = useState(false)
 
   const mission = missions.find((item) => item.id === params.id)
   const missionArtifacts = useMemo(
@@ -157,10 +171,21 @@ export default function TaskDetailPage() {
     progress: mission.progress,
     latestArtifact,
   })
+  // Batch M: derive live SSE-event highlights up-front so the workflow
+  // progress + tracker labels below can fold them in.
+  const latestLiveActivityEvent = [...liveEvents].reverse().find((e) =>
+    ['activity_start', 'activity_complete', 'phase_start'].includes(e.event_type)
+  )
+  const latestLiveProgress = [...liveEvents].reverse().find((e) => typeof e.progress === 'number')?.progress
+  const latestLiveAgentId = [...liveEvents].reverse().find((e) => e.agent_id)?.agent_id || null
+  const liveError = [...liveEvents].reverse().find((e) => e.event_type === 'error')
+
   const workflowStageLabel = getWorkflowStageLabel(executionState?.workflow)
   const workflowProgress = Math.max(
     clampProgress(mission.progress ?? 0),
-    clampProgress(executionState?.workflow?.progress ?? 0)
+    clampProgress(executionState?.workflow?.progress ?? 0),
+    // Live SSE progress wins when ahead of the poll-derived state.
+    typeof latestLiveProgress === 'number' ? clampProgress(latestLiveProgress) : 0
   )
   const workflowContext = executionState?.workflow?.context || {}
   const sortedRuns = [...(executionState?.runs || [])].sort(
@@ -178,15 +203,19 @@ export default function TaskDetailPage() {
       ? 'This task is still at its initial handoff stage. If it stays here, the chat request likely stalled before the execution runner reported back.'
       : null
   const visibleErrorMessage =
+    // Live SSE error wins — it's the freshest signal.
+    liveError?.message ||
     latestErrorRun?.error_message ||
     workflowError ||
     (mission.status === 'blocked' ? mission.handoffNotes || null : null) ||
     earlyStageStallHint
   const currentActivityLabel =
+    latestLiveActivityEvent?.activity ||
     workflowContext.activeActivityName ||
     workflowContext.activityName ||
     (activeRuns[0]?.stage ? formatRunStage(activeRuns[0].stage) : null)
   const currentAgentLabel =
+    (latestLiveAgentId && agents.find((agent) => agent.id === latestLiveAgentId)?.name) ||
     workflowContext.activeAgentName ||
     agents.find((agent) => agent.id === workflowContext.activeAgentId)?.name ||
     activeRuns[0]?.agent?.name ||
@@ -282,6 +311,57 @@ export default function TaskDetailPage() {
 
     return () => {
       active = false
+    }
+  }, [params.id])
+
+  // Batch M: subscribe to the SSE event feed for this task. Independent of
+  // the polling loop below — the SSE feed gives us per-phase/per-activity
+  // progress with sub-second latency, while the polling loop refreshes the
+  // wider executionState (workflow_instances + task_runs) every 1.8s. The
+  // two feeds complement each other; the Live Task Tracker reads from both.
+  useEffect(() => {
+    if (!params.id) return
+    const token = getStoredToken()
+    if (!token) return
+    // EventSource cannot set Authorization headers — we send the JWT in the
+    // querystring; the route validates it the same way.
+    const url = `/api/tasks/${params.id}/events?token=${encodeURIComponent(token)}`
+    let closed = false
+    const source = new EventSource(url)
+    setLiveStreamActive(true)
+    setLiveEvents([])
+
+    const handleEvent = (eventName: string) => (ev: MessageEvent) => {
+      try {
+        const row = JSON.parse(ev.data)
+        if (row && typeof row === 'object' && 'event_type' in row) {
+          setLiveEvents((prev) => {
+            // Avoid duplicates if backlog overlaps with live events.
+            if (prev.some((e) => e.id === row.id)) return prev
+            return [...prev, row].slice(-50) // keep last 50
+          })
+        }
+        if (eventName === 'done' || eventName === 'error' || eventName === 'close') {
+          setLiveStreamActive(false)
+          source.close()
+        }
+      } catch {
+        // ignore malformed payloads
+      }
+    }
+
+    for (const type of ['open', 'running', 'phase_start', 'activity_start', 'activity_complete', 'progress', 'done', 'error', 'close']) {
+      source.addEventListener(type, handleEvent(type) as any)
+    }
+    source.onerror = () => {
+      if (closed) return
+      setLiveStreamActive(false)
+      source.close()
+    }
+    return () => {
+      closed = true
+      setLiveStreamActive(false)
+      source.close()
     }
   }, [params.id])
 
@@ -651,9 +731,61 @@ export default function TaskDetailPage() {
                 </div>
 
                 <div className="mt-4 rounded-xl border border-border bg-base/30 p-4">
-                  <p className="text-[10px] font-mono uppercase text-text-dim mb-3">Execution Timeline</p>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-[10px] font-mono uppercase text-text-dim">Execution Timeline</p>
+                    {liveStreamActive ? (
+                      <span className="flex items-center gap-1.5 text-[10px] font-mono uppercase text-emerald-400">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        Live
+                      </span>
+                    ) : null}
+                  </div>
                   <div className="space-y-2">
-                    {recentExecutionEvents.length ? (
+                    {liveEvents.length > 0 ? (
+                      // Batch M: prefer the SSE event feed for the timeline — it's
+                      // the freshest signal and shows per-phase / per-activity
+                      // progress in real time.
+                      [...liveEvents]
+                        .filter((e) => e.event_type !== 'open' && e.event_type !== 'close')
+                        .reverse()
+                        .slice(0, 12)
+                        .map((event) => {
+                          const agent = event.agent_id ? agents.find((a) => a.id === event.agent_id) : null
+                          const label =
+                            event.event_type === 'done'   ? 'Completed'
+                          : event.event_type === 'error'  ? 'Error'
+                          : event.event_type === 'running' ? 'Running'
+                          : event.event_type === 'phase_start' ? `Phase: ${event.phase}`
+                          : event.event_type === 'activity_start' ? `${agent?.name || event.agent_id || 'Agent'} starting ${event.activity}`
+                          : event.event_type === 'activity_complete' ? `${agent?.name || event.agent_id || 'Agent'} finished ${event.activity}`
+                          : event.event_type
+                          const isError = event.event_type === 'error'
+                          return (
+                            <div
+                              key={event.id}
+                              className={`rounded-2xl border px-3 py-3 ${
+                                isError
+                                  ? 'border-[rgba(255,124,66,0.3)] bg-[rgba(255,124,66,0.06)]'
+                                  : 'border-border bg-base'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <p className="text-sm text-text-primary">{label}</p>
+                                {typeof event.progress === 'number' ? (
+                                  <span className="text-[10px] font-mono uppercase text-text-dim">{event.progress}%</span>
+                                ) : null}
+                              </div>
+                              {event.message ? (
+                                <p className="mt-2 text-[12px] text-text-secondary">{event.message}</p>
+                              ) : null}
+                              <p className="mt-2 text-[10px] font-mono uppercase text-text-dim">
+                                {new Date(event.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                              </p>
+                            </div>
+                          )
+                        })
+                    ) : recentExecutionEvents.length ? (
+                      // Fallback to the slower poll-derived task_runs feed.
                       recentExecutionEvents.map((run: any) => {
                         const agent = agents.find((entry) => entry.id === run.agent_id)
                         const stamp = run.updated_at || run.completed_at || run.started_at || run.created_at

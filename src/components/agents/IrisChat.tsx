@@ -1063,7 +1063,11 @@ async function requestChat(
       return
     }
     const controller = new AbortController()
-    const timeoutMs = 180000
+    // Batch M: match the server's maxDuration=300s. Multi-stage cloud-model
+    // pipelines (content calendars, full briefs) regularly run 2-4 minutes.
+    // The Live Task Tracker on /tasks/[id] subscribes to the new SSE feed so
+    // the user can watch progress live regardless of the long fetch.
+    const timeoutMs = 290000
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
     const response = await fetch('/api/chat', {
       method: 'POST',

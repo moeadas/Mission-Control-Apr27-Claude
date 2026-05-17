@@ -458,6 +458,23 @@ CREATE TABLE IF NOT EXISTS rate_limit_buckets (
 );
 CREATE INDEX IF NOT EXISTS idx_rate_limit_window_start ON rate_limit_buckets (window_start);
 
+-- ─── Task events (SSE stream for async chat execution) ─────────────────────
+CREATE TABLE IF NOT EXISTS task_events (
+  id          BIGSERIAL PRIMARY KEY,
+  task_id     TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  tenant_id   UUID NOT NULL REFERENCES agencies(id) ON DELETE CASCADE,
+  event_type  TEXT NOT NULL,
+  phase       TEXT,
+  activity    TEXT,
+  agent_id    TEXT,
+  progress    INT,
+  message     TEXT,
+  payload     JSONB,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_task_events_task_created ON task_events (task_id, id);
+CREATE INDEX IF NOT EXISTS idx_task_events_tenant       ON task_events (tenant_id);
+
 -- ─── Audit log ──────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS audit_events (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
