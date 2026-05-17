@@ -4,6 +4,7 @@
  * Each tenant gets a subscription row on creation.
  */
 import { getDb } from '@/lib/db/client'
+import { seedTenantRequiredAgents } from '@/lib/server/agent-templates'
 
 export type TenantRow = {
   id: string
@@ -58,6 +59,16 @@ export async function createTenant(opts: {
     SELECT ${tenant.id}::uuid, id, max_agents FROM plans WHERE id = ${planId}
     ON CONFLICT (tenant_id) DO NOTHING
   `
+
+  // Auto-seed the orchestrator agent (Iris). Every tenant needs Iris to coordinate
+  // tasks; additional agents are opt-in via the agent-templates clone endpoint or
+  // Iris-assisted creation. Failure here is non-fatal — the tenant can clone Iris
+  // manually later if seeding hit a transient error.
+  try {
+    await seedTenantRequiredAgents(tenant.id as string)
+  } catch (err) {
+    console.warn('[createTenant] Failed to auto-seed Iris for tenant', tenant.id, err)
+  }
 
   return tenant.id as string
 }

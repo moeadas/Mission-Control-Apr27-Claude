@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 import { loadSharedAppState, saveSharedAppState, saveSharedAppStateDelta } from '@/lib/db/app-state'
-import { hasSupabaseBrowserConfig, hasSupabaseServerConfig } from '@/lib/db/config'
+import { hasDatabaseConfig } from '@/lib/db/config'
 import type { AppPersistencePatch, AppPersistenceSnapshot, EntityDeltaPatch } from '@/lib/agents-store'
 import { resolveAuthContextFromToken, saveUserProviderSettings } from '@/lib/auth/server'
 import { loadRelationalAppState } from '@/lib/db/relational-sync'
@@ -16,7 +16,36 @@ function getBearerToken(request: NextRequest) {
   return authHeader.slice(7).trim()
 }
 
+// Batch C — team collaboration model.
+//
+// Tenant data is shared across all tenant members by default. Per-resource
+// access lists (`assignedUserIds`) let tenant admins restrict who can see /
+// edit specific clients, missions, or artifacts. The behaviour:
+//
+//   • Super-admin (platform-wide): sees everything, can edit anything.
+//   • Tenant admin (admin role + has tenantId): sees everything in their
+//     tenant, can edit anything in their tenant, can set/clear assignedUserIds.
+//   • Tenant member: sees everything in their tenant EXCEPT resources with a
+//     non-empty `assignedUserIds` that doesn't include them. They can edit
+//     resources they have access to, plus resources they own.
+//
+// An empty/missing `assignedUserIds` means "shared with the whole tenant".
+
+type AnyResource = {
+  id: string
+  ownerUserId?: string
+  assignedUserIds?: string[] | null
+}
+
+function canSeeResource(resource: AnyResource, userId: string, isTenantAdmin: boolean): boolean {
+  if (isTenantAdmin) return true
+  const assigned = Array.isArray(resource.assignedUserIds) ? resource.assignedUserIds : []
+  if (assigned.length === 0) return true
+  return resource.ownerUserId === userId || assigned.includes(userId)
+}
+
 function applyOwnershipDefaults(state: AppPersistenceSnapshot, userId: string): AppPersistenceSnapshot {
+  // ownerUserId is the "created by" stamp. New rows default to the caller.
   return {
     ...state,
     clients: state.clients.map((client) => ({
@@ -45,54 +74,104 @@ function mergeStatePatch(
   } as AppPersistenceSnapshot
 }
 
-function filterStateForUser(state: AppPersistenceSnapshot, userId: string): AppPersistenceSnapshot {
-  const scopedClients = state.clients.filter((client) => client.ownerUserId === userId)
-  const scopedClientIds = new Set(scopedClients.map((client) => client.id))
-  const scopedMissions = state.missions.filter(
-    (mission) => mission.ownerUserId === userId || (mission.clientId ? scopedClientIds.has(mission.clientId) : false)
+function filterStateForCaller(
+  state: AppPersistenceSnapshot,
+  userId: string,
+  isTenantAdmin: boolean
+): AppPersistenceSnapshot {
+  const visibleClients = state.clients.filter((client) =>
+    canSeeResource(client as AnyResource, userId, isTenantAdmin)
   )
-  const scopedMissionIds = new Set(scopedMissions.map((mission) => mission.id))
-  const scopedArtifacts = state.artifacts.filter(
-    (artifact) =>
-      artifact.ownerUserId === userId ||
-      (artifact.clientId ? scopedClientIds.has(artifact.clientId) : false) ||
-      (artifact.missionId ? scopedMissionIds.has(artifact.missionId) : false)
-  )
+  const visibleClientIds = new Set(visibleClients.map((client) => client.id))
+  const visibleMissions = state.missions.filter((mission) => {
+    if (!canSeeResource(mission as AnyResource, userId, isTenantAdmin)) return false
+    // A mission tied to a client the caller can't see is also hidden, to keep
+    // the chain consistent. Missions with no client (free-standing tasks) are
+    // governed only by the mission's own ACL.
+    if (mission.clientId && !visibleClientIds.has(mission.clientId)) return false
+    return true
+  })
+  const visibleMissionIds = new Set(visibleMissions.map((mission) => mission.id))
+  const visibleArtifacts = state.artifacts.filter((artifact) => {
+    if (!canSeeResource(artifact as AnyResource, userId, isTenantAdmin)) return false
+    if (artifact.clientId && !visibleClientIds.has(artifact.clientId)) return false
+    if (artifact.missionId && !visibleMissionIds.has(artifact.missionId)) return false
+    return true
+  })
   return {
     ...state,
-    clients: scopedClients,
-    missions: scopedMissions,
-    artifacts: scopedArtifacts,
+    clients: visibleClients,
+    missions: visibleMissions,
+    artifacts: visibleArtifacts,
     conversations: [],
   }
 }
 
-function mergeOwnedCollection<T extends { id: string; ownerUserId?: string }>(
+/**
+ * Merge incoming tenant state writes:
+ *   • Tenant admins can edit anything in the tenant (and set assignedUserIds).
+ *   • Tenant members can only modify rows they're allowed to see; attempted
+ *     edits to invisible rows are silently dropped (the original row is
+ *     preserved).
+ */
+function mergeTenantCollection<T extends AnyResource>(
   currentItems: T[],
   incomingItems: T[],
-  userId: string
-) {
-  const preserved = currentItems.filter((item) => item.ownerUserId !== userId)
-  const incomingOwned = incomingItems.filter((item) => item.ownerUserId === userId)
-  const dedupedPreserved = preserved.filter(
-    (item) => !incomingOwned.some((incoming) => incoming.id === item.id)
-  )
-  return [...dedupedPreserved, ...incomingOwned]
+  userId: string,
+  isTenantAdmin: boolean
+): T[] {
+  const currentById = new Map(currentItems.map((item) => [item.id, item]))
+  const incomingById = new Map(incomingItems.map((item) => [item.id, item]))
+
+  const result: T[] = []
+  // Pass 1: incoming rows the caller is allowed to write
+  for (const incoming of incomingItems) {
+    const existing = currentById.get(incoming.id)
+    if (!existing) {
+      // New row — must be visible to the caller (i.e. their ACL must include
+      // them if they set one). For convenience, members can't set
+      // assignedUserIds on a brand-new row; only tenant admins can.
+      if (!isTenantAdmin && Array.isArray(incoming.assignedUserIds) && incoming.assignedUserIds.length > 0) {
+        // strip ACL — members can't restrict resources at creation time
+        result.push({ ...incoming, assignedUserIds: [] as any })
+      } else {
+        result.push(incoming)
+      }
+      continue
+    }
+    if (isTenantAdmin || canSeeResource(existing, userId, isTenantAdmin)) {
+      // Members can update the row but can't change assignedUserIds.
+      if (!isTenantAdmin) {
+        result.push({ ...incoming, assignedUserIds: existing.assignedUserIds ?? [] })
+      } else {
+        result.push(incoming)
+      }
+    } else {
+      // Member tried to edit an invisible row — keep the existing version.
+      result.push(existing)
+    }
+  }
+  // Pass 2: existing rows the caller didn't send — preserve them.
+  for (const existing of currentItems) {
+    if (!incomingById.has(existing.id)) result.push(existing)
+  }
+  return result
 }
 
 function mergeScopedState(
   currentState: AppPersistenceSnapshot | null,
   incomingState: AppPersistenceSnapshot,
-  userId: string
+  userId: string,
+  isTenantAdmin: boolean
 ): AppPersistenceSnapshot {
   const normalizedIncoming = applyOwnershipDefaults(incomingState, userId)
   if (!currentState) return normalizedIncoming
 
   return {
     ...currentState,
-    clients: mergeOwnedCollection(currentState.clients, normalizedIncoming.clients, userId),
-    missions: mergeOwnedCollection(currentState.missions, normalizedIncoming.missions, userId),
-    artifacts: mergeOwnedCollection(currentState.artifacts, normalizedIncoming.artifacts, userId),
+    clients: mergeTenantCollection(currentState.clients as any, normalizedIncoming.clients as any, userId, isTenantAdmin) as any,
+    missions: mergeTenantCollection(currentState.missions as any, normalizedIncoming.missions as any, userId, isTenantAdmin) as any,
+    artifacts: mergeTenantCollection(currentState.artifacts as any, normalizedIncoming.artifacts as any, userId, isTenantAdmin) as any,
     conversations: currentState.conversations,
   }
 }
@@ -118,11 +197,10 @@ function mergeProviderSettings(base: any, override: any) {
 }
 
 export async function GET(request: NextRequest) {
-  if (!hasSupabaseServerConfig()) {
+  if (!hasDatabaseConfig()) {
     return NextResponse.json(
       {
         connected: false,
-        browserConfigured: hasSupabaseBrowserConfig(),
         serverConfigured: false,
         state: null,
       },
@@ -137,12 +215,15 @@ export async function GET(request: NextRequest) {
     }
 
     const stateKey = auth.tenantId ?? undefined
+    const isTenantAdmin = auth.role === 'super_admin' || auth.role === 'admin'
     const row = await loadSharedAppState(stateKey)
     const relationalState = await loadRelationalAppState(auth.userId, auth.role === 'super_admin', auth.tenantId)
+    // Apply per-resource ACL filter for non-admin tenant members. Tenant admins
+    // and super-admins see everything the tenant owns.
     const fallbackState = row?.state
-      ? auth.role === 'super_admin'
+      ? isTenantAdmin
         ? row.state
-        : filterStateForUser(row.state, auth.userId)
+        : filterStateForCaller(row.state, auth.userId, isTenantAdmin)
       : null
 
     // Merge relational state over the JSON blob, but for entity collections
@@ -175,7 +256,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         connected: true,
-        browserConfigured: true,
         serverConfigured: true,
         state: nextState,
         updatedAt: row?.updated_at || null,
@@ -189,13 +269,12 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  if (!hasSupabaseServerConfig()) {
+  if (!hasDatabaseConfig()) {
     return NextResponse.json(
       {
         connected: false,
-        browserConfigured: hasSupabaseBrowserConfig(),
         serverConfigured: false,
-        error: 'Supabase server key is not configured',
+        error: 'DATABASE_URL is not configured',
       },
       { status: 503 }
     )
@@ -256,6 +335,7 @@ export async function PUT(request: NextRequest) {
       )
     }
 
+    const isTenantAdminWrite = auth.role === 'super_admin' || auth.role === 'admin'
     const incomingState =
       body.state ||
       mergeStatePatch(
@@ -267,28 +347,27 @@ export async function PUT(request: NextRequest) {
       auth.providerSettings
     )
     await saveUserProviderSettings(auth.userId, normalizedProviderSettings)
-    const nextIncomingState =
-      auth.role === 'super_admin'
-        ? {
-            ...incomingState,
-            providerSettings: normalizedProviderSettings,
-          }
-        : incomingState
-    const nextState =
-      auth.role === 'super_admin'
-        ? nextIncomingState
-        : mergeScopedState(currentRow?.state || null, nextIncomingState, auth.userId)
+    // providerSettings is always written from the caller's session (per-user)
+    // regardless of role — it's not tenant-shared data.
+    const nextIncomingState = {
+      ...incomingState,
+      providerSettings: normalizedProviderSettings,
+    }
+    // Tenant admins (and super-admin) can rewrite the whole tenant blob; tenant
+    // members go through the ACL-aware merge that protects rows they can't see.
+    const nextState = isTenantAdminWrite
+      ? nextIncomingState
+      : mergeScopedState(currentRow?.state || null, nextIncomingState, auth.userId, isTenantAdminWrite)
     const row =
       body.statePatch || body.entityPatch
         ? await saveSharedAppStateDelta(
             {
-              statePatch:
-                auth.role === 'super_admin'
-                  ? {
-                      ...(body.statePatch || {}),
-                      providerSettings: normalizedProviderSettings,
-                    }
-                  : body.statePatch,
+              statePatch: isTenantAdminWrite
+                ? {
+                    ...(body.statePatch || {}),
+                    providerSettings: normalizedProviderSettings,
+                  }
+                : body.statePatch,
               entityPatch: body.entityPatch,
             },
             undefined,
@@ -303,7 +382,6 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({
       connected: true,
-      browserConfigured: true,
       serverConfigured: true,
       updatedAt: row?.updated_at || null,
     })

@@ -1,46 +1,53 @@
 /**
  * POST /api/billing/webhook
  *
- * Stripe webhook handler — skeleton ready for integration.
+ * Stripe webhook handler — signature verification is REQUIRED.
  *
- * When Stripe is integrated:
- * 1. Set STRIPE_WEBHOOK_SECRET env var
- * 2. Uncomment the stripe.webhooks.constructEvent() verification block
- * 3. Fill in the event handlers below
+ * Gating:
+ *   • STRIPE_ENABLED !== 'true' (default — Stripe deferred): 503, refuse all events.
+ *   • STRIPE_ENABLED === 'true' + STRIPE_WEBHOOK_SECRET set: verify signature, then dispatch.
  *
  * Stripe sends events here after: successful payment, subscription changes,
  * cancellations, payment failures, etc.
  */
 import { NextRequest, NextResponse } from 'next/server'
+
 import { getDb } from '@/lib/db/client'
+import { getStripe, hasStripeSecret, isStripeEnabled } from '@/lib/server/stripe'
 
 export async function POST(request: NextRequest) {
-  const rawBody = await request.text()
+  // Refuse all events while Stripe is in proof-of-concept disabled state.
+  if (!isStripeEnabled()) {
+    return NextResponse.json(
+      { error: 'Billing webhooks are disabled.', code: 'BILLING_DISABLED' },
+      { status: 503 }
+    )
+  }
+
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
   const stripeSignature = request.headers.get('stripe-signature')
+  const rawBody = await request.text()
 
-  // ── Stripe signature verification ────────────────────────────────────────
-  // Uncomment when STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET are configured:
-  //
-  // const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
-  // if (!webhookSecret || !stripeSignature) {
-  //   return NextResponse.json({ error: 'Missing webhook secret or signature' }, { status: 400 })
-  // }
-  // const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2024-04-10' })
-  // let event: Stripe.Event
-  // try {
-  //   event = stripe.webhooks.constructEvent(rawBody, stripeSignature, webhookSecret)
-  // } catch (err) {
-  //   console.error('Stripe webhook signature verification failed:', err)
-  //   return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
-  // }
-  // ─────────────────────────────────────────────────────────────────────────
+  if (!webhookSecret || !hasStripeSecret()) {
+    console.error('[billing/webhook] STRIPE_ENABLED is true but webhook/secret env vars missing')
+    return NextResponse.json(
+      { error: 'Webhook misconfigured', code: 'STRIPE_MISCONFIGURED' },
+      { status: 500 }
+    )
+  }
 
-  // Stub: parse body without verification for local dev / testing
-  let event: any
+  if (!stripeSignature) {
+    return NextResponse.json({ error: 'Missing stripe-signature header' }, { status: 400 })
+  }
+
+  const stripe = await getStripe()
+
+  let event: import('stripe').Stripe.Event
   try {
-    event = JSON.parse(rawBody)
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    event = stripe.webhooks.constructEvent(rawBody, stripeSignature, webhookSecret)
+  } catch (err) {
+    console.error('[billing/webhook] Stripe signature verification failed:', err)
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
   const db = getDb()
@@ -50,11 +57,18 @@ export async function POST(request: NextRequest) {
 
       case 'checkout.session.completed': {
         // Payment successful — activate subscription
-        const session = event.data?.object
-        const tenantId = session?.metadata?.tenant_id
-        const planId = session?.metadata?.plan_id
-        const stripeSubscriptionId = session?.subscription
-        const stripeCustomerId = session?.customer
+        const session = event.data.object as import('stripe').Stripe.Checkout.Session
+        const tenantId = session.metadata?.tenant_id
+        const planId = session.metadata?.plan_id
+        // Stripe may return either an expanded object or just an ID; normalize to string.
+        const stripeSubscriptionId =
+          typeof session.subscription === 'string'
+            ? session.subscription
+            : session.subscription?.id ?? null
+        const stripeCustomerId =
+          typeof session.customer === 'string'
+            ? session.customer
+            : session.customer?.id ?? null
 
         if (tenantId && planId) {
           const planRows = await db`SELECT max_agents FROM plans WHERE id = ${planId} LIMIT 1`
@@ -81,8 +95,8 @@ export async function POST(request: NextRequest) {
       }
 
       case 'customer.subscription.updated': {
-        const sub = event.data?.object
-        const stripeSubId = sub?.id
+        const sub = event.data.object as import('stripe').Stripe.Subscription
+        const stripeSubId = sub.id
         if (stripeSubId) {
           const status = sub.status === 'active' ? 'active'
             : sub.status === 'trialing' ? 'trialing'
@@ -99,8 +113,8 @@ export async function POST(request: NextRequest) {
 
       case 'customer.subscription.deleted': {
         // Subscription canceled — downgrade to free
-        const sub = event.data?.object
-        const stripeSubId = sub?.id
+        const sub = event.data.object as import('stripe').Stripe.Subscription
+        const stripeSubId = sub.id
         if (stripeSubId) {
           const freePlan = await db`SELECT max_agents FROM plans WHERE id = 'free' LIMIT 1`
           const freeLimit = freePlan[0]?.max_agents ?? 3
@@ -125,8 +139,11 @@ export async function POST(request: NextRequest) {
       }
 
       case 'invoice.payment_failed': {
-        const invoice = event.data?.object
-        const stripeSubId = invoice?.subscription
+        const invoice = event.data.object as import('stripe').Stripe.Invoice
+        // `subscription` on Invoice can be string | Subscription | null
+        const rawSub = (invoice as any).subscription
+        const stripeSubId: string | null =
+          typeof rawSub === 'string' ? rawSub : rawSub?.id ?? null
         if (stripeSubId) {
           await db`
             UPDATE subscriptions

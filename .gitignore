@@ -39,8 +39,12 @@ coverage/
 
 # Misc
 *.pem
-.playwright-cli/
-playwright-cli/
-node_modules_broken_20260331/
 *.pid
 tsconfig.tsbuildinfo
+
+# Dev artifacts
+.sandbox.log
+.sandbox.pid
+
+# Auto-memory dir (Cowork) — per-machine, never commit
+.claude/

@@ -1,7 +1,17 @@
+/**
+ * GET /api/agent-photos/file/[filename]
+ *
+ * Serves an agent's uploaded photo. Auth required: the requester must belong
+ * to a tenant that owns an agent referencing this photo. Prevents cross-tenant
+ * enumeration of uploaded files.
+ */
 import { readFile } from 'fs/promises'
-import { join, extname } from 'path'
+import { join, extname, resolve, sep } from 'path'
 
 import { NextRequest, NextResponse } from 'next/server'
+
+import { resolveAuthContextFromToken } from '@/lib/auth/server'
+import { getDb } from '@/lib/db/client'
 
 const CONTENT_TYPES: Record<string, string> = {
   '.png': 'image/png',
@@ -11,23 +21,68 @@ const CONTENT_TYPES: Record<string, string> = {
   '.gif': 'image/gif',
 }
 
+const UPLOADS_DIR = resolve(join(process.cwd(), 'public', 'uploads', 'agents'))
+
 export const dynamic = 'force-dynamic'
 
+function getBearerToken(request: NextRequest) {
+  const authHeader = request.headers.get('authorization') || ''
+  if (!authHeader.toLowerCase().startsWith('bearer ')) return null
+  return authHeader.slice(7).trim()
+}
+
+// Auth tokens come in as Bearer header for fetch() calls but the <img> tag
+// can't set headers. Allow the JWT in a `?token=` query param as a fallback
+// so authenticated <img src> works for the user's own tenant.
+function getQueryToken(request: NextRequest) {
+  const t = new URL(request.url).searchParams.get('token')
+  return t ? t.trim() : null
+}
+
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ filename: string }> }
 ) {
+  const token = getBearerToken(request) || getQueryToken(request)
+  const auth = await resolveAuthContextFromToken(token)
+  if (!auth || !auth.tenantId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   try {
     const { filename } = await params
     const safeName = decodeURIComponent(filename).replace(/[^a-zA-Z0-9._-]/g, '')
-    const filePath = join(process.cwd(), 'public', 'uploads', 'agents', safeName)
-    const buffer = await readFile(filePath)
+    if (!safeName) return NextResponse.json({ error: 'Invalid filename' }, { status: 400 })
+
+    const filePath = join(UPLOADS_DIR, safeName)
+    const resolved = resolve(filePath)
+    // Defense-in-depth: ensure we never read outside the uploads dir.
+    if (!resolved.startsWith(UPLOADS_DIR + sep) && resolved !== UPLOADS_DIR) {
+      return NextResponse.json({ error: 'Invalid path' }, { status: 400 })
+    }
+
+    // Verify this photo belongs to an agent in the caller's tenant.
+    const db = getDb()
+    const photoUrlNeedle = `%/api/agent-photos/file/${safeName}%`
+    const ownerRows = await db`
+      SELECT id FROM agents
+      WHERE agency_id = ${auth.tenantId}::uuid
+        AND photo_url LIKE ${photoUrlNeedle}
+      LIMIT 1
+    `
+    if (!ownerRows[0]) {
+      // Either the photo doesn't exist or it belongs to another tenant — same response either way.
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+
+    const buffer = await readFile(resolved)
     const type = CONTENT_TYPES[extname(safeName).toLowerCase()] || 'application/octet-stream'
 
     return new NextResponse(buffer, {
       headers: {
         'Content-Type': type,
-        'Cache-Control': 'no-store, no-cache, must-revalidate',
+        // Private cache: don't share between users via shared proxies.
+        'Cache-Control': 'private, max-age=300',
       },
     })
   } catch {

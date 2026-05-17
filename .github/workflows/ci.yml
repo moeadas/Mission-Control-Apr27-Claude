@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      # Optional Next-build smoke. Skipped on every push (slow); only runs on
+      # main pushes so we still catch build regressions before deploy.
+      - name: Build (main only)
+        if: github.ref == 'refs/heads/main'
+        run: npm run build
+        env:
+          DOCKER_BUILD: '1'
+          # Stub env vars so the build doesn't fail on missing config.
+          DATABASE_URL: postgresql://stub:stub@localhost:5432/stub
+          JWT_SECRET: ci-stub-secret-32-chars-minimum-padding-padding
+          SUPER_ADMIN_EMAIL: ci@example.com
+          NEXT_PUBLIC_APP_URL: http://localhost:3000

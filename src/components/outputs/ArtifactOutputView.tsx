@@ -5,6 +5,8 @@ import React, { useMemo, useState } from 'react'
 import { Artifact } from '@/lib/types'
 import { buildArtifactHtml } from '@/lib/output-html'
 
+// Client-side escapeHtml — the server version in `@/lib/server/text-utils`
+// can't be imported into client components, so we keep a minimal copy here.
 function escapeHtml(value: string) {
   return value
     .replace(/&/g, '&amp;')

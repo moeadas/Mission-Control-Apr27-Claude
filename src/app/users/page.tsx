@@ -326,7 +326,7 @@ export default function UsersPage() {
                     />
                   ) : (
                     <div className="rounded-lg border border-dashed border-border bg-base/40 px-3 py-2 text-xs text-text-secondary flex items-center">
-                      Supabase email invite will be used
+                      Email invite will be sent once email is configured
                     </div>
                   )}
                 </div>

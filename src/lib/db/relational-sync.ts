@@ -30,12 +30,14 @@ const DEFAULT_AGENCY_NAME = 'Default Agency'
 
 /**
  * Resolve the agency/tenant id to use for DB queries.
- * - If tenantId is provided (multi-tenant path), use it directly.
- * - Otherwise fall back to the legacy DEFAULT_AGENCY_SLUG singleton.
+ * In the strict multi-tenant model (Batch C), tenantId is REQUIRED. Returning
+ * null causes callers to bail out rather than silently leak data into the
+ * legacy `default-agency` singleton. The `getDefaultAgency()` helper below
+ * still exists for one-off bootstrap scripts but is never used in request
+ * handlers.
  */
 async function resolveAgencyId(tenantId?: string | null): Promise<string | null> {
-  if (tenantId) return tenantId
-  return getDefaultAgencyId()
+  return tenantId || null
 }
 
 function dedupeByKey<T>(items: T[], getKey: (item: T) => string) {
@@ -688,35 +690,36 @@ function mapConversationRows(conversationRows: any[], messageRows: any[]): Conve
 // ─── Load relational state ───────────────────────────────────────────────────
 
 export async function loadRelationalAppState(userId?: string, isSuperAdmin = false, tenantId?: string | null): Promise<Partial<AppPersistenceSnapshot> | null> {
+  // Strict tenant-scoped load. Without a tenantId we return null — there is no
+  // shared default-agency fallback. The caller (api/state) handles the empty
+  // case. Visibility filtering for tenant members happens AFTER load, via
+  // filterStateForCaller in /api/state. This means tenant members see ALL
+  // tenant data by default, with per-resource ACL (assignedUserIds) applied
+  // later. Tenant-shared model, not user-siloed.
+  if (!tenantId) return null
+
   const db = getDb()
-  let agency: any
-  if (tenantId) {
-    const rows = await db`SELECT id, slug, name, settings FROM agencies WHERE id = ${tenantId}::uuid LIMIT 1`
-    agency = rows[0] ?? null
-  } else {
-    agency = await getDefaultAgency()
-  }
+  const rows = await db`SELECT id, slug, name, settings FROM agencies WHERE id = ${tenantId}::uuid LIMIT 1`
+  const agency = rows[0] ?? null
   if (!agency?.id) return null
 
   const agencyId = agency.id
 
   const [agentsRows, clientsRows, tasksRows, outputsRows, conversationsRows, messagesRows, knowledgeRows] = await Promise.all([
     db`SELECT * FROM agents WHERE agency_id = ${agencyId}::uuid ORDER BY name ASC`,
-    isSuperAdmin || !userId
-      ? db`SELECT * FROM clients WHERE agency_id = ${agencyId}::uuid ORDER BY name ASC`
-      : db`SELECT * FROM clients WHERE agency_id = ${agencyId}::uuid AND owner_user_id = ${userId}::uuid ORDER BY name ASC`,
-    isSuperAdmin || !userId
-      ? db`SELECT * FROM tasks WHERE agency_id = ${agencyId}::uuid ORDER BY updated_at DESC`
-      : db`SELECT * FROM tasks WHERE agency_id = ${agencyId}::uuid AND owner_user_id = ${userId}::uuid ORDER BY updated_at DESC`,
-    isSuperAdmin || !userId
-      ? db`SELECT * FROM outputs WHERE agency_id = ${agencyId}::uuid ORDER BY updated_at DESC`
-      : db`SELECT * FROM outputs WHERE agency_id = ${agencyId}::uuid AND owner_user_id = ${userId}::uuid ORDER BY updated_at DESC`,
-    isSuperAdmin || !userId
-      ? db`SELECT * FROM conversations WHERE agency_id = ${agencyId}::uuid ORDER BY updated_at DESC`
-      : db`SELECT * FROM conversations WHERE agency_id = ${agencyId}::uuid AND owner_user_id = ${userId}::uuid ORDER BY updated_at DESC`,
-    db`SELECT * FROM messages ORDER BY created_at ASC`,
+    db`SELECT * FROM clients WHERE agency_id = ${agencyId}::uuid ORDER BY name ASC`,
+    db`SELECT * FROM tasks WHERE agency_id = ${agencyId}::uuid ORDER BY updated_at DESC`,
+    db`SELECT * FROM outputs WHERE agency_id = ${agencyId}::uuid ORDER BY updated_at DESC`,
+    db`SELECT * FROM conversations WHERE agency_id = ${agencyId}::uuid ORDER BY updated_at DESC`,
+    db`SELECT m.* FROM messages m
+       JOIN conversations c ON c.id = m.conversation_id
+       WHERE c.agency_id = ${agencyId}::uuid
+       ORDER BY m.created_at ASC`,
     db`SELECT * FROM knowledge_assets WHERE agency_id = ${agencyId}::uuid`,
   ])
+  // `userId` and `isSuperAdmin` params are kept for backward-compat with
+  // existing call signatures, but no longer drive row visibility — ACL is
+  // applied at the api/state layer via filterStateForCaller.
 
   const allowedConversationIds = new Set(conversationsRows.map((r: any) => r.id))
   const filteredMessages = messagesRows.filter((r: any) => allowedConversationIds.has(r.conversation_id))

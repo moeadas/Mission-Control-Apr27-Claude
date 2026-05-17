@@ -23,28 +23,60 @@ function splitAssetField(value?: string) {
     .filter(Boolean)
 }
 
+/**
+ * Resolve an asset reference (URL-style path or absolute) to a real filesystem path.
+ *
+ * SECURITY: After resolving, every returned path is verified to live INSIDE one of
+ * the allowed upload directories. Any path-traversal attempt (e.g. "../../../etc/passwd")
+ * returns null. This is critical because asset references can come from client briefs
+ * editable by tenant admins — without this check, a tenant admin could read any file
+ * the app process can access, including /proc/self/environ which contains JWT_SECRET.
+ */
+const ALLOWED_UPLOAD_ROOTS = [
+  path.resolve(CLIENT_UPLOADS_DIR),
+  path.resolve(GENERATED_UPLOADS_DIR),
+]
+
+function isPathInsideAllowedRoot(absolutePath: string): boolean {
+  const resolved = path.resolve(absolutePath)
+  return ALLOWED_UPLOAD_ROOTS.some((root) => {
+    const rootWithSep = root.endsWith(path.sep) ? root : root + path.sep
+    return resolved === root || resolved.startsWith(rootWithSep)
+  })
+}
+
+function safeJoin(root: string, relative: string): string | null {
+  // Strip any leading slashes / drive letters from the relative portion so
+  // path.join doesn't interpret it as absolute.
+  const cleaned = relative.replace(/^[/\\]+/, '')
+  const joined = path.join(root, cleaned)
+  return isPathInsideAllowedRoot(joined) ? joined : null
+}
+
 function resolveAssetPath(candidate: string) {
   if (!candidate) return null
   if (candidate.startsWith('http://') || candidate.startsWith('https://')) return null
+
+  // Absolute path candidates: must already live inside an allowed root.
   if (path.isAbsolute(candidate)) {
-    if (candidate.includes(`${path.sep}public${path.sep}uploads${path.sep}clients${path.sep}`)) return candidate
-    if (candidate.includes(`${path.sep}public${path.sep}uploads${path.sep}generated${path.sep}`)) return candidate
+    return isPathInsideAllowedRoot(candidate) ? candidate : null
   }
+
   if (candidate.startsWith('/uploads/clients/')) {
-    return path.join(CLIENT_UPLOADS_DIR, candidate.replace('/uploads/clients/', ''))
+    return safeJoin(CLIENT_UPLOADS_DIR, candidate.replace('/uploads/clients/', ''))
   }
   if (candidate.startsWith('/uploads/generated/')) {
-    return path.join(GENERATED_UPLOADS_DIR, candidate.replace('/uploads/generated/', ''))
+    return safeJoin(GENERATED_UPLOADS_DIR, candidate.replace('/uploads/generated/', ''))
   }
   if (candidate.startsWith('/api/client-assets/file/')) {
     const fileName = candidate.split('/').pop()
-    return fileName ? path.join(CLIENT_UPLOADS_DIR, fileName) : null
+    return fileName ? safeJoin(CLIENT_UPLOADS_DIR, fileName) : null
   }
   if (candidate.startsWith('public/uploads/clients/')) {
-    return path.join(CLIENT_UPLOADS_DIR, candidate.replace('public/uploads/clients/', ''))
+    return safeJoin(CLIENT_UPLOADS_DIR, candidate.replace('public/uploads/clients/', ''))
   }
   if (candidate.startsWith('public/uploads/generated/')) {
-    return path.join(GENERATED_UPLOADS_DIR, candidate.replace('public/uploads/generated/', ''))
+    return safeJoin(GENERATED_UPLOADS_DIR, candidate.replace('public/uploads/generated/', ''))
   }
   return null
 }

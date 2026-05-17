@@ -14,8 +14,8 @@ import { getDeliverableSpec } from '@/lib/intents/deliverable-registry'
  * used to fetch `/api/chat` once per pipeline activity. The new flow:
  *
  *   client posts { pipelineId, clientId, request, language? }
- *     →  this endpoint creates a task row in Supabase (matching the same
- *        shape /api/chat creates for chat-driven tasks)
+ *     →  this endpoint creates a task row in the workspace DB (matching the
+ *        same shape /api/chat creates for chat-driven tasks)
  *     →  this endpoint queues `runTaskExecution` via the existing
  *        execution-queue module — that function uses
  *        `executeAutonomousTask`, which is the single canonical orchestrator
@@ -26,7 +26,7 @@ import { getDeliverableSpec } from '@/lib/intents/deliverable-registry'
  *
  * Request body:
  *   pipelineId — id from the pipelines table or the bundled config
- *   clientId   — Supabase client id (must be owned by the user, super_admin
+ *   clientId   — client id (must be owned by the user, super_admin
  *                bypasses the check)
  *   request    — free-text task description used as the run prompt
  *   language   — optional, currently only 'en'/'ar'

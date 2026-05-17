@@ -1,44 +1,70 @@
-// Google OAuth Authentication Handler
-import { NextResponse } from 'next/server'
+/**
+ * GET /api/auth/google
+ *
+ * Initiator route — redirects the caller to Google's OAuth consent screen.
+ * The real callback is handled by `/api/auth/google/callback` so the env-
+ * configured redirect URI matches a real Next route.
+ *
+ * State token: a short-lived signed JWT containing the authenticated user's
+ * id, so the callback can attribute the returned tokens to the right user.
+ */
+import { NextRequest, NextResponse } from 'next/server'
 import { google } from 'googleapis'
 
-const oauth2Client = new google.auth.OAuth2(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
-  process.env.GOOGLE_REDIRECT_URI
-)
+import { resolveAuthContextFromToken } from '@/lib/auth/server'
+import { signToken, verifyToken } from '@/lib/auth/jwt'
 
-const SCOPES = [
+const DEFAULT_SCOPES = [
+  'openid',
+  'email',
+  'profile',
   'https://www.googleapis.com/auth/documents',
   'https://www.googleapis.com/auth/spreadsheets',
-  'https://www.googleapis.com/auth/drive',
-  'https://www.googleapis.com/auth/adwords',
+  'https://www.googleapis.com/auth/drive.file',
 ]
 
-export async function GET(request: Request) {
+function getBearerToken(request: NextRequest) {
+  const h = request.headers.get('authorization') || ''
+  return h.toLowerCase().startsWith('bearer ') ? h.slice(7).trim() : null
+}
+
+export async function GET(request: NextRequest) {
+  // Accept the JWT either as a Bearer header or as `?session=…` so the user
+  // can simply click an `<a href>` from the Settings page.
   const url = new URL(request.url)
-  const code = url.searchParams.get('code')
-
-  if (code) {
-    // Exchange code for tokens
-    try {
-      const { tokens } = await oauth2Client.getToken(code)
-      oauth2Client.setCredentials(tokens)
-
-      // Store tokens securely (in production, use encrypted database)
-      // For now, redirect with success
-      return NextResponse.redirect(new URL('/settings?google=connected', url.origin))
-    } catch (error) {
-      console.error('Google OAuth error:', error)
-      return NextResponse.redirect(new URL('/settings?google=error', url.origin))
-    }
+  const inlineToken = url.searchParams.get('session')
+  const auth = await resolveAuthContextFromToken(getBearerToken(request) ?? inlineToken)
+  if (!auth) {
+    return NextResponse.redirect(new URL('/login?next=' + encodeURIComponent('/settings?integrations=google'), url.origin))
   }
 
-  // Generate auth URL
+  const clientId = process.env.GOOGLE_CLIENT_ID
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET
+  const redirectUri =
+    process.env.GOOGLE_REDIRECT_URI ||
+    `${process.env.NEXT_PUBLIC_APP_URL || url.origin}/api/auth/google/callback`
+
+  if (!clientId || !clientSecret) {
+    return NextResponse.redirect(new URL('/settings?google=misconfigured', url.origin))
+  }
+
+  const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri)
+
+  // Sign a short-lived state token (5 min) so the callback can recover the
+  // user id. Anything an attacker could replay is bound to a real account.
+  const state = await signToken({
+    sub: auth.userId,
+    email: auth.email,
+    role: auth.role,
+    tenantId: auth.tenantId ?? undefined,
+  })
+
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: 'offline',
-    scope: SCOPES,
-    prompt: 'consent',
+    scope: DEFAULT_SCOPES,
+    prompt: 'consent',          // ensures a refresh token is returned even after re-auth
+    state,
+    include_granted_scopes: true,
   })
 
   return NextResponse.redirect(authUrl)

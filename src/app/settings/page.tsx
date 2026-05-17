@@ -775,7 +775,9 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h2 className="text-sm font-heading font-semibold text-text-primary">Shared Persistence</h2>
-                  <p className="text-xs text-text-secondary mt-1">Supabase sync makes tasks, outputs, and clients available across browsers.</p>
+                  <p className="text-xs text-text-secondary mt-1">
+                    Workspace database keeps tasks, outputs, and clients in sync across browsers and team members.
+                  </p>
                 </div>
                 <span className={`text-[11px] font-mono ${
                   dbStatus === 'connected'
@@ -802,10 +804,10 @@ export default function SettingsPage() {
                   <p className="text-xs font-mono text-text-dim uppercase mb-1">Backend status</p>
                   <p className="text-sm text-text-primary">
                     {dbStatus === 'connected'
-                      ? 'Shared state sync is available.'
+                      ? 'Shared workspace database is connected.'
                       : dbStatus === 'client-only'
-                      ? 'Supabase URL and publishable key are configured, but server sync still needs a rotated secret key.'
-                      : 'The app is still using browser-local persistence until Supabase env vars are configured.'}
+                      ? 'Local browser state only — server sync is unavailable.'
+                      : 'DATABASE_URL is not configured; the workspace is running in local-only mode.'}
                   </p>
                 </div>
                 <div className="rounded-xl border border-border bg-base p-4">
@@ -814,13 +816,13 @@ export default function SettingsPage() {
                 </div>
               </div>
               <p className="mt-4 text-[11px] text-text-dim">
-                Required env vars: <code>NEXT_PUBLIC_SUPABASE_URL</code>, <code>NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY</code>, and <code>SUPABASE_SECRET_KEY</code>.
+                Required env var: <code>DATABASE_URL</code> (PostgreSQL connection string).
               </p>
               <div className="mt-4 rounded-xl border border-border bg-base p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
                   <p className="text-xs font-mono text-text-dim uppercase mb-1">Local recovery</p>
                   <p className="text-sm text-text-primary">
-                    If a browser gets stuck on stale cached state, clear only this device&apos;s local Mission Control cache and reload from shared Supabase data.
+                    If a browser gets stuck on stale cached state, clear only this device&apos;s local Mission Control cache and reload from the shared workspace database.
                   </p>
                 </div>
                 <Button variant="secondary" onClick={resetLocalBrowserState} className="gap-2">

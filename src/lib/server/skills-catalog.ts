@@ -10,7 +10,7 @@
  *
  * They keep working, but everything now reads from `data/skills/<id>/`.
  *
- * If a Supabase row exists for a skill id, that row's name/description/prompts/
+ * If a DB row exists for a skill id, that row's name/description/prompts/
  * checklist/examples override the on-disk skill. The on-disk skill always
  * provides the structural fallback so a thin DB row never strips out the
  * agent's full instructions.
@@ -86,7 +86,7 @@ function dbRowToSkill(row: any, base: Skill | undefined): Skill {
 }
 
 /**
- * Merge Supabase-backed skill rows with the canonical filesystem registry.
+ * Merge DB-backed skill rows with the canonical filesystem registry.
  *
  * - Every canonical skill on disk is included by default.
  * - DB rows override metadata/prompts/checklist for matching ids.

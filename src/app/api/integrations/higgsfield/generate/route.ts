@@ -7,7 +7,7 @@ function getBearerToken(r: NextRequest) {
   return h.toLowerCase().startsWith('bearer ') ? h.slice(7).trim() : null
 }
 
-const HIGGSFIELD_API = 'https://api.higgsfield.ai/v1'
+const HIGGSFIELD_API = (process.env.HIGGSFIELD_BASE_URL || 'https://api.higgsfield.ai/v1').replace(/\/+$/, '')
 
 export const dynamic = 'force-dynamic'
 

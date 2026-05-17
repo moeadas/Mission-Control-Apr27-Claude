@@ -5,6 +5,7 @@ import { resolveAuthContextFromToken } from '@/lib/auth/server'
 import { getDb } from '@/lib/db/client'
 import { signToken } from '@/lib/auth/jwt'
 import { getTenantIdForUser } from '@/lib/server/tenants'
+import { checkRateLimit, getClientIp } from '@/lib/server/rate-limit'
 
 function getBearerToken(request: NextRequest) {
   const authHeader = request.headers.get('authorization') || ''
@@ -45,9 +46,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
     }
 
+    // Two-axis rate limit: per IP (slow blanket cap) and per email (foil
+    // distributed brute-force against a specific account). Both must allow
+    // the request to proceed. Durable=true so the counter survives restarts.
+    const ip = getClientIp(request.headers)
+    const ipRl = await checkRateLimit(`auth:login:ip:${ip}`, { limit: 30, windowSeconds: 60 * 10, durable: true })
+    const emailRl = await checkRateLimit(`auth:login:email:${email}`, { limit: 10, windowSeconds: 60 * 10, durable: true })
+    if (!ipRl.allowed || !emailRl.allowed) {
+      const retryAfter = Math.max(ipRl.retryAfterSeconds, emailRl.retryAfterSeconds, 1)
+      return NextResponse.json(
+        { error: 'Too many login attempts. Please slow down.', retryAfterSeconds: retryAfter },
+        { status: 429, headers: { 'Retry-After': String(retryAfter) } }
+      )
+    }
+
     const db = getDb()
     const rows = await db`
-      SELECT id, email, role, password_hash, is_active
+      SELECT id, email, role, password_hash, is_active, email_verified_at
       FROM users
       WHERE email = ${email}
       LIMIT 1
@@ -67,7 +82,13 @@ export async function POST(request: NextRequest) {
     const token = await signToken({ sub: user.id, email: user.email, role: user.role, tenantId })
     return NextResponse.json({
       token,
-      user: { id: user.id, email: user.email, role: user.role, tenantId },
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        tenantId,
+        emailVerified: !!user.email_verified_at,
+      },
     })
   } catch (error) {
     console.error('Login failed:', error)

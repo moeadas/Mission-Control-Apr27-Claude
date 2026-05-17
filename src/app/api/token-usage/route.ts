@@ -17,6 +17,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db/client'
 import { resolveAuthContextFromToken } from '@/lib/auth/server'
+import { getTokenBudgetStatus } from '@/lib/server/token-budgets'
 
 function getBearerToken(req: NextRequest) {
   const h = req.headers.get('authorization') || ''
@@ -99,7 +100,11 @@ export async function GET(req: NextRequest) {
       LIMIT 50
     `
 
-    return NextResponse.json({ summary, byAgent, byModel, recent })
+    // Surface the budget status so the dashboard can warn / block / show
+    // a progress bar against the monthly cap.
+    const budget = auth.tenantId ? await getTokenBudgetStatus(auth.tenantId) : null
+
+    return NextResponse.json({ summary, byAgent, byModel, recent, budget })
   } catch (err: any) {
     console.error('[token-usage] Error:', err)
     return NextResponse.json({ error: err.message }, { status: 500 })

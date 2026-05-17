@@ -9,6 +9,8 @@ import {
 } from '@/lib/skills/checklist-validator'
 import { executeCreativeAssetTask } from '@/lib/server/creative-asset-engine'
 import { executeAutomatedContentCalendar } from '@/lib/server/content-calendar-engine'
+import { findAgentByTemplate, isOrchestratorAgent } from '@/lib/server/agent-templates'
+import { looksLikeBoilerplateResponse } from '@/lib/server/text-utils'
 import {
   CONTENT_GENERATION_DELIVERABLE_TYPES,
   normalizeProviderSettings,
@@ -109,8 +111,23 @@ function extractClientContextValue(source: string, label: string) {
   return match?.[1]?.trim() || ''
 }
 
-function buildClientProfileMap(clientContext: string, explicitProfile?: ClientProfileMap) {
+function buildClientProfileMap(
+  clientContext: string,
+  explicitProfile?: ClientProfileMap,
+  tenantDefaults?: { platforms: string; postingFrequency: string; campaignDuration: string; contentGoal: string; budgetRange: string; timeline: string }
+) {
   const merged: ClientProfileMap = { ...(sanitizePromptProfile(explicitProfile || {}) || {}) }
+  // Fall back to "ask the user" placeholders rather than agency-specific
+  // hardcodes when no tenant-level defaults are configured. The autonomous
+  // task pipeline reads these as "TBD" hints and asks for clarification.
+  const td = tenantDefaults || {
+    platforms: 'TBD — confirm with the client',
+    postingFrequency: 'TBD — confirm cadence with the client',
+    campaignDuration: '30 days',
+    contentGoal: 'Awareness and engagement',
+    budgetRange: 'TBD — planning assumptions required',
+    timeline: 'TBD',
+  }
 
   const derivedValues: Record<string, string> = {
     brand_name: explicitProfile?.brand_name || sanitizePromptValue(extractClientContextValue(clientContext, 'Name')),
@@ -142,14 +159,14 @@ function buildClientProfileMap(clientContext: string, explicitProfile?: ClientPr
     reference_asset_paths: explicitProfile?.reference_asset_paths || '',
     competitive_landscape: explicitProfile?.competitive_landscape || sanitizePromptValue(extractClientContextValue(clientContext, 'Notes')),
     channel_strategy: explicitProfile?.channel_strategy || sanitizePromptValue(extractClientContextValue(clientContext, 'Strategic priorities')),
-    budget_range: explicitProfile?.budget_range || 'TBD - planning assumptions required',
-    budget: explicitProfile?.budget || 'TBD - planning assumptions required',
-    timeline: explicitProfile?.timeline || 'TBD',
-    campaign_duration: explicitProfile?.campaign_duration || '30 days',
+    budget_range: explicitProfile?.budget_range || td.budgetRange,
+    budget: explicitProfile?.budget || td.budgetRange,
+    timeline: explicitProfile?.timeline || td.timeline,
+    campaign_duration: explicitProfile?.campaign_duration || td.campaignDuration,
     key_dates: explicitProfile?.key_dates || 'TBD',
-    posting_frequency: explicitProfile?.posting_frequency || '3-4 posts per week',
-    platforms: explicitProfile?.platforms || 'Instagram, LinkedIn',
-    content_goal: explicitProfile?.content_goal || 'Awareness and lead generation',
+    posting_frequency: explicitProfile?.posting_frequency || td.postingFrequency,
+    platforms: explicitProfile?.platforms || td.platforms,
+    content_goal: explicitProfile?.content_goal || td.contentGoal,
     month_label: explicitProfile?.month_label || new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' }),
   }
 
@@ -559,17 +576,11 @@ function buildFallbackDeliverable(input: {
 }
 
 function isInvalidFinalDeliverable(response: string) {
-  const lower = response.toLowerCase()
-
-  return (
-    !response.trim() ||
-    lower.includes('task routed to') ||
-    lower.includes('lead agent') ||
-    lower.includes('status: in progress') ||
-    lower.includes('delivery:') ||
-    lower.includes('next steps:') ||
-    lower.includes('i have not drafted the deliverable yet')
-  )
+  // Empty response is also invalid; otherwise defer to the canonical
+  // boilerplate-needle list in text-utils so chat/route, output-quality, and
+  // this engine never drift.
+  if (!response?.trim()) return true
+  return looksLikeBoilerplateResponse(response)
 }
 
 function buildQualityRepairPrompt(input: {
@@ -749,7 +760,7 @@ async function runPipelineExecution(input: {
       progress: Math.max(5, Math.round((completedActivities / totalActivities) * 75)),
     })
     for (const activity of phase.activities || []) {
-      const assignedAgent = getAgentForRole(input.agents, activity.assignedRole) || input.agents.find((agent) => agent.id === 'iris')
+      const assignedAgent = getAgentForRole(input.agents, activity.assignedRole) || input.agents.find((agent) => isOrchestratorAgent(agent))
       if (!assignedAgent) continue
 
       const selectedSkills = input.selectedSkillsByAgent?.[assignedAgent.id] || assignedAgent.skills || []
@@ -829,7 +840,7 @@ async function runPipelineExecution(input: {
         id: `${activity.id}-${Date.now()}-${executionSteps.length}`,
         agentId: assignedAgent.id,
         agentName: assignedAgent.name,
-        role: assignedAgent.id === 'iris' ? 'quality' : 'support',
+        role: isOrchestratorAgent(assignedAgent) ? 'quality' : 'support',
         title: `${phase.name} · ${activity.name}`,
         summary: truncate(summary, 1600),
         status: 'completed',
@@ -874,12 +885,23 @@ export async function executeAutonomousTask(input: {
   pipeline: PipelineLike | null
   skillCategories: any[]
   hooks?: ExecutionHooks
+  /** Per-tenant content defaults (platforms, posting frequency, etc.). When
+   *  omitted the engine falls back to the generic "TBD — confirm with the
+   *  client" placeholders rather than hardcoded agency-specific values. */
+  tenantContentDefaults?: {
+    platforms: string
+    postingFrequency: string
+    campaignDuration: string
+    contentGoal: string
+    budgetRange: string
+    timeline: string
+  }
 }) {
   const skillLookup = buildSkillLookup(input.skillCategories)
   const agentMap = new Map(input.agents.map((agent) => [agent.id, agent]))
   const executionSteps: ArtifactExecutionStep[] = []
   const pipelineOutputs: Record<string, string> = {}
-  const clientProfile = buildClientProfileMap(input.clientContext, input.clientProfile)
+  const clientProfile = buildClientProfileMap(input.clientContext, input.clientProfile, input.tenantContentDefaults)
 
   // Safety guard: if the request explicitly asks for a social post (instagram/
   // facebook/linkedin post, caption) with no image-generation intent, treat it
@@ -897,7 +919,7 @@ export async function executeAutonomousTask(input: {
       agentsById: agentMap,
       selectedSkillsByAgent: input.selectedSkillsByAgent,
       generateStage: async ({ agentId, prompt, temperature, maxTokens }) => {
-        const agent = agentMap.get(agentId) || agentMap.get('iris')
+        const agent = agentMap.get(agentId) || findAgentByTemplate(agentMap.values(), 'iris')
         if (!agent) throw new Error(`Agent ${agentId} is unavailable.`)
         const runtime = resolveAgentRuntime(agent, input)
         const text = await generateContentFirstText({
@@ -951,7 +973,7 @@ export async function executeAutonomousTask(input: {
       maxTokens: input.maxTokens,
       hooks: input.hooks,
       generateStage: async ({ agentId, prompt, temperature, maxTokens }) => {
-        const agent = agentMap.get(agentId) || agentMap.get('iris')
+        const agent = agentMap.get(agentId) || findAgentByTemplate(agentMap.values(), 'iris')
         if (!agent) throw new Error(`Agent ${agentId} is unavailable.`)
         const runtime = resolveAgentRuntime(agent, input)
         const text = await generateContentFirstText({
@@ -1075,7 +1097,7 @@ export async function executeAutonomousTask(input: {
     }
   }
 
-  const leadAgent = agentMap.get(input.leadAgentId) || agentMap.get('iris') || {
+  const leadAgent = agentMap.get(input.leadAgentId) || findAgentByTemplate(agentMap.values(), 'iris') || {
     id: 'iris',
     name: 'Iris',
     role: 'Operations Lead',

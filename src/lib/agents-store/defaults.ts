@@ -69,9 +69,9 @@ export const VALID_MISSION_STATUSES = new Set<Mission['status']>([
 export const VALID_MISSION_PRIORITIES = new Set<Mission['priority']>(['low', 'medium', 'high'])
 
 /**
- * Migration cleanups — old persisted snapshots may carry these IDs from
- * pre-Supabase seed data; the migration routine in normalizers.ts strips
- * them so they don't drift back in via local persistence.
+ * Migration cleanups — old persisted snapshots may carry these legacy demo IDs;
+ * the migration routine in normalizers.ts strips them so they don't drift back
+ * in via local persistence.
  */
 export const SEEDED_CAMPAIGN_IDS = new Set(['campaign-1', 'campaign-2'])
 export const SEEDED_MISSION_IDS = new Set(['mission-1', 'mission-2', 'mission-3'])

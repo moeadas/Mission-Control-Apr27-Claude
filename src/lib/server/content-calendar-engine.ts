@@ -1,5 +1,7 @@
 import { ArtifactExecutionStep, AIProvider } from '@/lib/types'
 import { validateDeliverableQuality } from '@/lib/output-quality'
+import { findAgentByTemplate } from '@/lib/server/agent-templates'
+import { escapeHtml } from '@/lib/server/text-utils'
 
 type RuntimeAgent = {
   id: string
@@ -103,14 +105,6 @@ class ContentCalendarGenerationError extends Error {
   }
 }
 
-function escapeHtml(value: string) {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;')
-}
 
 function extractJsonCandidate(raw: string) {
   const cleaned = raw.trim().replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim()
@@ -275,11 +269,13 @@ async function generateJsonStage<T>(input: {
 }
 
 function getPostingFrequencySummary(profile: ClientProfileMap) {
-  return profile.posting_frequency || 'Instagram: 3 posts/week; LinkedIn: 2 posts/week'
+  // Defaults are now supplied upstream via buildClientProfileMap +
+  // tenant content defaults; engine-level fallback is intentionally generic.
+  return profile.posting_frequency || 'TBD — confirm cadence with the client before drafting'
 }
 
 function getPlatforms(profile: ClientProfileMap) {
-  return (profile.platforms || 'Instagram, LinkedIn')
+  return (profile.platforms || '')
     .split(/[,\n]/)
     .map((item) => item.trim())
     .filter(Boolean)
@@ -351,7 +347,7 @@ function buildClientBlock(profile: ClientProfileMap, request: string) {
     `Audience psychographics: ${profile.audience_psychographics || 'Not specified'}`,
     `Pain points: ${profile.pain_points || 'Not specified'}`,
     `Tone: ${profile.tone || profile.brand_voice || 'Professional and warm'}`,
-    `Platforms: ${profile.platforms || 'Instagram, LinkedIn'}`,
+    `Platforms: ${profile.platforms || 'Not specified — confirm with the client'}`,
     `Posting frequency: ${getPostingFrequencySummary(profile)}`,
     `Content goal: ${profile.content_goal || 'Awareness and engagement'}`,
     `Product / service: ${profile.product_service || 'Not specified'}`,
@@ -1038,11 +1034,16 @@ export async function executeAutomatedContentCalendar(input: {
   hooks?: RuntimeHooks
 }) {
   const executionSteps: ArtifactExecutionStep[] = []
-  const maya = input.agentsById.get('maya') || input.agentsById.get('iris')
-  const echo = input.agentsById.get('echo') || input.agentsById.get('iris')
-  const nova = input.agentsById.get('nova') || echo || maya
-  const lyra = input.agentsById.get('lyra') || echo || maya
-  const iris = input.agentsById.get('iris') || maya || echo || nova || lyra
+  // Template-aware lookup so this engine works for both legacy single-tenant
+  // rows (id='maya') and new tenant clones (id='maya-<suffix>').
+  const byTemplate = (templateId: string) =>
+    findAgentByTemplate(input.agentsById.values(), templateId)
+
+  const maya = byTemplate('maya') || byTemplate('iris')
+  const echo = byTemplate('echo') || byTemplate('iris')
+  const nova = byTemplate('nova') || echo || maya
+  const lyra = byTemplate('lyra') || echo || maya
+  const iris = byTemplate('iris') || maya || echo || nova || lyra
 
   if (!maya || !echo || !nova || !lyra || !iris) {
     throw new Error('Required specialist agents are not available for content-calendar automation.')

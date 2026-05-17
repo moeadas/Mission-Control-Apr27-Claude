@@ -1,6 +1,8 @@
 import { ArtifactExecutionStep, AIProvider, CreativeArtifactSpec } from '@/lib/types'
 import { validateDeliverableQuality } from '@/lib/output-quality'
 import { generateBrandedCreativeAsset, inferCreativeAspectRatio } from '@/lib/server/image-production'
+import { findAgentByTemplate } from '@/lib/server/agent-templates'
+import { escapeHtml } from '@/lib/server/text-utils'
 
 type RuntimeAgent = {
   id: string
@@ -22,15 +24,6 @@ function truncate(value: string, max = 2400) {
   const normalized = value.trim()
   if (normalized.length <= max) return normalized
   return `${normalized.slice(0, max - 3)}...`
-}
-
-function escapeHtml(value: string) {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;')
 }
 
 function buildClientBlock(profile: ClientProfileMap, request: string) {
@@ -328,10 +321,15 @@ export async function executeCreativeAssetTask(input: {
   visualModel?: string
   visualEnabled?: boolean
 }) {
-  const finn = input.agentsById.get('finn') || input.agentsById.get('lyra') || input.agentsById.get('iris')
-  const echo = input.agentsById.get('echo') || input.agentsById.get('iris')
-  const lyra = input.agentsById.get('lyra') || input.agentsById.get('finn') || input.agentsById.get('iris')
-  const iris = input.agentsById.get('iris') || lyra
+  // Template-aware lookup: works for legacy single-tenant rows (id='finn')
+  // AND for new tenant clones (id='finn-<suffix>', metadata.templateId='finn').
+  const byTemplate = (templateId: string) =>
+    findAgentByTemplate(input.agentsById.values(), templateId)
+
+  const finn = byTemplate('finn') || byTemplate('lyra') || byTemplate('iris')
+  const echo = byTemplate('echo') || byTemplate('iris')
+  const lyra = byTemplate('lyra') || byTemplate('finn') || byTemplate('iris')
+  const iris = byTemplate('iris') || lyra
 
   if (!finn || !echo || !lyra || !iris) {
     throw new Error('Required specialist agents are not available for creative-asset automation.')

@@ -39,9 +39,9 @@ export default function PipelineRunPage() {
   const [isStarting, setIsStarting] = useState(false)
   const [startError, setStartError] = useState<string | null>(null)
   
-  // Pull pipelines from the canonical store (Supabase first, bundled config
-  // as a server-side fallback inside /api/pipelines). Importantly: pipelines
-  // CREATED by users via /pipeline/[id] now show up here without a restart.
+  // Pull pipelines from the canonical store (DB first, bundled config as a
+  // server-side fallback inside /api/pipelines). Importantly: pipelines CREATED
+  // by users via /pipeline/[id] now show up here without a restart.
   const dbPipelines = usePipelinesStore((s) => s.pipelines)
   const pipelinesLoaded = usePipelinesStore((s) => s.isLoaded)
   const loadPipelinesFromDb = usePipelinesStore((s) => s.loadPipelines)

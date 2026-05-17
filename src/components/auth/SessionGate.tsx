@@ -8,7 +8,13 @@ import { getStoredToken, clearStoredToken } from '@/lib/auth/browser'
 import { useVersionCheck } from '@/hooks/useVersionCheck'
 
 const PUBLIC_PATHS = new Set(['/login'])
-const ADMIN_ONLY_PREFIXES = ['/settings', '/config', '/skills', '/pipeline', '/users']
+// Pages reserved for platform super_admin (across all tenants).
+const SUPER_ADMIN_ONLY_PREFIXES = ['/admin', '/config']
+// Pages reserved for tenant admins (within their own tenant).
+const TENANT_ADMIN_ONLY_PREFIXES = ['/users']
+// Settings/skills/pipeline are now open to all tenant members so they can
+// configure their own AI provider keys, browse the shared skill library, and
+// run pipelines — explicit user direction (Batch C, team collaboration).
 
 function hardRedirect(target: string) {
   if (typeof window === 'undefined') return
@@ -68,10 +74,18 @@ export function SessionGate({ children }: { children: React.ReactNode }) {
             return
           }
 
-          if (
-            payload?.user?.role !== 'super_admin' &&
-            ADMIN_ONLY_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
-          ) {
+          const role = payload?.user?.role
+          const isSuperAdmin = role === 'super_admin'
+          const isTenantAdmin = isSuperAdmin || role === 'admin'
+
+          const matchesPrefix = (prefixes: string[]) =>
+            prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
+
+          if (!isSuperAdmin && matchesPrefix(SUPER_ADMIN_ONLY_PREFIXES)) {
+            hardRedirect('/dashboard')
+            return
+          }
+          if (!isTenantAdmin && matchesPrefix(TENANT_ADMIN_ONLY_PREFIXES)) {
             hardRedirect('/dashboard')
             return
           }

@@ -3,10 +3,15 @@ import path from 'node:path'
 
 import { normalizeProviderSettings } from '@/lib/provider-settings'
 import type { ProviderSettings } from '@/lib/types'
+import {
+  decryptString,
+  encryptString,
+  isCryptoConfigured,
+  isEncryptedEnvelope,
+} from '@/lib/server/secret-crypto'
 
 const DATA_DIR = path.join(process.cwd(), 'data')
 const SECRETS_FILE = path.join(DATA_DIR, 'provider-secrets.json')
-const ENV_FILE = path.join(process.cwd(), '.env.local')
 
 type ProviderSecretsStore = Record<
   string,
@@ -69,62 +74,59 @@ async function readSecretsStore(): Promise<ProviderSecretsStore> {
   try {
     const raw = await readFile(SECRETS_FILE, 'utf8')
     const parsed = JSON.parse(raw)
-    return parsed && typeof parsed === 'object' ? parsed : {}
-  } catch {
-    return {}
+    if (!parsed || typeof parsed !== 'object') return {}
+
+    // Encrypted-envelope path: the entire file is one wrapped blob.
+    if (isEncryptedEnvelope(parsed)) {
+      try {
+        const plaintext = decryptString(parsed)
+        const inner = JSON.parse(plaintext)
+        return inner && typeof inner === 'object' ? inner : {}
+      } catch (err) {
+        // Tampered file or wrong master key. Returning {} would silently wipe
+        // the store on next save — that's destructive. Throw instead so the
+        // caller / API route can surface a 500 to the operator.
+        throw new Error(`Failed to decrypt provider secrets — check ${'PROVIDER_SECRETS_MASTER_KEY'}: ${(err as Error).message}`)
+      }
+    }
+
+    // Legacy plaintext path. We keep reading it as-is; the next save will
+    // upgrade the file to an encrypted envelope if the master key is set.
+    return parsed as ProviderSecretsStore
+  } catch (err) {
+    // Empty file / missing file is fine.
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return {}
+    if (err instanceof SyntaxError) return {}
+    throw err
   }
 }
 
 async function writeSecretsStore(store: ProviderSecretsStore) {
   await mkdir(DATA_DIR, { recursive: true })
-  await writeFile(SECRETS_FILE, JSON.stringify(store, null, 2), 'utf8')
-}
+  const json = JSON.stringify(store, null, 2)
 
-async function readLocalEnvGeminiKey() {
-  try {
-    const raw = await readFile(ENV_FILE, 'utf8')
-    const match = raw.match(/^GEMINI_API_KEY=(.*)$/m)
-    return match?.[1]?.trim() || ''
-  } catch {
-    return ''
-  }
-}
-
-async function writeLocalEnvGeminiKey(apiKey: string) {
-  let raw = ''
-  try {
-    raw = await readFile(ENV_FILE, 'utf8')
-  } catch {
-    raw = ''
+  if (isCryptoConfigured()) {
+    const envelope = encryptString(json)
+    if (envelope) {
+      await writeFile(SECRETS_FILE, JSON.stringify(envelope, null, 2), 'utf8')
+      return
+    }
   }
 
-  const nextLine = `GEMINI_API_KEY=${apiKey}`
-  const hasKey = /^GEMINI_API_KEY=.*$/m.test(raw)
-  const nextRaw = hasKey
-    ? raw.replace(/^GEMINI_API_KEY=.*$/m, nextLine)
-    : `${raw.trimEnd()}\n${raw.trim() ? '\n' : ''}${nextLine}\n`
-
-  await writeFile(ENV_FILE, nextRaw, 'utf8')
+  // Master key unset → keep plaintext for POC / dev. Helpers in
+  // secret-crypto.ts log a one-time warning so this isn't silent.
+  await writeFile(SECRETS_FILE, json, 'utf8')
 }
 
 export async function loadPersistedProviderSettings(userId: string): Promise<ProviderSettings | null> {
   const store = await readSecretsStore()
   const record = store[userId]
-  const envGeminiKey = await readLocalEnvGeminiKey()
-  if (!record?.providerSettings && !envGeminiKey) return null
+  if (!record?.providerSettings) return null
 
-  return mergeProviderSettings(
-    record?.providerSettings,
-    envGeminiKey
-      ? {
-          gemini: {
-            apiKey: envGeminiKey,
-            maskedKey: `${envGeminiKey.slice(0, 4)}...${envGeminiKey.slice(-4)}`,
-            enabled: true,
-          },
-        } as Partial<ProviderSettings>
-      : null
-  )
+  // No more env-level fallback (the old code merged process.env.GEMINI_API_KEY
+  // into every user's settings, which leaked the dev key. Each tenant manages
+  // their own keys via Settings → AI Providers.)
+  return mergeProviderSettings(record.providerSettings, null)
 }
 
 export async function savePersistedProviderSettings(userId: string, providerSettings: ProviderSettings) {
@@ -136,15 +138,10 @@ export async function savePersistedProviderSettings(userId: string, providerSett
     updatedAt: new Date().toISOString(),
   }
   await writeSecretsStore(store)
-  // Best-effort: write the Gemini key to .env.local for local dev convenience.
-  // In Docker the app directory is read-only, so we silently skip on EACCES.
-  if (merged.gemini.apiKey) {
-    try {
-      await writeLocalEnvGeminiKey(merged.gemini.apiKey)
-    } catch {
-      // read-only filesystem in production — ignore, key is already in the JSON store
-    }
-  }
+  // (The legacy .env.local writeback for Gemini keys has been removed —
+  // it didn't work in Docker and leaked dev keys to every user. The
+  // encrypted JSON store at `data/provider-secrets.json` is now the single
+  // source of truth.)
 }
 
 export function mergePersistedProviderSettings(primary?: Partial<ProviderSettings> | null, fallback?: Partial<ProviderSettings> | null) {

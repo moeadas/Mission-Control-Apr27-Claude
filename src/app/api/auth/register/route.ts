@@ -2,12 +2,18 @@
  * POST /api/auth/register
  *
  * Self-serve signup. Creates:
- *   1. user row (users table)
+ *   1. user row (users table) — email_verified_at is null until they click the link
  *   2. profile row (profiles table)
  *   3. tenant (agencies) row with a free subscription
  *   4. links profile → tenant
+ *   5. sends email-verification link via the configured email dispatcher
  *
  * Returns a JWT with tenantId embedded so the client can start using the app immediately.
+ * Users with unverified email can still use the app, but certain operations
+ * (e.g. inviting other users, upgrading plans) may require verification — these
+ * gates are added as the features are wired up.
+ *
+ * Rate-limited per IP to prevent signup spam.
  */
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
@@ -16,9 +22,22 @@ import { getDb } from '@/lib/db/client'
 import { signToken } from '@/lib/auth/jwt'
 import { createTenant, assignUserToTenant } from '@/lib/server/tenants'
 import { getSuperAdminEmail } from '@/lib/auth/server'
+import { checkRateLimit, getClientIp } from '@/lib/server/rate-limit'
+import { createEmailVerificationToken } from '@/lib/server/email-tokens'
+import { buildVerificationEmail, sendEmail } from '@/lib/server/email'
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limit: 5 signups per hour per IP.
+    const ip = getClientIp(request.headers)
+    const rl = await checkRateLimit(`auth:register:${ip}`, { limit: 5, windowSeconds: 60 * 60, durable: true })
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: 'Too many signups from this IP. Try again later.', retryAfterSeconds: rl.retryAfterSeconds },
+        { status: 429, headers: { 'Retry-After': String(rl.retryAfterSeconds) } }
+      )
+    }
+
     const body = await request.json()
     const email = String(body.email || '').trim().toLowerCase()
     const password = String(body.password || '')
@@ -78,6 +97,16 @@ export async function POST(request: NextRequest) {
     // ── Link profile → tenant ───────────────────────────────────────────────
     await assignUserToTenant(user.id, tenantId)
 
+    // ── Send email-verification link ────────────────────────────────────────
+    // Failures here are non-fatal — the user can request a new link from the
+    // /verify-email page if needed.
+    try {
+      const { token: verifyToken } = await createEmailVerificationToken(user.id, email)
+      await sendEmail(buildVerificationEmail(email, verifyToken))
+    } catch (err) {
+      console.warn('[register] verification email dispatch failed', err)
+    }
+
     // ── Issue JWT ───────────────────────────────────────────────────────────
     const token = await signToken({
       sub: user.id,
@@ -88,7 +117,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       token,
-      user: { id: user.id, email: user.email, role: user.role, tenantId },
+      user: { id: user.id, email: user.email, role: user.role, tenantId, emailVerified: false },
+      emailVerificationSent: true,
     }, { status: 201 })
 
   } catch (error) {

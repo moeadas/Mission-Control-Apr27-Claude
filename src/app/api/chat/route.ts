@@ -24,6 +24,10 @@ import { insertTaskRun, upsertWorkflowExecutionState } from '@/lib/server/task-e
 import { loadConfigSkillCategories, mergeDbSkillsWithConfig } from '@/lib/server/skills-catalog'
 import { buildTaskChannelingPlan } from '@/lib/server/task-channeling'
 import { extractClientFieldsFromText } from '@/app/api/iris/parse-client-brief/route'
+import { checkRateLimit, getClientIp } from '@/lib/server/rate-limit'
+import { TokenBudgetExceededError, assertTokenBudget } from '@/lib/server/token-budgets'
+import { getTenantContentDefaults } from '@/lib/server/content-defaults'
+import { looksLikeBoilerplateResponse } from '@/lib/server/text-utils'
 
 function detectClientBriefIntent(content: string): boolean {
   // Explicit intent signals
@@ -88,17 +92,7 @@ function getBearerToken(request: NextRequest) {
 
 function enforceDeliverableDraft(responseText: string, deliverableType: string) {
   if (deliverableType === 'status-report') return responseText
-
-  const lower = responseText.toLowerCase()
-  const looksLikeCoordinationOnly =
-    lower.includes('task routed to') ||
-    lower.includes('lead agent') ||
-    lower.includes('delivery:') ||
-    lower.includes('status: in progress') ||
-    lower.includes('next steps:')
-
-  if (!looksLikeCoordinationOnly) return responseText
-
+  if (!looksLikeBoilerplateResponse(responseText)) return responseText
   return 'I have not drafted the deliverable yet. I should respond with the actual draft content and save it as an internal output artifact instead of only returning routing/status language.'
 }
 
@@ -116,21 +110,7 @@ function looksLikeUsableDeliverable(
 ) {
   const trimmed = responseText.trim()
   if (!trimmed) return false
-
-  const lower = trimmed.toLowerCase()
-  const invalidPatterns = [
-    'task routed to',
-    'lead agent',
-    'status: in progress',
-    'delivery:',
-    'next steps:',
-    'i have not drafted the deliverable yet',
-    'no completed or delivered file exists',
-    'iris could not complete that request',
-    'chat request failed',
-  ]
-
-  if (invalidPatterns.some((pattern) => lower.includes(pattern))) return false
+  if (looksLikeBoilerplateResponse(trimmed)) return false
   if (
     (deliverableType === 'campaign-copy' || deliverableType === 'short-form-copy') &&
     isShortFormCopyRequest(request)
@@ -138,19 +118,13 @@ function looksLikeUsableDeliverable(
     if (/^#\s+.+/m.test(trimmed) || /^##\s+.+/m.test(trimmed)) return trimmed.length >= 40
     return trimmed.length >= 24
   }
-
   return trimmed.length >= 80
 }
 
-async function getDefaultAgencyId(): Promise<string | null> {
-  try {
-    const db = getDb()
-    const rows = await db`SELECT id FROM agencies WHERE slug = 'default-agency' LIMIT 1`
-    return rows[0]?.id ?? null
-  } catch {
-    return null
-  }
-}
+// Batch C: tenant-scoping. All pipeline / skill lookups are scoped to the
+// caller's tenant via `auth.tenantId`. The legacy `getDefaultAgencyId` slug
+// lookup is gone — there is no shared global tenant, and any path that needs
+// tenant context must pass an explicit tenantId.
 
 async function waitForTaskPersistence(taskId: string, attempts = 8, delayMs = 250) {
   if (!taskId) return false
@@ -171,23 +145,22 @@ async function waitForTaskPersistence(taskId: string, attempts = 8, delayMs = 25
   return false
 }
 
-// Load pipelines server-side
-async function loadPipelines() {
-  try {
-    const agencyId = await getDefaultAgencyId()
-    if (agencyId) {
+// Load pipelines for a specific tenant. Falls back to the bundled config
+// catalogue (Batch D will turn these into per-tenant seed templates).
+async function loadPipelines(tenantId: string | null) {
+  if (tenantId) {
+    try {
       const db = getDb()
       const rows = await db`
         SELECT definition FROM pipelines
-        WHERE agency_id = ${agencyId}
+        WHERE agency_id = ${tenantId}::uuid
         ORDER BY name ASC
       `
       if (rows.length) return rows.map((row: any) => row.definition || {}).filter(Boolean)
+    } catch {
+      // Fall through to config fallback.
     }
-  } catch {
-    // Fall through to config fallback.
   }
-
   try {
     const modules = await import('@/config/pipelines/pipelines.json')
     return modules.default.pipelines
@@ -196,23 +169,22 @@ async function loadPipelines() {
   }
 }
 
-// Load skills server-side
-async function loadSkills() {
-  try {
-    const agencyId = await getDefaultAgencyId()
-    if (agencyId) {
+// Load skills for a specific tenant. DB rows override the on-disk catalogue
+// for skill ids that exist in both places.
+async function loadSkills(tenantId: string | null) {
+  if (tenantId) {
+    try {
       const db = getDb()
       const rows = await db`
         SELECT * FROM skills
-        WHERE agency_id = ${agencyId}
+        WHERE agency_id = ${tenantId}::uuid
         ORDER BY category ASC, name ASC
       `
       if (rows.length) return mergeDbSkillsWithConfig(rows)
+    } catch {
+      // Fall through to config fallback.
     }
-  } catch {
-    // Fall through to config fallback.
   }
-
   try {
     const cats = await loadConfigSkillCategories()
     if (!cats?.length) {
@@ -231,6 +203,36 @@ export async function POST(req: NextRequest) {
     const auth = await resolveAuthContextFromToken(getBearerToken(req))
     if (!auth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Per-user rate limit on chat. 60 msgs / 5 min is high enough for normal
+    // back-and-forth but blocks runaway scripts that could spend a lot of
+    // LLM credit fast. Tune per-tenant via plan tier in Batch H.
+    const rl = await checkRateLimit(`chat:${auth.userId}`, { limit: 60, windowSeconds: 60 * 5 })
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: 'You\'re sending messages too quickly. Pause for a moment.', retryAfterSeconds: rl.retryAfterSeconds },
+        { status: 429, headers: { 'Retry-After': String(rl.retryAfterSeconds) } }
+      )
+    }
+
+    // Per-tenant monthly token budget. Hard 402 when exceeded; the UI can
+    // route the user to plan upgrades / increase the cap.
+    try {
+      await assertTokenBudget(auth.tenantId)
+    } catch (err) {
+      if (err instanceof TokenBudgetExceededError) {
+        return NextResponse.json(
+          {
+            error: err.message,
+            code: err.code,
+            budgetUsd: err.budgetUsd,
+            usedUsd: err.usedUsd,
+          },
+          { status: 402 }
+        )
+      }
+      throw err
     }
 
     requestBody = await req.json()
@@ -490,7 +492,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Load pipeline and skill context
-    const [pipelines, skillCategories] = await Promise.all([loadPipelines(), loadSkills()])
+    const [pipelines, skillCategories, tenantContentDefaults] = await Promise.all([
+      loadPipelines(auth.tenantId),
+      loadSkills(auth.tenantId),
+      getTenantContentDefaults(auth.tenantId),
+    ])
 
     const routing = inferRoutingContext({
       content: userContent,
@@ -784,6 +790,7 @@ Orchestration trace:
           qualityChecklist: executionPlan.qualityChecklist,
           pipeline: pipelineDefinition,
           skillCategories,
+          tenantContentDefaults,
           hooks: missionId && canPersistMissionExecution
             ? {
               onPhaseStart: async ({ phase, progress }) => {
@@ -906,6 +913,7 @@ Orchestration trace:
           qualityChecklist: executionPlan.qualityChecklist,
           pipeline: pipelineDefinition,
           skillCategories,
+          tenantContentDefaults,
           hooks: missionId && canPersistMissionExecution
             ? {
                 onPhaseStart: async ({ phase, progress }) => {
@@ -995,6 +1003,7 @@ Orchestration trace:
           qualityChecklist: executionPlan.qualityChecklist,
           pipeline: pipelineDefinition,
           skillCategories,
+          tenantContentDefaults,
         })
         const primaryScore = qualityResult?.score ?? 0
         const alternateScore = alternateResult.qualityResult?.score ?? 0
