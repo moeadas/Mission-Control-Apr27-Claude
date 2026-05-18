@@ -509,10 +509,19 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
   const WH = GRID_H * TILE_PX
 
   return (
-    <div className="flex h-full bg-[#0f1117] text-white overflow-hidden" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+    // Batch N: CSS-grid shell so the three columns adapt to viewport width
+    // instead of clipping under each other. Canvas keeps its minimum width;
+    // left + right panels never overflow the visible area.
+    <div
+      className="grid h-full bg-[#0f1117] text-white overflow-hidden"
+      style={{
+        gridTemplateColumns: 'minmax(220px, 260px) minmax(320px, 1fr) minmax(280px, 320px)',
+        fontFamily: 'Inter, system-ui, sans-serif',
+      }}
+    >
 
       {/* ── Left sidebar ──────────────────────────────────────────────────── */}
-      <div className="w-60 flex flex-col border-r border-white/10 bg-[#151922] overflow-hidden shrink-0">
+      <div className="flex flex-col border-r border-white/10 bg-[#151922] overflow-hidden min-w-0">
 
         {/* Search + Layouts button */}
         <div className="px-3 pt-3 pb-2 border-b border-white/10">
@@ -583,7 +592,7 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
       </div>
 
       {/* ── Main ────────────────────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+      <div className="flex flex-col overflow-hidden min-w-0">
 
         {/* Toolbar */}
         <div className="flex items-center gap-1 px-3 py-2 border-b border-white/10 bg-[#151922] shrink-0 flex-wrap">
@@ -763,12 +772,52 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
               <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11 }}>Del to delete  •  Arrows to nudge  •  Drag to move together</span>
             </div>
           )}
+
+          {/* Batch N: empty-canvas onboarding overlay. Disappears the moment
+              the first tile is placed; non-interactive so it never blocks the
+              canvas. Helps a first-time user understand what this page is. */}
+          {layout.tiles.length === 0 && !placing && (
+            <div
+              className="pointer-events-none absolute inset-0 flex items-center justify-center"
+              style={{ zIndex: 5 }}
+            >
+              <div className="rounded-2xl border border-white/10 bg-[#151922]/85 backdrop-blur px-6 py-5 max-w-sm text-center shadow-2xl">
+                <p className="text-base font-semibold text-white">Welcome to your virtual office</p>
+                <p className="mt-1.5 text-xs text-white/55">
+                  Build the floor plan for your AI team. Start from a layout template, or browse assets and place them on the grid.
+                </p>
+                <div className="mt-3 flex items-center justify-center gap-2 text-[10px] uppercase tracking-wider text-white/35 font-mono">
+                  <span>Click an asset</span>
+                  <span>·</span>
+                  <span>Click the grid to place</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Batch N: persistent status bar — gives users a stable line of
+            ground-truth (zoom level, item count, last-save state) instead of
+            having to hunt across the toolbar. */}
+        <div className="flex items-center justify-between gap-4 px-3 py-1.5 border-t border-white/10 bg-[#0d1018] shrink-0 text-[10px] font-mono uppercase tracking-wider text-white/40">
+          <div className="flex items-center gap-3">
+            <span>Items <span className="text-white/70">{layout.tiles.length}</span></span>
+            {sel.size > 0 && <span>Selected <span className="text-indigo-300">{sel.size}</span></span>}
+            <span>Zoom <span className="text-white/70">{Math.round(zoom * 100)}%</span></span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span>{saving ? 'Saving…' : saveMsg ? saveMsg : 'Saved'}</span>
+            <span className="hidden md:inline">Space+drag pan · Scroll zoom · Drag to multi-select</span>
+          </div>
         </div>
       </div>
 
-      {/* ── Right inspector (single tile selected) ────────────────────────── */}
-      {selTile && selAsset && (
-        <div className="w-56 border-l border-white/10 bg-[#151922] flex flex-col overflow-y-auto shrink-0">
+      {/* ── Right inspector ──────────────────────────────────────────────────
+            Batch N: always rendered. Shows an empty-state when nothing is
+            selected so users know the editor is here, instead of the column
+            disappearing on every click-away.                                  */}
+      {selTile && selAsset ? (
+        <div className="border-l border-white/10 bg-[#151922] flex flex-col overflow-y-auto min-w-0">
           <div className="px-4 py-3 border-b border-white/10">
             <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">Selected</p>
             <p className="text-sm font-semibold text-white truncate">{selAsset.name}</p>
@@ -836,6 +885,54 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
               className="flex-1 py-1.5 rounded bg-red-900/20 hover:bg-red-900/40 text-sm text-red-400 hover:text-red-300 transition-colors">
               ✕ Remove
             </button>
+          </div>
+        </div>
+      ) : (
+        // Empty inspector — visible when nothing is selected so users know
+        // the editor lives here. Includes a small "what can I do" cheat-sheet
+        // and quick-jump buttons to the most common actions.
+        <div className="border-l border-white/10 bg-[#151922] flex flex-col overflow-y-auto min-w-0">
+          <div className="px-4 py-3 border-b border-white/10">
+            <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">Inspector</p>
+            <p className="text-sm font-semibold text-white">Nothing selected</p>
+            <p className="text-xs text-white/35 mt-1">Click a placed item on the floor to edit it.</p>
+          </div>
+          <div className="px-4 py-4 border-b border-white/10 space-y-3">
+            <p className="text-[10px] text-white/40 uppercase tracking-wider">Quick start</p>
+            <button onClick={() => setShowTpl(true)}
+              className="w-full text-left rounded-lg border border-indigo-500/30 bg-indigo-600/10 hover:bg-indigo-600/20 px-3 py-2.5 transition-colors">
+              <p className="text-sm font-medium text-indigo-100">⚡ Use a template</p>
+              <p className="text-[11px] text-indigo-300/70 mt-0.5">Start from a pre-designed layout</p>
+            </button>
+            {layout.tiles.length > 0 ? (
+              <button
+                onClick={() => {
+                  if (confirm('Remove all placed items? This can be undone with ⌘Z.')) {
+                    setLayout((prev) => ({ ...prev, tiles: [] }))
+                  }
+                }}
+                className="w-full text-left rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 px-3 py-2.5 transition-colors">
+                <p className="text-sm font-medium text-white/80">↺ Clear floor</p>
+                <p className="text-[11px] text-white/40 mt-0.5">Remove every placed item (undoable)</p>
+              </button>
+            ) : (
+              <div className="rounded-lg border border-dashed border-white/15 bg-white/[0.02] px-3 py-2.5">
+                <p className="text-sm font-medium text-white/70">🏗 Empty office</p>
+                <p className="text-[11px] text-white/40 mt-0.5">Pick assets from the left to begin building.</p>
+              </div>
+            )}
+          </div>
+          <div className="px-4 py-4 space-y-2">
+            <p className="text-[10px] text-white/40 uppercase tracking-wider">Keyboard shortcuts</p>
+            <ul className="space-y-1 text-[11px] text-white/50">
+              <li className="flex items-center justify-between"><span>Undo</span><kbd className="font-mono text-white/70">⌘Z</kbd></li>
+              <li className="flex items-center justify-between"><span>Redo</span><kbd className="font-mono text-white/70">⌘⇧Z</kbd></li>
+              <li className="flex items-center justify-between"><span>Delete</span><kbd className="font-mono text-white/70">Del</kbd></li>
+              <li className="flex items-center justify-between"><span>Rotate selection</span><kbd className="font-mono text-white/70">R</kbd></li>
+              <li className="flex items-center justify-between"><span>Pan canvas</span><kbd className="font-mono text-white/70">Space+drag</kbd></li>
+              <li className="flex items-center justify-between"><span>Zoom</span><kbd className="font-mono text-white/70">Scroll</kbd></li>
+              <li className="flex items-center justify-between"><span>Select all</span><kbd className="font-mono text-white/70">⌘A</kbd></li>
+            </ul>
           </div>
         </div>
       )}

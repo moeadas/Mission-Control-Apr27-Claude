@@ -14,6 +14,7 @@ import { ProviderFallback, ThemeMode } from '@/lib/types'
 import { getAuthToken } from '@/lib/auth/browser'
 import { Lock } from 'lucide-react'
 import Link from 'next/link'
+import { BuildVersionBadge } from '@/components/BuildVersionBadge'
 
 type ProviderHealth = 'idle' | 'testing' | 'connected' | 'invalid'
 type GeminiHealth = ProviderHealth
@@ -745,14 +746,16 @@ export default function SettingsPage() {
   return (
     <ClientShell>
       <div className="flex flex-col h-full">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border flex-shrink-0">
+        <div className="flex items-center justify-between gap-4 px-6 py-4 border-b border-border flex-shrink-0">
           <div>
             <h1 className="text-xl font-heading font-bold text-text-primary flex items-center gap-2">
               <Settings size={20} className="text-text-secondary" />
               Settings
             </h1>
-            <p className="text-xs text-text-secondary mt-0.5">Agency defaults, providers, and presentation mode</p>
+            <p className="text-xs text-text-secondary mt-0.5">Workspace defaults, providers, and presentation mode</p>
           </div>
+          {/* Build version chip so the user can confirm which build they're testing. */}
+          <BuildVersionBadge />
         </div>
 
         <div className="flex-1 overflow-y-auto p-6">
