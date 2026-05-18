@@ -262,12 +262,29 @@ export async function POST(req: NextRequest) {
       missionId,
     } = requestBody
 
+    // Batch Q: if the client provided a missionId but the task row hasn't
+    // been persisted yet (race vs. /api/state PUT), the server creates a
+    // stub row right here. That guarantees the FK target exists for
+    // task_events / task_runs / workflow_instances inserts that follow —
+    // previously this race meant `canPersistMissionExecution` was false and
+    // NO SSE events fired, leaving the progress tracker stuck at 8%.
     let canPersistMissionExecution = false
     if (missionId) {
       try {
         canPersistMissionExecution = await waitForTaskPersistence(missionId)
+        if (!canPersistMissionExecution && auth.tenantId) {
+          // Self-heal: insert a minimal task row so events have a target.
+          const db = getDb()
+          await db`
+            INSERT INTO tasks (id, agency_id, title, status, summary)
+            VALUES (${missionId}, ${auth.tenantId}::uuid, ${'New chat task'}, 'in_progress', '')
+            ON CONFLICT (id) DO NOTHING
+          `
+          canPersistMissionExecution = true
+          console.log('[CHAT] Self-created task row for missionId', missionId)
+        }
       } catch (error) {
-        console.warn('[CHAT] Task execution persistence skipped during lookup:', error)
+        console.warn('[CHAT] Task persistence self-heal failed:', error)
       }
     }
 
@@ -776,17 +793,19 @@ Orchestration trace:
           },
           startedAt: new Date().toISOString(),
         })
-        // Batch M: open the SSE timeline with a running event so the Live
-        // Task Tracker stops showing "Waiting for execution" before the
-        // first phase emits.
+        // Batch M+Q: open the SSE timeline. Progress is no longer hardcoded —
+        // we expose the routing/skill-selection steps that did finish before
+        // the runner started.
         if (auth.tenantId) {
+          const routedAgentName =
+            agents.find((a: any) => a.id === channelingPlan.leadAgentId)?.name || channelingPlan.leadAgentId
           void emitTaskEvent({
             taskId: missionId,
             tenantId: auth.tenantId,
             type: 'running',
-            progress: 8,
-            message: 'Iris is preparing the request and routing it to the right specialists.',
-            payload: { deliverableType, leadAgentId: channelingPlan.leadAgentId },
+            progress: 12,
+            message: `Routed to ${routedAgentName}. Deliverable type: ${deliverableType.replace(/-/g, ' ')}.`,
+            payload: { deliverableType, leadAgentId: channelingPlan.leadAgentId, collaboratorIds: channelingPlan.collaboratorAgentIds },
           })
         }
       }

@@ -1041,6 +1041,14 @@ export async function executeAutonomousTask(input: {
     executionSteps.push(...pipelineRun.executionSteps)
     Object.assign(pipelineOutputs, pipelineRun.outputRegister)
   } else {
+    // Batch Q: emit hook events in the no-pipeline branch so the Live Task
+    // Tracker doesn't sit at 8% during collaborator handoffs. Progress is
+    // computed as a fraction of total agents that need to run (collaborators
+    // + the lead final assembly that follows).
+    const totalAgentsRunning = Math.max(1, input.collaboratorAgentIds.length + 1)
+    const fakePhase = { id: 'direct-execution', name: 'Direct execution' } as PipelinePhase
+    let agentsRunDone = 0
+
     for (const collaboratorId of input.collaboratorAgentIds) {
       const agent = agentMap.get(collaboratorId)
       if (!agent) continue
@@ -1054,6 +1062,20 @@ export async function executeAutonomousTask(input: {
         input.request
       )
       const runtime = resolveAgentRuntime(agent, input)
+
+      const fakeActivity = {
+        id: `${collaboratorId}-handoff`,
+        name: `${agent.name} specialist handoff`,
+      } as PipelineActivity
+      const startProgress = Math.max(15, Math.round(((agentsRunDone) / totalAgentsRunning) * 75) + 15)
+      await input.hooks?.onActivityStart?.({
+        phase: fakePhase,
+        activity: fakeActivity,
+        agent,
+        runtime,
+        progress: startProgress,
+      })
+
       const summary = await generateContentFirstText({
         deliverableType: input.deliverableType,
         provider: runtime.provider,
@@ -1085,6 +1107,18 @@ export async function executeAutonomousTask(input: {
         providerSettings: input.providerSettings,
       })
 
+      agentsRunDone += 1
+      const endProgress = Math.max(20, Math.round((agentsRunDone / totalAgentsRunning) * 75) + 15)
+      await input.hooks?.onActivityComplete?.({
+        phase: fakePhase,
+        activity: fakeActivity,
+        agent,
+        runtime,
+        summary,
+        outputIds: [],
+        progress: endProgress,
+      })
+
       executionSteps.push({
         id: `${collaboratorId}-${Date.now()}-${executionSteps.length}`,
         agentId: collaboratorId,
@@ -1109,6 +1143,16 @@ export async function executeAutonomousTask(input: {
     outputTemplate: leadPrimarySkillOutputTemplate,
   } = buildSkillContextForLead(leadAgent, skillLookup, leadSelectedSkills, input.deliverableType, input.request)
   const leadRuntime = resolveAgentRuntime(leadAgent, input)
+
+  // Batch Q: emit a hook so the Live Task Tracker shows the long-running
+  // final-assembly step (the single slowest LLM call in the typical chain).
+  await input.hooks?.onActivityStart?.({
+    phase: { id: 'final-assembly', name: 'Final assembly' } as PipelinePhase,
+    activity: { id: 'final-assembly', name: `${leadAgent.name} drafting final output` } as PipelineActivity,
+    agent: leadAgent,
+    runtime: leadRuntime,
+    progress: 90,
+  })
 
   let response = await generateContentFirstText({
     deliverableType: input.deliverableType,
@@ -1190,6 +1234,17 @@ export async function executeAutonomousTask(input: {
     provider: leadRuntime.provider,
     model: leadRuntime.model,
     skillsUsed: leadSelectedSkills.slice(0, 5),
+  })
+
+  // Batch Q: tell the Live Task Tracker the lead has handed back its draft.
+  await input.hooks?.onActivityComplete?.({
+    phase: { id: 'final-assembly', name: 'Final assembly' } as PipelinePhase,
+    activity: { id: 'final-assembly', name: `${leadAgent.name} final draft` } as PipelineActivity,
+    agent: leadAgent,
+    runtime: leadRuntime,
+    summary: 'Lead agent finished the final deliverable draft.',
+    outputIds: [],
+    progress: 95,
   })
 
   let qualityResult = validateDeliverableQuality(input.deliverableType, response, input.request)
