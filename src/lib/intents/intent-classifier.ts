@@ -29,6 +29,136 @@ export { DELIVERABLE_REGISTRY, getDeliverableSpec, listDeliverableSpecs }
 export type { DeliverableSpec }
 
 /* ────────────────────────────────────────────────────────────────────────
+ * Arabic language support (H-32 — Batch O)
+ *
+ * Arabic is RTL and has no \b word boundary semantics in the regex engine,
+ * so we can't reuse the English patterns. Instead we:
+ *   1. Detect any Arabic codepoints in the input (U+0600–U+06FF, U+FB50–U+FDFF, U+FE70–U+FEFF).
+ *   2. Normalize Arabic forms (strip tatweel + diacritics, collapse alef variants).
+ *   3. Run a parallel Arabic keyword pass that augments — never replaces — the English pass.
+ *
+ * This means mixed-language messages ("اكتب لي an Instagram post") still work.
+ * ─────────────────────────────────────────────────────────────────────── */
+
+const ARABIC_RANGE = /[؀-ۿﭐ-﷿ﹰ-﻿]/
+const ARABIC_DIACRITICS = /[ً-ٰٟۖ-ۭ]/g
+const ARABIC_TATWEEL = /ـ/g
+
+export function containsArabic(content: string): boolean {
+  return ARABIC_RANGE.test(content || '')
+}
+
+function normalizeArabic(input: string): string {
+  return (input || '')
+    .replace(ARABIC_DIACRITICS, '')
+    .replace(ARABIC_TATWEEL, '')
+    .replace(/[أإآ]/g, 'ا') // أ إ آ → ا
+    .replace(/ى/g, 'ي') // ى → ي
+    .replace(/ة/g, 'ه') // ة → ه
+    .toLowerCase()
+}
+
+// Arabic task verbs and request signals. Each entry is matched as a substring
+// against the *normalized* Arabic text.
+const ARABIC_TASK_KEYWORDS = [
+  'اكتب', 'كتابه', 'انشئ', 'انشاء', 'اعمل', 'صمم', 'تصميم',
+  'خطط', 'خطه', 'استراتيجيه', 'استراتيجي', 'حمله', 'حملات',
+  'احتاج', 'اريد', 'نريد', 'يمكنك', 'ساعدني', 'ساعد', 'رجاء',
+  'حلل', 'تحليل', 'ابحث', 'بحث', 'دراسه', 'راجع', 'مراجعه',
+  'اقترح', 'اقتراح', 'افكار', 'فكره', 'محتوي', 'منشور', 'منشورات',
+  'مقال', 'مقاله', 'مدونه', 'تقرير', 'موجز', 'برييف',
+  'تقويم محتوي', 'جدول محتوي', 'حمله تسويقيه', 'خطه تسويقيه',
+  'الجمهور المستهدف', 'تموضع', 'رسائل استراتيجيه', 'هويه',
+  'سيو', 'اعلان', 'اعلانات', 'فيديو', 'صوره',
+]
+
+const ARABIC_CASUAL_PATTERNS: RegExp[] = [
+  /^مرحبا[!؟.\s]*$/,
+  /^اهلا[!؟.\s]*$/,
+  /^هلا[!؟.\s]*$/,
+  /^السلام عليكم[!؟.\s]*$/,
+  /^صباح الخير[!؟.\s]*$/,
+  /^مساء الخير[!؟.\s]*$/,
+  /^شكرا[!؟.\s]*$/,
+  /^شكرا لك[!؟.\s]*$/,
+  /^تمام[!؟.\s]*$/,
+  /^حسنا[!؟.\s]*$/,
+  /^ممتاز[!؟.\s]*$/,
+  /^نعم[!؟.\s]*$/,
+  /^لا[!؟.\s]*$/,
+  /^كيف حالك[!؟.\s]*$/,
+  /^فهمت[!؟.\s]*$/,
+]
+
+const ARABIC_EXPLICIT_CHAT_PATTERNS: string[] = [
+  'ماذا يمكنك ان تفعل',
+  'ماذا يمكن ايريس ان تفعل',
+  'ما هي حاله المشروع',
+  'حاله المهمه',
+  'حاله المشروع',
+  'من يعمل علي',
+  'اظهر الفريق',
+  'من هم الوكلاء',
+  'كيف يعمل التطبيق',
+  'اعرض المهام',
+  'اخبرني عن نفسك',
+]
+
+const ARABIC_STRATEGY_SIGNALS = [
+  'الجمهور المستهدف',
+  'ابحاث الجمهور',
+  'تحليل السوق',
+  'ابحاث السوق',
+  'رؤيه العميل',
+  'القيمه المقترحه',
+  'رسائل استراتيجيه',
+  'محاور الرساله',
+  'الرساله الاستراتيجيه',
+  'التموضع',
+  'الهويه',
+  'مشكله مبيعات',
+  'لماذا لا يشترون',
+]
+
+const ARABIC_RESEARCH_SIGNALS = [
+  'بحث',
+  'دراسه',
+  'تحليل',
+  'منافس',
+  'منافسين',
+  'مقياس',
+  'بيانات',
+  'رؤيه',
+  'اتجاه',
+  'مشهد',
+  'تدقيق',
+  'تقرير',
+]
+
+const ARABIC_DELIVERABLE_NOUNS = [
+  'تقرير', 'موجز', 'برييف', 'تقويم', 'خطه', 'استراتيجيه', 'تدقيق',
+  'تحليل', 'عرض', 'اقتراح', 'محتوي', 'منشور', 'مقال', 'مدونه',
+  'حمله', 'بريد', 'ايميل', 'رساله', 'صفحه', 'تصميم', 'صوره',
+  'لافته', 'بانر', 'وصف', 'شعار', 'هاشتاج',
+]
+
+const ARABIC_SOCIAL_PLATFORM_RE =
+  /(انستغرام|انستجرام|فيسبوك|فيس بوك|لينكد ?ان|لينكد ?إن|لينكدان|تويتر|اكس|تيك ?توك|تيكتوك|سناب ?شات|سناب)/
+
+const ARABIC_SOCIAL_POST_RE =
+  /(منشور (انستغرام|انستجرام|فيسبوك|فيس بوك|لينكد ?ان|لينكدان|تويتر|اكس|سوشيال|اجتماعي)|بوست (انستغرام|فيسبوك|لينكد|تويتر|اجتماعي)|كابشن|تسميه توضيحيه|كاروسيل|منشور اجتماعي|منشور سوشيال|بوست واحد)/
+
+const ARABIC_VISUAL_RE =
+  /(صوره|صور|تصميم|بانر|لافته|اعلان مرئي|عمل فني|رسم|فني|مرئي|بصري|فيديو|ملصق|بوستر)/
+
+const ARABIC_RESEARCH_RE = /(بحث|دراسه|منافس|تحليل|تدقيق|مقياس)/
+const ARABIC_COPY_RE = /(كتابه|محتوي|نص|كابشن|عنوان|هاشتاج|سيناريو|مقال|بيو)/
+const ARABIC_PRESENTATION_RE = /(عرض|بريزنتيشن|اصحاب المصلحه|مستثمر|تنفيذي|اداره)/
+const ARABIC_BUDGET_RE = /(ميزانيه|انفاق|قنوات|توزيع|كي بي اي|كي ?بي ?اي|توقعات)/
+const ARABIC_TIMELINE_RE = /(جدول زمني|تسليم|موارد|خطه مشروع)/
+const ARABIC_CONCEPT_RE = /(مفهوم|اتجاه ابداعي|عصف ذهني|تجربه مستخدم|واجهه)/
+
+/* ────────────────────────────────────────────────────────────────────────
  * Conversational vs task classification
  * ─────────────────────────────────────────────────────────────────────── */
 
@@ -117,15 +247,24 @@ export function isConversationalMessage(content: string): boolean {
   if (!trimmed) return true
 
   const lower = trimmed.toLowerCase()
+  const isArabic = containsArabic(trimmed)
+  const arabicNormalized = isArabic ? normalizeArabic(trimmed) : ''
 
   if (CASUAL_PATTERNS.some((pattern) => pattern.test(trimmed))) return true
   if (EXPLICIT_CHAT_ONLY_PATTERNS.some((pattern) => pattern.test(trimmed))) return true
+  if (isArabic && ARABIC_CASUAL_PATTERNS.some((pattern) => pattern.test(trimmed))) return true
+  if (isArabic && ARABIC_EXPLICIT_CHAT_PATTERNS.some((signal) => arabicNormalized.includes(signal))) return true
 
   if (TASK_KEYWORDS.test(content)) return false
   if (STRATEGIC_TASK_SIGNALS.some((signal) => lower.includes(signal))) return false
   if (NEED_VERBS_RE.test(lower) && DELIVERABLE_NOUNS_RE.test(lower)) return false
 
-  if (trimmed.length < 24 && !/[?.!]/.test(trimmed)) return true
+  if (isArabic) {
+    if (ARABIC_TASK_KEYWORDS.some((keyword) => arabicNormalized.includes(keyword))) return false
+    if (ARABIC_STRATEGY_SIGNALS.some((signal) => arabicNormalized.includes(signal))) return false
+  }
+
+  if (trimmed.length < 24 && !/[?.!؟]/.test(trimmed)) return true
   return false
 }
 
@@ -139,8 +278,16 @@ export function isSubstantiveRequest(content: string): boolean {
   if (lower.length < 20) return false
   if (ACTION_VERBS_RE.test(lower)) return true
   if (NEED_VERBS_RE.test(lower) && lower.length > 30) return true
-  if (lower.length > 60 && lower.includes('?')) return true
+  if (lower.length > 60 && (lower.includes('?') || lower.includes('؟'))) return true
   if (DELIVERABLE_NOUNS_RE.test(lower) && lower.length > 30) return true
+
+  if (containsArabic(content)) {
+    const normalized = normalizeArabic(content)
+    if (ARABIC_TASK_KEYWORDS.some((keyword) => normalized.includes(keyword))) return true
+    if (ARABIC_DELIVERABLE_NOUNS.some((noun) => normalized.includes(noun)) && lower.length > 25) return true
+    if (ARABIC_STRATEGY_SIGNALS.some((signal) => normalized.includes(signal))) return true
+  }
+
   return lower.length > 50
 }
 
@@ -188,12 +335,27 @@ const RESEARCH_SIGNALS = [
  */
 export function inferDeliverableType(content: string): DeliverableType {
   const lower = (content || '').toLowerCase()
+  const isArabic = containsArabic(content)
+  const arabicNormalized = isArabic ? normalizeArabic(content) : ''
 
-  const strategySignalCount = STRATEGY_SIGNALS.filter((signal) => lower.includes(signal)).length
-  const researchSignalCount = RESEARCH_SIGNALS.filter((signal) => lower.includes(signal)).length
+  let strategySignalCount = STRATEGY_SIGNALS.filter((signal) => lower.includes(signal)).length
+  let researchSignalCount = RESEARCH_SIGNALS.filter((signal) => lower.includes(signal)).length
+
+  if (isArabic) {
+    strategySignalCount += ARABIC_STRATEGY_SIGNALS.filter((signal) =>
+      arabicNormalized.includes(signal)
+    ).length
+    researchSignalCount += ARABIC_RESEARCH_SIGNALS.filter((signal) =>
+      arabicNormalized.includes(signal)
+    ).length
+  }
 
   if (strategySignalCount >= 3) {
-    return lower.includes('research') || lower.includes('analysis') ? 'research-brief' : 'strategy-brief'
+    const wantsResearch =
+      lower.includes('research') ||
+      lower.includes('analysis') ||
+      (isArabic && (arabicNormalized.includes('بحث') || arabicNormalized.includes('تحليل')))
+    return wantsResearch ? 'research-brief' : 'strategy-brief'
   }
 
   // Explicit social post patterns always resolve to campaign-copy.
@@ -207,9 +369,31 @@ export function inferDeliverableType(content: string): DeliverableType {
     return 'campaign-copy'
   }
 
+  // Arabic social post early-return — mirrors the English path above.
+  if (
+    isArabic &&
+    ARABIC_SOCIAL_POST_RE.test(arabicNormalized) &&
+    !/(تقويم محتوي|جدول محتوي|محتوي شهري|محتوي اسبوعي)/.test(arabicNormalized)
+  ) {
+    return 'campaign-copy'
+  }
+
   const candidates = DELIVERABLE_REGISTRY.filter((spec) => spec.patterns.length > 0).sort(
     (a, b) => b.priority - a.priority
   )
+
+  // Per-deliverable Arabic keyword boosts. Each keyword adds a comparable score
+  // to a single regex match (~12), so Arabic and English requests rank fairly.
+  const arabicBoosts: Record<string, string[]> = {
+    'campaign-copy': ['كتابه اعلانيه', 'محتوي اعلاني', 'نص اعلاني', 'كابشن', 'منشور', 'بوست', 'هاشتاج', 'تسميه توضيحيه'],
+    'campaign-strategy': ['استراتيجيه حمله', 'خطه حمله', 'حمله تسويقيه', 'استراتيجيه تسويقيه', 'خطه تسويقيه'],
+    'strategy-brief': ['استراتيجيه', 'تموضع', 'هويه', 'القيمه المقترحه', 'محاور الرساله', 'الجمهور المستهدف'],
+    'content-calendar': ['تقويم محتوي', 'جدول محتوي', 'محتوي شهري', 'محتوي اسبوعي', 'خطه محتوي'],
+    'research-brief': ['بحث', 'دراسه', 'تحليل سوق', 'منافسين', 'مشهد', 'تدقيق', 'رؤيه عميل'],
+    'creative-asset': ARABIC_VISUAL_RE.source.replace(/[()]/g, '').split('|'),
+    'short-form-copy': ['كابشن', 'عنوان', 'وصف', 'بيو', 'شعار', 'تسميه توضيحيه'],
+    'status-report': [],
+  }
 
   let bestId: DeliverableType = 'status-report'
   let bestScore = 0
@@ -224,16 +408,29 @@ export function inferDeliverableType(content: string): DeliverableType {
       }
     }
 
+    if (isArabic) {
+      const boosts = arabicBoosts[spec.id] || []
+      for (const keyword of boosts) {
+        if (keyword && arabicNormalized.includes(keyword)) {
+          score += 12
+          score += keyword.length * 0.5
+        }
+      }
+    }
+
     if (spec.id === 'creative-asset' && score > 0) {
       // Hard-dampen if the request is clearly asking for a social post (text copy),
       // not image/visual generation. The social-post early-return above catches most
       // cases; this handles edge cases like "create a post image for our Instagram".
       if (/\b(instagram post|facebook post|linkedin post|social post|single post|caption)\b/.test(lower)) {
         score *= 0.05
+      } else if (isArabic && ARABIC_SOCIAL_POST_RE.test(arabicNormalized)) {
+        score *= 0.05
       } else if (
         !/\b(post|caption|instagram|facebook|linkedin|social|ad|banner|display|poster|creative|visual|image|artwork|design)\b/.test(
           lower
-        )
+        ) &&
+        !(isArabic && (ARABIC_VISUAL_RE.test(arabicNormalized) || ARABIC_SOCIAL_PLATFORM_RE.test(arabicNormalized)))
       ) {
         score *= 0.35
       }
@@ -244,15 +441,19 @@ export function inferDeliverableType(content: string): DeliverableType {
 
     if (
       spec.id === 'campaign-copy' &&
-      /\b(strategy|plan|planning|strategic)\b/.test(lower)
+      (/\b(strategy|plan|planning|strategic)\b/.test(lower) ||
+        (isArabic && /(استراتيجيه|خطه استراتيجيه|تخطيط استراتيجي)/.test(arabicNormalized)))
     ) {
       score *= 0.6
     }
 
     if (
       spec.id === 'campaign-strategy' &&
-      /\b(write|draft|copy|caption|post)\b/.test(lower) &&
-      !/\b(strategy|plan|strategic)\b/.test(lower)
+      ((/\b(write|draft|copy|caption|post)\b/.test(lower) &&
+        !/\b(strategy|plan|strategic)\b/.test(lower)) ||
+        (isArabic &&
+          /(كابشن|بوست|منشور|اكتب)/.test(arabicNormalized) &&
+          !/(استراتيجيه|خطه)/.test(arabicNormalized)))
     ) {
       score *= 0.5
     }
@@ -424,6 +625,17 @@ const CONTENT_SIGNAL_AGENTS: Array<{ pattern: RegExp; agentId: string }> = [
   { pattern: /(concept|creative direction|campaign concept|idea|brainstorm|ux|ui|usability)/i, agentId: 'finn' },
 ]
 
+const ARABIC_CONTENT_SIGNAL_AGENTS: Array<{ pattern: RegExp; agentId: string }> = [
+  { pattern: ARABIC_VISUAL_RE, agentId: 'lyra' },
+  { pattern: ARABIC_RESEARCH_RE, agentId: 'atlas' },
+  { pattern: ARABIC_PRESENTATION_RE, agentId: 'sage' },
+  { pattern: ARABIC_COPY_RE, agentId: 'echo' },
+  { pattern: ARABIC_BUDGET_RE, agentId: 'nova' },
+  { pattern: /(جدول بيانات|اكسل|اكسيل|توقعات ماليه|كي ?بي ?اي)/, agentId: 'dex' },
+  { pattern: ARABIC_TIMELINE_RE, agentId: 'piper' },
+  { pattern: ARABIC_CONCEPT_RE, agentId: 'finn' },
+]
+
 /**
  * Same shape as the prior server/ai.ts inferRoutingContext but powered by
  * the canonical registry. Both server and client can call this safely.
@@ -460,10 +672,40 @@ export function inferRoutingContext(input: {
     }
   }
 
+  if (containsArabic(input.content)) {
+    const arabicNormalized = normalizeArabic(input.content)
+    for (const signal of ARABIC_CONTENT_SIGNAL_AGENTS) {
+      if (
+        signal.pattern.test(arabicNormalized) &&
+        signal.agentId !== routedAgentId &&
+        availableAgentIds.has(signal.agentId)
+      ) {
+        collaborators.add(signal.agentId)
+      }
+    }
+  }
+
   let confidence: RoutingContext['confidence'] = 'low'
   if (deliverableType !== 'status-report') {
     const patternMatches = spec.patterns.filter((pattern) => pattern.test(lower)).length
-    confidence = patternMatches >= 2 ? 'high' : patternMatches === 1 ? 'medium' : 'low'
+    let arabicMatches = 0
+    if (containsArabic(input.content)) {
+      const arabicNormalized = normalizeArabic(input.content)
+      // Bag of Arabic signals that correspond to "the user clearly stated a deliverable type".
+      const arabicSignals = [
+        ARABIC_SOCIAL_POST_RE,
+        ARABIC_VISUAL_RE,
+        ARABIC_COPY_RE,
+        ARABIC_RESEARCH_RE,
+        ARABIC_PRESENTATION_RE,
+        ARABIC_BUDGET_RE,
+        ARABIC_TIMELINE_RE,
+        ARABIC_SOCIAL_PLATFORM_RE,
+      ]
+      arabicMatches = arabicSignals.filter((re) => re.test(arabicNormalized)).length
+    }
+    const totalMatches = patternMatches + arabicMatches
+    confidence = totalMatches >= 2 ? 'high' : totalMatches === 1 ? 'medium' : 'low'
   }
 
   const routedAgent = (input.agents || []).find((agent) => agent.id === routedAgentId)

@@ -9,6 +9,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  containsArabic,
   inferDeliverableType,
   isConversationalMessage,
   isSubstantiveRequest,
@@ -79,5 +80,59 @@ describe('inferDeliverableType', () => {
   it('returns status-report for empty / very short inputs', () => {
     expect(inferDeliverableType('')).toBe('status-report')
     expect(inferDeliverableType('hi')).toBe('status-report')
+  })
+})
+
+describe('Arabic language support (H-32)', () => {
+  it('detects Arabic characters', () => {
+    expect(containsArabic('مرحبا')).toBe(true)
+    expect(containsArabic('hello مرحبا')).toBe(true)
+    expect(containsArabic('hello')).toBe(false)
+    expect(containsArabic('')).toBe(false)
+  })
+
+  it('treats Arabic greetings as conversational', () => {
+    expect(isConversationalMessage('مرحبا')).toBe(true)
+    expect(isConversationalMessage('أهلا')).toBe(true)
+    expect(isConversationalMessage('السلام عليكم')).toBe(true)
+    expect(isConversationalMessage('شكرا')).toBe(true)
+    expect(isConversationalMessage('صباح الخير')).toBe(true)
+  })
+
+  it('does NOT treat Arabic work requests as conversational', () => {
+    expect(isConversationalMessage('اكتب لي منشور انستغرام عن إطلاق منتجنا الجديد')).toBe(false)
+    expect(isConversationalMessage('أحتاج تقويم محتوى لشهر القادم')).toBe(false)
+    expect(isConversationalMessage('صمم لي حملة تسويقية لشركتنا')).toBe(false)
+    expect(isConversationalMessage('ساعدني في تحديد الجمهور المستهدف والقيمة المقترحة')).toBe(false)
+  })
+
+  it('flags Arabic action verbs as substantive', () => {
+    expect(isSubstantiveRequest('اكتب لي خطة محتوى ربع سنوية')).toBe(true)
+    expect(isSubstantiveRequest('حلل أداء قمع المبيعات لدينا')).toBe(true)
+    expect(isSubstantiveRequest('ابحث عن المنافسين في السوق')).toBe(true)
+  })
+
+  it('routes Arabic Instagram-post requests to campaign-copy', () => {
+    expect(inferDeliverableType('اكتب منشور انستغرام عن منتجنا الجديد')).toBe('campaign-copy')
+    expect(inferDeliverableType('اعمل لي بوست لينكدإن عن التوظيف')).toBe('campaign-copy')
+    expect(inferDeliverableType('اكتب كابشن لمنشور فيسبوك')).toBe('campaign-copy')
+  })
+
+  it('routes Arabic visual requests to creative-asset', () => {
+    expect(inferDeliverableType('صمم لي بانر للحملة')).toBe('creative-asset')
+    expect(inferDeliverableType('اعمل لي بوستر للفعالية')).toBe('creative-asset')
+  })
+
+  it('routes Arabic content-calendar requests', () => {
+    expect(inferDeliverableType('اعمل لي تقويم محتوى لشهر كامل')).toBe('content-calendar')
+  })
+
+  it('routes Arabic strategy briefs', () => {
+    expect(inferDeliverableType('احتاج خطة تموضع وهوية للعلامة التجارية')).toBe('strategy-brief')
+  })
+
+  it('handles mixed Arabic + English correctly', () => {
+    expect(isConversationalMessage('اكتب لي an Instagram post')).toBe(false)
+    expect(inferDeliverableType('اكتب لي an Instagram post for the launch')).toBe('campaign-copy')
   })
 })
