@@ -475,6 +475,43 @@ CREATE TABLE IF NOT EXISTS task_events (
 CREATE INDEX IF NOT EXISTS idx_task_events_task_created ON task_events (task_id, id);
 CREATE INDEX IF NOT EXISTS idx_task_events_tenant       ON task_events (tenant_id);
 
+-- ─── Workflow instances + task runs (Batch T) ───────────────────────────────
+-- These were missing from earlier init.sql versions even though the runner
+-- code requires them. Without these, every async task crashed on first write.
+CREATE TABLE IF NOT EXISTS workflow_instances (
+  id              TEXT PRIMARY KEY,
+  agency_id       UUID NOT NULL REFERENCES agencies(id) ON DELETE CASCADE,
+  pipeline_id     TEXT REFERENCES pipelines(id) ON DELETE SET NULL,
+  task_id         TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  status          TEXT NOT NULL,
+  current_phase   TEXT,
+  progress        NUMERIC DEFAULT 0,
+  context         JSONB DEFAULT '{}'::jsonb,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_workflow_instances_agency_id ON workflow_instances(agency_id);
+CREATE INDEX IF NOT EXISTS idx_workflow_instances_task_id   ON workflow_instances(task_id);
+
+CREATE TABLE IF NOT EXISTS task_runs (
+  id              BIGSERIAL PRIMARY KEY,
+  agency_id       UUID NOT NULL REFERENCES agencies(id) ON DELETE CASCADE,
+  task_id         TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  agent_id        TEXT REFERENCES agents(id) ON DELETE SET NULL,
+  stage           TEXT NOT NULL,
+  status          TEXT NOT NULL,
+  input_payload   JSONB DEFAULT '{}'::jsonb,
+  output_payload  JSONB DEFAULT '{}'::jsonb,
+  error_message   TEXT,
+  started_at      TIMESTAMPTZ,
+  completed_at    TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_task_runs_agency_id    ON task_runs(agency_id);
+CREATE INDEX IF NOT EXISTS idx_task_runs_task_id      ON task_runs(task_id);
+CREATE INDEX IF NOT EXISTS idx_task_runs_task_created ON task_runs(task_id, created_at DESC);
+
 -- ─── Audit log ──────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS audit_events (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -513,7 +550,8 @@ BEGIN
     'users','profiles','agencies','subscriptions',
     'agents','clients','skills','pipelines',
     'tasks','outputs','conversations','knowledge_assets',
-    'office_layouts','scheduled_tasks','mission_control_state','oauth_tokens'
+    'office_layouts','scheduled_tasks','mission_control_state','oauth_tokens',
+    'workflow_instances','task_runs'
   ]
   LOOP
     EXECUTE format('DROP TRIGGER IF EXISTS %I_set_updated_at ON %I', t, t);
