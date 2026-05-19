@@ -56,12 +56,22 @@ export async function POST(
       action?: 'retry' | 'resume'
       comment?: string
       runtimeMode?: 'fast' | 'thinking' | 'compare'
+      bootstrap?: {
+        prompt?: string
+        title?: string
+        deliverableType?: string | null
+        leadAgentId?: string | null
+        collaboratorAgentIds?: string[] | null
+        pipelineId?: string | null
+        clientId?: string | null
+      }
     }
     const action = body.action === 'resume' ? 'resume' : 'retry'
 
     const job = queueTaskExecution(id, auth, action, {
       comment: body.comment?.trim() || undefined,
       runtimeMode: body.runtimeMode,
+      bootstrap: body.bootstrap,
     })
 
     return NextResponse.json(

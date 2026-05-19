@@ -1,5 +1,5 @@
 import type { AuthContext } from '@/lib/auth/server'
-import { runTaskExecution } from '@/lib/server/task-execution'
+import { runTaskExecution, type TaskBootstrap } from '@/lib/server/task-execution'
 
 type QueueStatus = 'idle' | 'queued' | 'running' | 'completed' | 'failed'
 
@@ -24,7 +24,11 @@ export function queueTaskExecution(
   taskId: string,
   auth: AuthContext,
   action: 'retry' | 'resume' = 'retry',
-  options?: { comment?: string; runtimeMode?: 'fast' | 'thinking' | 'compare' }
+  options?: {
+    comment?: string
+    runtimeMode?: 'fast' | 'thinking' | 'compare'
+    bootstrap?: TaskBootstrap
+  }
 ) {
   const existing = jobs.get(taskId)
   if (existing && (existing.status === 'queued' || existing.status === 'running')) {

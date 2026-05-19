@@ -26,6 +26,73 @@ async function getDefaultAgencyId(): Promise<string | null> {
   }
 }
 
+/**
+ * Batch R — self-bootstrap missing task rows.
+ *
+ * The async execution path (queueMissionExecution → /api/tasks/:id/execution)
+ * fires before /api/state PUT has persisted the mission, leaving the `tasks`
+ * row absent. Without this helper, `runTaskExecution` threw "Task not found"
+ * and the client fell through to the legacy 290s-timeout chat path.
+ *
+ * This upsert is idempotent (ON CONFLICT DO NOTHING) and only writes the
+ * minimum needed for downstream FKs (task_runs, task_events, workflow_instances,
+ * outputs). All other fields are filled in by the runner.
+ */
+export interface TaskBootstrap {
+  prompt?: string
+  title?: string
+  deliverableType?: string | null
+  leadAgentId?: string | null
+  collaboratorAgentIds?: string[] | null
+  pipelineId?: string | null
+  clientId?: string | null
+}
+
+export async function ensureTaskExists(
+  taskId: string,
+  auth: AuthContext,
+  bootstrap?: TaskBootstrap
+): Promise<boolean> {
+  const agencyId = auth.tenantId || (await getDefaultAgencyId())
+  if (!agencyId) return false
+
+  const db = getDb()
+  const existing = await db`SELECT id FROM tasks WHERE id = ${taskId} LIMIT 1`
+  if (existing[0]) return true
+
+  const title = (bootstrap?.title || bootstrap?.prompt || 'New chat task').slice(0, 280)
+  const summary = (bootstrap?.prompt || bootstrap?.title || '').slice(0, 4000)
+  const deliverableType = bootstrap?.deliverableType || 'general-task'
+  const leadAgentId = bootstrap?.leadAgentId || null
+  const pipelineId = bootstrap?.pipelineId || null
+  const clientId = bootstrap?.clientId || null
+  const metadata = {
+    bootstrappedAt: new Date().toISOString(),
+    bootstrappedBy: auth.userId,
+    collaboratorAgentIds: bootstrap?.collaboratorAgentIds || [],
+  }
+
+  try {
+    await db`
+      INSERT INTO tasks (
+        id, agency_id, title, summary, deliverable_type, status, priority,
+        owner_user_id, lead_agent_id, pipeline_id, client_id, progress,
+        execution_plan, metadata
+      ) VALUES (
+        ${taskId}, ${agencyId}, ${title}, ${summary}, ${deliverableType},
+        ${'in_progress'}, ${'normal'}, ${auth.userId}::uuid,
+        ${leadAgentId}, ${pipelineId}, ${clientId}, ${0},
+        ${db.json({})}, ${db.json(metadata)}
+      )
+      ON CONFLICT (id) DO NOTHING
+    `
+    return true
+  } catch (error) {
+    console.error('[ensureTaskExists] failed:', error)
+    return false
+  }
+}
+
 export async function loadTaskExecutionState(taskId: string, auth: AuthContext) {
   const agencyId = await getDefaultAgencyId()
   if (!agencyId) return null
@@ -244,10 +311,20 @@ export async function runTaskExecution(
   taskId: string,
   auth: AuthContext,
   action: 'retry' | 'resume' = 'retry',
-  options?: { comment?: string; runtimeMode?: 'fast' | 'thinking' | 'compare' }
+  options?: {
+    comment?: string
+    runtimeMode?: 'fast' | 'thinking' | 'compare'
+    bootstrap?: TaskBootstrap
+  }
 ) {
   const agencyId = await getDefaultAgencyId()
   if (!agencyId) throw new Error('Execution service unavailable.')
+
+  // Batch R: bootstrap a stub row if the task hasn't been persisted yet.
+  // No-op when the row already exists (ON CONFLICT DO NOTHING inside).
+  if (options?.bootstrap) {
+    await ensureTaskExists(taskId, auth, options.bootstrap)
+  }
 
   const db = getDb()
 

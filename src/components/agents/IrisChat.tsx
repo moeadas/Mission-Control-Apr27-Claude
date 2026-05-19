@@ -1161,8 +1161,21 @@ async function waitForMissionTaskPersistence(missionId: string, accessToken: str
 async function queueMissionExecution(
   missionId: string,
   accessToken: string,
-  runtimeMode?: 'fast' | 'thinking' | 'compare'
+  runtimeMode?: 'fast' | 'thinking' | 'compare',
+  bootstrap?: {
+    prompt?: string
+    title?: string
+    deliverableType?: string | null
+    leadAgentId?: string | null
+    collaboratorAgentIds?: string[] | null
+    pipelineId?: string | null
+    clientId?: string | null
+  }
 ) {
+  // Batch R: send the mission bootstrap payload so the server can self-create
+  // the tasks row if /api/state PUT hasn't landed yet. This eliminates the
+  // race that caused queueMissionExecution to silently fail and fall through
+  // to the 290s-timeout legacy chat path.
   const response = await fetch(`/api/tasks/${missionId}/execution`, {
     method: 'POST',
     headers: {
@@ -1172,6 +1185,7 @@ async function queueMissionExecution(
     body: JSON.stringify({
       action: 'retry',
       runtimeMode,
+      bootstrap,
     }),
   })
 
@@ -1492,20 +1506,41 @@ export function IrisChat() {
         handoffNotes: 'Iris is analysing the request and briefing the specialists.',
         orchestrationTrace: provisionalRouting.orchestrationTrace,
       })
-      await persistCurrentState()
-      const missionReady = await waitForMissionSync()
+      // Fire-and-forget the state persistence — server self-creates the row
+      // from the bootstrap payload below, so we don't need to wait for it.
+      persistCurrentState().catch(() => null)
       const accessToken = await getSessionToken()
 
-      if (missionReady && accessToken) {
-        await queueMissionExecution(createdMissionId, accessToken, providerSettings.routing.runtimeMode)
-        addAssistantMessage(
-          conversationId,
-          'Task launched. Iris has queued the mission and the live task page will show the execution progress.',
-          'iris',
-          { missionId: createdMissionId }
-        )
-        setChatStatus('idle')
-        return
+      if (accessToken) {
+        try {
+          await queueMissionExecution(
+            createdMissionId,
+            accessToken,
+            providerSettings.routing.runtimeMode,
+            {
+              prompt: finalPrompt,
+              title: finalPrompt.slice(0, 200),
+              deliverableType: provisionalRouting.deliverableType,
+              leadAgentId: provisionalRouting.leadAgentId,
+              collaboratorAgentIds: provisionalRouting.collaboratorAgentIds,
+              // Server resolves pipelineId from deliverableType.
+              pipelineId: null,
+              clientId: activeMission?.clientId || null,
+            }
+          )
+          addAssistantMessage(
+            conversationId,
+            'Task launched. Iris has queued the mission and the live task page will show the execution progress.',
+            'iris',
+            { missionId: createdMissionId }
+          )
+          setChatStatus('idle')
+          return
+        } catch (queueErr) {
+          // If queue fails, fall through to the legacy chat path so the user
+          // still gets a response. The console log helps diagnose silent fails.
+          console.warn('[IrisChat] queueMissionExecution failed, falling back to /api/chat:', queueErr)
+        }
       }
     }
 
