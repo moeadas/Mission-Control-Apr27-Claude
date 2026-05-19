@@ -10,6 +10,16 @@ import { sanitizePromptProfile, sanitizePromptValue } from '@/lib/server/prompt-
 import { getDb } from '@/lib/db/client'
 import type { AuthContext } from '@/lib/auth/server'
 import { loadConfigSkillCategories, mergeDbSkillsWithConfig } from '@/lib/server/skills-catalog'
+import {
+  buildExecutionPlan as buildProgressPlan,
+  startActivity,
+  completeActivity,
+  failActivity,
+  computeProgress,
+  phaseLabel,
+  type ExecutionPlan as ProgressExecutionPlan,
+} from '@/lib/server/task-progress'
+import { emitTaskEvent, emitActivityMessage, emitQualityIssues } from '@/lib/server/task-events'
 
 function toStableUuid(value: string) {
   const hex = Buffer.from(value).toString('hex').padEnd(32, '0').slice(0, 32)
@@ -193,7 +203,7 @@ export async function loadTaskExecutionState(taskId: string, auth: AuthContext) 
 export async function upsertWorkflowExecutionState(input: {
   taskId: string
   pipelineId?: string | null
-  status: 'draft' | 'active' | 'paused' | 'completed' | 'cancelled'
+  status: 'draft' | 'active' | 'paused' | 'completed' | 'cancelled' | 'failed'
   currentPhase?: string | null
   progress: number
   context?: Record<string, any>
@@ -368,6 +378,51 @@ function sanitizeExecutionRequestText(value: string) {
     .trim()
 }
 
+/**
+ * Batch U: human-readable verb describing what an agent is doing right now.
+ * Used to narrate the live activity message ("Echo is drafting copy options…").
+ * The verb depends on the agent's specialty + the deliverable type.
+ */
+function describeAgentVerb(agent: { id?: string | null; role?: string | null }, deliverableType: string | null): string {
+  const id = (agent.id || '').toLowerCase()
+  // Per-agent specialty narration. Falls back to a generic "working on it"
+  // when the agent id is unfamiliar (custom user-created agents).
+  if (id.startsWith('atlas')) return 'pulling research and brand context'
+  if (id.startsWith('maya')) return 'sharpening the strategic angle'
+  if (id.startsWith('echo')) {
+    if (deliverableType === 'campaign-copy' || deliverableType === 'short-form-copy') {
+      return 'drafting copy options and hooks'
+    }
+    if (deliverableType === 'email-campaign') return 'shaping subject lines and email body'
+    return 'writing the content'
+  }
+  if (id.startsWith('lyra')) return 'preparing visual direction'
+  if (id.startsWith('nova')) return 'mapping channel mix and cadence'
+  if (id.startsWith('dex')) return 'modelling KPIs and forecasts'
+  if (id.startsWith('finn')) return 'developing creative concepts'
+  if (id.startsWith('piper')) return 'mapping the timeline and handoffs'
+  if (id.startsWith('sage')) return 'framing the client narrative'
+  if (id.startsWith('iris')) return 'orchestrating the run'
+  // Custom agent — best we can do is use their role if known.
+  if (agent.role) return `working on the ${agent.role.toLowerCase()} portion`
+  return 'working on it'
+}
+
+function describeAgentDeliverable(agent: { id?: string | null }, deliverableType: string | null): string {
+  const id = (agent.id || '').toLowerCase()
+  if (id.startsWith('atlas')) return 'their research summary'
+  if (id.startsWith('maya')) return 'their strategy notes'
+  if (id.startsWith('echo')) return 'their copy draft'
+  if (id.startsWith('lyra')) return 'their visual brief'
+  if (id.startsWith('nova')) return 'their channel plan'
+  if (id.startsWith('dex')) return 'their KPI model'
+  if (id.startsWith('finn')) return 'their creative concept'
+  if (id.startsWith('piper')) return 'their timeline'
+  if (id.startsWith('sage')) return 'their client narrative'
+  if (id.startsWith('iris')) return 'the orchestration result'
+  return 'their contribution'
+}
+
 export async function runTaskExecution(
   taskId: string,
   auth: AuthContext,
@@ -468,13 +523,52 @@ export async function runTaskExecution(
     requestedProvider: task.lead_agent_id ? undefined : 'ollama',
   })
 
+  // Batch U: build the activity-driven progress plan up front. Every progress
+  // update from this point on is computed from the plan, not hardcoded.
+  const collaboratorNameMap: Record<string, string> = {}
+  for (const a of runtimeAgents) collaboratorNameMap[a.id] = a.name
+  const progressPlan: ProgressExecutionPlan = buildProgressPlan({
+    deliverableType: task.deliverable_type,
+    pipelinePhases: pipeline?.phases?.map((p: any) => ({ id: p.id, name: p.name })) || null,
+    collaboratorAgentIds: channelingPlan.collaboratorAgentIds,
+    leadAgentId: channelingPlan.leadAgentId || task.lead_agent_id || 'iris',
+    leadAgentName:
+      collaboratorNameMap[channelingPlan.leadAgentId || task.lead_agent_id || ''] ||
+      channelingPlan.leadAgentId ||
+      task.lead_agent_id ||
+      'the lead specialist',
+    collaboratorNames: collaboratorNameMap,
+  })
+  // Start the routing activity immediately.
+  const tenantUuid = auth.tenantId || agencyId
+  let progress = startActivity(progressPlan, 'routing', 'Iris analysing the request')
+  await emitTaskEvent({
+    taskId,
+    tenantId: tenantUuid,
+    type: 'running',
+    progress,
+    message: 'Routing the request to specialists',
+  })
+
   await upsertWorkflowExecutionState({
     taskId,
     pipelineId: pipeline?.id || task.pipeline_id,
     status: 'active',
-    currentPhase: pipeline?.phases?.[0]?.name || 'Execution',
-    progress: 8,
-    context: { action, startedBy: auth.userId, startedAt: new Date().toISOString(), reviewComment: options?.comment || null, runtimeMode: providerSettings.routing.runtimeMode },
+    currentPhase: pipeline?.phases?.[0]?.name || phaseLabel('routing'),
+    progress,
+    context: {
+      action,
+      startedBy: auth.userId,
+      startedAt: new Date().toISOString(),
+      reviewComment: options?.comment || null,
+      runtimeMode: providerSettings.routing.runtimeMode,
+      activityPlan: progressPlan.activities.map((a) => ({
+        id: a.id,
+        name: a.name,
+        phase: a.phase,
+        weight: a.weight,
+      })),
+    },
   })
 
   await insertTaskRun({
@@ -491,6 +585,10 @@ export async function runTaskExecution(
     },
     startedAt: new Date().toISOString(),
   })
+
+  // Complete routing — the analysis is essentially done by the time we've built
+  // the channeling plan + execution plan above.
+  progress = completeActivity(progressPlan, 'routing', 'Specialists assigned')
 
   try {
     let result = await executeAutonomousTask({
@@ -514,17 +612,37 @@ export async function runTaskExecution(
       pipeline,
       skillCategories,
       hooks: {
-        onPhaseStart: async ({ phase, progress }) => {
+        onPhaseStart: async ({ phase }) => {
+          await emitTaskEvent({
+            taskId,
+            tenantId: tenantUuid,
+            type: 'phase_start',
+            phase: phase.name,
+            progress: computeProgress(progressPlan),
+            message: `Phase started: ${phase.name}`,
+          })
           await upsertWorkflowExecutionState({
             taskId,
             pipelineId: pipeline?.id || task.pipeline_id,
             status: 'active',
             currentPhase: phase.name,
-            progress,
+            progress: computeProgress(progressPlan),
             context: { action, activePhaseId: phase.id },
           })
         },
-        onActivityStart: async ({ phase, activity, agent, runtime, progress }) => {
+        onActivityStart: async ({ phase, activity, agent, runtime }) => {
+          // Find the matching activity in our progress plan. Pipeline activities
+          // use their declared id; no-pipeline collaborator activities use the
+          // `collab-<agentId>` id convention we built into buildProgressPlan.
+          const planActivityId =
+            progressPlan.activities.find((a) => a.id === activity.id)?.id ||
+            progressPlan.activities.find((a) => a.agentId === agent.id && a.status === 'pending')?.id ||
+            'lead-draft'
+          const liveProgress = startActivity(
+            progressPlan,
+            planActivityId,
+            `${agent.name} ${describeAgentVerb(agent, task.deliverable_type)}`
+          )
           await insertTaskRun({
             taskId,
             agentId: agent.id,
@@ -534,12 +652,28 @@ export async function runTaskExecution(
             outputPayload: { provider: runtime.provider, model: runtime.model, started: true },
             startedAt: new Date().toISOString(),
           })
+          await emitTaskEvent({
+            taskId,
+            tenantId: tenantUuid,
+            type: 'activity_start',
+            phase: phase.name,
+            activity: activity.name,
+            agentId: agent.id,
+            progress: liveProgress,
+            message: `${agent.name}: ${describeAgentVerb(agent, task.deliverable_type)}`,
+          })
+          await emitActivityMessage(
+            taskId,
+            tenantUuid,
+            `${agent.name} is ${describeAgentVerb(agent, task.deliverable_type)}…`,
+            { activityId: planActivityId, phase: phase.name, agentId: agent.id, progress: liveProgress }
+          )
           await upsertWorkflowExecutionState({
             taskId,
             pipelineId: pipeline?.id || task.pipeline_id,
             status: 'active',
             currentPhase: phase.name,
-            progress,
+            progress: liveProgress,
             context: {
               action,
               activePhaseId: phase.id,
@@ -550,7 +684,12 @@ export async function runTaskExecution(
             },
           })
         },
-        onActivityComplete: async ({ phase, activity, agent, runtime, summary, outputIds, progress }) => {
+        onActivityComplete: async ({ phase, activity, agent, runtime, summary, outputIds }) => {
+          const planActivityId =
+            progressPlan.activities.find((a) => a.id === activity.id)?.id ||
+            progressPlan.activities.find((a) => a.agentId === agent.id && a.status === 'running')?.id ||
+            'lead-draft'
+          const liveProgress = completeActivity(progressPlan, planActivityId, `${agent.name} finished`)
           await insertTaskRun({
             taskId,
             agentId: agent.id,
@@ -561,12 +700,22 @@ export async function runTaskExecution(
             startedAt: new Date().toISOString(),
             completedAt: new Date().toISOString(),
           })
+          await emitTaskEvent({
+            taskId,
+            tenantId: tenantUuid,
+            type: 'activity_complete',
+            phase: phase.name,
+            activity: activity.name,
+            agentId: agent.id,
+            progress: liveProgress,
+            message: `${agent.name} delivered ${describeAgentDeliverable(agent, task.deliverable_type)}`,
+          })
           await upsertWorkflowExecutionState({
             taskId,
             pipelineId: pipeline?.id || task.pipeline_id,
             status: 'active',
             currentPhase: phase.name,
-            progress,
+            progress: liveProgress,
             context: { action, activePhaseId: phase.id, lastActivityId: activity.id },
           })
         },
@@ -686,11 +835,31 @@ export async function runTaskExecution(
       lastRunAt: now,
     }
 
+    // Batch U: complete the remaining activities so progress climbs to 100.
+    // Quality issues become non-blocking warnings rather than progress downgrades.
+    const qualityIssues = result.qualityResult?.issues || []
+    const qualityOk = result.qualityResult?.ok !== false
+    if (!qualityOk) {
+      // Emit quality issues separately so the UI can surface them as warnings.
+      await emitQualityIssues(taskId, tenantUuid, qualityIssues, {
+        score: result.qualityResult?.score,
+        progress: computeProgress(progressPlan),
+      })
+    }
+    completeActivity(progressPlan, 'quality-check', qualityOk ? 'Quality check passed' : 'Quality check completed with warnings')
+    const finalProgress = completeActivity(progressPlan, 'final-assembly', 'Deliverable ready')
+
+    // The artifact was created successfully regardless of validator opinion.
+    // Status reflects that — `completed` when validator passes, `completed_with_warnings`
+    // when it doesn't. We no longer downgrade to "blocked" for warnings; the user
+    // still gets their output and the issues are visible in the UI.
+    const finalStatus = qualityOk ? 'completed' : 'completed_with_warnings'
+
     await db`
       UPDATE tasks
       SET
-        status = ${result.qualityResult?.ok ? 'completed' : 'blocked'},
-        progress = ${result.qualityResult?.ok ? 100 : 20},
+        status = ${finalStatus},
+        progress = ${finalProgress},
         execution_plan = ${db.json(executionPlanUpdate)}
       WHERE agency_id = ${agencyId} AND id = ${taskId}
     `
@@ -699,11 +868,11 @@ export async function runTaskExecution(
       taskId,
       agentId: channelingPlan.leadAgentId || task.lead_agent_id || null,
       stage: 'final-assembly',
-      status: result.qualityResult?.ok ? 'completed' : 'blocked',
+      status: qualityOk ? 'completed' : 'completed',
       outputPayload: {
         artifactId,
         qualityScore: result.qualityResult?.score,
-        qualityIssues: result.qualityResult?.issues || [],
+        qualityIssues,
         compareSummary: compareSummary || null,
       },
       startedAt: now,
@@ -713,14 +882,26 @@ export async function runTaskExecution(
     await upsertWorkflowExecutionState({
       taskId,
       pipelineId: pipeline?.id || task.pipeline_id,
-      status: result.qualityResult?.ok ? 'completed' : 'paused',
-      currentPhase: result.qualityResult?.ok ? 'Completed' : (pipeline?.phases?.at(-1)?.name || 'Quality Control'),
-      progress: result.qualityResult?.ok ? 100 : 82,
+      status: 'completed',
+      currentPhase: 'Completed',
+      progress: finalProgress,
       context: {
         action,
         quality: result.qualityResult,
         artifactId,
+        warnings: qualityOk ? [] : qualityIssues,
       },
+    })
+
+    await emitTaskEvent({
+      taskId,
+      tenantId: tenantUuid,
+      type: 'done',
+      progress: finalProgress,
+      message: qualityOk
+        ? 'Task complete'
+        : `Task complete with ${qualityIssues.length} quality warning${qualityIssues.length === 1 ? '' : 's'}`,
+      payload: { artifactId, qualityScore: result.qualityResult?.score, qualityIssues },
     })
 
     return {
@@ -732,6 +913,7 @@ export async function runTaskExecution(
   } catch (error) {
     const message = getFriendlyProviderError(error)
     const now = new Date().toISOString()
+    const errorProgress = failActivity(progressPlan, 'lead-draft', message)
 
     await insertTaskRun({
       taskId,
@@ -745,15 +927,26 @@ export async function runTaskExecution(
     await upsertWorkflowExecutionState({
       taskId,
       pipelineId: pipeline?.id || task.pipeline_id,
-      status: 'paused',
+      status: 'failed',
       currentPhase: pipeline?.phases?.[0]?.name || 'Execution',
-      progress: 10,
+      progress: errorProgress,
       context: { action, error: message, failedAt: now },
     })
     await db`
-      UPDATE tasks SET status = 'blocked', progress = 0
+      UPDATE tasks SET status = 'failed', progress = ${errorProgress}
       WHERE agency_id = ${agencyId} AND id = ${taskId}
     `
+
+    // Batch U: emit an explicit error event so the UI shows the actual reason
+    // instead of leaving the user staring at an unexplained stuck progress bar.
+    await emitTaskEvent({
+      taskId,
+      tenantId: tenantUuid,
+      type: 'error',
+      progress: errorProgress,
+      message,
+      payload: { phase: 'execution', failedAt: now },
+    })
 
     throw error
   }

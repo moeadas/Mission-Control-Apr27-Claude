@@ -77,6 +77,7 @@ export default function TaskDetailPage() {
     agent_id: string | null
     progress: number | null
     message: string | null
+    payload: any
     created_at: string
   }>>([])
   const [liveStreamActive, setLiveStreamActive] = useState(false)
@@ -179,6 +180,14 @@ export default function TaskDetailPage() {
   const latestLiveProgress = [...liveEvents].reverse().find((e) => typeof e.progress === 'number')?.progress
   const latestLiveAgentId = [...liveEvents].reverse().find((e) => e.agent_id)?.agent_id || null
   const liveError = [...liveEvents].reverse().find((e) => e.event_type === 'error')
+  // Batch U: real-time activity narration ("Echo is drafting copy options…")
+  // and non-fatal quality warnings from the validator.
+  const latestActivityMessage = [...liveEvents]
+    .reverse()
+    .find((e) => e.event_type === 'activity_message')?.message
+  const qualityWarnings = liveEvents
+    .filter((e) => e.event_type === 'quality_issue')
+    .flatMap((e) => (Array.isArray((e.payload as any)?.issues) ? (e.payload as any).issues as string[] : []))
 
   const workflowStageLabel = getWorkflowStageLabel(executionState?.workflow)
   const workflowProgress = Math.max(
@@ -195,12 +204,20 @@ export default function TaskDetailPage() {
   const latestRun = sortedRuns[0]
   const latestErrorRun = sortedRuns.find((run) => ['failed', 'blocked'].includes(run.status))
   const workflowError = executionState?.workflow?.context?.error || executionState?.job?.error || null
+  // Batch U: only show the stall hint if progress has truly stalled — meaning
+  // no live activity events have arrived AND we're at the initial 5–10% range.
+  // (The old check fired even when the runner was actively working through the
+  // routing phase, making the UI lie to the user.)
+  const hasLiveProgressEvents = liveEvents.some(
+    (e) => e.event_type === 'activity_start' || e.event_type === 'activity_message' || e.event_type === 'activity_complete'
+  )
   const earlyStageStallHint =
     !latestErrorRun &&
     !workflowError &&
+    !hasLiveProgressEvents &&
     mission.status === 'in_progress' &&
-    workflowProgress <= 8
-      ? 'This task is still at its initial handoff stage. If it stays here, the chat request likely stalled before the execution runner reported back.'
+    workflowProgress <= 10
+      ? 'No activity events received yet. Iris may still be analysing the request — if this persists for more than 30 seconds, the runner may have failed silently.'
       : null
   const visibleErrorMessage =
     // Live SSE error wins — it's the freshest signal.
@@ -350,7 +367,19 @@ export default function TaskDetailPage() {
       }
     }
 
-    for (const type of ['open', 'running', 'phase_start', 'activity_start', 'activity_complete', 'progress', 'done', 'error', 'close']) {
+    for (const type of [
+      'open',
+      'running',
+      'phase_start',
+      'activity_start',
+      'activity_complete',
+      'activity_message', // Batch U: real-time narration ("Echo thinking about hooks")
+      'quality_issue',    // Batch U: non-fatal validator warning
+      'progress',
+      'done',
+      'error',
+      'close',
+    ]) {
       source.addEventListener(type, handleEvent(type) as any)
     }
     source.onerror = () => {
@@ -688,6 +717,34 @@ export default function TaskDetailPage() {
                       <p className="mt-1 text-sm text-text-primary">{currentAgentLabel || 'No agent actively recorded yet'}</p>
                     </div>
                   </div>
+                  {/* Batch U: live activity narration — what the agent is doing right now */}
+                  {latestActivityMessage && mission.status === 'in_progress' && (
+                    <div className="mt-3 rounded-xl border border-[rgba(0,212,170,0.25)] bg-[rgba(0,212,170,0.06)] px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <span className="h-1.5 w-1.5 rounded-full bg-accent-cyan animate-pulse" />
+                        <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-dim">Live activity</p>
+                      </div>
+                      <p className="mt-1 text-sm text-text-primary">{latestActivityMessage}</p>
+                    </div>
+                  )}
+                  {/* Batch U: quality warnings — non-fatal validator issues */}
+                  {qualityWarnings.length > 0 && (
+                    <div className="mt-3 rounded-xl border border-[rgba(250,204,21,0.32)] bg-[rgba(250,204,21,0.08)] px-4 py-3">
+                      <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-yellow-200">
+                        Quality warnings ({qualityWarnings.length})
+                      </p>
+                      <ul className="mt-2 space-y-1">
+                        {qualityWarnings.slice(0, 6).map((issue, idx) => (
+                          <li key={idx} className="text-[12px] text-text-secondary">
+                            • {issue}
+                          </li>
+                        ))}
+                      </ul>
+                      <p className="mt-2 text-[11px] text-text-dim">
+                        The deliverable was generated but didn't match every expected section. Review the output and ask Iris to revise if needed.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-4">

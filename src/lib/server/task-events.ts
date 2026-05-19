@@ -17,6 +17,8 @@ export type TaskEventType =
   | 'phase_start'
   | 'activity_start'
   | 'activity_complete'
+  | 'activity_message' // Batch U: sub-action narration ("thinking about hooks")
+  | 'quality_issue'    // Batch U: quality-validator warning (non-fatal)
   | 'progress'
   | 'done'
   | 'error'
@@ -68,6 +70,49 @@ export async function emitTaskEvent(input: TaskEventInput): Promise<void> {
     // Never crash the runner over telemetry.
     console.warn('[task-events] emit failed', err)
   }
+}
+
+/**
+ * Batch U convenience: emit a real-time activity message (e.g. "Echo thinking
+ * about hooks", "Atlas pulling brand voice"). These narrate what each agent is
+ * doing right now and surface as the live activity indicator in the UI.
+ */
+export async function emitActivityMessage(
+  taskId: string,
+  tenantId: string,
+  message: string,
+  options?: { activityId?: string; phase?: string; agentId?: string; progress?: number }
+): Promise<void> {
+  return emitTaskEvent({
+    taskId,
+    tenantId,
+    type: 'activity_message',
+    activity: options?.activityId || null,
+    phase: options?.phase || null,
+    agentId: options?.agentId || null,
+    progress: typeof options?.progress === 'number' ? options.progress : null,
+    message,
+  })
+}
+
+/**
+ * Batch U: emit a non-fatal quality issue (validator warning). Surfaces in the
+ * UI as a yellow warning panel without marking the task as failed.
+ */
+export async function emitQualityIssues(
+  taskId: string,
+  tenantId: string,
+  issues: string[],
+  options?: { score?: number; progress?: number }
+): Promise<void> {
+  return emitTaskEvent({
+    taskId,
+    tenantId,
+    type: 'quality_issue',
+    progress: typeof options?.progress === 'number' ? options.progress : null,
+    message: `${issues.length} quality issue${issues.length === 1 ? '' : 's'} detected`,
+    payload: { issues, score: options?.score },
+  })
 }
 
 /**

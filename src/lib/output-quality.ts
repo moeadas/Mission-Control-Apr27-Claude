@@ -7,12 +7,21 @@ export interface DeliverableQualityResult {
 }
 
 function isSimpleSocialPostRequest(request: string) {
-  const lower = request.toLowerCase()
-  // Match natural phrasings: "a post for facebook", "single instagram post", "one linkedin post", etc.
+  // Use only the FIRST line/sentence — the user's actual ask — not the augmented
+  // "Confirmed brief details:" block that the orchestrator appends. Without this,
+  // augmentation strings like "brief details" / "design notes" falsely trigger the
+  // multi-complex exclusion and force a structured-deliverable schema onto a simple
+  // one-line social post request.
+  const firstSentence = (request.split(/[\n.]/)[0] || request).trim()
+  const lower = firstSentence.toLowerCase()
   const hasSinglePostSignal =
     /(facebook post|instagram post|linkedin post|x post|twitter post|social post|single post|one post|a post for|post for|post on|caption for|write.*post|create.*post|draft.*post|generate.*post)\b/.test(lower)
+  // Tightened exclusion: each term must read like a request word, not an incidental
+  // mention. "create a content calendar" matches; "brief details" no longer does.
   const hasMultiOrComplexSignal =
-    /(carousel|slide by slide|slide-by-slide|content calendar|campaign strategy|media plan|audit|brief|visual direction|design|series|sequence|multiple posts|5 posts|ten posts|\d+ posts)/.test(lower)
+    /\b(carousel|slide by slide|slide-by-slide|content calendar|campaign strategy|media plan|audit|visual direction|design system|series of|sequence of|multiple posts|\d+\s+posts)\b/.test(
+      lower
+    )
   return hasSinglePostSignal && !hasMultiOrComplexSignal
 }
 
