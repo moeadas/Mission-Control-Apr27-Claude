@@ -48,6 +48,40 @@ export interface TaskBootstrap {
   clientId?: string | null
 }
 
+/**
+ * Resolve a template-id agent reference (e.g. "echo") to the actual row id in
+ * this tenant's agents table (e.g. "echo-abc12345"). Returns null if no match.
+ */
+async function resolveAgentRowId(
+  agencyId: string,
+  templateOrRowId: string | null | undefined
+): Promise<string | null> {
+  if (!templateOrRowId) return null
+  const db = getDb()
+  // Try exact row-id match (covers both legacy literal IDs and pre-resolved IDs).
+  const direct = await db`
+    SELECT id FROM agents WHERE agency_id = ${agencyId}::uuid AND id = ${templateOrRowId} LIMIT 1
+  `
+  if (direct[0]) return direct[0].id as string
+  // Try metadata.templateId match (canonical for new clones).
+  const byTemplate = await db`
+    SELECT id FROM agents
+    WHERE agency_id = ${agencyId}::uuid
+      AND metadata->>'templateId' = ${templateOrRowId}
+    LIMIT 1
+  `
+  if (byTemplate[0]) return byTemplate[0].id as string
+  // Try id-prefix match (clones without metadata).
+  const byPrefix = await db`
+    SELECT id FROM agents
+    WHERE agency_id = ${agencyId}::uuid
+      AND id LIKE ${templateOrRowId + '-%'}
+    LIMIT 1
+  `
+  if (byPrefix[0]) return byPrefix[0].id as string
+  return null
+}
+
 export async function ensureTaskExists(
   taskId: string,
   auth: AuthContext,
@@ -63,13 +97,40 @@ export async function ensureTaskExists(
   const title = (bootstrap?.title || bootstrap?.prompt || 'New chat task').slice(0, 280)
   const summary = (bootstrap?.prompt || bootstrap?.title || '').slice(0, 4000)
   const deliverableType = bootstrap?.deliverableType || 'general-task'
-  const leadAgentId = bootstrap?.leadAgentId || null
-  const pipelineId = bootstrap?.pipelineId || null
-  const clientId = bootstrap?.clientId || null
+
+  // Resolve FK targets to existing rows, null-out if they don't exist.
+  // Without this, an FK violation aborts the INSERT and the task stays stuck.
+  const resolvedLeadAgentId = await resolveAgentRowId(agencyId, bootstrap?.leadAgentId)
+
+  let resolvedPipelineId: string | null = null
+  if (bootstrap?.pipelineId) {
+    const pipeline = await db`SELECT id FROM pipelines WHERE id = ${bootstrap.pipelineId} LIMIT 1`
+    resolvedPipelineId = pipeline[0]?.id || null
+  }
+
+  let resolvedClientId: string | null = null
+  if (bootstrap?.clientId) {
+    const client = await db`
+      SELECT id FROM clients WHERE agency_id = ${agencyId}::uuid AND id = ${bootstrap.clientId} LIMIT 1
+    `
+    resolvedClientId = client[0]?.id || null
+  }
+
+  // Resolve collaborator agent template-IDs → row IDs for metadata.
+  const collaboratorTemplateIds = bootstrap?.collaboratorAgentIds || []
+  const resolvedCollaboratorIds: string[] = []
+  for (const tid of collaboratorTemplateIds) {
+    const rowId = await resolveAgentRowId(agencyId, tid)
+    if (rowId) resolvedCollaboratorIds.push(rowId)
+  }
+
   const metadata = {
     bootstrappedAt: new Date().toISOString(),
     bootstrappedBy: auth.userId,
-    collaboratorAgentIds: bootstrap?.collaboratorAgentIds || [],
+    collaboratorAgentIds: resolvedCollaboratorIds,
+    // Keep the original template-IDs too — useful for debugging / future routing.
+    collaboratorTemplateIds,
+    leadAgentTemplate: bootstrap?.leadAgentId || null,
   }
 
   try {
@@ -81,7 +142,7 @@ export async function ensureTaskExists(
       ) VALUES (
         ${taskId}, ${agencyId}, ${title}, ${summary}, ${deliverableType},
         ${'in_progress'}, ${'normal'}, ${auth.userId}::uuid,
-        ${leadAgentId}, ${pipelineId}, ${clientId}, ${0},
+        ${resolvedLeadAgentId}, ${resolvedPipelineId}, ${resolvedClientId}, ${0},
         ${db.json({})}, ${db.json(metadata)}
       )
       ON CONFLICT (id) DO NOTHING

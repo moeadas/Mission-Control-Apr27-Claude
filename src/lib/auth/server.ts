@@ -3,6 +3,7 @@ import { verifyToken } from '@/lib/auth/jwt'
 import { loadPersistedProviderSettings, mergePersistedProviderSettings, savePersistedProviderSettings } from '@/lib/server/provider-secrets'
 import { normalizeProviderSettings } from '@/lib/provider-settings'
 import { getTenantIdForUser, createTenant, assignUserToTenant } from '@/lib/server/tenants'
+import { seedTenantRequiredAgents } from '@/lib/server/agent-templates'
 import type { ProviderSettings } from '@/lib/types'
 
 export function getSuperAdminEmail() {
@@ -61,6 +62,17 @@ export async function resolveAuthContextFromToken(token: string | null | undefin
       planId: 'free',
     })
     await assignUserToTenant(payload.sub, tenantId)
+  }
+
+  // Batch S: ensure all template agents are seeded for this tenant. Idempotent —
+  // skips templates already present. Unblocks legacy tenants seeded before
+  // REQUIRED_TEMPLATE_IDS was expanded to the full 10-agent roster.
+  if (tenantId) {
+    try {
+      await seedTenantRequiredAgents(tenantId)
+    } catch (error) {
+      console.warn('[auth] template auto-seed failed (non-fatal):', error)
+    }
   }
 
   const persistedProviderSettings = await loadPersistedProviderSettings(payload.sub)

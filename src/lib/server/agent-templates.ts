@@ -33,8 +33,29 @@ export interface AgentTemplate {
   systemPromptPreview: string
 }
 
-/** Iris is always seeded — every tenant needs the orchestrator agent. */
-export const REQUIRED_TEMPLATE_IDS = ['iris'] as const
+/**
+ * All 10 production templates are seeded on tenant creation so the routing
+ * layer can assign work to specialists without requiring the user to manually
+ * clone agents first. Users can still delete/edit any non-Iris agent later.
+ * Iris is the only truly mandatory agent (orchestrator); the rest are seeded
+ * for the same reason a CRM ships with pre-defined contact stages — they're
+ * sensible defaults that the user can customize.
+ */
+export const REQUIRED_TEMPLATE_IDS = [
+  'iris',
+  'echo',
+  'maya',
+  'atlas',
+  'nova',
+  'lyra',
+  'dex',
+  'finn',
+  'piper',
+  'sage',
+] as const
+
+/** Strictly mandatory — Iris must always exist (orchestrator). */
+export const STRICTLY_REQUIRED_TEMPLATE_IDS = ['iris'] as const
 
 /**
  * Recognise the orchestrator agent in a tenant's roster regardless of how its
