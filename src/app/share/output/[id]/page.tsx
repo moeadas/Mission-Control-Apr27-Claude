@@ -1,34 +1,12 @@
 import { notFound } from 'next/navigation'
-import DOMPurify from 'isomorphic-dompurify'
 
 import { buildArtifactHtml } from '@/lib/output-html'
+import { sanitizeHtml } from '@/lib/html-sanitizer'
 import { getDb } from '@/lib/db/client'
 
 type PageProps = {
   params: Promise<{ id: string }>
   searchParams: Promise<{ t?: string }>
-}
-
-// DOMPurify config — strict but allows the rich-text structure outputs need:
-// headings, lists, tables, formatting. Strips scripts, event handlers, javascript:
-// URIs, and any tag that could execute code. Allows safe inline styles for
-// the artifact's themed appearance.
-const SANITIZE_CONFIG = {
-  ALLOWED_TAGS: [
-    'a','abbr','article','aside','b','blockquote','br','caption','cite','code',
-    'col','colgroup','dd','del','details','dfn','div','dl','dt','em','figcaption',
-    'figure','footer','h1','h2','h3','h4','h5','h6','header','hr','i','img','ins',
-    'kbd','li','main','mark','nav','ol','p','pre','q','s','samp','section','small',
-    'span','strong','sub','summary','sup','table','tbody','td','tfoot','th','thead',
-    'time','tr','u','ul','wbr',
-  ],
-  ALLOWED_ATTR: [
-    'href','target','rel','title','alt','src','width','height','align','colspan',
-    'rowspan','class','style','id','aria-label','aria-hidden','role',
-  ],
-  ALLOWED_URI_REGEXP: /^(?:https?:|mailto:|tel:|#|\/)/i,
-  FORBID_TAGS: ['script','iframe','frame','frameset','object','embed','link','meta','base'],
-  FORBID_ATTR: ['onerror','onload','onclick','onmouseover','onfocus','onblur'],
 }
 
 export default async function SharedOutputPage({ params, searchParams }: PageProps) {
@@ -77,8 +55,9 @@ export default async function SharedOutputPage({ params, searchParams }: PagePro
 
   const rawHtml = output.rendered_html || buildArtifactHtml(output.content || '')
   // Sanitize before render. The output may have been produced by an LLM and we
-  // never want it to execute arbitrary HTML/JS in a viewer's browser.
-  const safeHtml = DOMPurify.sanitize(rawHtml, SANITIZE_CONFIG)
+  // never want it to execute arbitrary HTML/JS in a viewer's browser. The
+  // shared sanitizeHtml module wraps DOMPurify with our agreed config.
+  const safeHtml = sanitizeHtml(rawHtml)
 
   return (
     <main className="min-h-screen bg-[#f7f7f2] px-4 py-10 text-slate-900">

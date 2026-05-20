@@ -4,6 +4,7 @@ import React, { useMemo, useState } from 'react'
 
 import { Artifact } from '@/lib/types'
 import { buildArtifactHtml } from '@/lib/output-html'
+import { sanitizeHtml } from '@/lib/html-sanitizer'
 
 // Client-side escapeHtml — the server version in `@/lib/server/text-utils`
 // can't be imported into client components, so we keep a minimal copy here.
@@ -67,7 +68,13 @@ function resolveCreativeImageUrl(artifact: Artifact) {
 
 function renderSafeHtml(content: string) {
   try {
-    return buildArtifactHtml(content)
+    // Batch CC: always sanitize before returning. The LLM-produced content
+    // may contain script tags, event handlers, javascript: URIs, etc.
+    // buildArtifactHtml just wraps + styles the content — it does not strip
+    // anything. Without the sanitize step, an attacker who controls part of
+    // the LLM output (via prompt injection) can execute arbitrary JS in any
+    // viewer's browser.
+    return sanitizeHtml(buildArtifactHtml(content))
   } catch (error) {
     console.error('[ArtifactOutputView]', error)
     const safeText = typeof content === 'string' ? content : 'This output could not be rendered safely.'
@@ -178,7 +185,10 @@ function CreativeArtifactView({ artifact }: { artifact: Artifact }) {
         {showLog && creativeView.logHtml ? (
           <div
             className="artifact-render prose prose-invert max-w-none border-t border-border px-4 py-4"
-            dangerouslySetInnerHTML={{ __html: creativeView.logHtml }}
+            // Batch CC: logHtml already came through renderSafeHtml which now
+            // sanitizes, but we sanitize again defensively in case this code
+            // path ever ingests raw HTML directly.
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(creativeView.logHtml) }}
           />
         ) : null}
       </section>
