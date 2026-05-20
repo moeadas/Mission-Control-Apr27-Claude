@@ -107,18 +107,37 @@ export async function POST(request: NextRequest) {
       console.warn('[register] verification email dispatch failed', err)
     }
 
-    // ── Issue JWT ───────────────────────────────────────────────────────────
-    const token = await signToken({
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-      tenantId,
-    })
+    // Batch DD: do NOT auto-login. Previously this returned a session JWT
+    // immediately, making the verification email functionally decorative — an
+    // attacker could register with someone else's address and skip
+    // verification by simply not clicking the link. Now the user must
+    // verify their email before /api/auth/session POST will issue a token.
+    //
+    // Exception: super-admin (matched by env var) is auto-logged in so platform
+    // owners can't lock themselves out during initial setup.
+    const isSuperAdmin = email === superAdminEmail
+    if (isSuperAdmin) {
+      const token = await signToken({
+        sub: user.id,
+        email: user.email,
+        role: user.role,
+        tenantId,
+      })
+      // Mark super-admin email as verified so the verification gate doesn't
+      // bounce them on the next login.
+      await db`UPDATE users SET email_verified_at = now() WHERE id = ${user.id}::uuid`
+      return NextResponse.json({
+        token,
+        user: { id: user.id, email: user.email, role: user.role, tenantId, emailVerified: true },
+        emailVerificationSent: false,
+      }, { status: 201 })
+    }
 
     return NextResponse.json({
-      token,
+      // No token — the user must verify their email and then call /api/auth/session POST.
       user: { id: user.id, email: user.email, role: user.role, tenantId, emailVerified: false },
       emailVerificationSent: true,
+      message: 'Account created. Check your email for the verification link before signing in.',
     }, { status: 201 })
 
   } catch (error) {

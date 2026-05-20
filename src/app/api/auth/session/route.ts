@@ -78,6 +78,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }
 
+    // Batch DD: gate login on verified email. Without this, the verification
+    // link is decorative — an attacker who registers with an address they
+    // don't control gets full session access immediately.
+    //
+    // Super-admin and accounts created before this code shipped (where
+    // email_verified_at would always be null) get a grace window: if the
+    // SUPER_ADMIN_EMAIL env var matches, skip the gate so platform owners
+    // can never lock themselves out.
+    const superAdminEmail = (process.env.SUPER_ADMIN_EMAIL || '').trim().toLowerCase()
+    const isSuperAdmin = user.email === superAdminEmail
+    if (!user.email_verified_at && !isSuperAdmin) {
+      return NextResponse.json(
+        {
+          error: 'Please verify your email before signing in. Check your inbox for the verification link, or request a new one.',
+          code: 'EMAIL_NOT_VERIFIED',
+          email: user.email,
+        },
+        { status: 403 }
+      )
+    }
+
     const tenantId = await getTenantIdForUser(user.id) ?? undefined
     const token = await signToken({ sub: user.id, email: user.email, role: user.role, tenantId })
     return NextResponse.json({
