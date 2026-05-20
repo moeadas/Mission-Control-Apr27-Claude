@@ -4,9 +4,17 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { OFFICE_ASSETS, ASSET_CATEGORIES, tintSvg, OfficeFurnitureAsset } from '@/lib/office-assets'
 import { OFFICE_TEMPLATES, getTemplateLayout } from '@/lib/office-templates'
-import { OfficeLayout, PlacedTile, DEFAULT_LAYOUT } from '@/lib/office-types'
+import { OfficeLayout, PlacedTile, DEFAULT_LAYOUT, OfficeOrgStructure, levelFromXp } from '@/lib/office-types'
 import { getStoredToken } from '@/lib/auth/browser'
 import { useAgentsStore } from '@/lib/agents-store'
+// Batch W: presence + org + gamification
+import { AgentLayer } from '@/components/office/AgentLayer'
+import { OrgChart } from '@/components/office/OrgChart'
+import { QuestsPanel } from '@/components/office/QuestsPanel'
+import { computeAgentPresence, PRESENCE_TICK_MS, type AgentPresence } from '@/lib/office-presence'
+import { refreshDailyQuests, evaluateQuests, computeOfficeScore } from '@/lib/office-gamification'
+
+type OfficeMode = 'edit' | 'live' | 'org' | 'quests'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TILE_PX      = 52
@@ -73,6 +81,14 @@ interface DragState {
 // ─── Main Component ───────────────────────────────────────────────────────────
 export function OfficeBuilder({ isSuperAdmin }: Props) {
   const agents = useAgentsStore(s => s.agents)
+  const missions = useAgentsStore(s => s.missions)
+
+  // Batch W: top-level mode (Edit / Live / Org / Quests).
+  const [mode, setMode] = useState<OfficeMode>('edit')
+
+  // Batch W: agent presence — recomputed on every PRESENCE_TICK_MS for roam target rolls.
+  const [presences, setPresences] = useState<AgentPresence[]>([])
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
 
   // Layout + history
   const [layout, setLayout] = useState<OfficeLayout>(DEFAULT_LAYOUT)
@@ -130,6 +146,59 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
   // Layout ref (always current in event handlers)
   const layoutRef = useRef(layout)
   useEffect(() => { layoutRef.current = layout }, [layout])
+
+  // Batch W: presence ticking. Build agent + mission snapshots from the store,
+  // pass into computeAgentPresence, refresh every PRESENCE_TICK_MS. Cheap because
+  // the function is pure JS and the agent count stays small (typically ≤10).
+  useEffect(() => {
+    const tick = () => {
+      const agentSnapshots = agents.map((a: any) => ({
+        id: a.id,
+        name: a.name,
+        color: a.color,
+        metadata: a.metadata,
+      }))
+      const missionSnapshots = missions.map((m: any) => ({
+        id: m.id,
+        status: m.status,
+        leadAgentId: m.leadAgentId,
+        collaboratorAgentIds: m.collaboratorAgentIds,
+        liveMessage: m.handoffNotes || null,
+      }))
+      const next = computeAgentPresence({
+        layout: layoutRef.current,
+        agents: agentSnapshots,
+        missions: missionSnapshots,
+      })
+      setPresences(next)
+    }
+    tick() // immediate first pass
+    const id = window.setInterval(tick, PRESENCE_TICK_MS)
+    return () => window.clearInterval(id)
+  }, [agents, missions])
+
+  // Batch W: refresh daily quests + evaluate progress whenever the layout
+  // changes. This keeps quest progress live as the user builds out the office.
+  useEffect(() => {
+    const refreshed = refreshDailyQuests(layout.gamification)
+    const completedToday = missions.filter(
+      (m: any) => m.status === 'completed' || m.status === 'completed_with_warnings'
+    ).length
+    const evaluated = evaluateQuests(refreshed, layout, completedToday)
+    if (
+      JSON.stringify(evaluated) !== JSON.stringify(layout.gamification)
+    ) {
+      setLayout((prev) => ({ ...prev, gamification: evaluated }))
+    }
+    // We intentionally do NOT push history here — quest progress is not user
+    // action.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layout.tiles.length, layout.zones.length, layout.org, missions.length])
+
+  // Helper used by OrgChart to persist org structure changes.
+  const updateOrg = useCallback((next: OfficeOrgStructure) => {
+    setLayout((prev) => ({ ...prev, org: next }))
+  }, [])
 
   // Asset map
   const assetMap = useMemo(() => {
@@ -508,19 +577,82 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
   const WW = GRID_W * TILE_PX
   const WH = GRID_H * TILE_PX
 
+  // Batch W: derive header stats so the tab bar can show the office vitals
+  // without forcing every tab to recompute.
+  const agentCount = agents.length
+  const completedToday = missions.filter(
+    (m: any) => m.status === 'completed' || m.status === 'completed_with_warnings'
+  ).length
+  const officeScore = useMemo(
+    () => computeOfficeScore({ layout, agentCount, completedTasksLast24h: completedToday }),
+    [layout, agentCount, completedToday]
+  )
+  const xpInfo = useMemo(() => levelFromXp(layout.gamification?.xp || 0), [layout.gamification?.xp])
+
+  const tabs: Array<{ id: OfficeMode; label: string; icon: string }> = [
+    { id: 'edit',   label: 'Edit',         icon: '✎' },
+    { id: 'live',   label: 'Live Office',  icon: '◉' },
+    { id: 'org',    label: 'Organization', icon: '⊞' },
+    { id: 'quests', label: 'Quests',       icon: '★' },
+  ]
+
   return (
+    <div className="flex flex-col h-full bg-[#0f1117] text-white overflow-hidden" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+      {/* Batch W: top tab bar + stats */}
+      <div className="flex items-center gap-2 border-b border-white/10 bg-[#0d1018] px-4 py-2 shrink-0">
+        <div className="flex items-center gap-1">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setMode(t.id)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                mode === t.id
+                  ? 'bg-white/10 text-white'
+                  : 'text-white/50 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <span className="mr-1.5 opacity-70">{t.icon}</span>
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex-1" />
+        <div className="hidden md:flex items-center gap-4 text-[11px] font-mono uppercase tracking-wider">
+          <span className="text-white/40">
+            Score <span className="text-white">{officeScore.total}</span><span className="text-white/30">/100</span>
+          </span>
+          <span className="text-white/40">
+            Level <span className="text-white">{xpInfo.level}</span>
+          </span>
+          <span className="text-white/40">
+            Agents <span className="text-white">{agentCount}</span>
+          </span>
+          <span className="text-white/40">
+            Tasks today <span className="text-white">{completedToday}</span>
+          </span>
+        </div>
+      </div>
+
+      {/* Batch W: tab content */}
+      {mode === 'org' ? (
+        <OrgChart org={layout.org} agents={agents.map((a: any) => ({ id: a.id, name: a.name, role: a.role, color: a.color }))} onChange={updateOrg} />
+      ) : mode === 'quests' ? (
+        <QuestsPanel layout={layout} agentCount={agentCount} completedTasksLast24h={completedToday} />
+      ) : (
     // Batch N: CSS-grid shell so the three columns adapt to viewport width
     // instead of clipping under each other. Canvas keeps its minimum width;
     // left + right panels never overflow the visible area.
     <div
-      className="grid h-full bg-[#0f1117] text-white overflow-hidden"
+      className="grid flex-1 min-h-0 overflow-hidden"
       style={{
-        gridTemplateColumns: 'minmax(220px, 260px) minmax(320px, 1fr) minmax(280px, 320px)',
-        fontFamily: 'Inter, system-ui, sans-serif',
+        gridTemplateColumns: mode === 'live'
+          ? 'minmax(0, 1fr) minmax(280px, 340px)'  // Live: hide asset sidebar
+          : 'minmax(220px, 260px) minmax(320px, 1fr) minmax(280px, 320px)',
       }}
     >
 
       {/* ── Left sidebar ──────────────────────────────────────────────────── */}
+      {mode !== 'live' && (
       <div className="flex flex-col border-r border-white/10 bg-[#151922] overflow-hidden min-w-0">
 
         {/* Search + Layouts button */}
@@ -590,6 +722,7 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
           </div>
         )}
       </div>
+      )}
 
       {/* ── Main ────────────────────────────────────────────────────────────── */}
       <div className="flex flex-col overflow-hidden min-w-0">
@@ -754,6 +887,19 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
                 background: 'rgba(59,130,246,0.08)',
                 borderRadius: 2,
               }} />
+            )}
+
+            {/* Batch W: live agent layer — only renders in Live mode. Sits in
+                world-space so tokens move with pan + zoom. AgentLayer handles
+                its own RAF-driven interpolation so token movement stays smooth
+                regardless of how often presence ticks. */}
+            {mode === 'live' && (
+              <AgentLayer
+                presences={presences}
+                tilePx={TILE_PX}
+                selectedAgentId={selectedAgentId}
+                onAgentClick={(aid) => setSelectedAgentId(aid === selectedAgentId ? null : aid)}
+              />
             )}
           </div>
 
@@ -1008,6 +1154,8 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
             </div>
           </div>
         </div>
+      )}
+    </div>
       )}
     </div>
   )

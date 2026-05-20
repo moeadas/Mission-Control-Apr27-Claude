@@ -20,6 +20,8 @@ import {
   type ExecutionPlan as ProgressExecutionPlan,
 } from '@/lib/server/task-progress'
 import { emitTaskEvent, emitActivityMessage, emitQualityIssues } from '@/lib/server/task-events'
+import { buildOfficeContextForAgent } from '@/lib/server/office-context'
+import type { OfficeLayout } from '@/lib/office-types'
 
 function toStableUuid(value: string) {
   const hex = Buffer.from(value).toString('hex').padEnd(32, '0').slice(0, 32)
@@ -629,6 +631,31 @@ export async function runTaskExecution(
   // the channeling plan + execution plan above.
   progress = completeActivity(progressPlan, 'routing', 'Specialists assigned')
 
+  // Batch W Phase 4: load the office layout once and pre-compute an office
+  // context block per agent. Threaded into both lead + collaborator prompts so
+  // each specialist knows where they sit, who their teammates are, and where
+  // they report. Failure to load the office is non-fatal — we just skip the
+  // prefix and the prompts behave as before.
+  let officeLayout: OfficeLayout | null = null
+  try {
+    const layoutRows = await db`
+      SELECT layout FROM office_layouts WHERE agency_id = ${agencyId} LIMIT 1
+    `
+    if (layoutRows[0]?.layout) {
+      officeLayout = layoutRows[0].layout as OfficeLayout
+    }
+  } catch (err) {
+    console.warn('[runTaskExecution] failed to load office layout:', err)
+  }
+  const officeContextByAgent: Record<string, string> = {}
+  if (officeLayout) {
+    const agentInfos = runtimeAgents.map((a) => ({ id: a.id, name: a.name, role: a.role }))
+    for (const a of runtimeAgents) {
+      const block = buildOfficeContextForAgent(a.id, agentInfos, officeLayout)
+      if (block) officeContextByAgent[a.id] = block
+    }
+  }
+
   try {
     let result = await executeAutonomousTask({
       request: effectiveRequest,
@@ -650,6 +677,7 @@ export async function runTaskExecution(
       qualityChecklist: executionPlan.qualityChecklist,
       pipeline,
       skillCategories,
+      officeContextByAgent,
       hooks: {
         onPhaseStart: async ({ phase }) => {
           await emitTaskEvent({

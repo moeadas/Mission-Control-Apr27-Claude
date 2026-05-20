@@ -658,8 +658,11 @@ function buildSupportPrompt(input: {
   qualityChecklist: string[]
   skillContext: string
   primarySkillId?: string | null
+  /** Batch W Phase 4: optional office-awareness block. */
+  officeContext?: string
 }) {
   return [
+    input.officeContext || '',
     input.agent.systemPrompt || `You are ${input.agent.name}, ${input.agent.role}.`,
     `Your assigned role in this task: supporting specialist.`,
     `User request: ${truncate(input.request, 280)}`,
@@ -697,8 +700,11 @@ function buildLeadPrompt(input: {
   primarySkillOutputTemplate?: string | null
   supportHandoffs: ArtifactExecutionStep[]
   pipelineOutputs: Record<string, string>
+  /** Batch W Phase 4: optional office-awareness block. */
+  officeContext?: string
 }) {
   return [
+    input.officeContext || '',
     input.agent.systemPrompt || `You are ${input.agent.name}, ${input.agent.role}.`,
     `You are the lead agent responsible for producing the final deliverable.`,
     `--- Skill activation ---\n${input.skillContext}\n--- end skill activation ---`,
@@ -885,6 +891,9 @@ export async function executeAutonomousTask(input: {
   pipeline: PipelineLike | null
   skillCategories: any[]
   hooks?: ExecutionHooks
+  /** Batch W Phase 4: per-agent office-awareness blocks. Keyed by agent id;
+   *  prepended verbatim to the agent's system prompt. Empty entries are no-ops. */
+  officeContextByAgent?: Record<string, string>
   /** Per-tenant content defaults (platforms, posting frequency, etc.). When
    *  omitted the engine falls back to the generic "TBD — confirm with the
    *  client" placeholders rather than hardcoded agency-specific values. */
@@ -1094,6 +1103,7 @@ export async function executeAutonomousTask(input: {
               qualityChecklist: input.qualityChecklist,
               skillContext,
               primarySkillId: supportPrimarySkillId,
+              officeContext: input.officeContextByAgent?.[agent.id],
             }),
           },
         ],
@@ -1176,6 +1186,7 @@ export async function executeAutonomousTask(input: {
           primarySkillOutputTemplate: leadPrimarySkillOutputTemplate,
           supportHandoffs: executionSteps,
           pipelineOutputs,
+          officeContext: input.officeContextByAgent?.[leadAgent.id],
         }),
       },
     ],
@@ -1209,6 +1220,7 @@ export async function executeAutonomousTask(input: {
           primarySkillOutputTemplate: leadPrimarySkillOutputTemplate,
               supportHandoffs: executionSteps,
               pipelineOutputs,
+              officeContext: input.officeContextByAgent?.[leadAgent.id],
             }),
             'Your previous answer was invalid because it used coordination or status language instead of the actual deliverable.',
             'Return only the final deliverable now.',
@@ -1298,6 +1310,7 @@ export async function executeAutonomousTask(input: {
           primarySkillOutputTemplate: leadPrimarySkillOutputTemplate,
               supportHandoffs: executionSteps,
               pipelineOutputs,
+              officeContext: input.officeContextByAgent?.[leadAgent.id],
             }),
             buildQualityRepairPrompt({
               request: input.request,
