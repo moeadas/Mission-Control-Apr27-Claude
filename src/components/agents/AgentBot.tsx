@@ -3,6 +3,26 @@
 import React from 'react'
 import { clsx } from 'clsx'
 import { BotAnimation } from '@/lib/types'
+import { getStoredToken } from '@/lib/auth/browser'
+
+/**
+ * Batch Y: the /api/agent-photos/file/[filename] endpoint requires auth, but
+ * <img> tags can't set Authorization headers. The route accepts the JWT in a
+ * `?token=` query param as a fallback — so we append it client-side. Without
+ * this, every photo request returns 401 → onError fires → user sees the
+ * default robot avatar even after a successful upload.
+ */
+function withAuthToken(url: string | undefined): string | undefined {
+  if (!url) return url
+  // Only stamp our own auth-protected file endpoint; leave external URLs alone.
+  if (!url.startsWith('/api/agent-photos/file/')) return url
+  if (url.includes('?token=')) return url
+  if (typeof window === 'undefined') return url
+  const token = getStoredToken()
+  if (!token) return url
+  const sep = url.includes('?') ? '&' : '?'
+  return `${url}${sep}token=${encodeURIComponent(token)}`
+}
 
 interface AgentBotProps {
   name: string
@@ -267,7 +287,7 @@ export function AgentBot({
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={photoUrl}
+              src={withAuthToken(photoUrl)}
               alt={name}
               onError={() => setImageFailed(true)}
               style={{
