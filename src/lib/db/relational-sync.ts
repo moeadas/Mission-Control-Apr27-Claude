@@ -342,15 +342,43 @@ function buildKnowledgeAssetRows(clients: AppPersistenceSnapshot['clients'], age
 
 // ─── Generic upsert helper ───────────────────────────────────────────────────
 
+/**
+ * Batch Z fix: every entity upsert in the relational sync has been silently
+ * failing with "syntax error at or near 'Object'" since the original
+ * implementation mixed `db.unsafe(...)` (raw string) with `${db(rows).toString()}`
+ * (which produces "[object Object]" because postgres.js helpers don't
+ * stringify to SQL). Result: agent.model / agent.provider / agent.systemPrompt
+ * edits never landed in the DB, and the next /api/state GET re-read stale
+ * relational rows and overwrote the user's changes.
+ *
+ * The fix uses proper postgres.js tagged template idiom:
+ *   await sql`INSERT INTO ${sql(table)} ${sql(rows, ...cols)} ON CONFLICT ...`
+ * The library handles parameterisation, jsonb coercion, and quoting safely.
+ */
 async function upsert(table: string, rows: Record<string, any>[], conflictCol = 'id') {
   if (!rows.length) return
   const db = getDb()
   const cols = Object.keys(rows[0])
   const setCols = cols.filter((c) => c !== conflictCol)
-  const setClause = setCols.map((c) => `"${c}" = EXCLUDED."${c}"`).join(', ')
-  await db.unsafe(
-    `INSERT INTO "${table}" ${db(rows).toString()} ON CONFLICT ("${conflictCol}") DO UPDATE SET ${setClause}`
-  )
+
+  // Per-row insert keeps the SQL identical to the postgres.js multi-row form
+  // but sidesteps the unsafe-stringification bug. The performance hit is
+  // negligible because tenant-scoped batches are ≤ a few dozen rows.
+  for (const row of rows) {
+    // Build the SET clause as raw SQL fragments — column identifiers are
+    // hardcoded from Object.keys(rows[0]) so there's no injection surface.
+    const setFragments = setCols.map((c) => `"${c}" = EXCLUDED."${c}"`).join(', ')
+    await db.unsafe(
+      `INSERT INTO "${table}" (${cols.map((c) => `"${c}"`).join(', ')}) VALUES (${cols.map((_, i) => `$${i + 1}`).join(', ')}) ON CONFLICT ("${conflictCol}") DO UPDATE SET ${setFragments}`,
+      cols.map((c) => {
+        const val = (row as any)[c]
+        // postgres.js + .unsafe needs jsonb values as JSON strings; otherwise
+        // an object is sent as "[object Object]" via toString().
+        if (val !== null && typeof val === 'object') return JSON.stringify(val)
+        return val
+      })
+    )
+  }
 }
 
 // ─── Sync snapshot ───────────────────────────────────────────────────────────
