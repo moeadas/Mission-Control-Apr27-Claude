@@ -1040,9 +1040,116 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
         <div className="border-l border-white/10 bg-[#151922] flex flex-col overflow-y-auto min-w-0">
           <div className="px-4 py-3 border-b border-white/10">
             <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">Inspector</p>
-            <p className="text-sm font-semibold text-white">Nothing selected</p>
-            <p className="text-xs text-white/35 mt-1">Click a placed item on the floor to edit it.</p>
+            <p className="text-sm font-semibold text-white">
+              {mode === 'live' ? 'Live Office' : 'Nothing selected'}
+            </p>
+            <p className="text-xs text-white/35 mt-1">
+              {mode === 'live'
+                ? 'Working agents anchor to their assigned desks. Idle agents roam the open floor.'
+                : 'Click a placed item on the floor to edit it.'}
+            </p>
           </div>
+
+          {/* Batch X: Live mode — show the agent roster so the user can tell who's around */}
+          {mode === 'live' && (
+            <div className="px-4 py-4 border-b border-white/10">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10px] text-white/40 uppercase tracking-wider">Agents on the floor</p>
+                <span className="text-[10px] font-mono text-white/40">{presences.length}</span>
+              </div>
+              {presences.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-white/15 bg-white/[0.02] px-3 py-3">
+                  <p className="text-xs text-white/60">No agents loaded yet.</p>
+                  <p className="text-[11px] text-white/40 mt-1">
+                    Refresh the page if your team is set up. Agents auto-seed on sign-in.
+                  </p>
+                </div>
+              ) : (
+                <ul className="space-y-1.5">
+                  {presences.map((p) => (
+                    <li
+                      key={p.agentId}
+                      onClick={() => setSelectedAgentId(p.agentId === selectedAgentId ? null : p.agentId)}
+                      className={`flex items-center gap-2.5 px-2 py-1.5 rounded-md cursor-pointer transition-colors ${
+                        selectedAgentId === p.agentId ? 'bg-white/10' : 'hover:bg-white/5'
+                      }`}
+                    >
+                      <span
+                        className="h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0"
+                        style={{ background: p.color }}
+                      >
+                        {p.initial}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-white truncate">{p.agentName}</p>
+                        <p className="text-[10px] text-white/40 truncate">
+                          {p.status === 'working' ? (
+                            <span className="text-emerald-400">● Working</span>
+                          ) : (
+                            <span>○ Idle</span>
+                          )}
+                          {p.message ? ` · ${p.message.slice(0, 32)}${p.message.length > 32 ? '…' : ''}` : ''}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {/* Batch X: Zone management — visible in Edit mode so user can rename/delete zones they no longer want */}
+          {mode === 'edit' && (layout.zones || []).length > 0 && (
+            <div className="px-4 py-4 border-b border-white/10">
+              <p className="text-[10px] text-white/40 uppercase tracking-wider mb-2">Zones ({layout.zones.length})</p>
+              <ul className="space-y-1.5">
+                {layout.zones.map((zone) => (
+                  <li key={zone.id} className="flex items-center gap-2 rounded-md border border-white/10 bg-white/[0.03] px-2 py-1.5">
+                    <span className="h-3 w-3 rounded shrink-0" style={{ background: zone.color }} />
+                    <input
+                      value={zone.name}
+                      onChange={(e) => {
+                        const next = e.target.value
+                        setLayout((prev) => ({
+                          ...prev,
+                          zones: prev.zones.map((z) => (z.id === zone.id ? { ...z, name: next } : z)),
+                        }))
+                      }}
+                      className="flex-1 min-w-0 bg-transparent border-none outline-none text-xs text-white px-0 py-0"
+                    />
+                    <span className="text-[10px] font-mono text-white/30">{zone.tiles.length}t</span>
+                    <button
+                      onClick={() => {
+                        if (confirm(`Delete zone "${zone.name}"?`)) {
+                          setLayout((prev) => ({
+                            ...prev,
+                            zones: prev.zones.filter((z) => z.id !== zone.id),
+                          }))
+                        }
+                      }}
+                      className="text-red-400/70 hover:text-red-300 text-[11px] px-1.5 py-0.5 rounded hover:bg-red-900/20 shrink-0"
+                      title="Delete zone"
+                    >
+                      ×
+                    </button>
+                  </li>
+                ))}
+                <li>
+                  <button
+                    onClick={() => {
+                      if (confirm('Clear ALL zones from the layout? This can be undone with ⌘Z.')) {
+                        setLayout((prev) => ({ ...prev, zones: [] }))
+                      }
+                    }}
+                    className="w-full text-left text-[11px] text-white/40 hover:text-red-300 px-2 py-1.5 rounded hover:bg-red-900/10 transition-colors"
+                  >
+                    Clear all zones
+                  </button>
+                </li>
+              </ul>
+            </div>
+          )}
+
           <div className="px-4 py-4 border-b border-white/10 space-y-3">
             <p className="text-[10px] text-white/40 uppercase tracking-wider">Quick start</p>
             <button onClick={() => setShowTpl(true)}
