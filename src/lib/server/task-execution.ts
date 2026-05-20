@@ -26,7 +26,42 @@ function toStableUuid(value: string) {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`
 }
 
+/**
+ * Resolve the active agency id with proper precedence:
+ *   1. Caller's auth.tenantId (correct in multi-tenant world).
+ *   2. Agency whose slug is 'default-agency' (legacy single-tenant fallback).
+ *   3. ANY agency that actually has agents seeded (prevents the empty-tenant
+ *      situation that drove the user's stuck-at-10% bug: the runner picked an
+ *      orphan default-agency with zero agents while the populated one had a
+ *      different slug).
+ *   4. Hard null if no agency exists at all.
+ */
+async function resolveAgencyId(auth?: AuthContext | null): Promise<string | null> {
+  try {
+    if (auth?.tenantId) return auth.tenantId
+    const db = getDb()
+    const rows = await db`
+      SELECT id FROM agencies WHERE slug = 'default-agency' LIMIT 1
+    `
+    if (rows[0]?.id) return rows[0].id as string
+    // Fallback: pick the first agency that has at least one agent. This avoids
+    // ever returning an empty-agency row while a populated one exists.
+    const populated = await db`
+      SELECT a.id FROM agencies a
+      JOIN agents g ON g.agency_id = a.id
+      GROUP BY a.id
+      ORDER BY count(g.id) DESC
+      LIMIT 1
+    `
+    return populated[0]?.id ?? null
+  } catch {
+    return null
+  }
+}
+
 async function getDefaultAgencyId(): Promise<string | null> {
+  // Kept for back-compat — old call sites that don't have auth available.
+  // Prefer resolveAgencyId(auth) when an AuthContext is in scope.
   try {
     const db = getDb()
     const rows = await db`SELECT id FROM agencies WHERE slug = 'default-agency' LIMIT 1`
@@ -97,7 +132,7 @@ export async function ensureTaskExists(
   auth: AuthContext,
   bootstrap?: TaskBootstrap
 ): Promise<boolean> {
-  const agencyId = auth.tenantId || (await getDefaultAgencyId())
+  const agencyId = await resolveAgencyId(auth)
   if (!agencyId) return false
 
   const db = getDb()
@@ -165,7 +200,7 @@ export async function ensureTaskExists(
 }
 
 export async function loadTaskExecutionState(taskId: string, auth: AuthContext) {
-  const agencyId = await getDefaultAgencyId()
+  const agencyId = await resolveAgencyId(auth)
   if (!agencyId) return null
 
   const db = getDb()
@@ -433,7 +468,11 @@ export async function runTaskExecution(
     bootstrap?: TaskBootstrap
   }
 ) {
-  const agencyId = await getDefaultAgencyId()
+  // Batch V: auth-aware resolution so every downstream query uses the caller's
+  // tenant. The old code used getDefaultAgencyId() which silently targeted
+  // whichever agency happened to be slug='default-agency' — that could be a
+  // freshly-auto-created empty tenant with zero seeded agents.
+  const agencyId = (await resolveAgencyId(auth)) || (await getDefaultAgencyId())
   if (!agencyId) throw new Error('Execution service unavailable.')
 
   // Batch R: bootstrap a stub row if the task hasn't been persisted yet.

@@ -51,11 +51,26 @@ export async function resolveAuthContextFromToken(token: string | null | undefin
     : profile.role === 'admin' ? 'admin'
     : 'member'
 
-  // Resolve tenantId: prefer JWT claim → profile column → auto-provision
+  // Resolve tenantId: prefer JWT claim → profile column → existing-tenant lookup → auto-provision
+  // (Batch V: the explicit existing-tenant lookup prevents the bug where a
+  // legitimate user with a NULL profile.tenant_id silently gets a brand-new
+  // empty tenant created for them — orphaning the agency they should have
+  // been attached to.)
   let tenantId: string | null = payload.tenantId ?? profile.tenant_id ?? null
 
+  if (!tenantId) {
+    const existingTenantId = await getTenantIdForUser(payload.sub)
+    if (existingTenantId) {
+      tenantId = existingTenantId
+      // Backfill the profile so subsequent requests skip the lookup.
+      await db`UPDATE profiles SET tenant_id = ${tenantId}::uuid WHERE id = ${payload.sub}::uuid`
+    }
+  }
+
+  // Last resort for genuinely new users: auto-provision a tenant. We also use
+  // the user's email-derived slug as the agency slug so future lookups don't
+  // collide with the legacy 'default-agency' fallback.
   if (!tenantId && role !== 'super_admin') {
-    // Legacy user with no tenant: auto-provision a free tenant for them
     tenantId = await createTenant({
       name: email.split('@')[0],
       ownerUserId: payload.sub,
