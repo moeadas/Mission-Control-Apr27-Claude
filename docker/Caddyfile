@@ -1,0 +1,63 @@
+# Caddy reverse proxy + TLS termination for Mission Control (Batch BB)
+#
+# Current setup: self-signed TLS via Caddy's internal CA. Browsers will
+# show a one-time "advanced → proceed" warning; that's expected for a
+# bare IP without a real domain. To upgrade to real TLS later:
+#
+#   1. Point a domain (e.g. mc.example.com) A-record at 72.62.33.12.
+#   2. Replace the `:443` block below with `mc.example.com {` and remove
+#      the `tls internal` line. Caddy will auto-provision Let's Encrypt.
+#   3. Restart: `docker compose up -d --force-recreate caddy`
+#
+# Why a bare `:443` block: Let's Encrypt won't issue a cert for an IP,
+# so until a domain is wired up, internal CA is the only option that
+# still terminates TLS.
+
+{
+  # Global options.
+  email admin@mission-control.local
+  # Disable the automatic HTTPS redirect for the moment — we still want
+  # plain :3000 reachable for debugging while Caddy is brand new.
+  # Once stable, remove this line.
+  auto_https disable_redirects
+}
+
+# HTTP → HTTPS redirect on port 80.
+:80 {
+  redir https://{host}{uri} permanent
+}
+
+# Main HTTPS host. Listens on all interfaces (no SNI match required because
+# we don't have a domain yet). Caddy's internal CA mints a self-signed cert.
+:443 {
+  tls internal
+
+  encode gzip zstd
+
+  # Forward real client info so the app's middleware can detect HTTPS
+  # and set HSTS, and so rate-limit code sees the actual client IP rather
+  # than the Caddy container.
+  header_up X-Forwarded-Proto https
+  header_up X-Forwarded-For {remote_host}
+  header_up X-Real-IP {remote_host}
+
+  # Long-running pipelines and SSE streams need generous idle/read timeouts.
+  reverse_proxy app:3000 {
+    transport http {
+      keepalive 30s
+      read_timeout 5m
+      write_timeout 5m
+      response_header_timeout 5m
+    }
+    flush_interval -1
+  }
+
+  # Hardening: don't leak Caddy version in the Server header.
+  header -Server
+
+  # Block obvious junk paths at the proxy layer.
+  @blocked {
+    path /.env /.git/* /wp-admin/* /wp-login.php /xmlrpc.php
+  }
+  respond @blocked 404
+}
