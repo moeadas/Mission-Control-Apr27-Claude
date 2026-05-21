@@ -76,37 +76,16 @@ services:
       - mc_internal
       - mc_external
 
-  # ─── Caddy reverse proxy + TLS termination (Batch BB) ───────────────────────
-  # Terminates TLS on 443 (self-signed cert via `tls internal` for now; swap
-  # to a real domain + Let's Encrypt by editing Caddyfile when a domain is
-  # ready). Redirects port 80 → 443. Reverse-proxies to mc_app:3000.
-  #
-  # mc_app is intentionally still exposed on host port 3000 as a fallback —
-  # if Caddy ever misbehaves the app stays reachable for debugging. Once
-  # TLS feels solid, remove the "3000:3000" mapping above.
-  caddy:
-    image: caddy:2-alpine
-    container_name: mc_caddy
-    restart: unless-stopped
-    depends_on:
-      - app
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
-      - mc_caddy_data:/data
-      - mc_caddy_config:/config
-    networks:
-      - mc_external
-      - mc_internal
+  # Note: TLS termination is handled by the VPS's host-level nginx, not by
+  # an in-stack reverse proxy. nginx already owns 80/443 on the VPS for
+  # other services (n8n, etc.). A self-signed cert + server block at
+  # /etc/nginx/sites-enabled/mission-control proxies to 127.0.0.1:3000.
+  # See docker/nginx-mission-control.conf in the repo for the template.
 
 volumes:
   mc_db_data:
   mc_uploads:
   mc_secrets:
-  mc_caddy_data:
-  mc_caddy_config:
 
 networks:
   mc_internal:
