@@ -1,3 +1,5 @@
+import type { NextRequest, NextResponse } from 'next/server'
+
 import { getDb } from '@/lib/db/client'
 import { verifyToken } from '@/lib/auth/jwt'
 import { loadPersistedProviderSettings, mergePersistedProviderSettings, savePersistedProviderSettings } from '@/lib/server/provider-secrets'
@@ -5,6 +7,75 @@ import { normalizeProviderSettings } from '@/lib/provider-settings'
 import { getTenantIdForUser, createTenant, assignUserToTenant } from '@/lib/server/tenants'
 import { seedTenantRequiredAgents } from '@/lib/server/agent-templates'
 import type { ProviderSettings } from '@/lib/types'
+
+// Batch P.1: httpOnly session cookie.
+// The bearer-in-JS scheme that's used today is XSS-exposed; any injected
+// script can read the token from JS storage and exfiltrate it. The cookie
+// is httpOnly + SameSite=Lax so it travels with same-site requests and is
+// invisible to client JS. We keep returning the JSON `token` field for
+// backwards compat — P.2/P.3 will migrate routes and client to cookie-only.
+export const SESSION_COOKIE_NAME = 'mc_session'
+const SESSION_COOKIE_MAX_AGE_SECONDS = 7 * 24 * 60 * 60 // matches JWT_EXPIRY in jwt.ts
+
+function isHttpsRequest(request: NextRequest): boolean {
+  // Prefer the proxy-set header (nginx terminates TLS) and fall back to the
+  // direct URL protocol so this also works in non-proxied dev environments.
+  const xfwd = request.headers.get('x-forwarded-proto')
+  if (xfwd) return xfwd.toLowerCase() === 'https'
+  try {
+    return request.nextUrl.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+/** Attach the session cookie to an outgoing response. Idempotent — safe to
+ *  call on the same response twice. */
+export function setSessionCookie(
+  response: NextResponse,
+  token: string,
+  request: NextRequest
+) {
+  response.cookies.set({
+    name: SESSION_COOKIE_NAME,
+    value: token,
+    httpOnly: true,
+    secure: isHttpsRequest(request),
+    sameSite: 'lax',
+    path: '/',
+    maxAge: SESSION_COOKIE_MAX_AGE_SECONDS,
+  })
+}
+
+/** Clear the session cookie (logout). Sets an immediately-expiring cookie
+ *  with the same attributes so the browser overwrites the existing one. */
+export function clearSessionCookie(response: NextResponse, request: NextRequest) {
+  response.cookies.set({
+    name: SESSION_COOKIE_NAME,
+    value: '',
+    httpOnly: true,
+    secure: isHttpsRequest(request),
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 0,
+  })
+}
+
+/** Extract the JWT from either the session cookie or an Authorization bearer
+ *  header. Cookie wins on conflict. Returns null when neither is present. */
+export function getAuthTokenFromRequest(request: NextRequest): string | null {
+  const cookieToken = request.cookies.get(SESSION_COOKIE_NAME)?.value
+  if (cookieToken) return cookieToken
+  const auth = request.headers.get('authorization') || ''
+  if (auth.toLowerCase().startsWith('bearer ')) return auth.slice(7).trim()
+  return null
+}
+
+/** Convenience: extract + resolve in one call. Returns null when the request
+ *  has no token or the token doesn't resolve to an active profile. */
+export async function getAuthFromRequest(request: NextRequest): Promise<AuthContext | null> {
+  return resolveAuthContextFromToken(getAuthTokenFromRequest(request))
+}
 
 export function getSuperAdminEmail() {
   const email = process.env.SUPER_ADMIN_EMAIL?.trim().toLowerCase()

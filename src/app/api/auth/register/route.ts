@@ -21,7 +21,7 @@ import bcrypt from 'bcryptjs'
 import { getDb } from '@/lib/db/client'
 import { signToken } from '@/lib/auth/jwt'
 import { createTenant, assignUserToTenant } from '@/lib/server/tenants'
-import { getSuperAdminEmail } from '@/lib/auth/server'
+import { getSuperAdminEmail, setSessionCookie } from '@/lib/auth/server'
 import { checkRateLimit, getClientIp } from '@/lib/server/rate-limit'
 import { createEmailVerificationToken } from '@/lib/server/email-tokens'
 import { buildVerificationEmail, sendEmail } from '@/lib/server/email'
@@ -126,11 +126,15 @@ export async function POST(request: NextRequest) {
       // Mark super-admin email as verified so the verification gate doesn't
       // bounce them on the next login.
       await db`UPDATE users SET email_verified_at = now() WHERE id = ${user.id}::uuid`
-      return NextResponse.json({
+      // Batch P.1: set the JWT as an httpOnly cookie alongside the JSON
+      // `token`. Same dual-write strategy as /api/auth/session POST.
+      const response = NextResponse.json({
         token,
         user: { id: user.id, email: user.email, role: user.role, tenantId, emailVerified: true },
         emailVerificationSent: false,
       }, { status: 201 })
+      setSessionCookie(response, token, request)
+      return response
     }
 
     return NextResponse.json({

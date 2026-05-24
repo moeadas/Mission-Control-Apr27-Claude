@@ -1,22 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 
-import { resolveAuthContextFromToken } from '@/lib/auth/server'
+import {
+  getAuthTokenFromRequest,
+  resolveAuthContextFromToken,
+  setSessionCookie,
+  clearSessionCookie,
+} from '@/lib/auth/server'
 import { getDb } from '@/lib/db/client'
 import { signToken } from '@/lib/auth/jwt'
 import { getTenantIdForUser } from '@/lib/server/tenants'
 import { checkRateLimit, getClientIp } from '@/lib/server/rate-limit'
 
-function getBearerToken(request: NextRequest) {
-  const authHeader = request.headers.get('authorization') || ''
-  if (!authHeader.toLowerCase().startsWith('bearer ')) return null
-  return authHeader.slice(7).trim()
-}
-
-// GET — verify existing JWT
+// GET — verify existing JWT (reads cookie OR bearer header, Batch P.1)
 export async function GET(request: NextRequest) {
   try {
-    const auth = await resolveAuthContextFromToken(getBearerToken(request))
+    const auth = await resolveAuthContextFromToken(getAuthTokenFromRequest(request))
     if (!auth) {
       return NextResponse.json({ authenticated: false }, { status: 401 })
     }
@@ -101,7 +100,7 @@ export async function POST(request: NextRequest) {
 
     const tenantId = await getTenantIdForUser(user.id) ?? undefined
     const token = await signToken({ sub: user.id, email: user.email, role: user.role, tenantId })
-    return NextResponse.json({
+    const response = NextResponse.json({
       token,
       user: {
         id: user.id,
@@ -111,8 +110,23 @@ export async function POST(request: NextRequest) {
         emailVerified: !!user.email_verified_at,
       },
     })
+    // Batch P.1: also set the JWT as an httpOnly cookie. The JSON `token`
+    // field is kept for backwards compat with the current client that reads
+    // it from the response body and sends it back as a bearer header. The
+    // cookie is the future path — P.2 migrates routes, P.3 drops bearer.
+    setSessionCookie(response, token, request)
+    return response
   } catch (error) {
     console.error('Login failed:', error)
     return NextResponse.json({ error: 'Login failed' }, { status: 500 })
   }
+}
+
+// DELETE — logout. Clears the session cookie. Idempotent: returns 200 even
+// when no cookie is present so the client can call this on app start to
+// scrub any stale session without first checking.
+export async function DELETE(request: NextRequest) {
+  const response = NextResponse.json({ ok: true })
+  clearSessionCookie(response, request)
+  return response
 }
