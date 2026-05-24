@@ -94,18 +94,24 @@ export function findAgentByTemplate<T extends { id?: string | null; metadata?: a
   templateId: string
 ): T | undefined {
   if (!agents) return undefined
+  // Batch GG: materialise once. Callers commonly pass a Map.values() iterator
+  // (single-use), so doing three passes over the same iterable drained it on
+  // pass 1 and caused passes 2/3 to see nothing — that's why tenants whose
+  // agents have only legacy literal ids ('maya', 'echo', …) hit the
+  // "Required specialist agents are not available" gate.
+  const list = Array.isArray(agents) ? (agents as T[]) : Array.from(agents)
   // First pass: explicit metadata match (most reliable for new clones)
-  for (const agent of agents) {
+  for (const agent of list) {
     const meta = (agent?.metadata || {}) as any
     if (meta.templateId === templateId) return agent
   }
   // Second pass: literal id match (legacy)
-  for (const agent of agents) {
+  for (const agent of list) {
     if (agent?.id === templateId) return agent
   }
   // Third pass: prefix match (clones without metadata)
   const prefix = `${templateId}-`
-  for (const agent of agents) {
+  for (const agent of list) {
     if (typeof agent?.id === 'string' && agent.id.startsWith(prefix)) return agent
   }
   return undefined
