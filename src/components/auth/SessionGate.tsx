@@ -36,26 +36,25 @@ export function SessionGate({ children }: { children: React.ReactNode }) {
     let mounted = true
 
     const syncSession = async () => {
+      // Batch P.3: source of truth is the httpOnly mc_session cookie. We
+      // unconditionally call /api/auth/session — the server reads the
+      // cookie (or a legacy bearer header for users still on a pre-P.3
+      // tab) and tells us whether we're authenticated. localStorage is
+      // no longer the gate; it's just a hint for the legacy Authorization
+      // header we still send during the transition.
       const token = getStoredToken()
 
-      if (!token) {
-        if (!PUBLIC_PATHS.has(pathname)) {
-          setAuthenticatedUser(null)
-          hardRedirect('/login')
-          return
-        }
-        if (mounted) setReady(true)
-        return
-      }
-
-      // Token exists — verify with server
       try {
         const response = await fetch('/api/auth/session', {
-          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'same-origin',
+          // Legacy header is still accepted server-side. It's harmless
+          // when `token` is the cookie sentinel (server short-circuits).
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
         })
 
         if (!response.ok) {
-          // Token invalid/expired — clear it
+          // No valid session (cookie missing/expired AND no valid bearer).
+          // Scrub any stale local marker so a refresh doesn't infinite-loop.
           clearStoredToken()
           if (!mounted) return
           setAuthenticatedUser(null)

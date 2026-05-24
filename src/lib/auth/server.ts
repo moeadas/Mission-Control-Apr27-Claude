@@ -62,12 +62,23 @@ export function clearSessionCookie(response: NextResponse, request: NextRequest)
 }
 
 /** Extract the JWT from either the session cookie or an Authorization bearer
- *  header. Cookie wins on conflict. Returns null when neither is present. */
+ *  header. Cookie wins on conflict. Returns null when neither is present.
+ *
+ *  Batch P.3: the client-side helpers now send a literal sentinel string
+ *  (`cookie-session`) in the Authorization header to keep their legacy
+ *  `if (!token) return` guards working without storing the real JWT in
+ *  JS-accessible storage. The sentinel carries no auth value — we
+ *  short-circuit it here so verifyToken() isn't invoked on garbage. */
+const BEARER_SENTINEL = 'cookie-session'
 export function getAuthTokenFromRequest(request: NextRequest): string | null {
   const cookieToken = request.cookies.get(SESSION_COOKIE_NAME)?.value
   if (cookieToken) return cookieToken
   const auth = request.headers.get('authorization') || ''
-  if (auth.toLowerCase().startsWith('bearer ')) return auth.slice(7).trim()
+  if (auth.toLowerCase().startsWith('bearer ')) {
+    const tok = auth.slice(7).trim()
+    if (tok === BEARER_SENTINEL) return null
+    return tok
+  }
   return null
 }
 
