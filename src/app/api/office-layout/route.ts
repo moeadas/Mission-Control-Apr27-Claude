@@ -28,8 +28,15 @@ export async function GET(req: NextRequest) {
         ownedAssets: [],
       })
     }
+    // Defensive: legacy rows were written with JSON.stringify() into the
+    // jsonb column, so the value comes back as a JSON-encoded string. Parse
+    // those once so the client always sees an object. (Batch FF.)
+    let layoutOut: any = row.layout ?? DEFAULT_LAYOUT
+    if (typeof layoutOut === 'string') {
+      try { layoutOut = JSON.parse(layoutOut) } catch { layoutOut = DEFAULT_LAYOUT }
+    }
     return NextResponse.json({
-      layout: row.layout ?? DEFAULT_LAYOUT,
+      layout: layoutOut,
       mcCredits: row.mc_credits ?? 0,
       ownedAssets: row.owned_assets ?? [],
     })
@@ -56,9 +63,14 @@ export async function PUT(req: NextRequest) {
 
   const db = getDb()
   try {
+    // Batch FF: pass the object directly. postgres.js serialises objects to
+    // jsonb correctly; the previous JSON.stringify(layout) caused the column
+    // to store a JSON-encoded string (double-encoded), which then crashed
+    // the runner on read ("Cannot read properties of undefined (reading
+    // 'find')" against layout.tiles).
     await db`
       INSERT INTO office_layouts (agency_id, layout, updated_at)
-      VALUES (${auth.tenantId}, ${JSON.stringify(layout)}, now())
+      VALUES (${auth.tenantId}, ${db.json(layout)}, now())
       ON CONFLICT (agency_id) DO UPDATE
         SET layout = EXCLUDED.layout,
             updated_at = now()

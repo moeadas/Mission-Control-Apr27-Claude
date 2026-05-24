@@ -636,13 +636,34 @@ export async function runTaskExecution(
   // each specialist knows where they sit, who their teammates are, and where
   // they report. Failure to load the office is non-fatal — we just skip the
   // prefix and the prompts behave as before.
+  //
+  // Batch FF: defensive parse. Earlier PUT /api/office-layout calls wrote the
+  // layout via JSON.stringify() into a jsonb column, producing a double-encoded
+  // value that postgres.js returns as a string. If we treat it as an object,
+  // every property access (layout.tiles, layout.zones) is undefined and the
+  // runner crashes with "Cannot read properties of undefined (reading 'find')"
+  // before any task work runs.
   let officeLayout: OfficeLayout | null = null
   try {
     const layoutRows = await db`
       SELECT layout FROM office_layouts WHERE agency_id = ${agencyId} LIMIT 1
     `
-    if (layoutRows[0]?.layout) {
-      officeLayout = layoutRows[0].layout as OfficeLayout
+    const raw = layoutRows[0]?.layout
+    if (raw) {
+      if (typeof raw === 'string') {
+        try {
+          officeLayout = JSON.parse(raw) as OfficeLayout
+        } catch {
+          console.warn('[runTaskExecution] office_layouts.layout is a string but not valid JSON')
+        }
+      } else if (typeof raw === 'object') {
+        officeLayout = raw as OfficeLayout
+      }
+    }
+    // Guard each expected array — legacy rows may be missing fields entirely.
+    if (officeLayout) {
+      if (!Array.isArray(officeLayout.tiles)) officeLayout.tiles = []
+      if (!Array.isArray(officeLayout.zones)) officeLayout.zones = []
     }
   } catch (err) {
     console.warn('[runTaskExecution] failed to load office layout:', err)

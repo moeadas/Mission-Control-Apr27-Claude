@@ -40,10 +40,16 @@ export function buildOfficeContextForAgent(
   const me = agents.find((a) => a.id === agentId)
   if (!me) return ''
 
+  // Batch FF: guard against legacy / partial layouts where these arrays are
+  // missing. Without this, a single bad office_layouts row crashes the
+  // runner before any LLM work happens.
+  const tiles = Array.isArray(layout.tiles) ? layout.tiles : []
+  const zones = Array.isArray(layout.zones) ? layout.zones : []
+
   const lines: string[] = []
 
   // Desk location
-  const desk = layout.tiles.find((t) => t.assignedAgentId === agentId && assetMap.get(t.assetId)?.category === 'desks')
+  const desk = tiles.find((t) => t.assignedAgentId === agentId && assetMap.get(t.assetId)?.category === 'desks')
   if (desk) {
     const assetName = assetMap.get(desk.assetId)?.name || 'desk'
     const label = desk.label ? `"${desk.label}"` : `a ${assetName.toLowerCase()}`
