@@ -14,7 +14,7 @@
  */
 import { NextRequest } from 'next/server'
 
-import { resolveAuthContextFromToken } from '@/lib/auth/server'
+import { resolveAuthContextFromToken, getAuthTokenFromRequest } from '@/lib/auth/server'
 import { getDb } from '@/lib/db/client'
 import { isTaskTerminal, listTaskEventsSince } from '@/lib/server/task-events'
 
@@ -25,10 +25,12 @@ const POLL_INTERVAL_MS = 700
 const MAX_STREAM_MS = 5 * 60 * 1000
 
 function getToken(request: NextRequest) {
-  const h = request.headers.get('authorization') || ''
-  if (h.toLowerCase().startsWith('bearer ')) return h.slice(7).trim()
-  // Fallback for EventSource which cannot set custom headers — accept
-  // a `?token=…` query string (same pattern used by file-serving routes).
+  // Batch P.2: prefer session cookie / Authorization bearer (shared helper),
+  // then fall back to `?token=` for the EventSource case (EventSource can't
+  // set custom headers but the browser DOES send cookies, so the cookie path
+  // is the primary one after P.3 ships).
+  const cookieOrBearer = getAuthTokenFromRequest(request)
+  if (cookieOrBearer) return cookieOrBearer
   return new URL(request.url).searchParams.get('token')
 }
 

@@ -5,7 +5,7 @@ import { extname } from 'path'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { buildAgentPhotoUrl, getUploadsDir, setAgentPhoto, syncAgentPhotoToDatabase } from '@/lib/server/agent-photos'
-import { resolveAuthContextFromToken } from '@/lib/auth/server'
+import { resolveAuthContextFromToken, getAuthTokenFromRequest } from '@/lib/auth/server'
 
 const EXT_BY_TYPE: Record<string, string> = {
   'image/jpeg': '.jpg',
@@ -15,9 +15,8 @@ const EXT_BY_TYPE: Record<string, string> = {
 }
 
 function getBearerToken(request: NextRequest) {
-  const authHeader = request.headers.get('authorization') || ''
-  if (!authHeader.toLowerCase().startsWith('bearer ')) return null
-  return authHeader.slice(7).trim()
+  // Batch P.2: cookie OR bearer. Local wrapper kept so call sites don't change.
+  return getAuthTokenFromRequest(request)
 }
 
 export async function POST(request: NextRequest) {

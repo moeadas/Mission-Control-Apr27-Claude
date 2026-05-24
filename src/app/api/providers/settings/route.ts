@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 import { normalizeProviderSettings, stripProviderSecrets } from '@/lib/provider-settings'
-import { resolveAuthContextFromToken, saveUserProviderSettings } from '@/lib/auth/server'
+import { resolveAuthContextFromToken, saveUserProviderSettings, getAuthTokenFromRequest } from '@/lib/auth/server'
 import { mergePersistedProviderSettings } from '@/lib/server/provider-secrets'
 
 function getBearerToken(request: NextRequest) {
-  const authHeader = request.headers.get('authorization') || ''
-  if (!authHeader.toLowerCase().startsWith('bearer ')) return null
-  return authHeader.slice(7).trim()
+  // Batch P.2: cookie OR bearer. Local wrapper kept so call sites don't change.
+  return getAuthTokenFromRequest(request)
 }
 
 export async function POST(request: NextRequest) {

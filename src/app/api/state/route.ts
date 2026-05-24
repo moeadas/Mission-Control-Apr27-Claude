@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { loadSharedAppState, saveSharedAppState, saveSharedAppStateDelta } from '@/lib/db/app-state'
 import { hasDatabaseConfig } from '@/lib/db/config'
 import type { AppPersistencePatch, AppPersistenceSnapshot, EntityDeltaPatch } from '@/lib/agents-store'
-import { resolveAuthContextFromToken, saveUserProviderSettings } from '@/lib/auth/server'
+import { resolveAuthContextFromToken, saveUserProviderSettings, getAuthTokenFromRequest } from '@/lib/auth/server'
 import { loadRelationalAppState } from '@/lib/db/relational-sync'
 import { normalizeProviderSettings } from '@/lib/provider-settings'
 import { canAddAgent, syncAgentCount } from '@/lib/server/tenants'
@@ -11,9 +11,8 @@ import { canAddAgent, syncAgentCount } from '@/lib/server/tenants'
 export const dynamic = 'force-dynamic'
 
 function getBearerToken(request: NextRequest) {
-  const authHeader = request.headers.get('authorization') || ''
-  if (!authHeader.toLowerCase().startsWith('bearer ')) return null
-  return authHeader.slice(7).trim()
+  // Batch P.2: cookie OR bearer. Local wrapper kept so call sites don't change.
+  return getAuthTokenFromRequest(request)
 }
 
 // Batch C — team collaboration model.

@@ -2,15 +2,15 @@ import { readFile, stat } from 'node:fs/promises'
 import path from 'node:path'
 
 import { NextRequest, NextResponse } from 'next/server'
-import { resolveAuthContextFromToken, getSuperAdminEmail } from '@/lib/auth/server'
+import { resolveAuthContextFromToken, getSuperAdminEmail, getAuthTokenFromRequest } from '@/lib/auth/server'
 
 export const dynamic = 'force-dynamic'
 
 const BACKUP_DIR = path.join(process.cwd(), 'backups')
 
 function getBearerToken(r: NextRequest) {
-  const h = r.headers.get('authorization') || ''
-  return h.toLowerCase().startsWith('bearer ') ? h.slice(7).trim() : null
+  // Batch P.2: cookie OR bearer. Local wrapper kept so call sites don't change.
+  return getAuthTokenFromRequest(r)
 }
 
 export async function GET(

@@ -10,14 +10,14 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 
-import { resolveAuthContextFromToken } from '@/lib/auth/server'
+import { resolveAuthContextFromToken, getAuthTokenFromRequest } from '@/lib/auth/server'
 import { listAgentTemplates, REQUIRED_TEMPLATE_IDS } from '@/lib/server/agent-templates'
 
 export const dynamic = 'force-dynamic'
 
 function getBearerToken(req: NextRequest) {
-  const h = req.headers.get('authorization') || ''
-  return h.toLowerCase().startsWith('bearer ') ? h.slice(7).trim() : null
+  // Batch P.2: cookie OR bearer. Local wrapper kept so call sites don't change.
+  return getAuthTokenFromRequest(req)
 }
 
 export async function GET(request: NextRequest) {

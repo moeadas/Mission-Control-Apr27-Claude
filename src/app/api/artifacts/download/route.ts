@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
-import { resolveAuthContextFromToken } from '@/lib/auth/server'
+import { resolveAuthContextFromToken, getAuthTokenFromRequest } from '@/lib/auth/server'
 
 export const runtime = 'nodejs'
 
@@ -15,9 +15,8 @@ const CONTENT_TYPES: Record<string, string> = {
 }
 
 function getBearerToken(request: NextRequest) {
-  const authHeader = request.headers.get('authorization') || ''
-  if (!authHeader.toLowerCase().startsWith('bearer ')) return null
-  return authHeader.slice(7).trim()
+  // Batch P.2: cookie OR bearer. Local wrapper kept so call sites don't change.
+  return getAuthTokenFromRequest(request)
 }
 
 export async function GET(request: NextRequest) {

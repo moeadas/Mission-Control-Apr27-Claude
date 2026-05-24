@@ -17,7 +17,7 @@ import bcrypt from 'bcryptjs'
 
 import { getDb } from '@/lib/db/client'
 import { signToken } from '@/lib/auth/jwt'
-import { resolveAuthContextFromToken } from '@/lib/auth/server'
+import { resolveAuthContextFromToken, getAuthTokenFromRequest } from '@/lib/auth/server'
 import { assignUserToTenant } from '@/lib/server/tenants'
 import { consumeTenantInvitation, getActiveInvitation } from '@/lib/server/email-tokens'
 import { checkRateLimit, getClientIp } from '@/lib/server/rate-limit'
@@ -25,8 +25,8 @@ import { checkRateLimit, getClientIp } from '@/lib/server/rate-limit'
 export const dynamic = 'force-dynamic'
 
 function getBearerToken(req: NextRequest) {
-  const h = req.headers.get('authorization') || ''
-  return h.toLowerCase().startsWith('bearer ') ? h.slice(7).trim() : null
+  // Batch P.2: cookie OR bearer. Local wrapper kept so call sites don't change.
+  return getAuthTokenFromRequest(req)
 }
 
 export async function POST(request: NextRequest) {

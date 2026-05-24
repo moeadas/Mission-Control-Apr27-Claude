@@ -16,7 +16,7 @@ import { extname, join, resolve, sep } from 'path'
 
 import { NextRequest, NextResponse } from 'next/server'
 
-import { resolveAuthContextFromToken } from '@/lib/auth/server'
+import { resolveAuthContextFromToken, getAuthTokenFromRequest } from '@/lib/auth/server'
 import { getDb } from '@/lib/db/client'
 
 const CONTENT_TYPES: Record<string, string> = {
@@ -39,8 +39,8 @@ const NEW_CLIENT_ASSETS_DIR = resolve(join(process.cwd(), 'public', 'uploads', '
 export const dynamic = 'force-dynamic'
 
 function getBearerToken(request: NextRequest) {
-  const h = request.headers.get('authorization') || ''
-  return h.toLowerCase().startsWith('bearer ') ? h.slice(7).trim() : null
+  // Batch P.2: cookie OR bearer. Local wrapper kept so call sites don't change.
+  return getAuthTokenFromRequest(request)
 }
 
 function getQueryToken(request: NextRequest) {

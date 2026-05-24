@@ -10,7 +10,7 @@ import { join, extname, resolve, sep } from 'path'
 
 import { NextRequest, NextResponse } from 'next/server'
 
-import { resolveAuthContextFromToken } from '@/lib/auth/server'
+import { resolveAuthContextFromToken, getAuthTokenFromRequest } from '@/lib/auth/server'
 import { getDb } from '@/lib/db/client'
 
 const CONTENT_TYPES: Record<string, string> = {
@@ -26,9 +26,8 @@ const UPLOADS_DIR = resolve(join(process.cwd(), 'public', 'uploads', 'agents'))
 export const dynamic = 'force-dynamic'
 
 function getBearerToken(request: NextRequest) {
-  const authHeader = request.headers.get('authorization') || ''
-  if (!authHeader.toLowerCase().startsWith('bearer ')) return null
-  return authHeader.slice(7).trim()
+  // Batch P.2: cookie OR bearer. Local wrapper kept so call sites don't change.
+  return getAuthTokenFromRequest(request)
 }
 
 // Auth tokens come in as Bearer header for fetch() calls but the <img> tag

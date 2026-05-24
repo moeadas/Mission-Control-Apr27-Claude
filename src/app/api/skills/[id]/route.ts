@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 import { getDb } from '@/lib/db/client'
-import { resolveAuthContextFromToken } from '@/lib/auth/server'
+import { resolveAuthContextFromToken, getAuthTokenFromRequest } from '@/lib/auth/server'
 import { invalidateSkillRegistry, loadConfigSkillMap } from '@/lib/server/skills-catalog'
 
 function getBearerToken(request: NextRequest) {
-  const authHeader = request.headers.get('authorization') || ''
-  if (!authHeader.toLowerCase().startsWith('bearer ')) return null
-  return authHeader.slice(7).trim()
+  // Batch P.2: cookie OR bearer. Local wrapper kept so call sites don't change.
+  return getAuthTokenFromRequest(request)
 }
 
 async function getAgencyId(): Promise<string | null> {

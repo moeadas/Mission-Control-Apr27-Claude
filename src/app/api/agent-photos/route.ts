@@ -5,15 +5,15 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 
-import { resolveAuthContextFromToken } from '@/lib/auth/server'
+import { resolveAuthContextFromToken, getAuthTokenFromRequest } from '@/lib/auth/server'
 import { readAgentPhotoMap } from '@/lib/server/agent-photos'
 import { getDb } from '@/lib/db/client'
 
 export const dynamic = 'force-dynamic'
 
 function getBearerToken(request: NextRequest) {
-  const h = request.headers.get('authorization') || ''
-  return h.toLowerCase().startsWith('bearer ') ? h.slice(7).trim() : null
+  // Batch P.2: cookie OR bearer. Local wrapper kept so call sites don't change.
+  return getAuthTokenFromRequest(request)
 }
 
 export async function GET(request: NextRequest) {

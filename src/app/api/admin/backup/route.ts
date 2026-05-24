@@ -9,7 +9,7 @@ import { pipeline } from 'node:stream/promises'
 import { Readable } from 'node:stream'
 
 import { NextRequest, NextResponse } from 'next/server'
-import { resolveAuthContextFromToken, getSuperAdminEmail } from '@/lib/auth/server'
+import { resolveAuthContextFromToken, getSuperAdminEmail, getAuthTokenFromRequest } from '@/lib/auth/server'
 import { getDb } from '@/lib/db/client'
 
 export const dynamic = 'force-dynamic'
@@ -27,8 +27,8 @@ const TABLES = [
 ]
 
 function getBearerToken(r: NextRequest) {
-  const h = r.headers.get('authorization') || ''
-  return h.toLowerCase().startsWith('bearer ') ? h.slice(7).trim() : null
+  // Batch P.2: cookie OR bearer. Local wrapper kept so call sites don't change.
+  return getAuthTokenFromRequest(r)
 }
 
 async function assertSuperAdmin(request: NextRequest) {
