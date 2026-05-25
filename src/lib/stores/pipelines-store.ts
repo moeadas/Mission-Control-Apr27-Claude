@@ -57,6 +57,34 @@ interface PipelinesState {
   deletePipeline: (id: string) => Promise<boolean>
 }
 
+function normalizePipeline(value: any): Pipeline | null {
+  const parsed = typeof value === 'string'
+    ? (() => {
+        try { return JSON.parse(value) } catch { return null }
+      })()
+    : value
+
+  if (!parsed || typeof parsed !== 'object' || !parsed.id || !parsed.name) return null
+
+  return {
+    ...parsed,
+    description: typeof parsed.description === 'string' ? parsed.description : '',
+    version: parsed.version || '1.0',
+    isDefault: Boolean(parsed.isDefault),
+    estimatedDuration: parsed.estimatedDuration || '',
+    clientProfileFields: Array.isArray(parsed.clientProfileFields) ? parsed.clientProfileFields : [],
+    phases: Array.isArray(parsed.phases)
+      ? parsed.phases.map((phase: any) => ({
+          ...phase,
+          id: phase.id || phase.name || crypto.randomUUID(),
+          name: phase.name || 'Untitled phase',
+          color: phase.color || '#4f8ef7',
+          activities: Array.isArray(phase.activities) ? phase.activities : [],
+        }))
+      : [],
+  } as Pipeline
+}
+
 export const usePipelinesStore = create<PipelinesState>()(
   persist(
     (set, get) => ({
@@ -71,7 +99,10 @@ export const usePipelinesStore = create<PipelinesState>()(
             headers: token ? { Authorization: `Bearer ${token}` } : {},
           })
           const pipelines = response.ok ? await response.json() : []
-          set({ pipelines: Array.isArray(pipelines) ? pipelines : [], isLoaded: true })
+          set({
+            pipelines: Array.isArray(pipelines) ? pipelines.map(normalizePipeline).filter(Boolean) as Pipeline[] : [],
+            isLoaded: true,
+          })
         } catch (error) {
           console.error('Failed to load pipelines:', error)
           set({ isLoaded: true })

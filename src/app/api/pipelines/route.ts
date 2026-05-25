@@ -9,11 +9,13 @@ function getBearerToken(request: NextRequest) {
   return getAuthTokenFromRequest(request)
 }
 
-async function getAgencyId(): Promise<string | null> {
+function parsePipelineDefinition(value: any) {
+  if (!value) return null
+  if (typeof value === 'object') return value
+  if (typeof value !== 'string') return null
   try {
-    const db = getDb()
-    const rows = await db`SELECT id FROM agencies WHERE slug = 'default-agency' LIMIT 1`
-    return rows[0]?.id ?? null
+    const parsed = JSON.parse(value)
+    return parsed && typeof parsed === 'object' ? parsed : null
   } catch {
     return null
   }
@@ -24,7 +26,7 @@ export async function GET(request: NextRequest) {
     const auth = await resolveAuthContextFromToken(getBearerToken(request))
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const agencyId = await getAgencyId()
+    const agencyId = auth.tenantId
     if (!agencyId) return NextResponse.json(pipelinesConfig.pipelines || [])
 
     const db = getDb()
@@ -39,7 +41,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(pipelinesConfig.pipelines || [])
     }
 
-    return NextResponse.json(rows.map((row: any) => row.definition || {}))
+    return NextResponse.json(
+      rows
+        .map((row: any) => parsePipelineDefinition(row.definition))
+        .filter(Boolean)
+    )
   } catch (error) {
     console.error('Failed to load pipelines:', error)
     return NextResponse.json({ error: 'Failed to load pipelines' }, { status: 500 })
@@ -52,7 +58,7 @@ export async function POST(request: NextRequest) {
     if (!auth || auth.role !== 'super_admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     const pipeline = await request.json()
-    const agencyId = await getAgencyId()
+    const agencyId = auth.tenantId
     if (!agencyId) return NextResponse.json({ error: 'Database not available' }, { status: 503 })
 
     const db = getDb()
@@ -66,7 +72,7 @@ export async function POST(request: NextRequest) {
         ${pipeline.version || '1.0'},
         ${Boolean(pipeline.isDefault)},
         ${pipeline.estimatedDuration || null},
-        ${JSON.stringify(pipeline)},
+        ${db.json(pipeline)},
         'app'
       )
       ON CONFLICT (id) DO UPDATE SET

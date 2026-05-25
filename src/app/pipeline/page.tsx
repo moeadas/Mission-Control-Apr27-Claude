@@ -23,8 +23,8 @@ export default function PipelinesPage() {
   const filtered = pipelines.filter(
     (p) =>
       !search ||
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.description.toLowerCase().includes(search.toLowerCase())
+      (p.name || '').toLowerCase().includes(search.toLowerCase()) ||
+      (p.description || '').toLowerCase().includes(search.toLowerCase())
   )
 
   const pipelineUsageCounts = useMemo(() => {
@@ -144,7 +144,8 @@ export default function PipelinesPage() {
             <div className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">
               {filtered.map((pipeline, i) => {
                 const usageCount = pipelineUsageCounts.get(pipeline.id) || 0
-                const totalTasks = pipeline.phases.reduce((sum, p) => sum + p.activities.length, 0)
+                const phases = Array.isArray(pipeline.phases) ? pipeline.phases : []
+                const totalTasks = phases.reduce((sum, p) => sum + (Array.isArray(p.activities) ? p.activities.length : 0), 0)
 
                 return (
                 <div
@@ -205,7 +206,7 @@ export default function PipelinesPage() {
 
                     {/* Phase tags */}
                     <div className="mb-4 flex min-h-[7.75rem] content-start flex-wrap gap-1.5">
-                      {pipeline.phases.map((phase) => (
+                      {phases.map((phase) => (
                         <span
                           key={phase.id}
                           className="badge text-[10px]"
@@ -222,13 +223,13 @@ export default function PipelinesPage() {
 
                     {/* Phase rail */}
                     <div className="mb-4 flex gap-1">
-                      {pipeline.phases.slice(0, 8).map((phase, index) => (
+                      {phases.slice(0, 8).map((phase, index) => (
                         <div
                           key={phase.id}
                           className="h-1.5 flex-1 rounded-full"
                           style={{
                             background:
-                              index < pipeline.phases.length
+                              index < phases.length
                                 ? 'color-mix(in srgb, var(--text-dim) 22%, transparent)'
                                 : 'var(--border-subtle)',
                           }}
@@ -252,7 +253,7 @@ export default function PipelinesPage() {
                     <div className="flex items-center gap-1 text-[10px] text-[var(--text-dim)] font-mono">
                       <GitBranch size={11} />
                       <span>
-                        {pipeline.phases.length} phases · {totalTasks} tasks
+                        {phases.length} phases · {totalTasks} tasks
                       </span>
                     </div>
                   </div>

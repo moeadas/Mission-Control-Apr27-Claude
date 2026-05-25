@@ -8,11 +8,13 @@ function getBearerToken(request: NextRequest) {
   return getAuthTokenFromRequest(request)
 }
 
-async function getAgencyId(): Promise<string | null> {
+function parsePipelineDefinition(value: any) {
+  if (!value) return null
+  if (typeof value === 'object') return value
+  if (typeof value !== 'string') return null
   try {
-    const db = getDb()
-    const rows = await db`SELECT id FROM agencies WHERE slug = 'default-agency' LIMIT 1`
-    return rows[0]?.id ?? null
+    const parsed = JSON.parse(value)
+    return parsed && typeof parsed === 'object' ? parsed : null
   } catch {
     return null
   }
@@ -24,7 +26,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { id } = await params
-    const agencyId = await getAgencyId()
+    const agencyId = auth.tenantId
     if (!agencyId) return NextResponse.json({ error: 'Database not available' }, { status: 503 })
 
     const db = getDb()
@@ -32,7 +34,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       SELECT * FROM pipelines WHERE agency_id = ${agencyId} AND id = ${id} LIMIT 1
     `
     if (!rows[0]) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    return NextResponse.json(rows[0].definition || {})
+    return NextResponse.json(parsePipelineDefinition(rows[0].definition) || {})
   } catch (error) {
     console.error('Failed to load pipeline:', error)
     return NextResponse.json({ error: 'Failed to load pipeline' }, { status: 500 })
@@ -46,7 +48,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     const { id } = await params
     const pipeline = await request.json()
-    const agencyId = await getAgencyId()
+    const agencyId = auth.tenantId
     if (!agencyId) return NextResponse.json({ error: 'Database not available' }, { status: 503 })
 
     const db = getDb()
@@ -60,7 +62,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         ${pipeline.version || '1.0'},
         ${Boolean(pipeline.isDefault)},
         ${pipeline.estimatedDuration || null},
-        ${JSON.stringify(pipeline)},
+        ${db.json(pipeline)},
         'app'
       )
       ON CONFLICT (id) DO UPDATE SET
@@ -86,7 +88,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     if (!auth || auth.role !== 'super_admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     const { id } = await params
-    const agencyId = await getAgencyId()
+    const agencyId = auth.tenantId
     if (!agencyId) return NextResponse.json({ error: 'Database not available' }, { status: 503 })
 
     const db = getDb()
