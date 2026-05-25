@@ -51,6 +51,18 @@ function toStableUuid(value: string) {
   return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20,32)}`
 }
 
+function parseJsonMaybe<T = any>(value: any, fallback: T): T {
+  if (!value) return fallback
+  if (typeof value === 'object') return value as T
+  if (typeof value !== 'string') return fallback
+  try {
+    const parsed = JSON.parse(value)
+    return parsed && typeof parsed === 'object' ? parsed : fallback
+  } catch {
+    return fallback
+  }
+}
+
 // ─── Agency helpers ─────────────────────────────────────────────────────────
 
 async function getDefaultAgencyId(): Promise<string | null> {
@@ -577,7 +589,8 @@ function mapClientRows(rows: any[], knowledgeRows: any[]): Client[] {
   }
 
   return rows.map((row) => {
-    const brief = row.brief || {}
+    const brief = parseJsonMaybe<Record<string, any>>(row.brief, {})
+    const metadata = parseJsonMaybe<Record<string, any>>(row.metadata, {})
     const knowledgeAssets = (knowledgeByClient.get(row.id) || []).map((asset) => ({
       id: asset.id,
       title: asset.title,
@@ -585,9 +598,10 @@ function mapClientRows(rows: any[], knowledgeRows: any[]): Client[] {
       path: asset.storage_path || undefined,
       summary: asset.summary || '',
       extractedInsights: asset.extracted_text || undefined,
-      status: asset.metadata?.status || 'reference',
-      lastReviewedAt: asset.metadata?.lastReviewedAt || undefined,
+      status: parseJsonMaybe<Record<string, any>>(asset.metadata, {}).status || 'reference',
+      lastReviewedAt: parseJsonMaybe<Record<string, any>>(asset.metadata, {}).lastReviewedAt || undefined,
     }))
+    const metadataAssets = Array.isArray(metadata.knowledgeAssets) ? metadata.knowledgeAssets : []
 
     return {
       id: row.id,
@@ -622,7 +636,7 @@ function mapClientRows(rows: any[], knowledgeRows: any[]): Client[] {
         fontFiles: Array.isArray(brief.brandKit?.fontFiles) ? brief.brandKit.fontFiles : [],
       },
       competitors: Array.isArray(brief.competitors) ? brief.competitors : [],
-      knowledgeAssets,
+      knowledgeAssets: knowledgeAssets.length ? knowledgeAssets : metadataAssets,
       notes: brief.notes || row.knowledge_summary || '',
       createdAt: row.created_at,
       updatedAt: row.updated_at,
