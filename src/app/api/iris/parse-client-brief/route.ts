@@ -47,6 +47,64 @@ const ENRICHABLE_FIELDS = [
   'strategicPriorities',
 ]
 
+function extractSourceDocuments(sourceText: string) {
+  const docs: Array<{ title: string; summary: string; extractedInsights: string }> = []
+  const pattern = /\[Attached file:\s*([^\]]+)\]\s*\n([\s\S]*?)(?=\n\n\[Attached file:|\s*$)/gi
+  let match: RegExpExecArray | null
+
+  while ((match = pattern.exec(sourceText)) !== null) {
+    const title = match[1]?.trim()
+    const body = match[2]?.trim()
+    if (!title || !body || body.startsWith('[Could not read') || body.startsWith('[Empty document')) continue
+    docs.push({
+      title,
+      summary: body.slice(0, 700),
+      extractedInsights: body.slice(0, 6000),
+    })
+  }
+
+  return docs
+}
+
+function normalizeWebsiteUrl(value?: string | null) {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+  if (/^https?:\/\//i.test(raw)) return raw
+  if (/^[a-z0-9.-]+\.[a-z]{2,}(\/.*)?$/i.test(raw)) return `https://${raw}`
+  return ''
+}
+
+async function fetchWebsiteContext(website?: string | null): Promise<string> {
+  const url = normalizeWebsiteUrl(website)
+  if (!url) return ''
+
+  try {
+    const response = await fetch(url, {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(8000),
+      headers: {
+        'User-Agent': 'MissionControlClientBriefBot/1.0',
+        Accept: 'text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.8',
+      },
+    })
+    if (!response.ok) return ''
+    const contentType = response.headers.get('content-type') || ''
+    if (!contentType.includes('text/html') && !contentType.includes('text/plain')) return ''
+    const html = await response.text()
+    return html
+      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 8000)
+  } catch {
+    return ''
+  }
+}
+
 /**
  * Attempt to recover a valid object from a truncated JSON string.
  * Tries progressively more aggressive recovery strategies so a
@@ -95,7 +153,8 @@ function recoverPartialJson(raw: string): Record<string, any> {
 async function enrichClientBriefWithResearch(
   draft: Record<string, any>,
   providerKeys: Record<string, any>,
-  runtime: { provider: string; model: string }
+  runtime: { provider: string; model: string },
+  websiteContext = ''
 ): Promise<Record<string, any>> {
   const name = draft.name?.trim() || ''
   if (!name) return draft
@@ -118,6 +177,8 @@ Using your knowledge of this company and industry, fill in the following missing
 
 Already extracted from their documents:
 ${alreadyFilled || '(only company name is known)'}
+
+${websiteContext ? `Website/homepage research context:\n${websiteContext.slice(0, 5000)}\n` : ''}
 
 Fill in ONLY these missing fields — return as valid JSON, no markdown, no explanation:
 ${emptyFields.map((f) => `"${f}": string`).join('\n')}
@@ -171,6 +232,7 @@ export async function extractClientFieldsFromText(
   // so the extraction prompt doesn't get polluted by the user's chat preamble.
   const attachedSectionMatch = briefText.match(/\[Attached files context\]\s*\n([\s\S]+)/i)
   const sourceText = attachedSectionMatch ? attachedSectionMatch[1].trim() : briefText
+  const sourceDocuments = extractSourceDocuments(sourceText)
 
   // Detect whether there is real document content or just a placeholder reference
   const hasSubstantialContent = sourceText.length > 200 &&
@@ -238,6 +300,18 @@ JSON only:`
 
   if (shouldEnrich) {
     draft = await enrichClientBriefWithResearch(draft, providerKeys, runtime)
+  }
+
+  const websiteContext = await fetchWebsiteContext(draft.website)
+  if (websiteContext) {
+    draft = await enrichClientBriefWithResearch(draft, providerKeys, runtime, websiteContext)
+    draft.notes = [draft.notes, `Website research captured from ${normalizeWebsiteUrl(draft.website)}.`]
+      .filter(Boolean)
+      .join('\n')
+  }
+
+  if (sourceDocuments.length) {
+    draft.sourceDocuments = sourceDocuments
   }
 
   const missingFields = REQUIRED_FIELDS.filter((key) => {

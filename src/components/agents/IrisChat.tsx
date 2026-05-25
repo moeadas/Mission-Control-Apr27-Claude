@@ -1212,6 +1212,44 @@ const BRIEF_FIELD_LABELS: Record<string, string> = {
   notes: 'Notes',
 }
 
+function isExplicitClientCreateRequest(content: string) {
+  return /\b(add|create|onboard|set up)\s+(a\s+)?(new\s+)?client\b/i.test(content)
+}
+
+function buildClientPayloadFromDraft(d: Record<string, any>) {
+  const sourceDocuments = Array.isArray(d.sourceDocuments) ? d.sourceDocuments : []
+  return {
+    name: d.name,
+    industry: d.industry || '',
+    website: d.website || '',
+    description: d.description || '',
+    missionStatement: d.missionStatement || '',
+    brandPromise: d.brandPromise || '',
+    targetAudiences: d.targetAudiences || '',
+    productsAndServices: d.productsAndServices || '',
+    usp: d.usp || '',
+    competitiveLandscape: d.competitiveLandscape || '',
+    keyMessages: d.keyMessages || '',
+    toneOfVoice: d.toneOfVoice || '',
+    operationalDetails: d.operationalDetails || '',
+    objectionHandling: d.objectionHandling || '',
+    brandIdentityNotes: d.brandIdentityNotes || '',
+    strategicPriorities: d.strategicPriorities || '',
+    competitors: Array.isArray(d.competitors) ? d.competitors : [],
+    knowledgeAssets: sourceDocuments.map((doc: any, index: number) => ({
+      id: `brief-source-${Date.now()}-${index}`,
+      title: doc.title || `Source document ${index + 1}`,
+      type: 'doc' as const,
+      summary: doc.summary || '',
+      extractedInsights: doc.extractedInsights || doc.summary || '',
+      status: 'synced' as const,
+      lastReviewedAt: new Date().toISOString(),
+    })),
+    notes: d.notes || '',
+    brandKit: {} as any,
+  }
+}
+
 const BRIEF_DISPLAY_FIELDS = [
   'name', 'industry', 'website', 'description', 'missionStatement',
   'brandPromise', 'targetAudiences', 'usp', 'toneOfVoice', 'competitors',
@@ -1446,7 +1484,10 @@ export function IrisChat() {
     if (!files.length) return
     setAttachments(prev => [...prev, ...files])
     // Extract text from each file
-    const texts = await Promise.all(files.map(extractFileText))
+    const texts = await Promise.all(files.map(async (file) => {
+      const text = await extractFileText(file)
+      return `[Attached file: ${file.name}]\n${text}`
+    }))
     setAttachedText(prev => prev + '\n\n' + texts.join('\n\n'))
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
@@ -1674,11 +1715,30 @@ export function IrisChat() {
                 executionSteps: meta?.executionSteps || [],
               })
             : undefined
-        addAssistantMessage(conversationId, fullResponse, meta?.routedAgentId || 'iris', {
-          ...meta,
+        let finalMeta = meta
+        if (meta?.action?.type === 'CREATE_CLIENT' && isExplicitClientCreateRequest(finalPrompt)) {
+          const draft = meta.action.draft || {}
+          const existingClient = useAgentsStore
+            .getState()
+            .clients
+            .some((client) => client.name.toLowerCase() === String(draft.name || '').toLowerCase())
+          if (draft.name?.trim() && !existingClient) {
+            addClient(buildClientPayloadFromDraft(draft))
+            finalMeta = {
+              ...meta,
+              action: {
+                ...meta.action,
+                autoCreated: true,
+              } as any,
+            }
+          }
+        }
+
+        addAssistantMessage(conversationId, fullResponse, finalMeta?.routedAgentId || 'iris', {
+          ...finalMeta,
           missionId: createdMissionId || undefined,
           artifactId,
-          handoffNotes: [meta?.handoffNotes, buildAssignmentNote(meta)].filter(Boolean).join('\n'),
+          handoffNotes: [finalMeta?.handoffNotes, buildAssignmentNote(finalMeta)].filter(Boolean).join('\n'),
         })
         updateConversationBriefing(conversationId, null)
         if (createdMissionId) {
@@ -2175,7 +2235,7 @@ export function IrisChat() {
                         <ClientBriefPreviewCard
                           draft={msg.meta.action.draft}
                           missingFields={msg.meta.action.missingFields}
-                          created={createdBriefMsgIds.has(msg.id)}
+                          created={createdBriefMsgIds.has(msg.id) || Boolean((msg.meta.action as any).autoCreated)}
                           error={briefClientError[msg.id]}
                           onCreateClient={() => {
                             const d = msg.meta?.action?.draft || {}
@@ -2187,27 +2247,7 @@ export function IrisChat() {
                               return
                             }
                             addClient({
-                              name: d.name,
-                              industry: d.industry || '',
-                              website: d.website || '',
-                              description: d.description || '',
-                              missionStatement: d.missionStatement || '',
-                              brandPromise: d.brandPromise || '',
-                              targetAudiences: d.targetAudiences || '',
-                              productsAndServices: d.productsAndServices || '',
-                              usp: d.usp || '',
-                              competitiveLandscape: d.competitiveLandscape || '',
-                              keyMessages: d.keyMessages || '',
-                              toneOfVoice: d.toneOfVoice || '',
-                              operationalDetails: d.operationalDetails || '',
-                              objectionHandling: d.objectionHandling || '',
-                              brandIdentityNotes: d.brandIdentityNotes || '',
-                              strategicPriorities: d.strategicPriorities || '',
-                              competitors: Array.isArray(d.competitors) ? d.competitors : [],
-                              knowledgeAssets: [],
-                              notes: d.notes || '',
-                              // addClient merges with DEFAULT_CLIENT_BRAND_KIT internally
-                              brandKit: {} as any,
+                              ...buildClientPayloadFromDraft(d),
                             })
                             setCreatedBriefMsgIds((prev) => new Set([...prev, msg.id]))
                             persistStateNow()
