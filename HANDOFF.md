@@ -465,6 +465,10 @@ Listed in increasing depth / decreasing currency:
 [ ] 10. Use the small-batch deploy-and-verify cadence. Don't bundle.
 ```
 
+## 21. Access check log
+
+- **2026-05-25** — Codex verified SSH access to `root@72.62.33.12`, confirmed `/opt/mission-control` is reachable, and confirmed `mc_app` + `mc_db` are running via Docker Compose. Git remote read access to `origin/main` was also verified from the local workspace.
+
 ---
 
 *This document was assembled at the end of the May 2026 Tier-1 hardening sprint, immediately after Batch P.3 shipped. Update it when the next major batch lands or when any of the invariants in §14 change.*
