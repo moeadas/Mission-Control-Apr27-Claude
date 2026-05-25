@@ -140,36 +140,36 @@ function CreativeArtifactView({ artifact }: { artifact: Artifact }) {
   return (
     <div className="space-y-4">
       {creativeView.imageUrl ? (
-        <section className="rounded-[24px] border border-border bg-base/40 p-4">
+        <section className="rounded-lg border border-border bg-base/40 p-5">
           <p className="text-[10px] font-mono uppercase text-text-dim mb-3">Image Output</p>
           <img
             src={creativeView.imageUrl}
             alt={artifact.title || 'Generated image'}
-            className="block w-full max-w-[720px] rounded-[20px] border border-border object-cover shadow-[0_16px_32px_rgba(15,23,42,0.10)]"
+            className="block w-full max-w-[720px] rounded-lg border border-border object-cover shadow-[0_16px_32px_rgba(15,23,42,0.10)]"
           />
           <p className="mt-3 text-[11px] text-text-dim">Right-click the image to save it, or open it in a new tab.</p>
         </section>
       ) : null}
 
-      <section className="rounded-[24px] border border-border bg-base/40 p-4">
+      <section className="rounded-lg border border-border bg-base/40 p-5">
         <p className="text-[10px] font-mono uppercase text-text-dim mb-3">Caption</p>
-        <div className="rounded-[18px] border border-border bg-base px-4 py-4">
+        <div className="rounded-lg border border-border bg-base px-4 py-4">
           <p className="text-sm text-text-primary whitespace-pre-wrap leading-relaxed">
             {creativeView.captionDraft || 'No caption draft was generated.'}
           </p>
         </div>
       </section>
 
-      <section className="rounded-[24px] border border-border bg-base/40 p-4">
+      <section className="rounded-lg border border-border bg-base/40 p-5">
         <p className="text-[10px] font-mono uppercase text-text-dim mb-3">CTA</p>
-        <div className="rounded-[18px] border border-border bg-base px-4 py-4">
+        <div className="rounded-lg border border-border bg-base px-4 py-4">
           <p className="text-sm text-text-primary whitespace-pre-wrap leading-relaxed">
             {creativeView.cta || 'No CTA was extracted from the creative pack.'}
           </p>
         </div>
       </section>
 
-      <section className="rounded-[24px] border border-border bg-base/30">
+      <section className="rounded-lg border border-border bg-base/30">
         <button
           type="button"
           onClick={() => setShowLog((current) => !current)}

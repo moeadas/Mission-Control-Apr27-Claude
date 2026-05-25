@@ -654,9 +654,9 @@ export default function TaskDetailPage() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-6xl grid grid-cols-1 xl:grid-cols-3 gap-6">
-            <div className="xl:col-span-2 space-y-6">
+        <div className="flex-1 overflow-y-auto p-5 md:p-6">
+          <div className="grid w-full max-w-none grid-cols-1 gap-6 2xl:grid-cols-[minmax(0,1fr)_24rem]">
+            <div className="min-w-0 space-y-6">
               <Card>
                 <div className="flex items-center gap-2 mb-3">
                   <Target size={16} className="text-accent-orange" />
@@ -679,7 +679,7 @@ export default function TaskDetailPage() {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-border bg-base/40 p-4">
+                <div className="rounded-lg border border-border bg-base/40 p-5">
                   <div className="flex items-center justify-between gap-3 mb-2">
                     <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-text-dim">Progress</span>
                     <span className="text-sm font-semibold text-text-primary">{workflowProgress}%</span>
@@ -694,32 +694,32 @@ export default function TaskDetailPage() {
                     />
                   </div>
                   <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div className="rounded-xl border border-border bg-base/50 p-3">
+                    <div className="rounded-lg border border-border bg-base/50 p-4">
                       <p className="text-[10px] font-mono uppercase text-text-dim">Current phase</p>
                       <p className="mt-1 text-sm text-text-primary">{executionState?.workflow?.current_phase || mission.pipelineName || 'Waiting for execution'}</p>
                     </div>
-                    <div className="rounded-xl border border-border bg-base/50 p-3">
+                    <div className="rounded-lg border border-border bg-base/50 p-4">
                       <p className="text-[10px] font-mono uppercase text-text-dim">Runner</p>
                       <p className="mt-1 text-sm text-text-primary">{prettyRunStatus(executionState?.job?.status || latestRun?.status || mission.status)}</p>
                     </div>
-                    <div className="rounded-xl border border-border bg-base/50 p-3">
+                    <div className="rounded-lg border border-border bg-base/50 p-4">
                       <p className="text-[10px] font-mono uppercase text-text-dim">Latest stage</p>
                       <p className="mt-1 text-sm text-text-primary">{formatRunStage(latestRun?.stage)}</p>
                     </div>
                   </div>
                   <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div className="rounded-xl border border-border bg-base/50 p-3">
+                    <div className="rounded-lg border border-border bg-base/50 p-4">
                       <p className="text-[10px] font-mono uppercase text-text-dim">Current activity</p>
                       <p className="mt-1 text-sm text-text-primary">{currentActivityLabel || 'Waiting for the next recorded activity'}</p>
                     </div>
-                    <div className="rounded-xl border border-border bg-base/50 p-3">
+                    <div className="rounded-lg border border-border bg-base/50 p-4">
                       <p className="text-[10px] font-mono uppercase text-text-dim">Current agent</p>
                       <p className="mt-1 text-sm text-text-primary">{currentAgentLabel || 'No agent actively recorded yet'}</p>
                     </div>
                   </div>
                   {/* Batch U: live activity narration — what the agent is doing right now */}
                   {latestActivityMessage && mission.status === 'in_progress' && (
-                    <div className="mt-3 rounded-xl border border-[rgba(0,212,170,0.25)] bg-[rgba(0,212,170,0.06)] px-4 py-3">
+                    <div className="mt-3 rounded-lg border border-[rgba(0,212,170,0.25)] bg-[rgba(0,212,170,0.06)] px-4 py-3">
                       <div className="flex items-center gap-2">
                         <span className="h-1.5 w-1.5 rounded-full bg-accent-cyan animate-pulse" />
                         <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-dim">Live activity</p>
@@ -729,7 +729,7 @@ export default function TaskDetailPage() {
                   )}
                   {/* Batch U: quality warnings — non-fatal validator issues */}
                   {qualityWarnings.length > 0 && (
-                    <div className="mt-3 rounded-xl border border-[rgba(250,204,21,0.32)] bg-[rgba(250,204,21,0.08)] px-4 py-3">
+                    <div className="mt-3 rounded-lg border border-[rgba(250,204,21,0.32)] bg-[rgba(250,204,21,0.08)] px-4 py-3">
                       <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-yellow-200">
                         Quality warnings ({qualityWarnings.length})
                       </p>
@@ -748,12 +748,12 @@ export default function TaskDetailPage() {
                 </div>
 
                 <div className="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-4">
-                  <div className="rounded-xl border border-border bg-base/30 p-4">
+                  <div className="rounded-lg border border-border bg-base/30 p-5">
                     <p className="text-[10px] font-mono uppercase text-text-dim mb-3">Active Agent Activity</p>
                     <div className="space-y-2">
                       {liveAgentActivity.length ? (
                         liveAgentActivity.map((entry: any) => (
-                          <div key={entry.id} className="rounded-2xl border border-border bg-base px-3 py-3">
+                          <div key={entry.id} className="rounded-lg border border-border bg-base px-4 py-3">
                             <div className="flex items-center justify-between gap-3">
                               <p className="text-sm text-text-primary">{entry.agent?.name || 'Agent'}{entry.agent?.role ? ` · ${entry.agent.role}` : ''}</p>
                               <span className="text-[10px] font-mono uppercase text-text-dim">{prettyRunStatus(entry.status)}</span>
@@ -769,17 +769,17 @@ export default function TaskDetailPage() {
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-border bg-base/30 p-4">
+                  <div className="rounded-lg border border-border bg-base/30 p-5">
                     <p className="text-[10px] font-mono uppercase text-text-dim mb-3">Errors & Stalls</p>
                     {visibleErrorMessage ? (
-                      <div className="rounded-2xl border border-[rgba(255,124,66,0.22)] bg-[rgba(255,124,66,0.08)] px-4 py-4">
+                      <div className="rounded-lg border border-[rgba(255,124,66,0.22)] bg-[rgba(255,124,66,0.08)] px-4 py-4">
                         <p className="text-sm font-semibold text-text-primary">
                           {latestErrorRun ? formatRunStage(latestErrorRun.stage) : executionState?.workflow?.current_phase || 'Execution tracking'}
                         </p>
                         <p className="mt-2 text-[12px] text-text-secondary">{visibleErrorMessage}</p>
                       </div>
                     ) : (
-                      <div className="rounded-2xl border border-border bg-base px-4 py-4">
+                      <div className="rounded-lg border border-border bg-base px-4 py-4">
                         <p className="text-sm text-text-primary">No blocking error recorded.</p>
                         <p className="mt-1 text-[12px] text-text-secondary">If this task stalls, the latest failure should appear here automatically.</p>
                       </div>
@@ -787,7 +787,7 @@ export default function TaskDetailPage() {
                   </div>
                 </div>
 
-                <div className="mt-4 rounded-xl border border-border bg-base/30 p-4">
+                <div className="mt-4 rounded-lg border border-border bg-base/30 p-5">
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-[10px] font-mono uppercase text-text-dim">Execution Timeline</p>
                     {liveStreamActive ? (
@@ -820,7 +820,7 @@ export default function TaskDetailPage() {
                           return (
                             <div
                               key={event.id}
-                              className={`rounded-2xl border px-3 py-3 ${
+                                className={`rounded-lg border px-4 py-3 ${
                                 isError
                                   ? 'border-[rgba(255,124,66,0.3)] bg-[rgba(255,124,66,0.06)]'
                                   : 'border-border bg-base'
@@ -847,7 +847,7 @@ export default function TaskDetailPage() {
                         const agent = agents.find((entry) => entry.id === run.agent_id)
                         const stamp = run.updated_at || run.completed_at || run.started_at || run.created_at
                         return (
-                          <div key={run.id} className="rounded-2xl border border-border bg-base px-3 py-3">
+                          <div key={run.id} className="rounded-lg border border-border bg-base px-4 py-3">
                             <div className="flex items-center justify-between gap-3">
                               <p className="text-sm text-text-primary">
                                 {agent?.name || 'System'} · {formatRunStage(run.stage)}
@@ -904,7 +904,7 @@ export default function TaskDetailPage() {
                   {flowSteps.map((step, index) => {
                     const style = flowStyles[step.state]
                     return (
-                      <div key={step.id} className="relative rounded-2xl border border-border bg-base/40 p-4">
+                      <div key={step.id} className="relative rounded-lg border border-border bg-base/40 p-4">
                         {index < flowSteps.length - 1 ? (
                           <div className={`hidden md:block absolute top-6 -right-4 h-[2px] w-8 ${style.rail}`} />
                         ) : null}
@@ -922,7 +922,7 @@ export default function TaskDetailPage() {
                 </div>
 
                 <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <div className="rounded-xl border border-border bg-base/30 p-4">
+                  <div className="rounded-lg border border-border bg-base/30 p-5">
                     <p className="text-[10px] font-mono uppercase text-text-dim mb-2">Assigned Specialists</p>
                     <div className="flex flex-wrap gap-2">
                       {assignedAgents.length ? (
@@ -936,7 +936,7 @@ export default function TaskDetailPage() {
                       )}
                     </div>
                   </div>
-              <div className="rounded-xl border border-border bg-base/30 p-4">
+              <div className="rounded-lg border border-border bg-base/30 p-5">
                 <p className="text-[10px] font-mono uppercase text-text-dim mb-2">Skill Stack Used</p>
                     <div className="space-y-3">
                       {Object.keys(skillAssignments).length ? (
@@ -977,7 +977,7 @@ export default function TaskDetailPage() {
                 </div>
 
                 <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <div className="rounded-xl border border-border bg-base/30 p-4">
+                  <div className="rounded-lg border border-border bg-base/30 p-5">
                     <div className="flex items-center gap-2 mb-2">
                       <MessageSquareText size={15} className="text-accent-blue" />
                       <p className="text-[10px] font-mono uppercase text-text-dim">Review Workflow</p>
@@ -989,7 +989,7 @@ export default function TaskDetailPage() {
                       value={reviewComment}
                       onChange={(event) => setReviewComment(event.target.value)}
                       placeholder="Example: tighten the hook, make the tone more premium, and end with a softer CTA."
-                      className="min-h-[110px] w-full rounded-2xl border border-border bg-base px-4 py-3 text-sm text-text-primary outline-none focus:border-[var(--accent-blue)]"
+                      className="min-h-[110px] w-full rounded-lg border border-border bg-base px-4 py-3 text-sm text-text-primary outline-none focus:border-[var(--accent-blue)]"
                     />
                     <div className="mt-3 flex items-center gap-2 flex-wrap">
                       <Button size="sm" variant="secondary" onClick={handleRequestChanges} disabled={reviewBusy !== null || executionBusy !== null}>
@@ -1001,7 +1001,7 @@ export default function TaskDetailPage() {
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-border bg-base/30 p-4">
+                  <div className="rounded-lg border border-border bg-base/30 p-5">
                     <p className="text-[10px] font-mono uppercase text-text-dim mb-2">Review History</p>
                     <div className="space-y-2">
                       {reviewComments.length ? (
@@ -1009,7 +1009,7 @@ export default function TaskDetailPage() {
                           .slice()
                           .reverse()
                           .map((entry) => (
-                            <div key={entry.id} className="rounded-2xl border border-border bg-base px-3 py-3">
+                            <div key={entry.id} className="rounded-lg border border-border bg-base px-4 py-3">
                               <div className="flex items-center justify-between gap-3">
                                 <p className="text-[11px] text-text-secondary">{entry.author}</p>
                                 <span className="text-[10px] font-mono uppercase text-text-dim">{entry.status}</span>
@@ -1025,7 +1025,7 @@ export default function TaskDetailPage() {
                 </div>
 
                 {mission.compareSummary?.enabled ? (
-                  <div className="mt-4 rounded-xl border border-border bg-base/30 p-4">
+                  <div className="mt-4 rounded-lg border border-border bg-base/30 p-5">
                     <p className="text-[10px] font-mono uppercase text-text-dim mb-2">Compare Drafts</p>
                     <p className="text-sm text-text-primary">
                       Selected: {mission.compareSummary.selectedProvider} / {mission.compareSummary.selectedModel} ({mission.compareSummary.selectedScore ?? 0})
@@ -1041,7 +1041,7 @@ export default function TaskDetailPage() {
 
               {displayArtifacts.length ? (
                 displayArtifacts.map((artifact) => (
-                  <Card key={artifact.id} className="space-y-4">
+                  <Card key={artifact.id} className="space-y-5 rounded-lg">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <h2 className="text-sm font-heading font-semibold text-text-primary">{artifact.title}</h2>
@@ -1078,7 +1078,7 @@ export default function TaskDetailPage() {
                           href={`/share/output/${artifact.id}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs text-accent-blue hover:border-border-glow"
+                          className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-xs text-accent-blue hover:border-border-glow"
                         >
                           <ExternalLink size={14} />
                           Share View
@@ -1087,17 +1087,17 @@ export default function TaskDetailPage() {
                     </div>
 
                     {hasArtifactBody(artifact) ? (
-                      <div className="p-4 rounded-xl border border-border bg-base/60">
+                      <div className="rounded-lg border border-border bg-base/60 p-5">
                         <ArtifactOutputView artifact={artifact} />
                       </div>
                     ) : (
-                      <div className="p-4 rounded-xl border border-border bg-base/40">
+                      <div className="rounded-lg border border-border bg-base/40 p-5">
                         <p className="text-[12px] text-text-secondary">No output saved yet for this task.</p>
                       </div>
                     )}
 
                     {artifact.sourcePrompt ? (
-                      <div className="p-4 rounded-xl border border-border bg-base/40">
+                      <div className="rounded-lg border border-border bg-base/40 p-5">
                         <p className="text-[10px] font-mono uppercase text-text-dim mb-2">Task Brief</p>
                         <p className="text-[11px] text-text-secondary whitespace-pre-wrap leading-relaxed">{artifact.sourcePrompt}</p>
                         {artifact.missionId !== mission.id ? (
@@ -1109,7 +1109,7 @@ export default function TaskDetailPage() {
                     ) : null}
 
                     {artifact.exports?.length ? (
-                      <div className="p-4 rounded-xl border border-border bg-base/30">
+                      <div className="rounded-lg border border-border bg-base/30 p-5">
                         <p className="text-[10px] font-mono uppercase text-text-dim mb-3">Exports</p>
                         <div className="space-y-2">
                           {artifact.exports.map((record) => (
@@ -1132,7 +1132,7 @@ export default function TaskDetailPage() {
                     ) : null}
 
                     {artifact.executionSteps?.length ? (
-                      <div className="p-4 rounded-xl border border-border bg-base/30">
+                      <div className="rounded-lg border border-border bg-base/30 p-5">
                         <p className="text-[10px] font-mono uppercase text-text-dim mb-3">Autonomous Execution</p>
                         <div className="space-y-2">
                           {artifact.executionSteps.map((step) => (
@@ -1198,7 +1198,7 @@ export default function TaskDetailPage() {
                       <p><span className="text-text-primary">Workflow:</span> {executionState.workflow.status}</p>
                       <p><span className="text-text-primary">Current phase:</span> {executionState.workflow.current_phase || '—'}</p>
                       <p><span className="text-text-primary">Stage:</span> {workflowStageLabel}</p>
-                      <div className="rounded-xl border border-border bg-base/50 px-3 py-3 mt-2">
+                      <div className="mt-2 rounded-lg border border-border bg-base/50 px-4 py-3">
                         <p className="text-[10px] font-mono uppercase text-text-dim">Workflow State</p>
                         <p className="mt-1 text-sm text-text-primary">{workflowStageLabel}</p>
                       </div>

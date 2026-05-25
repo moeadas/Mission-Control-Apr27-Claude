@@ -101,27 +101,28 @@ export default function TasksPage() {
           <div className="text-[11px] font-mono text-text-dim">{missions.length} tracked tasks</div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="flex-1 overflow-y-auto p-5 md:p-6">
+          <div className="grid w-full max-w-none grid-cols-1 gap-5 xl:grid-cols-2 2xl:grid-cols-3">
             {!appStateReady ? (
-              <Card>
+              <Card className="xl:col-span-2 2xl:col-span-3">
                 <p className="text-sm text-text-primary">Loading tasks…</p>
               </Card>
             ) : sortedTasks.length ? (
               sortedTasks.map((mission) => {
                 const client = clients.find((item) => item.id === mission.clientId)
                 const latestArtifact = findBestArtifactForMission(mission.id)
+                const isOpen = Boolean(openTaskIds[mission.id])
 
                 return (
-                  <Card key={mission.id} className="relative">
+                  <Card key={mission.id} className={`relative rounded-lg ${isOpen ? 'xl:col-span-2 2xl:col-span-3' : ''}`}>
                     <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => toggleTask(mission.id)}
-                        className="inline-flex items-center justify-center rounded-lg border border-border bg-base/60 p-2 text-text-secondary transition-all hover:text-text-primary"
-                        aria-label={`${openTaskIds[mission.id] ? 'Collapse' : 'Expand'} ${mission.title}`}
+                        className="inline-flex items-center justify-center rounded-md border border-border bg-base/60 p-2 text-text-secondary transition-all hover:text-text-primary"
+                        aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${mission.title}`}
                       >
-                        {openTaskIds[mission.id] ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                        {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                       </button>
                       <button
                         type="button"
@@ -132,7 +133,7 @@ export default function TasksPage() {
                             deleteMission(mission.id)
                           }
                         }}
-                        className="inline-flex items-center justify-center rounded-lg border border-red-500/20 bg-red-500/10 p-2 text-red-400 transition-all hover:bg-red-500/20"
+                        className="inline-flex items-center justify-center rounded-md border border-red-500/20 bg-red-500/10 p-2 text-red-400 transition-all hover:bg-red-500/20"
                         aria-label={`Delete ${mission.title}`}
                       >
                         <Trash2 size={14} />
@@ -144,7 +145,7 @@ export default function TasksPage() {
                       onClick={() => toggleTask(mission.id)}
                       className="block w-full space-y-4 text-left pr-24"
                     >
-                      <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0 flex-1">
                           <h3 className="text-sm font-heading font-semibold text-text-primary">{mission.title}</h3>
                           <p className="text-[11px] text-text-secondary mt-1">
@@ -164,22 +165,22 @@ export default function TasksPage() {
                           Added {new Date(getMissionRecencyTimestamp(mission.id, mission.createdAt)).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                         </div>
                         <span className="inline-flex items-center gap-1 text-[11px] text-accent-blue">
-                          {openTaskIds[mission.id] ? 'Hide details' : 'Show details'} <ArrowRight size={12} />
+                          {isOpen ? 'Hide details' : 'Show details'} <ArrowRight size={12} />
                         </span>
                       </div>
                     </button>
 
-                    {openTaskIds[mission.id] ? (
-                      <div className="mt-4 space-y-4 border-t border-border pt-4">
+                    {isOpen ? (
+                      <div className="mt-5 grid grid-cols-1 gap-4 border-t border-border pt-5 lg:grid-cols-[minmax(0,1fr)_auto]">
                         {latestArtifact?.content || latestArtifact?.renderedHtml ? (
-                          <div className="p-3 rounded-xl border border-border bg-base/50">
-                            <p className="text-[10px] font-mono uppercase text-text-dim mb-2">Latest Output</p>
-                            <p className="text-[12px] text-text-primary line-clamp-6 whitespace-pre-wrap">
+                          <div className="rounded-lg border border-border bg-base/50 p-5 lg:col-span-2">
+                            <p className="mb-3 text-[10px] font-mono uppercase tracking-[0.18em] text-text-dim">Latest Output</p>
+                            <div className="max-h-80 overflow-y-auto pr-2 text-[13px] leading-relaxed text-text-primary whitespace-pre-wrap">
                               {latestArtifact.content || 'Saved HTML output available. Open task to review the full deliverable.'}
-                            </p>
+                            </div>
                           </div>
                         ) : (
-                          <div className="p-3 rounded-xl border border-border bg-base/40">
+                          <div className="rounded-lg border border-border bg-base/40 p-5 lg:col-span-2">
                             <p className="text-[12px] text-text-secondary">
                               Task created. Output will appear here as soon as Iris drafts it.
                             </p>
@@ -197,7 +198,7 @@ export default function TasksPage() {
                 )
               })
             ) : (
-              <Card>
+              <Card className="xl:col-span-2 2xl:col-span-3">
                 <p className="text-sm text-text-primary">No tasks yet.</p>
                 <p className="text-[11px] text-text-dim mt-1">
                   Ask Iris for a post, strategy, calendar, media plan, audit, or brief and it will appear here.

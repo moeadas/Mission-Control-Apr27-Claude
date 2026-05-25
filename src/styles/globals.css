@@ -559,14 +559,14 @@ textarea { resize: vertical; min-height: 120px; }
   display: flex;
   flex-direction: column;
   gap: 1.1rem;
-  max-width: 1080px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
 }
 
 .artifact-render .artifact-header {
   padding: 1.4rem 1.5rem;
   border: 1px solid color-mix(in srgb, var(--accent-blue) 12%, var(--border));
-  border-radius: 1.25rem;
+  border-radius: 0.75rem;
   background:
     radial-gradient(circle at top right, color-mix(in srgb, var(--accent-blue) 12%, transparent), transparent 35%),
     linear-gradient(135deg, color-mix(in srgb, var(--accent-purple) 12%, transparent), transparent 55%),
@@ -599,7 +599,7 @@ textarea { resize: vertical; min-height: 120px; }
 .artifact-render .artifact-section {
   border: 1px solid color-mix(in srgb, var(--accent-blue) 8%, var(--border));
   background: linear-gradient(180deg, rgba(255,255,255,0.97), rgba(249,250,251,0.96));
-  border-radius: 1.2rem;
+  border-radius: 0.75rem;
   overflow: hidden;
   box-shadow: 0 14px 28px rgba(15, 23, 42, 0.05);
 }
@@ -617,7 +617,7 @@ textarea { resize: vertical; min-height: 120px; }
 }
 
 .artifact-render .artifact-section-body {
-  padding: 1.15rem;
+  padding: 1.35rem;
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
