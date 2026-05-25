@@ -674,6 +674,7 @@ Specialist engine gates:
 ## Open Questions / Suspected Risks
 
 - Versioning note: `package.json` app version was bumped to `1.0.1` for the 2026-05-25 client-context/progress fix set. Production builds also expose a timestamp build id through `NEXT_PUBLIC_BUILD_ID`, `/api/version`, and the Settings page `BuildVersionBadge`.
+- Versioning note: `package.json` app version was bumped to `1.0.2` for the 2026-05-25 follow-up that infers clients from prompt text on new Iris missions, closes matching task-run rows instead of leaving duplicate `in_progress` rows, and honors pipeline-reported progress in task execution hooks.
 - `CLAUDE.md` has stale auth statements in early sections saying cookies are not live. Current code and `HANDOFF.md` say cookie migration is live.
 - `execution-queue.ts` is in-memory/process-local, so production task queue durability depends on no app restart during execution.
 - Remaining client-context risk: tasks can still be intentionally generic if no client is selected and no client can be inferred from the prompt. The runner now preserves/infer-fills `client_id` when bootstrap data, active chat client, prompt client-name match, or single-client tenant context exists.

@@ -261,6 +261,18 @@ export async function POST(req: NextRequest) {
       missionId,
     } = requestBody
 
+    const initialLatestUser = Array.isArray(messages)
+      ? [...messages].reverse().find((message) => message.role === 'user')
+      : null
+    const initialUserContent = initialLatestUser?.content || ''
+    const inferredClientFromRequest = Array.isArray(clients)
+      ? [...clients]
+          .filter((client: any) => client?.id && client?.name)
+          .sort((a: any, b: any) => String(b.name).length - String(a.name).length)
+          .find((client: any) => initialUserContent.toLowerCase().includes(String(client.name).toLowerCase()))
+      : null
+    const missionClientId = currentClientId || inferredClientFromRequest?.id || (Array.isArray(clients) && clients.length === 1 ? clients[0]?.id : null)
+
     // Batch Q: if the client provided a missionId but the task row hasn't
     // been persisted yet (race vs. /api/state PUT), the server creates a
     // stub row right here. That guarantees the FK target exists for
@@ -280,7 +292,7 @@ export async function POST(req: NextRequest) {
               ${missionId},
               ${auth.tenantId}::uuid,
               ${auth.userId}::uuid,
-              (SELECT id FROM clients WHERE agency_id = ${auth.tenantId}::uuid AND id = ${currentClientId || null} LIMIT 1),
+              (SELECT id FROM clients WHERE agency_id = ${auth.tenantId}::uuid AND id = ${missionClientId || null} LIMIT 1),
               ${'New chat task'},
               'in_progress',
               '',
@@ -301,8 +313,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'messages required' }, { status: 400 })
     }
 
-    const latestUser = [...messages].reverse().find((message) => message.role === 'user')
-    const userContent = latestUser?.content || ''
+    const latestUser = initialLatestUser || [...messages].reverse().find((message) => message.role === 'user')
+    const userContent = initialUserContent || latestUser?.content || ''
     // Client brief intent forces conversational path — we never want to route a
     // pasted brief through executeAutonomousTask (which may fail on Ollama etc.)
     const isBriefIntent = detectClientBriefIntent(userContent)
@@ -1191,7 +1203,7 @@ Orchestration trace:
       assignedAgentIds: channelingPlan.assignedAgentIds,
       selectedSkillsByAgent: channelingPlan.selectedSkillsByAgent,
       orchestrationTrace: channelingPlan.orchestrationTrace,
-      clientId: routing.clientId || currentClientId || null,
+      clientId: routing.clientId || missionClientId || currentClientId || null,
       campaignId: currentCampaignId || null,
       deliverableType,
       pipelineId: pipelineHint?.id || resolvedPipelineId || null,

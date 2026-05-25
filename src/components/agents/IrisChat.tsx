@@ -1506,6 +1506,7 @@ export function IrisChat() {
         handoffNotes: 'Iris is analysing the request and briefing the specialists.',
         orchestrationTrace: provisionalRouting.orchestrationTrace,
       })
+      const createdMission = useAgentsStore.getState().missions.find((mission) => mission.id === createdMissionId)
       // Fire-and-forget the state persistence — server self-creates the row
       // from the bootstrap payload below, so we don't need to wait for it.
       persistCurrentState().catch(() => null)
@@ -1525,7 +1526,7 @@ export function IrisChat() {
               collaboratorAgentIds: provisionalRouting.collaboratorAgentIds,
               // Server resolves pipelineId from deliverableType.
               pipelineId: null,
-              clientId: activeMission?.clientId || null,
+              clientId: createdMission?.clientId || activeMission?.clientId || null,
             }
           )
           addAssistantMessage(

@@ -342,6 +342,30 @@ export async function insertTaskRun(input: {
   if (!agencyId) return null
 
   const db = getDb()
+  if (['completed', 'failed', 'blocked', 'cancelled'].includes(input.status)) {
+    const updated = await db`
+      UPDATE task_runs
+      SET
+        status = ${input.status},
+        input_payload = ${db.json(input.inputPayload || {})},
+        output_payload = ${db.json(input.outputPayload || {})},
+        error_message = ${input.errorMessage || null},
+        completed_at = ${input.completedAt || new Date().toISOString()}
+      WHERE id = (
+        SELECT id FROM task_runs
+        WHERE agency_id = ${agencyId}
+          AND task_id = ${input.taskId}
+          AND stage = ${input.stage}
+          AND (${input.agentId || null}::text IS NULL OR agent_id = ${input.agentId || null})
+          AND status = 'in_progress'
+        ORDER BY created_at DESC
+        LIMIT 1
+      )
+      RETURNING *
+    `
+    if (updated[0]) return updated[0]
+  }
+
   const rows = await db`
     INSERT INTO task_runs (agency_id, task_id, agent_id, stage, status, input_payload, output_payload, error_message, started_at, completed_at)
     VALUES (
@@ -772,13 +796,17 @@ export async function runTaskExecution(
       skillCategories,
       officeContextByAgent,
       hooks: {
-        onPhaseStart: async ({ phase }) => {
+        onPhaseStart: async ({ phase, progress: reportedProgress }) => {
+          const liveProgress = Math.max(
+            computeProgress(progressPlan),
+            typeof reportedProgress === 'number' ? reportedProgress : 0
+          )
           await emitTaskEvent({
             taskId,
             tenantId: tenantUuid,
             type: 'phase_start',
             phase: phase.name,
-            progress: computeProgress(progressPlan),
+            progress: liveProgress,
             message: `Phase started: ${phase.name}`,
           })
           await upsertWorkflowExecutionState({
@@ -786,12 +814,12 @@ export async function runTaskExecution(
             pipelineId: pipeline?.id || task.pipeline_id,
             status: 'active',
             currentPhase: phase.name,
-            progress: computeProgress(progressPlan),
+            progress: liveProgress,
             agencyId,
             context: { action, activePhaseId: phase.id },
           })
         },
-        onActivityStart: async ({ phase, activity, agent, runtime }) => {
+        onActivityStart: async ({ phase, activity, agent, runtime, progress: reportedProgress }) => {
           // Find the matching activity in our progress plan. Pipeline activities
           // use their declared id; no-pipeline collaborator activities use the
           // `collab-<agentId>` id convention we built into buildProgressPlan.
@@ -799,11 +827,12 @@ export async function runTaskExecution(
             progressPlan.activities.find((a) => a.id === activity.id)?.id ||
             progressPlan.activities.find((a) => a.agentId === agent.id && a.status === 'pending')?.id ||
             'lead-draft'
-          const liveProgress = startActivity(
+          const planProgress = startActivity(
             progressPlan,
             planActivityId,
             `${agent.name} ${describeAgentVerb(agent, task.deliverable_type)}`
           )
+          const liveProgress = Math.max(planProgress, typeof reportedProgress === 'number' ? reportedProgress : 0)
           await insertTaskRun({
             taskId,
             agentId: agent.id,
@@ -847,12 +876,13 @@ export async function runTaskExecution(
             },
           })
         },
-        onActivityComplete: async ({ phase, activity, agent, runtime, summary, outputIds }) => {
+        onActivityComplete: async ({ phase, activity, agent, runtime, summary, outputIds, progress: reportedProgress }) => {
           const planActivityId =
             progressPlan.activities.find((a) => a.id === activity.id)?.id ||
             progressPlan.activities.find((a) => a.agentId === agent.id && a.status === 'running')?.id ||
             'lead-draft'
-          const liveProgress = completeActivity(progressPlan, planActivityId, `${agent.name} finished`)
+          const planProgress = completeActivity(progressPlan, planActivityId, `${agent.name} finished`)
+          const liveProgress = Math.max(planProgress, typeof reportedProgress === 'number' ? reportedProgress : 0)
           await insertTaskRun({
             taskId,
             agentId: agent.id,

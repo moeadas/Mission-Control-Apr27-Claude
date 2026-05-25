@@ -93,6 +93,24 @@ function inferPipelineMetadata(deliverableType: Mission['deliverableType']) {
   return inferPipelineMetadataForDeliverable(deliverableType)
 }
 
+function normalizeClientMatchText(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+}
+
+function inferClientIdFromPrompt(prompt: string, clients: Client[]) {
+  const requestText = normalizeClientMatchText(prompt)
+  if (!requestText) return undefined
+
+  const byName = [...clients]
+    .filter((client) => client.id && client.name)
+    .sort((a, b) => b.name.length - a.name.length)
+    .find((client) => requestText.includes(normalizeClientMatchText(client.name)))
+
+  if (byName?.id) return byName.id
+  if (clients.length === 1) return clients[0]?.id
+  return undefined
+}
+
 interface AgentsState {
   agents: Agent[]
   activities: ActivityEntry[]
@@ -350,6 +368,7 @@ export const useAgentsStore = create<AgentsState>()(
         const title = buildTaskTitleFromRequest(prompt, deliverableType)
         const missionId = uuidv4()
         const assignedAgentIds = options?.assignedAgentIds?.length ? options.assignedAgentIds : ['iris']
+        const inferredClientId = options?.clientId || inferClientIdFromPrompt(prompt, get().clients)
         const mission: Mission = {
           id: missionId,
           ownerUserId: get().currentUser?.id,
@@ -359,7 +378,7 @@ export const useAgentsStore = create<AgentsState>()(
           status: 'queued',
           priority: 'medium',
           campaignId: options?.campaignId,
-          clientId: options?.clientId,
+          clientId: inferredClientId,
           pipelineId: pipeline.pipelineId || undefined,
           pipelineName: pipeline.pipelineName || undefined,
           assignedAgentIds,
