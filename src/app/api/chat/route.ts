@@ -275,8 +275,17 @@ export async function POST(req: NextRequest) {
           // Self-heal: insert a minimal task row so events have a target.
           const db = getDb()
           await db`
-            INSERT INTO tasks (id, agency_id, title, status, summary)
-            VALUES (${missionId}, ${auth.tenantId}::uuid, ${'New chat task'}, 'in_progress', '')
+            INSERT INTO tasks (id, agency_id, owner_user_id, client_id, title, status, summary, progress)
+            VALUES (
+              ${missionId},
+              ${auth.tenantId}::uuid,
+              ${auth.userId}::uuid,
+              (SELECT id FROM clients WHERE agency_id = ${auth.tenantId}::uuid AND id = ${currentClientId || null} LIMIT 1),
+              ${'New chat task'},
+              'in_progress',
+              '',
+              0
+            )
             ON CONFLICT (id) DO NOTHING
           `
           canPersistMissionExecution = true

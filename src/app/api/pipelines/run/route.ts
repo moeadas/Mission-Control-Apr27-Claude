@@ -37,16 +37,6 @@ function getBearerToken(request: NextRequest) {
   return getAuthTokenFromRequest(request)
 }
 
-async function getAgencyId(): Promise<string | null> {
-  try {
-    const db = getDb()
-    const rows = await db`SELECT id FROM agencies WHERE slug = 'default-agency' LIMIT 1`
-    return rows[0]?.id ?? null
-  } catch {
-    return null
-  }
-}
-
 export async function POST(request: NextRequest) {
   try {
     const auth = await resolveAuthContextFromToken(getBearerToken(request))
@@ -67,7 +57,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'request is required' }, { status: 400 })
     }
 
-    const agencyId = await getAgencyId()
+    const agencyId = auth.tenantId
     if (!agencyId) {
       return NextResponse.json({ error: 'Persistence layer is unavailable.' }, { status: 503 })
     }

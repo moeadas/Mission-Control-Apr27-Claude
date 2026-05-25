@@ -19,7 +19,7 @@ import {
   phaseLabel,
   type ExecutionPlan as ProgressExecutionPlan,
 } from '@/lib/server/task-progress'
-import { emitTaskEvent, emitActivityMessage, emitQualityIssues } from '@/lib/server/task-events'
+import { emitTaskEvent, emitActivityMessage, emitQualityIssues, resetTaskEvents } from '@/lib/server/task-events'
 import { buildOfficeContextForAgent } from '@/lib/server/office-context'
 import type { OfficeLayout } from '@/lib/office-types'
 
@@ -129,6 +129,39 @@ async function resolveAgentRowId(
   return null
 }
 
+async function resolveTaskClientId(
+  agencyId: string,
+  bootstrap?: TaskBootstrap
+): Promise<string | null> {
+  const db = getDb()
+  if (bootstrap?.clientId) {
+    const client = await db`
+      SELECT id FROM clients WHERE agency_id = ${agencyId}::uuid AND id = ${bootstrap.clientId} LIMIT 1
+    `
+    if (client[0]?.id) return client[0].id as string
+  }
+
+  const requestText = `${bootstrap?.title || ''}\n${bootstrap?.prompt || ''}`.toLowerCase()
+  if (requestText.trim()) {
+    const clients = await db`
+      SELECT id, name FROM clients
+      WHERE agency_id = ${agencyId}::uuid
+      ORDER BY length(name) DESC
+      LIMIT 100
+    `
+    const matched = clients.find((client: any) => {
+      const id = String(client.id || '').toLowerCase()
+      const name = String(client.name || '').toLowerCase()
+      return (name && requestText.includes(name)) || (id && requestText.includes(id))
+    })
+    if (matched?.id) return matched.id as string
+
+    if (clients.length === 1) return clients[0].id as string
+  }
+
+  return null
+}
+
 export async function ensureTaskExists(
   taskId: string,
   auth: AuthContext,
@@ -138,8 +171,6 @@ export async function ensureTaskExists(
   if (!agencyId) return false
 
   const db = getDb()
-  const existing = await db`SELECT id FROM tasks WHERE id = ${taskId} LIMIT 1`
-  if (existing[0]) return true
 
   const title = (bootstrap?.title || bootstrap?.prompt || 'New chat task').slice(0, 280)
   const summary = (bootstrap?.prompt || bootstrap?.title || '').slice(0, 4000)
@@ -155,13 +186,7 @@ export async function ensureTaskExists(
     resolvedPipelineId = pipeline[0]?.id || null
   }
 
-  let resolvedClientId: string | null = null
-  if (bootstrap?.clientId) {
-    const client = await db`
-      SELECT id FROM clients WHERE agency_id = ${agencyId}::uuid AND id = ${bootstrap.clientId} LIMIT 1
-    `
-    resolvedClientId = client[0]?.id || null
-  }
+  const resolvedClientId = await resolveTaskClientId(agencyId, bootstrap)
 
   // Resolve collaborator agent template-IDs → row IDs for metadata.
   const collaboratorTemplateIds = bootstrap?.collaboratorAgentIds || []
@@ -194,6 +219,19 @@ export async function ensureTaskExists(
       )
       ON CONFLICT (id) DO NOTHING
     `
+    await db`
+      UPDATE tasks
+      SET
+        client_id = COALESCE(client_id, ${resolvedClientId}),
+        summary = CASE WHEN COALESCE(summary, '') = '' THEN ${summary} ELSE summary END,
+        title = CASE WHEN title = 'New chat task' AND ${title} <> 'New chat task' THEN ${title} ELSE title END,
+        deliverable_type = COALESCE(deliverable_type, ${deliverableType}),
+        lead_agent_id = COALESCE(lead_agent_id, ${resolvedLeadAgentId}),
+        pipeline_id = COALESCE(pipeline_id, ${resolvedPipelineId}),
+        metadata = COALESCE(metadata, '{}'::jsonb) || ${db.json(metadata)}::jsonb,
+        updated_at = NOW()
+      WHERE agency_id = ${agencyId} AND id = ${taskId}
+    `
     return true
   } catch (error) {
     console.error('[ensureTaskExists] failed:', error)
@@ -207,7 +245,7 @@ export async function loadTaskExecutionState(taskId: string, auth: AuthContext) 
 
   const db = getDb()
   const taskRows = await db`
-    SELECT id, owner_user_id FROM tasks
+    SELECT id, owner_user_id, progress FROM tasks
     WHERE agency_id = ${agencyId} AND id = ${taskId}
     LIMIT 1
   `
@@ -217,7 +255,7 @@ export async function loadTaskExecutionState(taskId: string, auth: AuthContext) 
     return null
   }
 
-  const [workflowRows, runs] = await Promise.all([
+  const [workflowRows, runs, eventRows] = await Promise.all([
     db`
       SELECT * FROM workflow_instances
       WHERE agency_id = ${agencyId} AND task_id = ${taskId}
@@ -229,10 +267,24 @@ export async function loadTaskExecutionState(taskId: string, auth: AuthContext) 
       WHERE agency_id = ${agencyId} AND task_id = ${taskId}
       ORDER BY created_at DESC
     `,
+    db`
+      SELECT COALESCE(MAX(progress), 0)::int AS max_progress
+      FROM task_events
+      WHERE task_id = ${taskId}
+    `,
   ])
 
+  const workflow = workflowRows[0] || null
+  if (workflow) {
+    workflow.progress = Math.max(
+      Number(workflow.progress || 0),
+      Number(task.progress || 0),
+      Number(eventRows[0]?.max_progress || 0)
+    )
+  }
+
   return {
-    workflow: workflowRows[0] || null,
+    workflow,
     runs: runs || [],
   }
 }
@@ -244,8 +296,9 @@ export async function upsertWorkflowExecutionState(input: {
   currentPhase?: string | null
   progress: number
   context?: Record<string, any>
+  agencyId?: string | null
 }) {
-  const agencyId = await getDefaultAgencyId()
+  const agencyId = input.agencyId || (await getDefaultAgencyId())
   if (!agencyId) return null
 
   const id = toStableUuid(`workflow:${input.taskId}`)
@@ -265,7 +318,7 @@ export async function upsertWorkflowExecutionState(input: {
     ON CONFLICT (id) DO UPDATE SET
       status = EXCLUDED.status,
       current_phase = EXCLUDED.current_phase,
-      progress = EXCLUDED.progress,
+      progress = GREATEST(COALESCE(workflow_instances.progress, 0), EXCLUDED.progress),
       context = EXCLUDED.context,
       updated_at = NOW()
     RETURNING *
@@ -283,8 +336,9 @@ export async function insertTaskRun(input: {
   errorMessage?: string | null
   startedAt?: string | null
   completedAt?: string | null
+  agencyId?: string | null
 }) {
-  const agencyId = await getDefaultAgencyId()
+  const agencyId = input.agencyId || (await getDefaultAgencyId())
   if (!agencyId) return null
 
   const db = getDb()
@@ -502,6 +556,22 @@ export async function runTaskExecution(
     throw new Error('Unauthorized')
   }
 
+  await resetTaskEvents(taskId)
+  await Promise.all([
+    db`
+      UPDATE tasks
+      SET status = 'in_progress', progress = 0, updated_at = NOW()
+      WHERE agency_id = ${agencyId} AND id = ${taskId}
+    `,
+    db`
+      UPDATE workflow_instances
+      SET status = 'active', current_phase = ${phaseLabel('routing')}, progress = 0, updated_at = NOW()
+      WHERE agency_id = ${agencyId} AND task_id = ${taskId}
+    `,
+  ])
+  task.status = 'in_progress'
+  task.progress = 0
+
   const [clientRows, knowledgeRows, outputRows] = await Promise.all([
     task.client_id
       ? db`SELECT * FROM clients WHERE agency_id = ${agencyId} AND id = ${task.client_id} LIMIT 1`
@@ -597,6 +667,7 @@ export async function runTaskExecution(
     status: 'active',
     currentPhase: pipeline?.phases?.[0]?.name || phaseLabel('routing'),
     progress,
+    agencyId,
     context: {
       action,
       startedBy: auth.userId,
@@ -625,6 +696,7 @@ export async function runTaskExecution(
       runtimeMode: providerSettings.routing.runtimeMode,
     },
     startedAt: new Date().toISOString(),
+    agencyId,
   })
 
   // Complete routing — the analysis is essentially done by the time we've built
@@ -715,6 +787,7 @@ export async function runTaskExecution(
             status: 'active',
             currentPhase: phase.name,
             progress: computeProgress(progressPlan),
+            agencyId,
             context: { action, activePhaseId: phase.id },
           })
         },
@@ -739,6 +812,7 @@ export async function runTaskExecution(
             inputPayload: { phaseId: phase.id, activityId: activity.id },
             outputPayload: { provider: runtime.provider, model: runtime.model, started: true },
             startedAt: new Date().toISOString(),
+            agencyId,
           })
           await emitTaskEvent({
             taskId,
@@ -762,6 +836,7 @@ export async function runTaskExecution(
             status: 'active',
             currentPhase: phase.name,
             progress: liveProgress,
+            agencyId,
             context: {
               action,
               activePhaseId: phase.id,
@@ -787,6 +862,7 @@ export async function runTaskExecution(
             outputPayload: { summary, provider: runtime.provider, model: runtime.model },
             startedAt: new Date().toISOString(),
             completedAt: new Date().toISOString(),
+            agencyId,
           })
           await emitTaskEvent({
             taskId,
@@ -804,6 +880,7 @@ export async function runTaskExecution(
             status: 'active',
             currentPhase: phase.name,
             progress: liveProgress,
+            agencyId,
             context: { action, activePhaseId: phase.id, lastActivityId: activity.id },
           })
         },
@@ -965,6 +1042,7 @@ export async function runTaskExecution(
       },
       startedAt: now,
       completedAt: now,
+      agencyId,
     })
 
     await upsertWorkflowExecutionState({
@@ -973,6 +1051,7 @@ export async function runTaskExecution(
       status: 'completed',
       currentPhase: 'Completed',
       progress: finalProgress,
+      agencyId,
       context: {
         action,
         quality: result.qualityResult,
@@ -1011,6 +1090,7 @@ export async function runTaskExecution(
       errorMessage: message,
       startedAt: now,
       completedAt: now,
+      agencyId,
     })
     await upsertWorkflowExecutionState({
       taskId,
@@ -1018,10 +1098,11 @@ export async function runTaskExecution(
       status: 'failed',
       currentPhase: pipeline?.phases?.[0]?.name || 'Execution',
       progress: errorProgress,
+      agencyId,
       context: { action, error: message, failedAt: now },
     })
     await db`
-      UPDATE tasks SET status = 'failed', progress = ${errorProgress}
+      UPDATE tasks SET status = 'failed', progress = GREATEST(COALESCE(progress, 0), ${errorProgress})
       WHERE agency_id = ${agencyId} AND id = ${taskId}
     `
 

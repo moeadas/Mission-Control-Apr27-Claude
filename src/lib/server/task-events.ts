@@ -49,9 +49,35 @@ export interface TaskEventRow {
   created_at: string
 }
 
+function normalizeProgress(value: number | null | undefined): number | null {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.max(0, Math.min(100, Math.round(value)))
+    : null
+}
+
+export async function resetTaskEvents(taskId: string): Promise<void> {
+  try {
+    const db = getDb()
+    await db`DELETE FROM task_events WHERE task_id = ${taskId}`
+  } catch (err) {
+    console.warn('[task-events] reset failed', err)
+  }
+}
+
 export async function emitTaskEvent(input: TaskEventInput): Promise<void> {
   try {
     const db = getDb()
+    let progress = normalizeProgress(input.progress)
+
+    if (progress !== null) {
+      const rows = await db`
+        SELECT COALESCE(MAX(progress), 0)::int AS max_progress
+        FROM task_events
+        WHERE task_id = ${input.taskId}
+      `
+      progress = Math.max(progress, Number(rows[0]?.max_progress ?? 0))
+    }
+
     await db`
       INSERT INTO task_events (task_id, tenant_id, event_type, phase, activity, agent_id, progress, message, payload)
       VALUES (
@@ -61,7 +87,7 @@ export async function emitTaskEvent(input: TaskEventInput): Promise<void> {
         ${input.phase ?? null},
         ${input.activity ?? null},
         ${input.agentId ?? null},
-        ${typeof input.progress === 'number' ? Math.max(0, Math.min(100, Math.round(input.progress))) : null},
+        ${progress},
         ${input.message ?? null},
         ${input.payload ? JSON.stringify(input.payload) : null}::jsonb
       )

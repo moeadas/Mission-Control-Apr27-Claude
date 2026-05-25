@@ -35,6 +35,10 @@ function clampProgress(value: number | undefined) {
   return Math.max(0, Math.min(100, next))
 }
 
+function getStableProgress(missionProgress?: number, workflowProgress?: number) {
+  return clampProgress(Math.max(Number(missionProgress || 0), Number(workflowProgress || 0)))
+}
+
 function MissionProgressDial({ progress, color, label }: { progress: number; color: string; label: string }) {
   const normalized = clampProgress(progress)
   const angle = (normalized / 100) * 360
@@ -170,7 +174,7 @@ export function GlobalTaskTracker() {
   const currentSkills = Object.entries(selectedMission.skillAssignments || {})
   const executionSteps = latestArtifact?.executionSteps || []
   const recentRuns = (selectedExecution?.runs || []).slice(0, 6)
-  const activeProgress = clampProgress(selectedExecution?.workflow?.progress ?? selectedMission.progress ?? 0)
+  const activeProgress = getStableProgress(selectedMission.progress, selectedExecution?.workflow?.progress)
   const currentPhase = selectedExecution?.workflow?.current_phase || selectedMission.pipelineName || 'Execution'
   const currentJobStatus = selectedExecution?.job?.status || null
   const latestTrace = selectedMission.orchestrationTrace || []
@@ -281,7 +285,7 @@ export function GlobalTaskTracker() {
                   {trackedMissions.map((mission, index) => {
                     const client = clients.find((item) => item.id === mission.clientId)
                     const isActive = mission.id === selectedMission.id
-                    const progress = clampProgress(executionByTaskId[mission.id]?.workflow?.progress ?? mission.progress ?? 0)
+                    const progress = getStableProgress(mission.progress, executionByTaskId[mission.id]?.workflow?.progress)
                     const missionTone = STATUS_COLORS[mission.status] || '#4f8ef7'
                     const missionStage = getMissionStageLabel({ missionStatus: mission.status, progress })
 

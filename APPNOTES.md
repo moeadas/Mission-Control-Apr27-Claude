@@ -1,0 +1,687 @@
+# Mission Control App Notes
+
+Durable working memory for understanding this app. Keep this file current as code is reviewed or changed.
+
+Last updated: 2026-05-25
+
+## Purpose
+
+This file records how Mission Control is wired: app structure, runtime flows, key files, data model, deployment flow, invariants, and open questions. It is intentionally written for future AI/dev handoffs so context survives long sessions.
+
+## Review Status
+
+Legend:
+- `Reviewed` means the file/area was read enough to understand behavior and ownership.
+- `Inventoried` means listed/classified but not deeply read.
+- `Deferred` means generated, vendored, binary, schema bulk, or low-behavior data where deep reading is not useful unless touched.
+
+| Area | Status | Notes |
+|---|---|---|
+| Root operational docs | Reviewed | `HANDOFF.md`, parts of `CLAUDE.md`, `ARCHITECTURE.md`, deployment docs. |
+| Root build/config files | Reviewed | Package, Next, TS, Vitest, Tailwind/PostCSS, Docker, compose, ignores, env examples reviewed. |
+| `src/app` routes/pages | Pending | Needs route-by-route review. |
+| `src/components` | Pending | Needs component flow review. |
+| `src/lib` backend/client logic | In progress | Auth, DB client, state persistence, tenant helpers, provider settings, execution queue, key task execution path partially reviewed. |
+| `src/config` agents/pipelines/skills | Pending | Need generated/template/config map. |
+| `data/skills` | Inventoried | Large skill library; review structure and loader behavior first, then spot-check representative skills. |
+| `data/skill-packages` | Inventoried | Includes bundled skill packages and large Office XML schemas; many files are support assets. |
+| `public` assets | Pending | Need classify images/uploads/static assets. |
+| `scripts` | Reviewed | Migration/import/bootstrap utilities reviewed. |
+| `tests` | Pending | Need test coverage map. |
+
+## High-Level App Model
+
+Mission Control is a multi-tenant AI agency SaaS built with Next.js App Router, React, TypeScript, Tailwind, Zustand, and Postgres via `postgres.js`. Each tenant is an agency with clients, agents, tasks, outputs, skills, pipelines, provider settings, and office layout.
+
+Core production topology:
+- Local workspace: `/Users/moe/Desktop/Mission Control Remake`
+- GitHub remote: `https://github.com/moeadas/Mission-Control-Apr27-Claude.git`
+- VPS: `root@72.62.33.12`
+- VPS app path: `/opt/mission-control`
+- Runtime: host nginx on 80/443 proxies to Docker `mc_app` on `127.0.0.1:3000`; Postgres runs as Docker `mc_db`.
+
+## File Inventory Snapshot
+
+Initial inventory outside `.git`, `.next`, and `node_modules`: 2,079 files.
+
+Top-level distribution:
+- `data`: 1,596 files. Mostly skill markdown/json plus bundled skill packages.
+- `src`: 360 files. Main app behavior.
+- `public`: 57 files. Static assets/uploads.
+- `docker`: 11 files. Init SQL and nginx/deploy support.
+- `DOCs`: 10 files. Historical/generated docs.
+- `scripts`: 7 files. Migration/import/bootstrap utilities.
+- `tests`: 5 files. Vitest tests.
+- Root docs/config/build files: remaining small set.
+
+## Critical Invariants
+
+- Work only inside `/Users/moe/Desktop/Mission Control Remake`.
+- Tenant isolation is by `agency_id`; most app data must be scoped to `auth.tenantId`.
+- Auth source of truth is the httpOnly `mc_session` cookie. Browser helpers return a non-secret `cookie-session` sentinel for legacy guards.
+- `SUPER_ADMIN_EMAIL` env match creates super-admin behavior; do not add a DB-column concept for it.
+- Agent IDs are global text IDs. Legacy tenants may use literal `maya`; cloned tenants use IDs like `maya-<suffix>`. Use `findAgentByTemplate`, never direct literal ID checks in engine code.
+- `office_layouts.layout` is JSONB. Write raw objects via postgres.js/`db.json`, never `JSON.stringify`.
+- LLM-generated HTML must pass through `sanitizeHtml`.
+- `provider_secrets` are AES-256-GCM envelopes requiring `PROVIDER_SECRETS_MASTER_KEY`. Losing/changing this key breaks tenant provider secrets.
+- `tasks` has no `error_message`; failures belong in `task_runs.error_message`.
+- `task_runs` has no `progress`; progress events belong in `task_events` and workflow/task progress fields.
+- Host nginx already owns 80/443 on the VPS; do not add an nginx reverse-proxy container to compose.
+
+## Deployment Memory
+
+Local-to-prod flow:
+1. Commit locally on `main`.
+2. Push `origin main`.
+3. SSH to VPS with `/Users/moe/.ssh/contentforge_deploy`.
+4. `cd /opt/mission-control`
+5. `git pull origin main`
+6. For code/runtime changes: `docker compose build app --no-cache && docker compose up -d app`
+7. Verify logs and smoke probes.
+
+Access confirmed on 2026-05-25:
+- GitHub push to `origin/main` succeeded.
+- VPS SSH succeeded.
+- VPS repo pulled docs commit `e0f059dfda2d2c80771e3bcff2c19e22038def0c`.
+
+## Root Build And Runtime Files
+
+### `package.json`
+
+- App name: `agency-mission-control`.
+- Node engine: `>=20 <23`.
+- Scripts:
+  - `npm run dev`: Next dev server.
+  - `npm run build`: Next production build.
+  - `npm run start`: Next start.
+  - `npm run typecheck`: `tsc --noEmit`.
+  - `npm run test`: Vitest.
+  - `npm run lint`: `next lint` (note: Next 16 may not support this old command shape; verify when needed).
+- Core deps: Next 16.2.4, React 19.2.5, TypeScript 5.9.3, `postgres`, `jose`, `bcryptjs`, Zustand, Tailwind, DOMPurify, document/export libs, Google APIs, Meta SDK.
+- Optional Stripe dependency exists but billing is scaffolded/off by env unless enabled.
+
+### `Dockerfile`
+
+- Multi-stage Node 20 Alpine build.
+- `deps`: `npm ci`.
+- `builder`: copies deps and full repo, sets `DOCKER_BUILD=1`, `NEXT_PUBLIC_APP_URL`, disables telemetry, raises heap with `NODE_OPTIONS=--max-old-space-size=3072`, runs `npm run build`.
+- `runner`: copies standalone Next output plus static/public, creates non-root `nextjs`, exposes 3000, runs `node server.js`.
+- Standalone output means runtime container does not preserve normal `node_modules`; ad-hoc in-container Node `require(...)` can fail unless bundled.
+
+### `docker-compose.yml`
+
+- Services:
+  - `db`: `postgres:16-alpine`, container `mc_db`, volume `mc_db_data`, init script `docker/init.sql`, healthcheck via `pg_isready`.
+  - `app`: built from `Dockerfile`, container `mc_app`, waits for healthy DB, maps host `3000:3000`, mounts `mc_uploads` to `/app/public/uploads` and `mc_secrets` to `/app/data`.
+- App env includes `DATABASE_URL`, `JWT_SECRET`, `SUPER_ADMIN_EMAIL`, `NEXT_PUBLIC_APP_URL`, provider keys, `PROVIDER_SECRETS_MASTER_KEY`, `CRON_SECRET`, Resend, Stripe flags.
+- `host.docker.internal:host-gateway` is configured so app can reach host Ollama.
+- Compose deliberately has no nginx service; host nginx handles TLS/proxying.
+
+### `next.config.mjs`
+
+- Stamps each build with `NEXT_PUBLIC_BUILD_ID = Date.now().toString()` so client code can detect new deploys.
+- `reactStrictMode: true`.
+- Uses standalone output only when `DOCKER_BUILD=1`; local builds do not necessarily create standalone output.
+- Adds `Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate` to most routes except `_next/static`, `_next/image`, `favicon.ico`, and `uploads`.
+- Externalizes Konva-related packages server-side and aliases `konva` to browser build in webpack. This supports the office builder/history with old Konva dependencies still present.
+- Turbopack root set to repo root.
+
+### `tsconfig.json`
+
+- Strict TS, `moduleResolution: bundler`, target `ES2022`, JSX `react-jsx`.
+- Allows JS (`allowJs: true`) because scripts/config ecosystem includes JS.
+- Path alias: `@/* -> ./src/*`.
+- Includes all `**/*.ts` and `**/*.tsx`, plus `.next/types`.
+
+### `vitest.config.ts`
+
+- Node test environment.
+- Includes `tests/**/*.test.ts`.
+- Uses fork pool.
+- Alias `@` to `./src`.
+- Comment says tests are currently pure-function smoke tests, no DB/Next runtime.
+
+### `tailwind.config.ts` / `postcss.config.mjs`
+
+- Tailwind scans `src/pages`, `src/components`, and `src/app`.
+- Theme is CSS-variable driven with custom semantic colors, font families, shadows, radii, and animation keyframes.
+- PostCSS only runs Tailwind and Autoprefixer.
+
+### `.gitignore`
+
+- Ignores dependencies/build outputs/env files/IDE/macOS/logs/coverage/tsbuildinfo.
+- Explicitly ignores `data/provider-secrets.json`.
+- Ignores `.claude/` local memory.
+
+### `.dockerignore`
+
+- Excludes `.git`, `.gitignore`, env files, node/build output, and several docs from Docker build context.
+- Note: `.env.docker.example` is ignored in Docker context; runtime uses VPS `.env`, not image copy.
+
+### Env Examples
+
+- `.env.local.example` is the current local reference: `JWT_SECRET`, `SUPER_ADMIN_EMAIL`, `DATABASE_URL`, `NEXT_PUBLIC_APP_URL`, `CRON_SECRET`, `PROVIDER_SECRETS_MASTER_KEY`, OAuth IDs, optional `GEMINI_API_KEY`, email, Stripe.
+- `.env.docker.example` is shorter/older and lacks newer vars like `PROVIDER_SECRETS_MASTER_KEY`, `CRON_SECRET`, Resend, Stripe. Treat `docker-compose.yml` as canonical for production env names.
+
+## Docker Support Files
+
+### `docker/nginx-mission-control.conf`
+
+- Host-level nginx config for the VPS; proxies `https://72.62.33.12` to `http://127.0.0.1:3000`.
+- HTTP on the IP redirects to HTTPS.
+- Uses self-signed cert paths `/etc/nginx/ssl/mission-control.{crt,key}`.
+- HSTS is commented until real domain/Let's Encrypt.
+- Sets edge security headers plus 20 MB upload size.
+- Disables proxy buffering/request buffering and sets 5-minute read/send timeouts for long tasks and SSE.
+- Blocks common probing paths like `.env`, `.git`, WordPress routes.
+
+### `docker/init.sql`
+
+- First-boot schema only; existing production schema changes must be applied manually with `docker/migrations/*.sql`.
+- Extension: `pgcrypto`.
+- Shared trigger function updates `updated_at`.
+- Tables include:
+  - Auth/tenant: `users`, `plans`, `agencies`, `profiles`, `subscriptions`, `tenants` view.
+  - Legacy state: `mission_control_state`.
+  - Domain: `agents`, `clients`, `skills`, `pipelines`, `tasks`, `task_assignments`, `outputs`, `conversations`, `messages`, `knowledge_assets`, `office_layouts`.
+  - Scheduler/usage/auth support: `scheduled_tasks`, `token_usage`, `email_verification_tokens`, `password_reset_tokens`, `tenant_invitations`, `oauth_tokens`, `rate_limit_buckets`.
+  - Execution/audit: `task_events`, `workflow_instances`, `task_runs`, `audit_events`.
+- ACL model: `assigned_user_ids uuid[]` exists on `clients`, `tasks`, and `outputs`; empty means tenant-shared.
+- `outputs` has optional public share token fields.
+- `office_layouts.layout` default JSON uses `tiles`, `zones`, `version`, `gridWidth`, `gridHeight`, `floorAssetId`.
+- `task_events` is the SSE progress trail.
+- `workflow_instances` and `task_runs` are required by `task-execution.ts`.
+
+### `docker/migrations`
+
+- Migrations are idempotent SQL files applied manually to existing DBs.
+- `20260515_share_tokens.sql`: adds output sharing columns and unique partial index.
+- `20260516_resource_acl.sql`: adds `assigned_user_ids` ACL arrays.
+- `20260516_schema_integrity.sql`: aligns existing prod schema with init SQL, adds constraints/triggers/defaults.
+- `20260517_auth_tokens.sql`: email verification, password reset, tenant invitations, rate-limit buckets.
+- `20260517_backfill_iris.sql`: historical Iris backfill. Warning: it inserts literal `id='iris'` for tenants with `ON CONFLICT(id) DO NOTHING`; because `agents.id` is global, this can only insert one global literal Iris. Do not reuse this pattern for tenant seeding.
+- `20260517_oauth_tokens.sql`: encrypted OAuth token storage.
+- `20260517_task_events.sql`: creates SSE progress events table.
+- `20260517_token_budgets.sql`: token budgets and content-defaults support.
+- `20260519_workflow_and_task_runs.sql`: creates missing workflow/task-run tables.
+
+## Scripts
+
+### `scripts/seed-admin.mjs`
+
+- Seeds `default-agency`, a super-admin user, and profile.
+- Uses `bcryptjs` if import works; falls back to a non-bcrypt `sha256:` scheme for dev only. Production login expects bcrypt-style hashes, so prefer real `bcryptjs`/host Python bcrypt when resetting prod passwords.
+- Env: `DATABASE_URL`, optional `ADMIN_EMAIL`, `ADMIN_PASSWORD`.
+
+### `scripts/encrypt-provider-secrets.js`
+
+- One-shot migration for `/app/data/provider-secrets.json` into AES-256-GCM envelope format.
+- Requires `PROVIDER_SECRETS_MASTER_KEY`.
+- Accepts hex or base64 32-byte key.
+- Backs up plaintext before overwriting.
+- Idempotent if file is already envelope-shaped.
+
+### `scripts/migrate-auth-to-cookie-aware.js`
+
+- Batch P.2 codemod for API routes.
+- Walks `src/app/api/**/route.ts`.
+- Rewrites local `getBearerToken(...)` helper bodies to delegate to `getAuthTokenFromRequest(...)`.
+- Adds/updates import from `@/lib/auth/server`.
+- Idempotent and minimal-diff, but it writes source files directly.
+
+### `scripts/generate-agent-architecture.js`
+
+- Canonical generation script for `src/config/agents/generated.ts`.
+- Reads each folder under `src/config/agents/<agent>/`.
+- Requires `agent.json`, `SOUL.md`, `IDENTITY.md`, `STYLE.md`, `RULES.md`, `CONTEXT.md`, `SKILL_SELECTION.md`, `HANDOFFS.md`, `MEMORY.md`, `HEARTBEAT.md`.
+- Combines those docs into each agent's `systemPrompt`.
+- Adds runtime metadata from hardcoded `RUNTIME_META`.
+- Exports `AGENT_ARCHITECTURE_BUNDLES`, `CONFIG_AGENT_IDS`, `CONFIG_AGENTS`, and helpers.
+
+### Skill Migration Scripts
+
+- `scripts/import-mission-control-skills.js`: parses a monolithic `MISSION_CONTROL_SKILLS.md`, writes legacy JSON skill files under `src/config/skills`, and refreshes `skills-library.json`.
+- `scripts/migrate-skills-to-folders.js`: migrates legacy `src/config/skills/*.json` into folder layout under `data/skills/<id>/`; dry-run by default, `--write` to mutate.
+- `scripts/upgrade-skills-add-skill-md.js`: adds Claude-format `SKILL.md` into existing `data/skills/<id>/` folders that have sidecars but no `SKILL.md`; dry-run by default, `--write` to mutate.
+
+## Core Runtime Flow
+
+Main task execution path:
+
+```text
+POST /api/tasks/[id]/execution
+  -> queueTaskExecution(...)
+  -> runTaskExecution(taskId, auth, action, options)
+  -> loads task, agents, agency settings, pipelines, skills
+  -> builds client context/profile if task.client_id exists
+  -> builds runtime agents, channeling plan, progress plan, office context
+  -> executeAutonomousTask(...)
+  -> dispatches to creative asset engine, content calendar engine, or generic pipeline
+```
+
+Specialist engine gates:
+- Content calendar requires template agents `maya`, `echo`, `nova`, `lyra`, `iris`.
+- Creative asset requires `finn`, `echo`, `lyra`, `iris`.
+- Gates use `findAgentByTemplate(input.agentsById.values(), templateId)`, which materializes iterables to avoid iterator drain.
+
+## Key Files Read So Far
+
+### `src/lib/db/client.ts`
+
+- Exports singleton `getDb()`.
+- Reads `DATABASE_URL`.
+- Creates `postgres(connectionString, { max: 10, idle_timeout: 20, connect_timeout: 10 })`.
+- Pool size is intentionally conservative; handoff notes mention possible future bump after concurrency stabilizes.
+
+### `src/lib/types.ts`
+
+- Central product/domain types: agents, deliverables, missions, artifacts, provider settings, workflow/task run records.
+- `AIProvider`: `ollama | gemini | anthropic | openai`.
+- `DeliverableType` drives routing across store, chat, task execution, and engines.
+- `Mission` is the client/store shape for a task row; maps to DB `tasks`.
+- `Artifact` is the client/store shape for an output row; maps to DB `outputs`.
+- Provider settings include routing, Ollama, Gemini, Anthropic, OpenAI, visual generation, MCP, Meta ads, Higgsfield.
+
+### `src/lib/types/persistence.ts`
+
+- Persistence-only types so routes and shell code do not import the whole Zustand store.
+- `AppPersistenceSnapshot` is the shape synced through `/api/state`: agents, activities, campaigns, clients, missions, artifacts, conversations, agency settings, provider settings, agent memories.
+- `EntityDeltaPatch` supports granular upserts/deletes for agents, clients, missions, artifacts, conversations.
+- `ChatMessage.meta` carries task routing, deliverable, artifact, execution, quality, provider/model, compare, and client-brief action metadata.
+
+### `src/lib/agents-store.ts`
+
+- Main Zustand store persisted under localStorage key `moes-mission-control`, version 7.
+- Holds agents, activities, campaigns, clients, missions, artifacts, provider settings, agent memories, Iris conversations, current user, and UI state.
+- Uses `createMissionFromPrompt` to infer deliverable type and pipeline metadata, then creates queued mission with default assigned agent `iris`.
+- Local store updates mission progress to at least 88 when artifacts are added/updated.
+- `hydrateAppState` merges server state into store but keeps local onboarding completion once dismissed.
+- Provider settings are normalized on hydrate and preserve Gemini API key/masked key carefully.
+- Local persistence is intentionally light via normalizers; remote sync/full outputs live outside localStorage.
+
+### `src/lib/agents-store/defaults.ts`
+
+- Loads `CONFIG_AGENTS` from generated agent config and creates `ALL_DEFAULT_AGENTS`.
+- `IRIS_AGENT` starts active with current task and workload.
+- Initial campaigns/missions/artifacts are empty; initial activities include demo-ish Victory Genomics activity.
+- `DEFAULT_CLIENT_BRAND_KIT` normalizes client brand assets.
+- Note/risk: `VALID_PROVIDERS` only includes `ollama` and `gemini` for some legacy/store normalization, while `AIProvider` now also includes Anthropic/OpenAI.
+
+### `src/lib/agents-store/normalizers.ts`
+
+- Pure normalization for persisted local/server snapshots.
+- `normalizeAgent` merges stale/custom agent records with template defaults.
+- `normalizePersistedState` normalizes agents, clients, missions, artifacts, conversations, agency settings, provider settings, agent memories.
+- `createRemoteAppPersistenceSnapshot` strips conversations for cross-device/server sync.
+- `createLocalPersistenceSnapshot` strips heavy artifact fields and trims conversations to last 6 short messages so localStorage does not blow up.
+
+### `src/lib/client-data.ts`
+
+- Defines `Client`, `ClientBrandKit`, `BrandAsset`, and `KnowledgeAsset` client-side shapes.
+- Seeds `DEFAULT_CLIENTS` with Victory Genomics, including detailed brand/product/audience/competitor/voice context and a knowledge asset path.
+- This default client is local seed data; production tenant client rows are DB-backed and loaded through `/api/state`.
+
+### `src/lib/provider-settings.ts`
+
+- Central provider defaults, normalization, routing, fallback, and secret stripping.
+- `DEFAULT_PROVIDER_SETTINGS` defaults primary provider to Ollama, fallback to Gemini, runtime mode `fast`.
+- Content-generation default models: Ollama empty/fallback-to-settings, Gemini `gemini-2.5-pro`, Anthropic `claude-sonnet-4-5`, OpenAI `gpt-4o`.
+- `providerIsConfigured`: Ollama is considered configured if not disabled; cloud providers need enabled + verified + key.
+- `resolveTaskRuntime` prioritizes explicit agent provider/model, then content-first routing, then compare/thinking/default routing, then requested/fallback provider.
+- `shouldRunCompareMode` requires runtime mode `compare` and both Gemini + Ollama configured.
+- `stripProviderSecrets` blanks API keys/tokens before returning settings to clients.
+
+### `src/lib/html-sanitizer.ts`
+
+- Single DOMPurify config for LLM/user HTML rendering.
+- Runs isomorphically via `isomorphic-dompurify`.
+- Allows rich output tags, tables, images, class/style/id, limited ARIA/role, safe URL protocols.
+- Forbids script/frame/object/embed/meta/base/link and common event handler attrs.
+- Use `sanitizeHtml(rawHtml)` before `dangerouslySetInnerHTML` for untrusted HTML.
+
+### `src/lib/server/prompt-safety.ts`
+
+- Provides prompt-injection defense helpers.
+- `sanitizePromptValue` strips control chars, code fences, template braces, internal boundary tags, obvious instruction override phrases, and common API key patterns.
+- `wrapUserInput` surrounds user/client/uploaded text with explicit boundary tags and model-facing guidance.
+- `sanitizePromptProfile` sanitizes object string fields.
+- `quoteInline` wraps a sanitized inline value in `«...…»`.
+
+### `src/lib/server/text-utils.ts`
+
+- Shared text helpers.
+- `escapeHtml`, `truncate`, and `looksLikeBoilerplateResponse`.
+- Boilerplate detection catches routing/status/project-management phrases that indicate the model did not produce the actual deliverable.
+
+### `src/lib/skill-schema.ts`
+
+- Type schema for canonical skills: metadata, prompts, variables, inputs/outputs, workflow, examples, checklist, tools, agents, pipelines, bundle file metadata.
+- Defines category/difficulty/freedom option lists for UI and validation.
+
+### `src/lib/skills/registry.ts`
+
+- Canonical filesystem skill registry.
+- Source path: `data/skills/<skill-id>/`.
+- Expected layout: required-ish `SKILL.md` or `skill.json`, plus optional `INSTRUCTIONS.md`, `CONTEXT.md`, `TRIGGER.md`, `OUTPUT_TEMPLATE.md`, `CHECKLIST.md`, `WORKFLOW.md`, `EXAMPLES.md`, `references/`, `scripts/`.
+- Precedence: `SKILL.md` frontmatter -> `skill.json` for advanced structured fields -> dedicated markdown sidecars for prose blocks.
+- Has a minimal YAML frontmatter parser, sidecar readers, markdown checklist/workflow/example parsers.
+- Caches registry for 60 seconds; `invalidateSkillRegistry` clears it.
+- Exports category loaders, skill map/loaders, agent/ID filters, stats, and prompt renderers.
+- Legacy fallback to `src/config/skills` is removed; comments say new edits belong under `data/skills`.
+
+### `src/lib/server/skills-catalog.ts`
+
+- Compatibility shim around `skills/registry.ts`.
+- Historical callers still import `loadConfigSkillCategories`, `loadConfigSkillMap`, `mergeDbSkillsWithConfig`.
+- DB skill rows override matching on-disk skill fields, but on-disk skill remains structural fallback.
+- DB-only skills are added into categories too.
+
+### `src/lib/skill-packages.ts`
+
+- ZIP skill-package importer.
+- Uses JSZip to load files safely with normalized non-escaping relative paths.
+- Finds `SKILL.md`, parses frontmatter/body, infers category/difficulty/agents, extracts known sections, includes bundled references/templates/scripts in prompt context.
+- Produces an `ImportedSkillBundle` with a `Skill` object plus file list.
+
+### `src/lib/intents/deliverable-registry.ts`
+
+- Canonical registry for deliverable types.
+- Each deliverable spec includes ID, label, category, regex patterns, default lead/collaborators, pipeline ID/keywords, priority, execution hints, and complexity.
+- Used by classifier, task output, routing, chat, store, and execution paths.
+- Needs deeper pass later because file is long and only partially read in this batch.
+
+### `src/lib/intents/intent-classifier.ts`
+
+- Canonical classifier for conversational vs task messages, deliverable type, pipeline hints, routing context, and Arabic support.
+- Isomorphic: used in browser and server.
+- Arabic path normalizes Arabic text, strips diacritics/tatweel, and uses keyword matching because JS word boundaries do not work well for Arabic.
+- Needs deeper pass later because only initial sections were read in this batch.
+
+### `src/lib/task-output.ts`
+
+- Builds user-facing task titles and deliverable-specific output instructions.
+- The output specs strongly shape model responses: required headings, table requirements, and rules against project-management boilerplate.
+- Needs deeper pass later; initial sections were read.
+
+### `src/lib/output-quality.ts`
+
+- Validates generated deliverables.
+- Lightweight types like single social posts/status/general tasks do not require H1/H2 structure, but require minimum usable content.
+- Structured deliverables require expected sections by deliverable type.
+- Content calendars require table layout.
+- Short-form copy checks requested character limits when detectable.
+
+### `src/lib/output-html.ts`
+
+- Converts markdown-ish model output into artifact HTML.
+- Supports headings, H2 sections, pipe tables, lists, images, inline links/code/bold/italic, and slide-like lines.
+- If content already looks like artifact HTML, returns it unchanged.
+- Also includes `htmlToPlainText` helper for export/plain text conversions.
+
+### `src/lib/db/app-state.ts`
+
+- Persists full shared JSON state in `mission_control_state`.
+- Uses `tenantId` as the blob key when available; fallback key is legacy `default-agency`.
+- `saveSharedAppState` writes full JSON and then best-effort syncs relational tables.
+- `saveSharedAppStateDelta` merges state/entity patches into current blob, writes it, then syncs only touched relational tables where possible.
+- Relational sync failures are non-fatal and logged as `[app-state] relational sync failed (non-fatal)`.
+
+### `src/lib/db/relational-sync.ts`
+
+- Mirrors the JSON app state into relational tables and maps relational rows back into app state.
+- Strict tenant-scoped resolver returns `tenantId` or null; no implicit default agency for request paths.
+- Row builders map `Agent`/`Client`/`Mission`/`Artifact`/`Conversation` into DB rows and also build task assignments, messages, knowledge assets, config skills, and config pipelines.
+- Generic `upsert` uses `db.unsafe` with positional params; object values are JSON-stringified for JSONB columns. This was the Batch Z fix for previous `[object Object]` SQL failures.
+- Full sync seeds skills if missing and pipelines only if tenant has none.
+- Delta sync deletes/reinserts task assignments and messages for touched entities.
+- `loadRelationalAppState` loads all tenant rows; ACL filtering happens later in `/api/state`.
+- Note/risk: `toAgentRow` writes `metadata: {}` for every agent, which can erase `metadata.templateId` if client-side state sync upserts template agents. Engine runtime survives by prefix/literal matching, but metadata loss weakens the first lookup path.
+
+### `src/lib/auth/server.ts`
+
+- Defines `SESSION_COOKIE_NAME = mc_session`.
+- `setSessionCookie` and `clearSessionCookie` set httpOnly, SameSite=Lax cookies. `secure` depends on `x-forwarded-proto` or request protocol.
+- `getAuthTokenFromRequest` reads cookie first, then bearer header. It ignores literal bearer sentinel `cookie-session`.
+- `getAuthFromRequest` is extract+resolve convenience.
+- `resolveAuthContextFromToken` verifies JOSE JWT, upserts profile, resolves role, resolves/backfills tenant, auto-provisions tenants for non-super-admins, seeds required agents, loads provider settings.
+- Super-admin role is driven by env email match first.
+
+### `src/lib/auth/browser.ts`
+
+- Browser compatibility shim after cookie migration.
+- New sessions do not store JWT in localStorage.
+- `getStoredToken()` returns legacy JWT if still present, otherwise returns `cookie-session` sentinel if marker exists.
+- `setStoredToken()` removes legacy JWT and stores only `mc_cookie_session` marker.
+- `clearStoredToken()` clears both local markers and fire-and-forgets `POST /api/auth/logout`.
+
+### `src/lib/auth/jwt.ts`
+
+- Uses JOSE HS256.
+- JWT expiry is 7 days.
+- `JWT_SECRET` must exist and be at least 32 chars.
+- Payload includes `sub`, `email`, `role`, optional `tenantId`.
+
+### `src/lib/server/execution-queue.ts`
+
+- In-memory queue map keyed by `taskId`.
+- Prevents duplicate queued/running jobs for the same task.
+- Uses `setTimeout(..., 25)` to run `runTaskExecution` outside the request path.
+- Important limitation: jobs are process-local. Container restart loses queue state.
+
+### `src/lib/server/agent-templates.ts`
+
+- Canonical template helper layer for 10 agent templates from generated config.
+- `REQUIRED_TEMPLATE_IDS` includes all 10 production templates.
+- `STRICTLY_REQUIRED_TEMPLATE_IDS` is only `iris`.
+- `isOrchestratorAgent` recognizes `metadata.templateId === 'iris'`, literal `iris`, and prefix `iris-`.
+- `findAgentByTemplate` supports metadata, literal legacy IDs, and prefix clone IDs; materializes iterable first.
+- `cloneAgentTemplates` inserts cloned template agents using globally unique IDs like `<template>-<shortuuid>` and metadata `{ templateId, clonedFrom, clonedAt }`.
+
+### `src/lib/server/tenants.ts`
+
+- Tenant equals `agencies` row.
+- `createTenant` slugifies name, inserts agency, inserts subscription from plan, then calls `seedTenantRequiredAgents`.
+- `getTenantIdForUser` reads `profiles.tenant_id`.
+- `assignUserToTenant` updates profile.
+- `getTenantById`, `getAgentCountForTenant`, `syncAgentCount`, and `canAddAgent` support subscription/admin flows.
+- Important doc mismatch: comment says auto-seed orchestrator Iris, but code calls `seedTenantRequiredAgents`, which currently seeds all required templates.
+
+### `src/lib/server/secret-crypto.ts`
+
+- AES-256-GCM envelope crypto for at-rest secrets.
+- Env key: `PROVIDER_SECRETS_MASTER_KEY`; accepts base64 or hex 32-byte key.
+- Envelope shape: `{ v: 1, alg: 'aes-256-gcm', iv, tag, ciphertext }`.
+- If key is unset, `encryptString` returns null and callers may store plaintext for dev/POC; warning logs once.
+- `decryptString` throws if key is missing or envelope auth fails.
+
+### `src/lib/server/provider-secrets.ts`
+
+- Stores per-user provider settings in `data/provider-secrets.json`.
+- Whole file can be encrypted as one AES-GCM envelope.
+- Reads legacy plaintext stores; next save upgrades to encrypted envelope if key exists.
+- If an encrypted file cannot decrypt, it throws instead of returning `{}` to avoid wiping secrets on next save.
+- No longer merges env-level Gemini key into every user; per-user settings are source of truth.
+
+### `src/lib/server/oauth-tokens.ts`
+
+- Stores Google/Meta OAuth tokens in DB table `oauth_tokens`.
+- Access and refresh tokens are encrypted envelopes in JSONB columns, or `{ plaintext }` dev fallback when master key is unset.
+- `saveOAuthToken` preserves an existing refresh token if a provider omits refresh token on later consents.
+- `getOAuthToken` decrypts and returns plaintext for API calls; returns null and logs on decrypt failure.
+- `isAccessTokenExpired` treats unknown expiry as expired.
+
+### `src/lib/server/email-tokens.ts`
+
+- Random 32-byte base64url single-use token helpers for email verification, password reset, and tenant invitations.
+- Verification tokens expire by default after 24h, reset after 1h, invites after 7d.
+- Tokens are stored directly in DB, not hashed.
+- Consuming email verification token also sets `users.email_verified_at`.
+
+### `src/lib/server/email.ts`
+
+- Transactional email helper.
+- Uses Resend when `RESEND_API_KEY` is set; otherwise logs a stub email to server console.
+- `EMAIL_FROM` defaults to `no-reply@mission-control.local`.
+- URL generation uses `NEXT_PUBLIC_APP_URL`.
+- Templates exist for verification, password reset, and tenant invite.
+
+### `src/lib/server/rate-limit.ts`
+
+- Two-tier rate limiter.
+- Always uses in-memory bucket per process.
+- Optional durable mode writes to `rate_limit_buckets`, intended for auth endpoints.
+- Bucket key convention: `<route>:<ip-or-userId>`.
+- `getClientIp` reads `x-forwarded-for`, then `x-real-ip`, else `unknown`.
+- Durable DB errors warn and fall back to memory-only.
+
+### `src/lib/server/token-budgets.ts`
+
+- Enforces per-tenant monthly token budgets from `subscriptions.monthly_token_budget_usd`.
+- Billing window uses subscription cycle if set, otherwise current calendar month.
+- `assertTokenBudget` throws `TokenBudgetExceededError` with code `TOKEN_BUDGET_EXCEEDED` for route handlers to convert to 402.
+
+### `src/lib/server/token-logger.ts`
+
+- Writes usage rows to `token_usage`.
+- Cost computed via `calculateCost` from model pricing config.
+- Logging failures are swallowed after console error so LLM execution does not fail due to usage logging.
+
+### `src/config/model-pricing.ts`
+
+- Model pricing catalog for token-cost estimation and UI picker labels.
+- Pricing is stored as USD per 1M input/output tokens.
+- Ollama/local models are costed at zero.
+- `calculateCost`, `formatCost`, `formatTokens`, and `MODEL_CATALOG` live here.
+- Header claims pricing was checked May 2026; browse before updating or relying on these numbers for external claims.
+
+### `src/lib/providers.ts`
+
+- Client/shared provider labels, model options, helper filters, model label lookup, and API key masking.
+- Model option list covers Ollama, Gemini, Anthropic, and OpenAI.
+- `maskApiKey` keeps first/last 4 chars for long values.
+
+### `src/lib/server/ai.ts`
+
+- Server AI provider adapter and compatibility export layer.
+- `verifyProvider` checks Ollama, Anthropic, OpenAI, and Gemini text providers.
+- `verifyVisualProvider` and `generateGeminiImage` call Gemini image models and extract inline image data.
+- `ProviderError` normalizes provider/status/code failures.
+- `generateTextWithUsage` supports Anthropic Messages, OpenAI chat completions, Gemini generateContent, and Ollama `/api/chat`.
+- Default model call timeout is 120s unless caller passes `timeoutMs`.
+- Anthropic/OpenAI can use env keys if per-user keys are absent; Gemini currently requires explicit `geminiApiKey`; Ollama uses per-user URL, `OLLAMA_BASE_URL`, then localhost.
+- Ollama cloud-model 500s get a single retry after 1 second.
+- Returns token usage from provider metadata where available.
+- `generateText` is the backward-compatible text-only wrapper.
+- `getFriendlyProviderError` turns provider/timeouts/quota/auth failures into UI-safe messages.
+- Re-exports canonical intent classifier helpers for backward compatibility: deliverable spec, deliverable inference, routing context, pipeline inference.
+- `buildExecutionPrompt` assembles a structured execution brief with client context, confirmed brief, output specification, quality guidelines, and anti-boilerplate rules.
+
+### `src/lib/google-integrations.ts`
+
+- Google OAuth2 client helper.
+- OAuth routes store encrypted tokens; this module loads/refreshed user tokens via `oauth-tokens.ts`.
+- Provides lightweight Docs/Sheets read/create/update wrappers.
+- Google Ads helper was removed because `googleapis` does not expose `google.ads()`.
+
+### `src/lib/meta-integrations.ts`
+
+- Lightweight Meta Graph helpers for ad accounts, campaigns, adsets, ads, insights, and campaign performance.
+- Uses Graph API v18.0 directly with `access_token` query params.
+- Separate route files may use newer version env; check before changing Meta integration behavior.
+
+### `src/lib/server/stripe.ts`
+
+- Feature-flagged by `STRIPE_ENABLED === 'true'`.
+- Stripe dependency is optional and dynamically imported.
+- Pinned API version: `2024-12-18.acacia`.
+- Helpers resolve plan price IDs and tenant Stripe customer IDs.
+
+### `src/lib/server/task-execution.ts`
+
+- Top-level execution runner and task state loader/updaters.
+- `runTaskExecution` resolves agency from auth, optionally bootstraps a task row, loads task/agents/agency/pipelines/skills, loads client + knowledge only if `task.client_id` exists, and builds `clientContext` + `clientProfile`.
+- Runtime agents omit `metadata`, so code needing template metadata must use source DB rows or ID conventions.
+- Builds progress plan via `task-progress.ts`; writes `task_events`, `workflow_instances`, and `task_runs`.
+- Loads `office_layouts.layout` defensively, parsing stringified JSON if legacy double-encoded rows exist.
+- Calls `executeAutonomousTask` with request, provider runtime, client context/profile, agents, selected skills, pipeline, and office context.
+- On success creates/updates output artifacts and task status/progress; on failure writes failed task run, failed task, workflow state, and error event.
+- 2026-05-25 fix: `ensureTaskExists` no longer returns early when a stub task row already exists. It now backfills missing `client_id`, summary, deliverable type, pipeline, lead agent, and metadata from bootstrap data. This protects the `/api/state` race/self-heal path where a task could exist but lack client context.
+- 2026-05-25 fix: task execution resets live `task_events` and current workflow/task progress at the start of a fresh run, then event and workflow progress are monotonic for that run. This prevents stale terminal events from closing SSE immediately on retry and prevents percent values from bouncing backward during execution.
+- 2026-05-25 fix: workflow/task-run writes inside `runTaskExecution` pass the auth-resolved `agencyId`, avoiding legacy `default-agency` writes for multi-tenant executions.
+
+### `src/lib/server/autonomous-task.ts`
+
+- Orchestration dispatcher for task execution.
+- Builds `agentMap` from runtime agents.
+- Builds client profile map from explicit `clientProfile`, parsed `clientContext`, and optional tenant content defaults.
+- Routes `creative-asset` to creative engine unless prompt looks like plain social post/caption without image-generation intent.
+- Routes `content-calendar` to automated content calendar engine.
+- Other deliverables use generic pipeline execution.
+- Falls back to Iris where possible via `findAgentByTemplate(agentMap.values(), 'iris')`.
+
+### `src/app/api/tasks/[id]/execution/route.ts`
+
+- Cookie/bearer aware auth wrapper.
+- `GET` returns `loadTaskExecutionState` plus in-memory job state.
+- `POST` queues execution with optional action, comment, runtime mode, and bootstrap payload.
+- Returns `202` when queued.
+
+### `src/app/api/tasks/[id]/events/route.ts`
+
+- SSE route for task progress.
+- Auth via cookie/bearer, with `?token=` fallback for EventSource.
+- Verifies task tenant unless super-admin.
+- Sends backlog first, then polls `task_events` every 700 ms.
+- Closes on `done` or `error`, or after 5 minutes.
+
+### `src/app/api/state/route.ts`
+
+- Cookie/bearer aware state API.
+- `GET` loads JSON blob and relational state, merges relational over blob, but keeps blob arrays when relational arrays are empty to avoid treating unsynced tables as deletes.
+- Applies resource ACL filtering for non-admins:
+  - Empty/missing `assignedUserIds` means tenant-shared.
+  - Non-empty ACL restricts visibility to owner or assigned users.
+  - Missions/artifacts linked to hidden clients/missions are hidden too.
+- `PUT` accepts full `state`, `statePatch`, or `entityPatch`.
+- Optimistic conflict check uses `updatedAt`.
+- Enforces agent limit on new agent upserts via `canAddAgent`.
+- Saves provider settings per-user via `saveUserProviderSettings`; provider settings are not tenant-shared even though present in app state.
+- Tenant members cannot set ACLs on new rows and cannot alter ACLs on existing rows; admins can.
+
+### `src/app/api/chat/route.ts`
+
+- Main Iris chat endpoint.
+- Auth currently calls `resolveAuthContextFromToken(getBearerToken(req))` where `getBearerToken` wraps `getAuthTokenFromRequest`.
+- Applies chat rate limit and token budget.
+- Accepts current app state arrays from client (`agents`, `clients`, `missions`, etc.).
+- Determines conversational vs deliverable intent, builds routing/execution/channeling, can create/self-heal task rows for `missionId`.
+- Has client brief detection/extraction path.
+- Emits task events and task runs for mission execution.
+- Produces NDJSON-style response chunks at the end, though true streaming of long execution is noted as future work.
+- 2026-05-25 fix: mission self-heal inserts now include `owner_user_id`, validated `client_id` when `currentClientId` is present, and initial `progress = 0`. This keeps race-created task rows tied to the active client instead of becoming generic tasks.
+
+### `src/app/api/pipelines/run/route.ts`
+
+- Server-side pipeline runner endpoint.
+- Creates a task row and queues canonical `runTaskExecution`.
+- 2026-05-25 fix: endpoint now uses `auth.tenantId` directly instead of resolving `slug = 'default-agency'`.
+
+### `src/components/tasks/GlobalTaskTracker.tsx`
+
+- Floating live mission console that polls `/api/tasks/:id/execution` for active tracked missions and displays workflow, runs, assigned squad, client, and output state.
+- 2026-05-25 fix: rendered progress now uses the highest known value from local mission progress and server workflow progress, so a slower poll response cannot make the visible dial move backward.
+
+## Open Questions / Suspected Risks
+
+- Versioning note: `package.json` app version was bumped to `1.0.1` for the 2026-05-25 client-context/progress fix set. Production builds also expose a timestamp build id through `NEXT_PUBLIC_BUILD_ID`, `/api/version`, and the Settings page `BuildVersionBadge`.
+- `CLAUDE.md` has stale auth statements in early sections saying cookies are not live. Current code and `HANDOFF.md` say cookie migration is live.
+- `execution-queue.ts` is in-memory/process-local, so production task queue durability depends on no app restart during execution.
+- Remaining client-context risk: tasks can still be intentionally generic if no client is selected and no client can be inferred from the prompt. The runner now preserves/infer-fills `client_id` when bootstrap data, active chat client, prompt client-name match, or single-client tenant context exists.
+- Remaining progress risk: `execution-queue.ts` is in-memory, so process restarts can still interrupt live task state. Within a single run, event/workflow progress is now monotonic.
+
+## Next Review Batch
+
+1. Root config files: `next.config.mjs`, `tsconfig.json`, `tailwind.config.ts`, `postcss.config.mjs`, `.dockerignore`, `.gitignore`, env examples.
+2. Docker support files, especially `docker/init.sql` and nginx config.
+3. Scripts folder.
+4. Continue through `src/lib/server` in dependency order.
