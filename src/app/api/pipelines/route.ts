@@ -21,6 +21,26 @@ function parsePipelineDefinition(value: any) {
   }
 }
 
+function mergeWithBundledDefaults(rows: any[]) {
+  const defaults = Array.isArray(pipelinesConfig.pipelines) ? pipelinesConfig.pipelines : []
+  const merged = new Map<string, any>()
+
+  for (const pipeline of defaults) {
+    if (pipeline?.id && pipeline?.name) {
+      merged.set(pipeline.id, pipeline)
+    }
+  }
+
+  for (const row of rows) {
+    const definition = parsePipelineDefinition(row.definition)
+    if (definition?.id && definition?.name) {
+      merged.set(definition.id, definition)
+    }
+  }
+
+  return Array.from(merged.values()).sort((a, b) => String(a.name).localeCompare(String(b.name)))
+}
+
 export async function GET(request: NextRequest) {
   try {
     const auth = await resolveAuthContextFromToken(getBearerToken(request))
@@ -36,16 +56,10 @@ export async function GET(request: NextRequest) {
       ORDER BY name ASC
     `
 
-    // Fall back to bundled config when DB has no rows yet (fresh install)
-    if (rows.length === 0) {
-      return NextResponse.json(pipelinesConfig.pipelines || [])
-    }
-
-    return NextResponse.json(
-      rows
-        .map((row: any) => parsePipelineDefinition(row.definition))
-        .filter(Boolean)
-    )
+    // Always include bundled defaults. Tenant DB rows can override matching
+    // IDs, but malformed/stale rows should never make the default library
+    // disappear from the UI.
+    return NextResponse.json(mergeWithBundledDefaults(rows as any[]))
   } catch (error) {
     console.error('Failed to load pipelines:', error)
     return NextResponse.json({ error: 'Failed to load pipelines' }, { status: 500 })

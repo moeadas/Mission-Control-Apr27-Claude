@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+import pipelinesConfig from '@/config/pipelines/pipelines.json'
 import { getDb } from '@/lib/db/client'
 import { resolveAuthContextFromToken, getAuthTokenFromRequest } from '@/lib/auth/server'
 
@@ -33,8 +34,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const rows = await db`
       SELECT * FROM pipelines WHERE agency_id = ${agencyId} AND id = ${id} LIMIT 1
     `
-    if (!rows[0]) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    return NextResponse.json(parsePipelineDefinition(rows[0].definition) || {})
+    const definition = rows[0] ? parsePipelineDefinition(rows[0].definition) : null
+    if (definition?.id && definition?.name) return NextResponse.json(definition)
+
+    const fallback = (pipelinesConfig.pipelines || []).find((pipeline: any) => pipeline.id === id)
+    if (fallback) return NextResponse.json(fallback)
+
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
   } catch (error) {
     console.error('Failed to load pipeline:', error)
     return NextResponse.json({ error: 'Failed to load pipeline' }, { status: 500 })

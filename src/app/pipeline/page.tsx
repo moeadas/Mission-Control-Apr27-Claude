@@ -17,7 +17,7 @@ export default function PipelinesPage() {
   const [search, setSearch] = useState('')
 
   useEffect(() => {
-    loadPipelines()
+    loadPipelines(true)
   }, [loadPipelines])
 
   const filtered = pipelines.filter(

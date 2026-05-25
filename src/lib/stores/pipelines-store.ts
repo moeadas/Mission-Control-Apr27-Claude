@@ -92,7 +92,7 @@ export const usePipelinesStore = create<PipelinesState>()(
       isLoaded: false,
 
       loadPipelines: async (force = false) => {
-        if (get().isLoaded && !force) return
+        if (get().isLoaded && get().pipelines.length > 0 && !force) return
         try {
           const token = getStoredToken()
           const response = await fetch('/api/pipelines', {
@@ -157,7 +157,17 @@ export const usePipelinesStore = create<PipelinesState>()(
     }),
     {
       name: 'mission-control-pipelines',
-      version: 1,
+      version: 2,
+      partialize: (state) => ({
+        pipelines: state.pipelines,
+      }),
+      migrate: (persistedState: any) => ({
+        ...persistedState,
+        pipelines: Array.isArray(persistedState?.pipelines)
+          ? persistedState.pipelines.map(normalizePipeline).filter(Boolean)
+          : [],
+        isLoaded: false,
+      }),
     }
   )
 )
