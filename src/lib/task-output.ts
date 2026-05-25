@@ -260,6 +260,32 @@ export function getDeliverableOutputSpec(deliverableType: DeliverableType, reque
   }
 
   if (deliverableType === 'seo-audit' || deliverableType === 'research-brief') {
+    if (deliverableType === 'seo-audit') {
+      return [
+        formatRules,
+        'Produce the actual client-ready website audit report, not a routing note.',
+        'The report must follow the Pinpointer-style output structure:',
+        '## Overall Score',
+        '## Category Scores',
+        '## Executive Summary',
+        '## Top Priorities',
+        '## Category Deep Dives',
+        '### SEO',
+        '### UX & Usability',
+        '### UI Design',
+        '### Conversion',
+        '### Accessibility',
+        '### Performance',
+        '### Content Quality',
+        '### Security',
+        '### Mobile Responsiveness',
+        '### Competitive Benchmark',
+        '## 30/60/90 Roadmap',
+        '## Evidence Appendix',
+        'Use score labels, severity tags, pass/warning/fail summaries, concrete fixes, expected impact, and effort. If live evidence is limited, state the limitation instead of inventing crawl data.',
+      ].join('\n')
+    }
+
     return [
       formatRules,
       'Produce the actual audit or research output.',
@@ -507,7 +533,17 @@ function getDefaultQualityChecklist(deliverableType: DeliverableType, lowerReque
     ]
   }
 
-  if (deliverableType === 'seo-audit' || deliverableType === 'research-brief') {
+  if (deliverableType === 'seo-audit') {
+    return [
+      '1. Confirm the target website URL before starting',
+      '2. Gather crawl, metadata, performance, accessibility, security, content, mobile, and UX/CRO evidence',
+      '3. Run the 10-point category audit with scores and pass/warning/fail checks',
+      '4. Translate findings into top priorities and commercial implications',
+      '5. Package the output into a Pinpointer-style client-ready report',
+    ]
+  }
+
+  if (deliverableType === 'research-brief') {
     return [
       '1. Confirm the audit or research scope and evidence sources',
       '2. Gather and group findings into clear themes',

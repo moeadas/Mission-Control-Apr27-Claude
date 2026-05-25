@@ -34,10 +34,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const rows = await db`
       SELECT * FROM pipelines WHERE agency_id = ${agencyId} AND id = ${id} LIMIT 1
     `
+    const fallback = (pipelinesConfig.pipelines || []).find((pipeline: any) => pipeline.id === id)
+    if (rows[0]?.source === 'config' && fallback) return NextResponse.json(fallback)
+
     const definition = rows[0] ? parsePipelineDefinition(rows[0].definition) : null
     if (definition?.id && definition?.name) return NextResponse.json(definition)
 
-    const fallback = (pipelinesConfig.pipelines || []).find((pipeline: any) => pipeline.id === id)
     if (fallback) return NextResponse.json(fallback)
 
     return NextResponse.json({ error: 'Not found' }, { status: 404 })

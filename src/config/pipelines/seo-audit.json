@@ -1,10 +1,10 @@
 {
   "id": "seo-audit",
-  "name": "SEO Audit & Strategy",
-  "description": "Comprehensive SEO audit with actionable recommendations",
-  "version": "1.0",
+  "name": "Full Website Audit & SEO Strategy",
+  "description": "Pinpointer-style 10-point website audit covering SEO, UX, UI, CRO, accessibility, performance, content quality, security, mobile responsiveness, and competitive benchmarking.",
+  "version": "2.0",
   "isDefault": true,
-  "estimatedDuration": "10 days",
+  "estimatedDuration": "10-20 minutes",
   "clientProfileFields": [
     {
       "id": "website_url",
@@ -13,212 +13,313 @@
       "required": true
     },
     {
+      "id": "audit_goal",
+      "label": "Audit Goal",
+      "type": "select",
+      "options": ["Full website audit", "SEO audit", "Website performance analysis", "UX/UI website audit", "Conversion audit"],
+      "required": true
+    },
+    {
       "id": "industry",
       "label": "Industry",
       "type": "text",
-      "required": true
+      "required": false
     },
     {
       "id": "business_objectives",
       "label": "Business Objectives",
       "type": "textarea",
-      "required": true
+      "required": false
     },
     {
       "id": "target_keywords",
-      "label": "Target Keywords (if any)",
+      "label": "Target Keywords",
       "type": "textarea",
       "required": false
     },
     {
       "id": "competitor_urls",
-      "label": "Competitor URLs (optional)",
+      "label": "Competitor URLs",
       "type": "textarea",
-      "required": false
-    },
-    {
-      "id": "search_console_access",
-      "label": "Search Console Access",
-      "type": "checkbox",
       "required": false
     }
   ],
+  "reportSchema": {
+    "overallScore": "Weighted 0-100 score across all 10 categories.",
+    "scoreLabels": {
+      "90-100": "Excellent",
+      "70-89": "Good",
+      "40-69": "Fair",
+      "0-39": "Poor"
+    },
+    "categoryWeights": {
+      "seo": 0.15,
+      "ux": 0.12,
+      "ui": 0.1,
+      "cro": 0.12,
+      "accessibility": 0.1,
+      "performance": 0.12,
+      "content": 0.1,
+      "security": 0.08,
+      "mobile": 0.06,
+      "benchmark": 0.05
+    },
+    "requiredFinalSections": [
+      "Audit Report Header",
+      "Overall Score",
+      "Category Scores",
+      "Executive Summary",
+      "Top Priorities",
+      "Category Deep Dives",
+      "30/60/90 Roadmap",
+      "Evidence Appendix"
+    ]
+  },
   "phases": [
     {
-      "id": "discovery",
-      "name": "Discovery & Crawling",
+      "id": "intake",
+      "name": "Target URL & Evidence Setup",
       "color": "#38bdf8",
       "activities": [
         {
-          "id": "discovery-1",
-          "name": "Technical SEO Audit",
-          "description": "Comprehensive technical crawl of the website",
-          "assignedRole": "research",
-          "inputs": [
-            "website-url",
-            "search-console-access"
-          ],
-          "outputs": [
-            "technical-audit-report",
-            "crawl-issues"
-          ],
+          "id": "confirm-url-scope",
+          "name": "Confirm Audit URL and Scope",
+          "description": "Validate that the request contains the website URL and define the audit scope before any analysis begins.",
+          "assignedRole": "client-services",
+          "inputs": ["user-request", "client-profile"],
+          "outputs": ["confirmed-audit-scope"],
           "checklist": [
-            "Site crawl completed",
-            "Technical issues identified",
-            "Indexation status reviewed",
-            "Core Web Vitals checked",
-            "Mobile usability verified"
+            "Website URL is present and normalized with http or https",
+            "Audit goal is classified as full audit, SEO, performance, UX/UI, or conversion",
+            "Client context, industry, objectives, target keywords, and known competitors are captured when available",
+            "If the URL is missing, Iris asks for the URL instead of starting the task"
           ],
           "prompts": {
-            "en": "Conduct comprehensive technical SEO audit. Inject {{website_url}}. Check site crawl, technical issues, indexation, Core Web Vitals, mobile usability.",
-            "ar": "إجراء تدقيق SEO تقني شامل. فحص الزحف، المشاكل التقنية، مؤشرات Core Web."
+            "en": "Confirm the target URL before starting. If {{website_url}} is missing, stop and ask: \"Please send me the website URL you want me to audit.\" If present, normalize it and summarize audit scope, client context, business objective, target keywords, and competitors."
           }
         },
         {
-          "id": "discovery-2",
-          "name": "Keyword Research",
-          "description": "Identify valuable keyword opportunities",
+          "id": "collect-website-evidence",
+          "name": "Collect Website Evidence",
+          "description": "Gather page-level evidence needed for a data-first website audit.",
           "assignedRole": "research",
-          "inputs": [
-            "technical-audit-report",
-            "business-objectives"
-          ],
-          "outputs": [
-            "keyword-map",
-            "opportunity-report"
-          ],
+          "inputs": ["website_url", "confirmed-audit-scope"],
+          "outputs": ["crawl-evidence", "performance-evidence", "metadata-evidence"],
           "checklist": [
-            "Current rankings analyzed",
-            "Competitor keywords identified",
-            "Long-tail opportunities found",
-            "Search volume data compiled",
-            "Keyword difficulty assessed"
+            "Page title, meta description, canonical, robots, Open Graph, headings, links, images, forms, CTAs, and structured data reviewed",
+            "Core Web Vitals and Lighthouse-style signals considered where available",
+            "Security headers, HTTPS, viewport, language, and accessibility basics reviewed",
+            "Findings distinguish observed evidence from inferred recommendations"
           ],
           "prompts": {
-            "en": "Conduct keyword research. Inject {{industry}}, {{target_keywords}}. Identify opportunities, analyze competition, assess difficulty.",
-            "ar": "إجراء بحث عن الكلمات المفتاحية. تحديد الفرص، تحليل المنافسة."
+            "en": "Review {{website_url}} like a website auditor. Capture evidence for title, meta description, canonical, headings, content depth, internal/external links, image alt text, Open Graph, schema, robots/sitemap, HTTPS, security headers, viewport, forms, CTAs, social proof, page speed signals, mobile behavior, and competitor/industry expectations. If live crawling tools are unavailable, state the evidence limitations and still produce a structured best-effort audit from available page/request/client context."
           }
         }
       ]
     },
     {
-      "id": "analysis",
-      "name": "Content & Competitive Analysis",
+      "id": "category-audits",
+      "name": "10-Point Audit Execution",
       "color": "#9b6dff",
       "activities": [
         {
-          "id": "analysis-1",
-          "name": "Content Audit",
-          "description": "Analyze existing content performance",
+          "id": "seo-analyzer",
+          "name": "SEO Analyzer",
+          "description": "Score and interpret basic SEO, additional SEO, title readability, content readability, and technical SEO.",
           "assignedRole": "research",
-          "inputs": [
-            "keyword-map",
-            "content-list"
-          ],
-          "outputs": [
-            "content-gaps",
-            "content-performance"
-          ],
+          "inputs": ["crawl-evidence", "target_keywords"],
+          "outputs": ["seo-score", "seo-findings"],
           "checklist": [
-            "Top performing pages identified",
-            "Content gaps documented",
-            "Thin content flagged",
-            "Duplicate content checked",
-            "Content cannibalization found"
+            "Title, meta description, URL, H1, headings, content length, alt text, links, canonical, schema, Open Graph, robots, sitemap, HTTPS, and Lighthouse SEO considered",
+            "Critical issues, warnings, passed checks, and recommendations produced",
+            "Score is 0-100 and weighted at 15 percent"
           ],
           "prompts": {
-            "en": "Audit existing content. Identify top pages, content gaps, thin content, duplicates, cannibalization. Inject {{website_url}}.",
-            "ar": "تدقيق المحتوى الموجود. تحديد أفضل الصفحات، فجوات المحتوى، المحتوى الرقيق."
+            "en": "Produce a Pinpointer-style SEO Analyzer section. Include score /100, automated checks summary, critical issues, warnings, passed checks, and up to 5 recommendations with priority, action, impact, and effort. Reference actual evidence whenever available."
           }
         },
         {
-          "id": "analysis-2",
-          "name": "Competitive Analysis",
-          "description": "Deep dive into competitor strategies",
-          "assignedRole": "research",
-          "inputs": [
-            "keyword-map",
-            "competitor-list"
-          ],
-          "outputs": [
-            "competitor-analysis",
-            "backlink-profile"
-          ],
+          "id": "ux-auditor",
+          "name": "UX & Usability Auditor",
+          "description": "Evaluate navigation, information architecture, content hierarchy, user flow, cognitive load, trust signals, and inclusive usability.",
+          "assignedRole": "design",
+          "inputs": ["crawl-evidence", "client-context"],
+          "outputs": ["ux-score", "ux-findings"],
           "checklist": [
-            "Top competitors identified",
-            "Competitor backlink profiles analyzed",
-            "Content strategies compared",
-            "Gap analysis completed",
-            "Opportunities mapped"
+            "Navigation and information architecture reviewed",
+            "Content hierarchy and scannability reviewed",
+            "Task completion, CTA clarity, form friction, cognitive load, trust signals, and accessibility considered",
+            "Score is 0-100 and weighted at 12 percent"
           ],
           "prompts": {
-            "en": "Analyze competitor SEO strategies. Inject {{competitor_urls}}. Compare backlinks, content strategies, identify gaps.",
-            "ar": "تحليل استراتيجيات SEO للمنافسين. مقارنة الملفات التقنية، استراتيجيات المحتوى."
+            "en": "Produce a UX & Usability audit section with category score /100, evidence-based findings, user impact, location when inferable, and concrete fixes. Use the framework: navigation and IA, content hierarchy, user flow, cognitive load, trust and credibility, accessibility and inclusivity."
+          }
+        },
+        {
+          "id": "ui-auditor",
+          "name": "UI Design Auditor",
+          "description": "Evaluate visual design quality, typography, color and contrast, layout spacing, and interactive elements.",
+          "assignedRole": "design",
+          "inputs": ["crawl-evidence", "brand-context"],
+          "outputs": ["ui-score", "ui-findings"],
+          "checklist": [
+            "Visual maturity, consistency, brand expression, typography, color/contrast, spacing, layout, and interactive states reviewed",
+            "If screenshot evidence is unavailable, limitations are stated",
+            "Score is 0-100 and weighted at 10 percent"
+          ],
+          "prompts": {
+            "en": "Produce a UI Design audit section. Evaluate visual design quality, typography, color/contrast, layout and spacing, and interactive elements. Be specific, professional, and evidence-aware. Do not pretend to have seen a screenshot if one was not available."
+          }
+        },
+        {
+          "id": "cro-analyzer",
+          "name": "Conversion Analyzer",
+          "description": "Assess value proposition, CTA strategy, trust proof, friction, and persuasion flow.",
+          "assignedRole": "strategy",
+          "inputs": ["crawl-evidence", "business_objectives"],
+          "outputs": ["cro-score", "cro-findings"],
+          "checklist": [
+            "Value proposition clarity reviewed",
+            "CTA prominence, copy, hierarchy, and repetition reviewed",
+            "Trust proof, forms, objections, pricing/next-step clarity, and persuasion sequence reviewed",
+            "Score is 0-100 and weighted at 12 percent"
+          ],
+          "prompts": {
+            "en": "Produce a CRO Analyzer section. Include score /100, biggest conversion leak, quick wins, critical issues, warnings, passed checks, and recommendations with priority, action, impact, and effort."
+          }
+        },
+        {
+          "id": "accessibility-auditor",
+          "name": "Accessibility Auditor",
+          "description": "Audit WCAG-oriented perceivable, operable, understandable, and robust accessibility signals.",
+          "assignedRole": "technical",
+          "inputs": ["crawl-evidence", "performance-evidence"],
+          "outputs": ["accessibility-score", "accessibility-findings"],
+          "checklist": [
+            "Alt text, language, viewport, zoom behavior, forms, semantic structure, and Lighthouse accessibility considered",
+            "Findings reference WCAG criteria when possible",
+            "Score is 0-100 and weighted at 10 percent"
+          ],
+          "prompts": {
+            "en": "Produce an Accessibility Auditor section using WCAG language. Include score /100, estimated WCAG level, critical barriers, warnings, passed checks, and prioritized fixes with WCAG references where possible."
+          }
+        },
+        {
+          "id": "performance-analyzer",
+          "name": "Performance Analyzer",
+          "description": "Analyze Core Web Vitals, resource optimization, loading strategy, and server/infrastructure signals.",
+          "assignedRole": "technical",
+          "inputs": ["performance-evidence", "crawl-evidence"],
+          "outputs": ["performance-score", "performance-findings"],
+          "checklist": [
+            "LCP, FCP, TBT/INP, CLS, speed index, resource count, image optimization, lazy loading, render blocking, compression, caching, and CDN considered",
+            "Score is 0-100 and weighted at 12 percent"
+          ],
+          "prompts": {
+            "en": "Produce a Performance Analyzer section. Include score /100, Core Web Vitals table when data is available, automated checks, critical issues, warnings, passed checks, and recommendations with estimated savings or expected impact."
+          }
+        },
+        {
+          "id": "content-quality",
+          "name": "Content Quality Auditor",
+          "description": "Evaluate content clarity, structure, engagement, SEO alignment, and brand voice.",
+          "assignedRole": "copy",
+          "inputs": ["crawl-evidence", "client-context"],
+          "outputs": ["content-score", "content-findings"],
+          "checklist": [
+            "Content volume, headings, readability, media, internal linking, search intent, scannability, and voice consistency reviewed",
+            "Score is 0-100 and weighted at 10 percent"
+          ],
+          "prompts": {
+            "en": "Produce a Content Quality section. Include score /100, content metrics, critical issues, warnings, passed checks, and recommendations. Assess readability, content strategy, engagement/media, SEO alignment, and brand voice."
+          }
+        },
+        {
+          "id": "security-auditor",
+          "name": "Security Auditor",
+          "description": "Review visible transport security, security headers, information disclosure, and cookie/session signals.",
+          "assignedRole": "technical",
+          "inputs": ["crawl-evidence"],
+          "outputs": ["security-score", "security-findings"],
+          "checklist": [
+            "HTTPS, HSTS, CSP, X-Content-Type-Options, X-Frame-Options/frame-ancestors, Referrer-Policy, Permissions-Policy, server disclosure, powered-by disclosure, cookies, and sensitive file exposure considered",
+            "Score is 0-100 and weighted at 8 percent"
+          ],
+          "prompts": {
+            "en": "Produce a Security Auditor section. Include score /100, visible security posture, critical vulnerabilities or gaps, warnings, passed checks, and recommendations with risk if ignored."
+          }
+        },
+        {
+          "id": "mobile-responsiveness",
+          "name": "Mobile Responsiveness Auditor",
+          "description": "Evaluate viewport configuration, touch interaction, responsive layout, and mobile performance.",
+          "assignedRole": "design",
+          "inputs": ["crawl-evidence", "performance-evidence"],
+          "outputs": ["mobile-score", "mobile-findings"],
+          "checklist": [
+            "Viewport, pinch zoom, tap targets, mobile layout, responsive images, mobile navigation, forms, and mobile performance considered",
+            "Score is 0-100 and weighted at 6 percent"
+          ],
+          "prompts": {
+            "en": "Produce a Mobile Responsiveness section. Include score /100, mobile-specific findings, Lighthouse mobile signals when available, critical issues, warnings, passed checks, and prioritized fixes."
+          }
+        },
+        {
+          "id": "competitive-benchmark",
+          "name": "Competitive Benchmark",
+          "description": "Benchmark the site against industry standards and competitor expectations.",
+          "assignedRole": "strategy",
+          "inputs": ["crawl-evidence", "competitor_urls", "industry"],
+          "outputs": ["benchmark-score", "benchmark-findings"],
+          "checklist": [
+            "Industry standards, feature completeness, content competitiveness, and technical competitiveness reviewed",
+            "Known competitor URLs considered when provided",
+            "Score is 0-100 and weighted at 5 percent"
+          ],
+          "prompts": {
+            "en": "Produce a Competitive Benchmark section. Include score /100, strengths, weaknesses, opportunities, competitive position, benchmark summary, and recommendations. Use competitor URLs if provided; otherwise compare against industry best practices."
           }
         }
       ]
     },
     {
-      "id": "strategy",
-      "name": "Strategy Development",
-      "color": "#ffd166",
+      "id": "synthesis",
+      "name": "Report Compilation & Priority Plan",
+      "color": "#00d4aa",
       "activities": [
         {
-          "id": "strategy-1",
-          "name": "SEO Strategy Document",
-          "description": "Create comprehensive SEO strategy",
-          "assignedRole": "brand-strategist",
-          "inputs": [
-            "technical-audit-report",
-            "keyword-map",
-            "competitor-analysis"
-          ],
-          "outputs": [
-            "seo-strategy-doc",
-            "priority-matrix"
-          ],
+          "id": "weighted-scorecard",
+          "name": "Weighted Scorecard",
+          "description": "Compile the 10 category scores into one overall weighted score.",
+          "assignedRole": "analytics",
+          "inputs": ["seo-score", "ux-score", "ui-score", "cro-score", "accessibility-score", "performance-score", "content-score", "security-score", "mobile-score", "benchmark-score"],
+          "outputs": ["overall-score", "category-scorecard"],
           "checklist": [
-            "Technical priorities ranked",
-            "Content recommendations ready",
-            "Link building strategy defined",
-            "Timeline proposed",
-            "Success metrics set"
+            "All 10 categories included",
+            "Weights applied: SEO 15, UX 12, UI 10, CRO 12, Accessibility 10, Performance 12, Content 10, Security 8, Mobile 6, Benchmark 5",
+            "Score labels applied: Excellent 90+, Good 70-89, Fair 40-69, Poor below 40"
           ],
           "prompts": {
-            "en": "Create comprehensive SEO strategy. Inject {{business_objectives}}, {{industry}}. Include technical priorities, content recommendations, link building, timeline.",
-            "ar": "إنشاء استراتيجية SEO شاملة. تشمل الأولويات التقنية، توصيات المحتوى، بناء الروابط."
+            "en": "Create the weighted category scorecard. Use this exact category order: SEO, UX & Usability, UI Design, Conversion, Accessibility, Performance, Content, Security, Mobile, Benchmark. Calculate or estimate one overall weighted score. Clearly mark evidence limitations if any category had incomplete data."
           }
-        }
-      ]
-    },
-    {
-      "id": "delivery",
-      "name": "Reporting & Handoff",
-      "color": "#ff5fa0",
-      "activities": [
+        },
         {
-          "id": "delivery-1",
-          "name": "Final Report & Presentation",
-          "description": "Present findings and strategy to stakeholders",
+          "id": "final-report",
+          "name": "Professional Audit Report",
+          "description": "Package the audit into a client-ready report matching the Pinpointer output structure.",
           "assignedRole": "client-services",
-          "inputs": [
-            "seo-strategy-doc",
-            "technical-audit-report"
-          ],
-          "outputs": [
-            "executive-summary",
-            "presentation-deck"
-          ],
+          "inputs": ["overall-score", "category-scorecard", "all-category-findings"],
+          "outputs": ["pinpointer-style-audit-report"],
           "checklist": [
-            "Executive summary prepared",
-            "Full audit report compiled",
-            "Prioritized action items ready",
-            "Quick wins identified",
-            "Client training completed"
+            "Report header includes audited URL and generation date",
+            "Overall score and category score table are prominent",
+            "Executive summary is concise and commercially useful",
+            "Top priorities are ranked and action-oriented",
+            "Each category includes automated checks, AI insights/actions, recommendations, and score",
+            "30/60/90 roadmap and evidence appendix included"
           ],
           "prompts": {
-            "en": "Prepare final SEO report and presentation. Include executive summary, full audit, prioritized actions, quick wins.",
-            "ar": "تحضير تقرير SEO النهائي والعروض. تشمل الملخص التنفيذي، التدقيق الكامل، الإجراءات ذات الأولوية."
+            "en": "Produce the final client-ready report in polished markdown. Required structure: # Website Audit Report: {{website_url}}; ## Overall Score; ## Category Scores; ## Executive Summary; ## Top Priorities; ## Category Deep Dives; ### SEO; ### UX & Usability; ### UI Design; ### Conversion; ### Accessibility; ### Performance; ### Content Quality; ### Security; ### Mobile Responsiveness; ### Competitive Benchmark; ## 30/60/90 Roadmap; ## Evidence Appendix. Make the output feel like a professional auditor dashboard: use tables, score labels, severity tags, pass/warning/fail summaries, exact fixes, expected impact, and effort. Do not provide generic advice."
           }
         }
       ]

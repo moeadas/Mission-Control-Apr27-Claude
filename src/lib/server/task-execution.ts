@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid'
 
+import pipelinesConfig from '@/config/pipelines/pipelines.json'
 import { buildArtifactHtml } from '@/lib/output-html'
 import { buildTaskExecutionPlan } from '@/lib/task-output'
 import { buildTaskChannelingPlan } from '@/lib/server/task-channeling'
@@ -386,17 +387,29 @@ export async function insertTaskRun(input: {
 }
 
 async function loadPipelines(agencyId: string) {
+  const defaults = Array.isArray(pipelinesConfig.pipelines) ? pipelinesConfig.pipelines : []
+  const merged = new Map<string, any>()
+  for (const pipeline of defaults) {
+    if (pipeline?.id && pipeline?.name) merged.set(pipeline.id, pipeline)
+  }
+
   try {
     const db = getDb()
     const rows = await db`
-      SELECT definition FROM pipelines
+      SELECT definition, source FROM pipelines
       WHERE agency_id = ${agencyId}
       ORDER BY name ASC
     `
-    return rows.map((row: any) => row.definition || {}).filter(Boolean)
+    for (const row of rows) {
+      const definition = row.definition || {}
+      if (row.source === 'config' && definition?.id && merged.has(definition.id)) continue
+      if (definition?.id && definition?.name) merged.set(definition.id, definition)
+    }
   } catch {
-    return []
+    // Fall back to bundled defaults.
   }
+
+  return Array.from(merged.values()).sort((a, b) => String(a.name).localeCompare(String(b.name)))
 }
 
 async function loadSkills(agencyId: string) {

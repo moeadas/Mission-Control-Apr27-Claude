@@ -33,6 +33,9 @@ function mergeWithBundledDefaults(rows: any[]) {
 
   for (const row of rows) {
     const definition = parsePipelineDefinition(row.definition)
+    if (row.source === 'config' && definition?.id && merged.has(definition.id)) {
+      continue
+    }
     if (definition?.id && definition?.name) {
       merged.set(definition.id, definition)
     }

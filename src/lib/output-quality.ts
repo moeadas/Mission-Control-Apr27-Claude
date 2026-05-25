@@ -97,7 +97,7 @@ export function validateDeliverableQuality(
     'strategy-brief': ['Objective', 'Situation / Context', 'Recommendations'],
     'campaign-strategy': ['Objective', 'Situation / Context', 'Recommendations'],
     'brand-guidelines': ['Brand Foundation', 'Tone of Voice', 'Visual Identity'],
-    'seo-audit': ['Executive Summary', 'Key Findings', 'Recommended Actions'],
+    'seo-audit': ['Overall Score', 'Category Scores', 'Executive Summary', 'Top Priorities', 'Category Deep Dives', '30/60/90 Roadmap'],
     'data-analysis': ['Executive Summary', 'Key Metrics', 'Findings', 'Recommended Actions'],
     'ui-audit': ['Executive Summary', 'Key UX Findings', 'Priority Fixes'],
     'research-brief': ['Executive Summary', 'Key Findings', 'Recommended Actions'],

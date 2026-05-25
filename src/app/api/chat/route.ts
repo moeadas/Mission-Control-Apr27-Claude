@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import pipelinesConfig from '@/config/pipelines/pipelines.json'
 import {
   buildExecutionPrompt,
   generateText,
@@ -128,6 +129,48 @@ function looksLikeUsableDeliverable(
   return trimmed.length >= 80
 }
 
+function parsePipelineDefinition(value: any) {
+  if (!value) return null
+  if (typeof value === 'object') return value
+  if (typeof value !== 'string') return null
+  try {
+    const parsed = JSON.parse(value)
+    return parsed && typeof parsed === 'object' ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+function mergePipelinesWithBundledDefaults(rows: any[]) {
+  const defaults = Array.isArray(pipelinesConfig.pipelines) ? pipelinesConfig.pipelines : []
+  const merged = new Map<string, any>()
+
+  for (const pipeline of defaults) {
+    if (pipeline?.id && pipeline?.name) merged.set(pipeline.id, pipeline)
+  }
+
+  for (const row of rows) {
+    const definition = parsePipelineDefinition(row.definition ?? row)
+    if (row.source === 'config' && definition?.id && merged.has(definition.id)) continue
+    if (definition?.id && definition?.name) merged.set(definition.id, definition)
+  }
+
+  return Array.from(merged.values()).sort((a, b) => String(a.name).localeCompare(String(b.name)))
+}
+
+function extractWebsiteAuditUrl(content: string) {
+  const match = content.match(/\bhttps?:\/\/[^\s<>)"']+|\bwww\.[^\s<>)"']+|\b(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/[^\s<>)"']*)?/i)
+  if (!match) return null
+  const value = match[0].replace(/[.,;:!?]+$/, '')
+  if (value.includes('@')) return null
+  return /^https?:\/\//i.test(value) ? value : `https://${value}`
+}
+
+function isWebsiteAuditRequest(deliverableType: string, content: string) {
+  if (deliverableType === 'seo-audit' || deliverableType === 'ui-audit') return true
+  return /\b(seo audit|technical seo|website audit|site audit|audit my site|audit my website|website performance|performance analysis|pagespeed|core web vitals|ux\/ui|ui\/ux|ux audit|ui audit|website ux|website ui|conversion audit|cro audit)\b/i.test(content)
+}
+
 // Batch C: tenant-scoping. All pipeline / skill lookups are scoped to the
 // caller's tenant via `auth.tenantId`. The legacy `getDefaultAgencyId` slug
 // lookup is gone — there is no shared global tenant, and any path that needs
@@ -155,25 +198,21 @@ async function waitForTaskPersistence(taskId: string, attempts = 8, delayMs = 25
 // Load pipelines for a specific tenant. Falls back to the bundled config
 // catalogue (Batch D will turn these into per-tenant seed templates).
 async function loadPipelines(tenantId: string | null) {
+  const defaultPipelines = Array.isArray(pipelinesConfig.pipelines) ? pipelinesConfig.pipelines : []
   if (tenantId) {
     try {
       const db = getDb()
       const rows = await db`
-        SELECT definition FROM pipelines
+        SELECT definition, source FROM pipelines
         WHERE agency_id = ${tenantId}::uuid
         ORDER BY name ASC
       `
-      if (rows.length) return rows.map((row: any) => row.definition || {}).filter(Boolean)
+      return mergePipelinesWithBundledDefaults(rows as any[])
     } catch {
       // Fall through to config fallback.
     }
   }
-  try {
-    const modules = await import('@/config/pipelines/pipelines.json')
-    return modules.default.pipelines
-  } catch {
-    return []
-  }
+  return defaultPipelines
 }
 
 // Load skills for a specific tenant. DB rows override the on-disk catalogue
@@ -320,6 +359,7 @@ export async function POST(req: NextRequest) {
     const isBriefIntent = detectClientBriefIntent(userContent)
     const conversational = isConversationalMessage(userContent) || isBriefIntent
     const deliverableType = conversational ? 'status-report' : inferDeliverableType(userContent)
+    const auditWebsiteUrl = extractWebsiteAuditUrl(userContent)
     const normalizedProviderSettings = normalizeProviderSettings(auth.providerSettings || providerSettings)
 
     // Collect all provider secrets from the auth-resolved settings once,
@@ -346,6 +386,33 @@ export async function POST(req: NextRequest) {
     })
     let actualProvider = selectedRuntime.provider
     let actualModel = selectedRuntime.model
+
+    if (!conversational && isWebsiteAuditRequest(deliverableType, userContent) && !auditWebsiteUrl) {
+      return NextResponse.json({
+        response: 'Please send me the website URL you want me to audit. Once I have the URL, I can run the full website audit covering SEO, UX/UI, performance, accessibility, security, content, mobile, conversion, and benchmark recommendations.',
+        meta: {
+          routedAgentId: 'iris',
+          leadAgentId: 'iris',
+          collaboratorAgentIds: [],
+          assignedAgentIds: ['iris'],
+          clientId: null,
+          campaignId: null,
+          deliverableType,
+          pipelineId: 'seo-audit',
+          pipelineName: 'Full Website Audit & SEO Strategy',
+          qualityChecklist: [],
+          handoffNotes: 'Waiting for the target website URL before starting the website audit.',
+          executionSteps: [],
+          quality: null,
+          executionPrompt: '',
+          renderedHtml: null,
+          provider: actualProvider,
+          model: actualModel,
+          fallbackUsed: false,
+          conversational: true,
+        },
+      })
+    }
 
     // Kick off brief extraction in parallel with AI response (isBriefIntent already computed above).
     // IMPORTANT: use actualProvider/actualModel (same as the chat response) so extraction
@@ -611,38 +678,40 @@ export async function POST(req: NextRequest) {
           .join('\n')
       : ''
 
-    const clientProfile = scopedClient
+    const clientProfile = scopedClient || auditWebsiteUrl
       ? sanitizePromptProfile({
-          brand_name: scopedClient.name,
-          niche: scopedClient.industry,
-          industry: scopedClient.industry,
-          target_audience: scopedClient.targetAudiences,
-          audience_demographics: scopedClient.targetAudiences,
-          audience_psychographics: scopedClient.targetAudiences,
-          product_service: scopedClient.productsAndServices,
-          business_objectives: scopedClient.strategicPriorities,
-          tone: scopedClient.toneOfVoice,
-          brand_voice: scopedClient.toneOfVoice,
-          campaign_theme: scopedClient.keyMessages,
-          visual_direction: scopedClient.brandIdentityNotes,
-          asset_specs: scopedClient.brandIdentityNotes,
-          brand_colors: Array.isArray(scopedClient.brandKit?.colors) ? scopedClient.brandKit.colors.join(', ') : '',
-          brand_fonts: Array.isArray(scopedClient.brandKit?.fonts) ? scopedClient.brandKit.fonts.join(', ') : '',
-          visual_keywords: scopedClient.brandKit?.visualKeywords,
-          look_and_feel: scopedClient.brandKit?.lookAndFeel,
-          photo_style: scopedClient.brandKit?.photoStyle,
-          composition_rules: scopedClient.brandKit?.compositionRules,
-          negative_rules: scopedClient.brandKit?.negativeRules,
-          logo_assets: Array.isArray(scopedClient.brandKit?.logos) ? scopedClient.brandKit.logos.map((asset: any) => asset.url).join(', ') : '',
-          logo_asset_paths: Array.isArray(scopedClient.brandKit?.logos) ? scopedClient.brandKit.logos.map((asset: any) => asset.path || asset.url).join(', ') : '',
-          template_assets: Array.isArray(scopedClient.brandKit?.templates) ? scopedClient.brandKit.templates.map((asset: any) => asset.url).join(', ') : '',
-          template_asset_paths: Array.isArray(scopedClient.brandKit?.templates) ? scopedClient.brandKit.templates.map((asset: any) => asset.path || asset.url).join(', ') : '',
-          reference_assets: Array.isArray(scopedClient.brandKit?.referenceImages) ? scopedClient.brandKit.referenceImages.map((asset: any) => asset.url).join(', ') : '',
-          reference_asset_paths: Array.isArray(scopedClient.brandKit?.referenceImages) ? scopedClient.brandKit.referenceImages.map((asset: any) => asset.path || asset.url).join(', ') : '',
-          competitive_landscape: scopedClient.competitiveLandscape,
-          channel_strategy: scopedClient.strategicPriorities,
-          pain_points: scopedClient.objectionHandling,
-          key_dates: scopedClient.operationalDetails,
+          brand_name: scopedClient?.name,
+          website_url: auditWebsiteUrl || scopedClient?.website,
+          audit_goal: deliverableType === 'ui-audit' ? 'UX/UI website audit' : 'Full website audit',
+          niche: scopedClient?.industry,
+          industry: scopedClient?.industry,
+          target_audience: scopedClient?.targetAudiences,
+          audience_demographics: scopedClient?.targetAudiences,
+          audience_psychographics: scopedClient?.targetAudiences,
+          product_service: scopedClient?.productsAndServices,
+          business_objectives: scopedClient?.strategicPriorities,
+          tone: scopedClient?.toneOfVoice,
+          brand_voice: scopedClient?.toneOfVoice,
+          campaign_theme: scopedClient?.keyMessages,
+          visual_direction: scopedClient?.brandIdentityNotes,
+          asset_specs: scopedClient?.brandIdentityNotes,
+          brand_colors: Array.isArray(scopedClient?.brandKit?.colors) ? scopedClient.brandKit.colors.join(', ') : '',
+          brand_fonts: Array.isArray(scopedClient?.brandKit?.fonts) ? scopedClient.brandKit.fonts.join(', ') : '',
+          visual_keywords: scopedClient?.brandKit?.visualKeywords,
+          look_and_feel: scopedClient?.brandKit?.lookAndFeel,
+          photo_style: scopedClient?.brandKit?.photoStyle,
+          composition_rules: scopedClient?.brandKit?.compositionRules,
+          negative_rules: scopedClient?.brandKit?.negativeRules,
+          logo_assets: Array.isArray(scopedClient?.brandKit?.logos) ? scopedClient.brandKit.logos.map((asset: any) => asset.url).join(', ') : '',
+          logo_asset_paths: Array.isArray(scopedClient?.brandKit?.logos) ? scopedClient.brandKit.logos.map((asset: any) => asset.path || asset.url).join(', ') : '',
+          template_assets: Array.isArray(scopedClient?.brandKit?.templates) ? scopedClient.brandKit.templates.map((asset: any) => asset.url).join(', ') : '',
+          template_asset_paths: Array.isArray(scopedClient?.brandKit?.templates) ? scopedClient.brandKit.templates.map((asset: any) => asset.path || asset.url).join(', ') : '',
+          reference_assets: Array.isArray(scopedClient?.brandKit?.referenceImages) ? scopedClient.brandKit.referenceImages.map((asset: any) => asset.url).join(', ') : '',
+          reference_asset_paths: Array.isArray(scopedClient?.brandKit?.referenceImages) ? scopedClient.brandKit.referenceImages.map((asset: any) => asset.path || asset.url).join(', ') : '',
+          competitive_landscape: scopedClient?.competitiveLandscape,
+          channel_strategy: scopedClient?.strategicPriorities,
+          pain_points: scopedClient?.objectionHandling,
+          key_dates: scopedClient?.operationalDetails,
           posting_frequency: '3-4 posts per week',
           platforms: 'Instagram, LinkedIn',
           content_goal: 'Awareness and lead generation',
