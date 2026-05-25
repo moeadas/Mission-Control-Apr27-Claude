@@ -171,6 +171,33 @@ function isWebsiteAuditRequest(deliverableType: string, content: string) {
   return /\b(seo audit|technical seo|website audit|site audit|audit my site|audit my website|website performance|performance analysis|pagespeed|core web vitals|ux\/ui|ui\/ux|ux audit|ui audit|website ux|website ui|conversion audit|cro audit)\b/i.test(content)
 }
 
+function buildMissingWebsiteUrlResponse(deliverableType = 'seo-audit', provider = 'ollama', model = '') {
+  return NextResponse.json({
+    response: 'Please send me the website URL you want me to audit. Once I have the URL, I can run the full website audit covering SEO, UX/UI, performance, accessibility, security, content, mobile, conversion, and benchmark recommendations.',
+    meta: {
+      routedAgentId: 'iris',
+      leadAgentId: 'iris',
+      collaboratorAgentIds: [],
+      assignedAgentIds: ['iris'],
+      clientId: null,
+      campaignId: null,
+      deliverableType,
+      pipelineId: 'seo-audit',
+      pipelineName: 'Full Website Audit & SEO Strategy',
+      qualityChecklist: [],
+      handoffNotes: 'Waiting for the target website URL before starting the website audit.',
+      executionSteps: [],
+      quality: null,
+      executionPrompt: '',
+      renderedHtml: null,
+      provider,
+      model,
+      fallbackUsed: false,
+      conversational: true,
+    },
+  })
+}
+
 // Batch C: tenant-scoping. All pipeline / skill lookups are scoped to the
 // caller's tenant via `auth.tenantId`. The legacy `getDefaultAgencyId` slug
 // lookup is gone — there is no shared global tenant, and any path that needs
@@ -304,6 +331,12 @@ export async function POST(req: NextRequest) {
       ? [...messages].reverse().find((message) => message.role === 'user')
       : null
     const initialUserContent = initialLatestUser?.content || ''
+    const initialConversational = isConversationalMessage(initialUserContent) || detectClientBriefIntent(initialUserContent)
+    const initialDeliverableType = initialConversational ? 'status-report' : inferDeliverableType(initialUserContent)
+    const initialAuditWebsiteUrl = extractWebsiteAuditUrl(initialUserContent)
+    if (!initialConversational && isWebsiteAuditRequest(initialDeliverableType, initialUserContent) && !initialAuditWebsiteUrl) {
+      return buildMissingWebsiteUrlResponse(initialDeliverableType, provider, model)
+    }
     const inferredClientFromRequest = Array.isArray(clients)
       ? [...clients]
           .filter((client: any) => client?.id && client?.name)
@@ -388,30 +421,7 @@ export async function POST(req: NextRequest) {
     let actualModel = selectedRuntime.model
 
     if (!conversational && isWebsiteAuditRequest(deliverableType, userContent) && !auditWebsiteUrl) {
-      return NextResponse.json({
-        response: 'Please send me the website URL you want me to audit. Once I have the URL, I can run the full website audit covering SEO, UX/UI, performance, accessibility, security, content, mobile, conversion, and benchmark recommendations.',
-        meta: {
-          routedAgentId: 'iris',
-          leadAgentId: 'iris',
-          collaboratorAgentIds: [],
-          assignedAgentIds: ['iris'],
-          clientId: null,
-          campaignId: null,
-          deliverableType,
-          pipelineId: 'seo-audit',
-          pipelineName: 'Full Website Audit & SEO Strategy',
-          qualityChecklist: [],
-          handoffNotes: 'Waiting for the target website URL before starting the website audit.',
-          executionSteps: [],
-          quality: null,
-          executionPrompt: '',
-          renderedHtml: null,
-          provider: actualProvider,
-          model: actualModel,
-          fallbackUsed: false,
-          conversational: true,
-        },
-      })
+      return buildMissingWebsiteUrlResponse(deliverableType, actualProvider, actualModel)
     }
 
     // Kick off brief extraction in parallel with AI response (isBriefIntent already computed above).

@@ -506,6 +506,19 @@ function sanitizeExecutionRequestText(value: string) {
     .trim()
 }
 
+function extractWebsiteAuditUrl(message: string) {
+  const match = message.match(/\bhttps?:\/\/[^\s<>)"']+|\bwww\.[^\s<>)"']+|\b(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/[^\s<>)"']*)?/i)
+  if (!match) return null
+  const value = match[0].replace(/[.,;:!?]+$/, '')
+  if (value.includes('@')) return null
+  return /^https?:\/\//i.test(value) ? value : `https://${value}`
+}
+
+function isWebsiteAuditTask(deliverableType: string | null | undefined, text: string, pipelineId?: string | null) {
+  if (deliverableType === 'seo-audit' || deliverableType === 'ui-audit' || pipelineId === 'seo-audit') return true
+  return /\b(seo audit|technical seo|website audit|site audit|audit my site|audit my website|website performance|performance analysis|pagespeed|core web vitals|lighthouse audit|ux\/ui|ui\/ux|ux audit|ui audit|website ux|website ui|conversion audit|cro audit)\b/i.test(text)
+}
+
 /**
  * Batch U: human-readable verb describing what an agent is doing right now.
  * Used to narrate the live activity message ("Echo is drafting copy options…").
@@ -591,6 +604,48 @@ export async function runTaskExecution(
   if (!task) throw new Error('Task not found.')
   if (auth.role !== 'super_admin' && task.owner_user_id && task.owner_user_id !== auth.userId) {
     throw new Error('Unauthorized')
+  }
+
+  const rawRequestText = task.summary || task.title || ''
+  if (isWebsiteAuditTask(task.deliverable_type, rawRequestText, task.pipeline_id) && !extractWebsiteAuditUrl(rawRequestText)) {
+    const message = 'Please send the website URL before starting the website audit.'
+    const tenantUuid = auth.tenantId || agencyId
+    const now = new Date().toISOString()
+    await Promise.all([
+      db`
+        UPDATE tasks
+        SET status = 'blocked', progress = 0, updated_at = NOW()
+        WHERE agency_id = ${agencyId} AND id = ${taskId}
+      `,
+      upsertWorkflowExecutionState({
+        taskId,
+        pipelineId: task.pipeline_id || 'seo-audit',
+        status: 'paused',
+        currentPhase: 'Waiting for URL',
+        progress: 0,
+        agencyId,
+        context: { error: message, missingField: 'website_url' },
+      }),
+      insertTaskRun({
+        taskId,
+        agentId: task.lead_agent_id || null,
+        stage: 'url-preflight',
+        status: 'blocked',
+        errorMessage: message,
+        startedAt: now,
+        completedAt: now,
+        agencyId,
+      }),
+      emitTaskEvent({
+        taskId,
+        tenantId: tenantUuid,
+        type: 'error',
+        progress: 0,
+        message,
+        payload: { missingField: 'website_url' },
+      }),
+    ])
+    throw new Error(message)
   }
 
   await resetTaskEvents(taskId)

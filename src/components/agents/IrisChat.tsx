@@ -370,6 +370,24 @@ function inferDeliverableFromPrompt(message: string) {
   return canonicalInferDeliverableType(message)
 }
 
+function extractWebsiteAuditUrl(message: string) {
+  const match = message.match(/\bhttps?:\/\/[^\s<>)"']+|\bwww\.[^\s<>)"']+|\b(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/[^\s<>)"']*)?/i)
+  if (!match) return null
+  const value = match[0].replace(/[.,;:!?]+$/, '')
+  if (value.includes('@')) return null
+  return /^https?:\/\//i.test(value) ? value : `https://${value}`
+}
+
+function isWebsiteAuditRequest(message: string) {
+  const deliverableType = inferDeliverableFromPrompt(message)
+  if (deliverableType === 'seo-audit' || deliverableType === 'ui-audit') return true
+  return /\b(seo audit|technical seo|website audit|site audit|audit my site|audit my website|website performance|performance analysis|pagespeed|core web vitals|lighthouse audit|ux\/ui|ui\/ux|ux audit|ui audit|website ux|website ui|conversion audit|cro audit)\b/i.test(message)
+}
+
+function buildMissingWebsiteUrlPrompt() {
+  return 'Please send me the website URL you want me to audit. Once I have the URL, I can run the full website audit covering SEO, UX/UI, performance, accessibility, security, content, mobile, conversion, and benchmark recommendations.'
+}
+
 // Stub kept for the legacy structure of the function body that still references
 // `bestId` for downstream early-return safety. The real return path is above.
 function _legacy_inferDeliverableFromPrompt_unused(message: string) {
@@ -1497,6 +1515,19 @@ export function IrisChat() {
   }
 
   const executeTaskRequest = useCallback(async (conversationId: string, finalPrompt: string) => {
+    if (isWebsiteAuditRequest(finalPrompt) && !extractWebsiteAuditUrl(finalPrompt)) {
+      addAssistantMessage(conversationId, buildMissingWebsiteUrlPrompt(), 'iris', {
+        deliverableType: 'seo-audit' as any,
+        pipelineId: 'seo-audit',
+        pipelineName: 'Full Website Audit & SEO Strategy',
+        handoffNotes: 'Waiting for the target website URL before starting the website audit.',
+      })
+      updateConversationBriefing(conversationId, null)
+      setActivePipelineInfo(null)
+      setChatStatus('idle')
+      return
+    }
+
     let createdMissionId: string | null = shouldOpenMissionForMessage(finalPrompt)
       ? createMissionFromPrompt(finalPrompt, {
           clientId: activeMission?.clientId,

@@ -11,6 +11,28 @@ function getBearerToken(request: NextRequest) {
   return getAuthTokenFromRequest(request)
 }
 
+function extractWebsiteAuditUrl(message: string) {
+  const match = message.match(/\bhttps?:\/\/[^\s<>)"']+|\bwww\.[^\s<>)"']+|\b(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/[^\s<>)"']*)?/i)
+  if (!match) return null
+  const value = match[0].replace(/[.,;:!?]+$/, '')
+  if (value.includes('@')) return null
+  return /^https?:\/\//i.test(value) ? value : `https://${value}`
+}
+
+function isWebsiteAuditBootstrap(body: {
+  bootstrap?: { prompt?: string; title?: string; deliverableType?: string | null; pipelineId?: string | null }
+}) {
+  const text = `${body.bootstrap?.title || ''}\n${body.bootstrap?.prompt || ''}`
+  const deliverableType = body.bootstrap?.deliverableType || ''
+  const pipelineId = body.bootstrap?.pipelineId || ''
+  return (
+    deliverableType === 'seo-audit' ||
+    deliverableType === 'ui-audit' ||
+    pipelineId === 'seo-audit' ||
+    /\b(seo audit|technical seo|website audit|site audit|audit my site|audit my website|website performance|performance analysis|pagespeed|core web vitals|lighthouse audit|ux\/ui|ui\/ux|ux audit|ui audit|website ux|website ui|conversion audit|cro audit)\b/i.test(text)
+  )
+}
+
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -66,6 +88,16 @@ export async function POST(
       }
     }
     const action = body.action === 'resume' ? 'resume' : 'retry'
+
+    if (isWebsiteAuditBootstrap(body) && !extractWebsiteAuditUrl(`${body.bootstrap?.title || ''}\n${body.bootstrap?.prompt || ''}`)) {
+      return NextResponse.json(
+        {
+          error: 'Please send the website URL before starting the website audit.',
+          code: 'WEBSITE_URL_REQUIRED',
+        },
+        { status: 400 }
+      )
+    }
 
     const job = queueTaskExecution(id, auth, action, {
       comment: body.comment?.trim() || undefined,
