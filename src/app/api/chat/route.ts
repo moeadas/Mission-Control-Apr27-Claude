@@ -171,6 +171,36 @@ function isWebsiteAuditRequest(deliverableType: string, content: string) {
   return /\b(seo audit|technical seo|website audit|site audit|audit my site|audit my website|website performance|performance analysis|pagespeed|core web vitals|ux\/ui|ui\/ux|ux audit|ui audit|website ux|website ui|conversion audit|cro audit)\b/i.test(content)
 }
 
+function isUrlOnlyMessage(content: string) {
+  const url = extractWebsiteAuditUrl(content)
+  if (!url) return false
+  const withoutUrl = content
+    .replace(url, '')
+    .replace(url.replace(/^https?:\/\//i, ''), '')
+    .replace(/[.,;:!?()\s]/g, '')
+  return withoutUrl.length === 0
+}
+
+function isAwaitingWebsiteAuditUrl(messages: any[]) {
+  return messages.slice(-8).some((message: any) => {
+    const role = String(message?.role || '')
+    const content = String(message?.content || '')
+    if (
+      role === 'assistant' &&
+      /website URL you want me to audit|Waiting for the target website URL|send me the website URL/i.test(content)
+    ) {
+      return true
+    }
+    return role === 'user' && isWebsiteAuditRequest(inferDeliverableType(content), content) && !extractWebsiteAuditUrl(content)
+  })
+}
+
+function expandWebsiteAuditFollowUp(content: string, messages: any[]) {
+  const url = extractWebsiteAuditUrl(content)
+  if (!url || !isUrlOnlyMessage(content) || !isAwaitingWebsiteAuditUrl(messages)) return content
+  return `Do a full SEO audit for ${url}`
+}
+
 function buildMissingWebsiteUrlResponse(deliverableType = 'seo-audit', provider = 'ollama', model = '') {
   return NextResponse.json({
     response: 'Please send me the website URL you want me to audit. Once I have the URL, I can run the full website audit covering SEO, UX/UI, performance, accessibility, security, content, mobile, conversion, and benchmark recommendations.',
@@ -330,7 +360,11 @@ export async function POST(req: NextRequest) {
     const initialLatestUser = Array.isArray(messages)
       ? [...messages].reverse().find((message) => message.role === 'user')
       : null
-    const initialUserContent = initialLatestUser?.content || ''
+    const initialRawUserContent = initialLatestUser?.content || ''
+    const initialUserContent = expandWebsiteAuditFollowUp(
+      initialRawUserContent,
+      Array.isArray(messages) ? messages : []
+    )
     const initialConversational = isConversationalMessage(initialUserContent) || detectClientBriefIntent(initialUserContent)
     const initialDeliverableType = initialConversational ? 'status-report' : inferDeliverableType(initialUserContent)
     const initialAuditWebsiteUrl = extractWebsiteAuditUrl(initialUserContent)

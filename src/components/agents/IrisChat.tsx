@@ -388,6 +388,34 @@ function buildMissingWebsiteUrlPrompt() {
   return 'Please send me the website URL you want me to audit. Once I have the URL, I can run the full website audit covering SEO, UX/UI, performance, accessibility, security, content, mobile, conversion, and benchmark recommendations.'
 }
 
+function isUrlOnlyMessage(message: string) {
+  const url = extractWebsiteAuditUrl(message)
+  if (!url) return false
+  const withoutUrl = message
+    .replace(url, '')
+    .replace(url.replace(/^https?:\/\//i, ''), '')
+    .replace(/[.,;:!?()\s]/g, '')
+  return withoutUrl.length === 0
+}
+
+function isAwaitingWebsiteAuditUrl(conversation?: { messages?: ChatMessage[]; briefing?: IrisConversationBriefing | null } | null) {
+  const recentMessages = (conversation?.messages || []).slice(-8)
+  return recentMessages.some((message) => {
+    const content = String(message.content || '')
+    if (
+      message.role === 'assistant' &&
+      /website URL you want me to audit|Waiting for the target website URL|send me the website URL/i.test(content)
+    ) {
+      return true
+    }
+    return message.role === 'user' && isWebsiteAuditRequest(content) && !extractWebsiteAuditUrl(content)
+  }) || conversation?.briefing?.deliverableType === 'seo-audit'
+}
+
+function buildWebsiteAuditPromptFromUrl(url: string) {
+  return `Do a full SEO audit for ${url}`
+}
+
 // Stub kept for the legacy structure of the function body that still references
 // `bestId` for downstream early-return safety. The real return path is above.
 function _legacy_inferDeliverableFromPrompt_unused(message: string) {
@@ -1515,7 +1543,17 @@ export function IrisChat() {
   }
 
   const executeTaskRequest = useCallback(async (conversationId: string, finalPrompt: string) => {
-    if (isWebsiteAuditRequest(finalPrompt) && !extractWebsiteAuditUrl(finalPrompt)) {
+    const liveConversationForPreflight = useAgentsStore.getState().conversations.find((conversation) => conversation.id === conversationId)
+    const followUpAuditUrl = extractWebsiteAuditUrl(finalPrompt)
+    const isAuditUrlFollowUp =
+      Boolean(followUpAuditUrl) &&
+      isUrlOnlyMessage(finalPrompt) &&
+      isAwaitingWebsiteAuditUrl(liveConversationForPreflight)
+    const executionPrompt = isAuditUrlFollowUp && followUpAuditUrl
+      ? buildWebsiteAuditPromptFromUrl(followUpAuditUrl)
+      : finalPrompt
+
+    if (isWebsiteAuditRequest(executionPrompt) && !extractWebsiteAuditUrl(executionPrompt)) {
       addAssistantMessage(conversationId, buildMissingWebsiteUrlPrompt(), 'iris', {
         deliverableType: 'seo-audit' as any,
         pipelineId: 'seo-audit',
@@ -1528,8 +1566,8 @@ export function IrisChat() {
       return
     }
 
-    let createdMissionId: string | null = shouldOpenMissionForMessage(finalPrompt)
-      ? createMissionFromPrompt(finalPrompt, {
+    let createdMissionId: string | null = shouldOpenMissionForMessage(executionPrompt)
+      ? createMissionFromPrompt(executionPrompt, {
           clientId: activeMission?.clientId,
           campaignId: activeMission?.campaignId,
         })
@@ -1562,7 +1600,7 @@ export function IrisChat() {
     }
 
     if (createdMissionId) {
-      const provisionalRouting = buildProvisionalMissionRouting(finalPrompt, agents)
+      const provisionalRouting = buildProvisionalMissionRouting(executionPrompt, agents)
       if (provisionalRouting.pipelineName) {
         setActivePipelineInfo({ name: provisionalRouting.pipelineName, deliverableType: provisionalRouting.deliverableType })
       }
@@ -1591,8 +1629,8 @@ export function IrisChat() {
             accessToken,
             providerSettings.routing.runtimeMode,
             {
-              prompt: finalPrompt,
-              title: finalPrompt.slice(0, 200),
+              prompt: executionPrompt,
+              title: executionPrompt.slice(0, 200),
               deliverableType: provisionalRouting.deliverableType,
               leadAgentId: provisionalRouting.leadAgentId,
               collaboratorAgentIds: provisionalRouting.collaboratorAgentIds,
@@ -1625,8 +1663,10 @@ export function IrisChat() {
     const lastHistoryMessage = historyMessages[historyMessages.length - 1]
     const outboundMessages =
       lastHistoryMessage?.role === 'user' && lastHistoryMessage.content === finalPrompt
-        ? historyMessages
-        : [...historyMessages, { role: 'user', content: finalPrompt }]
+        ? isAuditUrlFollowUp
+          ? [...historyMessages, { role: 'user', content: executionPrompt }]
+          : historyMessages
+        : [...historyMessages, { role: 'user', content: executionPrompt }]
 
     await requestChat(
       {
@@ -1692,7 +1732,7 @@ export function IrisChat() {
       },
       (meta) => {
         if (!createdMissionId && meta?.deliverableType && meta.deliverableType !== 'status-report') {
-          createdMissionId = createMissionFromPrompt(finalPrompt, {
+          createdMissionId = createMissionFromPrompt(executionPrompt, {
             clientId: meta?.clientId || activeMission?.clientId,
             campaignId: meta?.campaignId || activeMission?.campaignId,
           })
@@ -1700,7 +1740,7 @@ export function IrisChat() {
 
         const missionForArtifact = (createdMissionId ? missions.find((mission) => mission.id === createdMissionId) : null) || activeMission
         const deliverableType = (meta?.deliverableType as any) || missionForArtifact?.deliverableType || 'status-report'
-        const taskTitle = buildTaskTitleFromRequest(finalPrompt, deliverableType)
+        const taskTitle = buildTaskTitleFromRequest(executionPrompt, deliverableType)
         const hasUsableDeliverable = looksLikeSavedDeliverable(fullResponse) && passesQualityGate(meta)
         const shouldPersistArtifact =
           deliverableType !== 'status-report' &&
@@ -1781,7 +1821,7 @@ export function IrisChat() {
           })
           updateMission(createdMissionId, {
             title: taskTitle,
-            summary: finalPrompt,
+            summary: executionPrompt,
             deliverableType,
             status: missionOutcome.status,
             progress: missionOutcome.progress,
@@ -1813,8 +1853,8 @@ export function IrisChat() {
           })
         }
         rememberAgentWork('iris', {
-          title: finalPrompt.slice(0, 48),
-          summary: `Handled: ${finalPrompt.slice(0, 120)}`,
+          title: executionPrompt.slice(0, 48),
+          summary: `Handled: ${executionPrompt.slice(0, 120)}`,
           clientId: meta?.clientId || activeMission?.clientId,
           campaignId: meta?.campaignId || activeMission?.campaignId,
           missionId: createdMissionId || undefined,
@@ -1822,7 +1862,7 @@ export function IrisChat() {
         })
         if (meta?.leadAgentId && meta.leadAgentId !== 'iris') {
           rememberAgentWork(meta.leadAgentId, {
-            title: finalPrompt.slice(0, 48),
+            title: executionPrompt.slice(0, 48),
             summary: `Lead on task: ${taskTitle}`,
             clientId: meta?.clientId || activeMission?.clientId,
             campaignId: meta?.campaignId || activeMission?.campaignId,
@@ -1832,7 +1872,7 @@ export function IrisChat() {
         }
         for (const collaboratorId of meta?.collaboratorAgentIds || []) {
           rememberAgentWork(collaboratorId, {
-            title: finalPrompt.slice(0, 48),
+            title: executionPrompt.slice(0, 48),
             summary: `Supporting task: ${taskTitle}`,
             clientId: meta?.clientId || activeMission?.clientId,
             campaignId: meta?.campaignId || activeMission?.campaignId,
