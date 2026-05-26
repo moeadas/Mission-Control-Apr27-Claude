@@ -67,11 +67,11 @@ function mergeProviderSettings(primary?: Partial<ProviderSettings> | null, fallb
       apiKey: primary?.higgsfield?.apiKey || fallback?.higgsfield?.apiKey || '',
       maskedKey: primary?.higgsfield?.maskedKey || fallback?.higgsfield?.maskedKey || '',
     },
-    googleSearch: {
-      ...(fallback?.googleSearch || {}),
-      ...(primary?.googleSearch || {}),
-      apiKey: primary?.googleSearch?.apiKey || fallback?.googleSearch?.apiKey || '',
-      maskedKey: primary?.googleSearch?.maskedKey || fallback?.googleSearch?.maskedKey || '',
+    serper: {
+      ...(fallback?.serper || {}),
+      ...(primary?.serper || {}),
+      apiKey: primary?.serper?.apiKey || fallback?.serper?.apiKey || '',
+      maskedKey: primary?.serper?.maskedKey || fallback?.serper?.maskedKey || '',
     },
   } as Partial<ProviderSettings>)
 }

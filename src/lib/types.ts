@@ -468,13 +468,15 @@ export interface HiggsFieldSettings {
   workspaceId?: string  // optional — defaults to first available workspace
 }
 
-export interface GoogleCustomSearchSettings {
+export interface SerperSearchSettings {
   enabled: boolean
   verified: boolean
   verifiedAt?: string
   apiKey: string
   maskedKey?: string
-  searchEngineId: string
+  country: string
+  language: string
+  resultCount: number
   testQuery?: string
 }
 
@@ -488,7 +490,7 @@ export interface ProviderSettings {
   mcp: MCPSettings
   meta?: MetaAdsSettings
   higgsfield?: HiggsFieldSettings
-  googleSearch?: GoogleCustomSearchSettings
+  serper?: SerperSearchSettings
 }
 
 export interface AgencySettings {

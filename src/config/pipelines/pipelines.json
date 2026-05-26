@@ -363,9 +363,9 @@
             {
               "id": "serp-intent-map",
               "name": "Map Search Intent & SERP Pattern",
-              "description": "Use Google Custom Search data when available; otherwise mark live SERP evidence as unavailable and infer from the prompt/client context.",
+              "description": "Use Serper live SERP data when available; otherwise mark live SERP evidence as unavailable and infer from the prompt/client context.",
               "assignedRole": "seo-specialist",
-              "inputs": ["approved-blog-brief", "google-custom-search-results"],
+              "inputs": ["approved-blog-brief", "serper-search-results"],
               "outputs": ["serp-intent-notes"],
               "checklist": [
                 "Winning format identified or marked unavailable",
@@ -376,7 +376,7 @@
                 "Content gaps and differentiation angle documented"
               ],
               "prompts": {
-                "en": "Study the primary keyword. If Google Custom Search context is present, summarize top result formats, angles, snippets, gaps, and source opportunities. If not present, clearly state live SERP data is unavailable and produce a best-practice research plan without inventing rankings or People Also Ask results.",
+                "en": "Study the primary keyword. If Serper search context is present, summarize top result formats, angles, snippets, People Also Ask questions, related searches, gaps, and source opportunities. If not present, clearly state live SERP data is unavailable and produce a best-practice research plan without inventing rankings or People Also Ask results.",
                 "ar": "دراسة الكلمة المفتاحية الرئيسية. إذا توفرت نتائج البحث، لخص الشكل والزوايا والفجوات. إذا لم تتوفر، اذكر ذلك بوضوح ولا تخترع بيانات."
               }
             }

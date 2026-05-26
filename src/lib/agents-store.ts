@@ -531,16 +531,16 @@ export const useAgentsStore = create<AgentsState>()(
                     ...state.providerSettings.mcp,
                     ...normalized.providerSettings.mcp,
                   },
-                  googleSearch: {
-                    ...state.providerSettings.googleSearch,
-                    ...normalized.providerSettings.googleSearch,
+                  serper: {
+                    ...state.providerSettings.serper,
+                    ...normalized.providerSettings.serper,
                     apiKey:
-                      normalized.providerSettings.googleSearch?.apiKey ||
-                      state.providerSettings.googleSearch?.apiKey ||
+                      normalized.providerSettings.serper?.apiKey ||
+                      state.providerSettings.serper?.apiKey ||
                       '',
                     maskedKey:
-                      normalized.providerSettings.googleSearch?.maskedKey ||
-                      state.providerSettings.googleSearch?.maskedKey ||
+                      normalized.providerSettings.serper?.maskedKey ||
+                      state.providerSettings.serper?.maskedKey ||
                       '',
                   },
                 })

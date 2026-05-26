@@ -1033,7 +1033,7 @@ export async function executeAutonomousTask(input: {
   }
 
   const blogResearchContext = input.deliverableType === 'blog-article'
-    ? await fetchGoogleCustomSearchContext(input.request, input.providerSettings)
+    ? await fetchSerperSearchContext(input.request, input.providerSettings)
     : ''
   const generationRequest = blogResearchContext
     ? `${input.request}\n\nLive SERP research context:\n${blogResearchContext}`
@@ -1410,59 +1410,67 @@ function extractBlogTopic(request: string) {
   return ''
 }
 
-async function fetchGoogleCustomSearchContext(request: string, providerSettings?: ProviderSettings) {
-  const userGoogleSearch = providerSettings?.googleSearch
+async function fetchSerperSearchContext(request: string, providerSettings?: ProviderSettings) {
+  const userSerper = providerSettings?.serper
   const userSettingsReady = Boolean(
-    userGoogleSearch?.enabled &&
-      userGoogleSearch?.verified &&
-      userGoogleSearch?.apiKey &&
-      userGoogleSearch?.searchEngineId
+    userSerper?.enabled &&
+      userSerper?.verified &&
+      userSerper?.apiKey
   )
   const apiKey =
-    (userSettingsReady ? userGoogleSearch?.apiKey : '') ||
-    process.env.GOOGLE_CUSTOM_SEARCH_API_KEY ||
-    process.env.GOOGLE_SEARCH_API_KEY ||
-    process.env.PAGESPEED_API_KEY ||
-    process.env.GOOGLE_PAGESPEED_API_KEY ||
-    ''
-  const searchEngineId =
-    (userSettingsReady ? userGoogleSearch?.searchEngineId : '') ||
-    process.env.GOOGLE_CUSTOM_SEARCH_ENGINE_ID ||
-    process.env.GOOGLE_CSE_ID ||
+    (userSettingsReady ? userSerper?.apiKey : '') ||
+    process.env.SERPER_API_KEY ||
     ''
   const primaryKeyword = extractBlogPrimaryKeyword(request)
   const topic = extractBlogTopic(request)
   const query = primaryKeyword || topic
 
-  if (!query) return 'Google Custom Search skipped: no primary keyword or topic was available for the query.'
-  if (!apiKey || !searchEngineId) {
+  if (!query) return 'Serper search skipped: no primary keyword or topic was available for the query.'
+  if (!apiKey) {
     return [
-      'Google Custom Search unavailable: missing verified per-user Google Custom Search settings or GOOGLE_CUSTOM_SEARCH_ENGINE_ID / GOOGLE_CSE_ID.',
+      'Serper search unavailable: missing verified per-user Serper API key or SERPER_API_KEY.',
       `Research query to run when configured: "${query}".`,
       'Do not invent People Also Ask, related searches, rankings, traffic, or competitor claims. Use the writer checklist and mark live SERP research as unavailable.',
     ].join('\n')
   }
 
   try {
-    const endpoint = new URL('https://www.googleapis.com/customsearch/v1')
-    endpoint.searchParams.set('key', apiKey)
-    endpoint.searchParams.set('cx', searchEngineId)
-    endpoint.searchParams.set('q', query)
-    endpoint.searchParams.set('num', '5')
-    const response = await fetch(endpoint, { signal: AbortSignal.timeout(12000), headers: { Accept: 'application/json' } })
-    if (!response.ok) throw new Error(`Google Custom Search returned HTTP ${response.status}`)
+    const response = await fetch('https://google.serper.dev/search', {
+      method: 'POST',
+      signal: AbortSignal.timeout(12000),
+      headers: {
+        'X-API-KEY': apiKey,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        q: query,
+        num: Math.max(1, Math.min(10, Number(userSerper?.resultCount || 10))),
+        gl: userSerper?.country || 'us',
+        hl: userSerper?.language || 'en',
+      }),
+    })
     const data = await response.json()
-    const items = Array.isArray(data.items) ? data.items.slice(0, 5) : []
-    if (!items.length) return `Google Custom Search returned no organic results for "${query}".`
+    if (!response.ok) throw new Error(data?.message || data?.error || `Serper returned HTTP ${response.status}`)
+    const items = Array.isArray(data.organic) ? data.organic.slice(0, 10) : []
+    const peopleAlsoAsk = Array.isArray(data.peopleAlsoAsk) ? data.peopleAlsoAsk.slice(0, 6) : []
+    const relatedSearches = Array.isArray(data.relatedSearches) ? data.relatedSearches.slice(0, 8) : []
+    if (!items.length) return `Serper returned no organic results for "${query}".`
     return [
-      `Google Custom Search query: "${query}"`,
-      'Top public search results:',
+      `Serper query: "${query}"`,
+      'Top organic search results:',
       ...items.map((item: any, index: number) =>
         `${index + 1}. ${String(item.title || 'Untitled').trim()} — ${String(item.link || '').trim()}\n   Snippet: ${String(item.snippet || '').replace(/\s+/g, ' ').trim()}`
       ),
+      peopleAlsoAsk.length
+        ? `People Also Ask:\n${peopleAlsoAsk.map((item: any) => `- ${String(item.question || '').trim()}`).filter(Boolean).join('\n')}`
+        : '',
+      relatedSearches.length
+        ? `Related searches:\n${relatedSearches.map((item: any) => `- ${String(item.query || '').trim()}`).filter(Boolean).join('\n')}`
+        : '',
       'Use these results to infer winning formats, angles, content gaps, and source opportunities. Do not claim rankings beyond this sampled result set.',
-    ].join('\n')
+    ].filter(Boolean).join('\n')
   } catch (error: any) {
-    return `Google Custom Search failed: ${error?.message || 'unknown error'}. Continue with the checklist and clearly mark live SERP evidence as unavailable.`
+    return `Serper search failed: ${error?.message || 'unknown error'}. Continue with the checklist and clearly mark live SERP evidence as unavailable.`
   }
 }

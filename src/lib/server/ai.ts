@@ -7,37 +7,41 @@ type VerifyPayload =
   | { provider: 'gemini-image'; apiKey: string; model?: string }
   | { provider: 'anthropic'; apiKey: string }
   | { provider: 'openai'; apiKey: string; baseUrl?: string }
-  | { provider: 'google-custom-search'; apiKey: string; searchEngineId: string; testQuery?: string }
+  | { provider: 'serper'; apiKey: string; testQuery?: string; country?: string; language?: string; resultCount?: number }
 
 export async function verifyProvider(payload: VerifyPayload) {
-  // ── Google Custom Search ───────────────────────────────────────────────────
-  if (payload.provider === 'google-custom-search') {
+  // ── Serper.dev ──────────────────────────────────────────────────────────────
+  if (payload.provider === 'serper') {
     const apiKey = payload.apiKey?.trim()
-    const searchEngineId = payload.searchEngineId?.trim()
     const testQuery = payload.testQuery?.trim() || 'content marketing strategy'
-    if (!apiKey) throw new Error('Google Custom Search API key is required.')
-    if (!searchEngineId) throw new Error('Google Custom Search Engine ID is required.')
+    if (!apiKey) throw new Error('Serper API key is required.')
 
-    const endpoint = new URL('https://www.googleapis.com/customsearch/v1')
-    endpoint.searchParams.set('key', apiKey)
-    endpoint.searchParams.set('cx', searchEngineId)
-    endpoint.searchParams.set('q', testQuery)
-    endpoint.searchParams.set('num', '1')
-
-    const response = await fetch(endpoint, {
-      headers: { Accept: 'application/json' },
+    const response = await fetch('https://google.serper.dev/search', {
+      method: 'POST',
+      headers: {
+        'X-API-KEY': apiKey,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        q: testQuery,
+        num: Math.max(1, Math.min(10, Number(payload.resultCount || 10))),
+        gl: payload.country || 'us',
+        hl: payload.language || 'en',
+      }),
       signal: AbortSignal.timeout(12000),
     })
     const data = await response.json().catch(() => null)
     if (!response.ok) {
-      const message = data?.error?.message || `Google Custom Search returned HTTP ${response.status}.`
+      const message = data?.message || data?.error || `Serper returned HTTP ${response.status}.`
       throw new Error(message)
     }
-    const totalResults = Number(data?.searchInformation?.totalResults || 0)
-    const firstResult = Array.isArray(data?.items) ? data.items[0] : null
+    const organic = Array.isArray(data?.organic) ? data.organic : []
+    if (!organic.length) throw new Error('Serper responded, but no organic results were returned for the test query.')
+    const firstResult = organic[0]
     return {
       ok: true,
-      totalResults,
+      totalResults: organic.length,
       testQuery,
       sampleTitle: firstResult?.title || '',
       sampleLink: firstResult?.link || '',

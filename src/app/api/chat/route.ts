@@ -259,20 +259,17 @@ function buildMissingBlogBriefResponse(content: string, provider = 'ollama', mod
   })
 }
 
-function hasVerifiedGoogleCustomSearch(settings: ReturnType<typeof normalizeProviderSettings>) {
-  const googleSearch = settings.googleSearch
-  if (googleSearch?.enabled && googleSearch.verified && googleSearch.apiKey && googleSearch.searchEngineId) return true
-  return Boolean(
-    (process.env.GOOGLE_CUSTOM_SEARCH_API_KEY || process.env.GOOGLE_SEARCH_API_KEY) &&
-      (process.env.GOOGLE_CUSTOM_SEARCH_ENGINE_ID || process.env.GOOGLE_CSE_ID)
-  )
+function hasVerifiedSerper(settings: ReturnType<typeof normalizeProviderSettings>) {
+  const serper = settings.serper
+  if (serper?.enabled && serper.verified && serper.apiKey) return true
+  return Boolean(process.env.SERPER_API_KEY)
 }
 
-function buildMissingGoogleSearchResponse(provider = 'ollama', model = '') {
+function buildMissingSerperResponse(provider = 'ollama', model = '') {
   return NextResponse.json({
-    response: 'I can write the blog post, but live SERP research is not configured yet. Please go to Settings, add your Google Custom Search API key and Search Engine ID, then click Save & Verify. Once it is verified, I can use live search results for search intent, competitor format, content gaps, FAQ ideas, and source opportunities before drafting.',
+    response: 'I can write the blog post, but live SERP research is not configured yet. Please go to Settings, add your Serper API key, then click Save & Verify. Once it is verified, I can use live search results for search intent, competitor format, content gaps, People Also Ask ideas, related searches, and source opportunities before drafting.',
     meta: {
-      intent: 'missing_google_custom_search',
+      intent: 'missing_serper',
       routedAgentId: 'iris',
       leadAgentId: 'iris',
       collaboratorAgentIds: [],
@@ -283,7 +280,7 @@ function buildMissingGoogleSearchResponse(provider = 'ollama', model = '') {
       pipelineId: 'blog-post-writing',
       pipelineName: 'Blog Post Writing',
       qualityChecklist: [],
-      handoffNotes: 'Waiting for verified Google Custom Search settings before starting the blog writing pipeline.',
+      handoffNotes: 'Waiting for verified Serper settings before starting the blog writing pipeline.',
       executionSteps: [],
       quality: null,
       executionPrompt: '',
@@ -474,8 +471,8 @@ export async function POST(req: NextRequest) {
     if (!initialConversational && isBlogPostRequest(initialDeliverableType, effectiveInitialUserContent) && (!hasBlogTopic(effectiveInitialUserContent) || !hasBlogPrimaryKeyword(effectiveInitialUserContent))) {
       return buildMissingBlogBriefResponse(effectiveInitialUserContent, provider, model)
     }
-    if (!initialConversational && isBlogPostRequest(initialDeliverableType, effectiveInitialUserContent) && !hasVerifiedGoogleCustomSearch(normalizedProviderSettings)) {
-      return buildMissingGoogleSearchResponse(provider, model)
+    if (!initialConversational && isBlogPostRequest(initialDeliverableType, effectiveInitialUserContent) && !hasVerifiedSerper(normalizedProviderSettings)) {
+      return buildMissingSerperResponse(provider, model)
     }
     const inferredClientFromRequest = Array.isArray(clients)
       ? [...clients]
@@ -566,8 +563,8 @@ export async function POST(req: NextRequest) {
       return buildMissingBlogBriefResponse(userContent, actualProvider, actualModel)
     }
 
-    if (!conversational && isBlogPostRequest(deliverableType, userContent) && !hasVerifiedGoogleCustomSearch(normalizedProviderSettings)) {
-      return buildMissingGoogleSearchResponse(actualProvider, actualModel)
+    if (!conversational && isBlogPostRequest(deliverableType, userContent) && !hasVerifiedSerper(normalizedProviderSettings)) {
+      return buildMissingSerperResponse(actualProvider, actualModel)
     }
 
     // Kick off brief extraction in parallel with AI response (isBriefIntent already computed above).

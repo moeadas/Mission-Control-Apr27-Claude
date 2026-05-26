@@ -155,13 +155,14 @@ export default function SettingsPage() {
   const [higgsHealthMessage, setHiggsHealthMessage] = useState<string>(
     providerSettings.higgsfield?.verified ? 'Higgsfield connected' : 'Higgsfield API key not verified yet'
   )
-  const [googleSearchKeyInput, setGoogleSearchKeyInput] = useState('')
-  const [googleSearchEngineIdInput, setGoogleSearchEngineIdInput] = useState(providerSettings.googleSearch?.searchEngineId || '')
-  const [googleSearchTestQueryInput, setGoogleSearchTestQueryInput] = useState(providerSettings.googleSearch?.testQuery || 'content marketing strategy')
-  const [isVerifyingGoogleSearch, setIsVerifyingGoogleSearch] = useState(false)
-  const [googleSearchHealth, setGoogleSearchHealth] = useState<ProviderHealth>(providerSettings.googleSearch?.verified ? 'connected' : 'idle')
-  const [googleSearchHealthMessage, setGoogleSearchHealthMessage] = useState<string>(
-    providerSettings.googleSearch?.verified ? 'Google Custom Search connected' : 'Google Custom Search not verified yet'
+  const [serperKeyInput, setSerperKeyInput] = useState('')
+  const [serperCountryInput, setSerperCountryInput] = useState(providerSettings.serper?.country || 'us')
+  const [serperLanguageInput, setSerperLanguageInput] = useState(providerSettings.serper?.language || 'en')
+  const [serperTestQueryInput, setSerperTestQueryInput] = useState(providerSettings.serper?.testQuery || 'content marketing strategy')
+  const [isVerifyingSerper, setIsVerifyingSerper] = useState(false)
+  const [serperHealth, setSerperHealth] = useState<ProviderHealth>(providerSettings.serper?.verified ? 'connected' : 'idle')
+  const [serperHealthMessage, setSerperHealthMessage] = useState<string>(
+    providerSettings.serper?.verified ? 'Serper connected' : 'Serper API key not verified yet'
   )
   const [visualHealth, setVisualHealth] = useState<VisualHealth>(providerSettings.visual?.verified ? 'connected' : 'idle')
   const [visualHealthMessage, setVisualHealthMessage] = useState<string>(
@@ -207,21 +208,23 @@ export default function SettingsPage() {
   }, [providerSettings.visual?.verified, providerSettings.visual?.model, providerSettings.gemini.maskedKey])
 
   useEffect(() => {
-    setGoogleSearchEngineIdInput(providerSettings.googleSearch?.searchEngineId || '')
-    setGoogleSearchTestQueryInput(providerSettings.googleSearch?.testQuery || 'content marketing strategy')
-    setGoogleSearchHealth(providerSettings.googleSearch?.verified ? 'connected' : 'idle')
-    setGoogleSearchHealthMessage(
-      providerSettings.googleSearch?.verified
-        ? 'Google Custom Search connected · live SERP research ready'
-        : providerSettings.googleSearch?.maskedKey || providerSettings.googleSearch?.searchEngineId
+    setSerperCountryInput(providerSettings.serper?.country || 'us')
+    setSerperLanguageInput(providerSettings.serper?.language || 'en')
+    setSerperTestQueryInput(providerSettings.serper?.testQuery || 'content marketing strategy')
+    setSerperHealth(providerSettings.serper?.verified ? 'connected' : 'idle')
+    setSerperHealthMessage(
+      providerSettings.serper?.verified
+        ? 'Serper connected · live SERP research ready'
+        : providerSettings.serper?.maskedKey
           ? 'Saved settings are not verified in this session'
-          : 'Add an API key and Search Engine ID, then verify'
+          : 'Add a Serper API key, then verify'
     )
   }, [
-    providerSettings.googleSearch?.maskedKey,
-    providerSettings.googleSearch?.searchEngineId,
-    providerSettings.googleSearch?.testQuery,
-    providerSettings.googleSearch?.verified,
+    providerSettings.serper?.country,
+    providerSettings.serper?.language,
+    providerSettings.serper?.maskedKey,
+    providerSettings.serper?.testQuery,
+    providerSettings.serper?.verified,
   ])
 
   useEffect(() => {
@@ -645,69 +648,70 @@ export default function SettingsPage() {
     }
   }
 
-  const saveGoogleCustomSearch = async () => {
-    const key = googleSearchKeyInput.trim()
-    const searchEngineId = googleSearchEngineIdInput.trim()
-    const testQuery = googleSearchTestQueryInput.trim() || 'content marketing strategy'
-    if (!key && !providerSettings.googleSearch?.apiKey) {
-      toast.error('Paste a Google Custom Search API key first')
-      return
-    }
-    if (!searchEngineId) {
-      toast.error('Add your Google Custom Search Engine ID first')
+  const saveSerper = async () => {
+    const key = serperKeyInput.trim()
+    const country = serperCountryInput.trim().toLowerCase() || 'us'
+    const language = serperLanguageInput.trim().toLowerCase() || 'en'
+    const testQuery = serperTestQueryInput.trim() || 'content marketing strategy'
+    if (!key && !providerSettings.serper?.apiKey) {
+      toast.error('Paste a Serper API key first')
       return
     }
 
-    setIsVerifyingGoogleSearch(true)
-    setGoogleSearchHealth('testing')
-    setGoogleSearchHealthMessage('Running a live Google Custom Search test…')
+    setIsVerifyingSerper(true)
+    setSerperHealth('testing')
+    setSerperHealthMessage('Running a live Serper search test…')
     try {
       const authToken = await getAuthToken()
       const response = await fetch('/api/providers/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) },
         body: JSON.stringify({
-          provider: 'google-custom-search',
-          apiKey: key || providerSettings.googleSearch?.apiKey || '',
-          searchEngineId,
+          provider: 'serper',
+          apiKey: key || providerSettings.serper?.apiKey || '',
+          country,
+          language,
+          resultCount: providerSettings.serper?.resultCount || 10,
           testQuery,
         }),
       })
       const data = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(data?.error || 'Google Custom Search verification failed')
+      if (!response.ok) throw new Error(data?.error || 'Serper verification failed')
 
-      const nextGoogleSearch = {
+      const nextSerper = {
         enabled: true,
         verified: true,
         verifiedAt: new Date().toISOString(),
-        apiKey: key || providerSettings.googleSearch?.apiKey || '',
-        maskedKey: key ? `${key.slice(0, 6)}...${key.slice(-4)}` : providerSettings.googleSearch?.maskedKey || '',
-        searchEngineId,
+        apiKey: key || providerSettings.serper?.apiKey || '',
+        maskedKey: key ? `${key.slice(0, 6)}...${key.slice(-4)}` : providerSettings.serper?.maskedKey || '',
+        country,
+        language,
+        resultCount: providerSettings.serper?.resultCount || 10,
         testQuery,
       }
-      updateProviderSettings('googleSearch', nextGoogleSearch)
-      const nextSettings = { ...providerSettings, googleSearch: nextGoogleSearch }
+      updateProviderSettings('serper', nextSerper)
+      const nextSettings = { ...providerSettings, serper: nextSerper }
       const saveRes = await fetch('/api/providers/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) },
         body: JSON.stringify({ providerSettings: nextSettings }),
       })
-      if (!saveRes.ok) throw new Error('Google Custom Search verified but settings could not be saved')
-      setGoogleSearchHealth('connected')
-      setGoogleSearchHealthMessage(
+      if (!saveRes.ok) throw new Error('Serper verified but settings could not be saved')
+      setSerperHealth('connected')
+      setSerperHealthMessage(
         data?.sampleTitle
           ? `Connected · sample result: ${data.sampleTitle}`
           : `Connected · ${data?.totalResults ?? 0} result(s) available for the test query`
       )
-      setGoogleSearchKeyInput('')
-      toast.success('Google Custom Search verified and saved')
+      setSerperKeyInput('')
+      toast.success('Serper verified and saved')
     } catch (err: any) {
-      updateProviderSettings('googleSearch', { verified: false })
-      setGoogleSearchHealth('invalid')
-      setGoogleSearchHealthMessage(err.message || 'Google Custom Search verification failed')
-      toast.error(err.message || 'Could not verify Google Custom Search')
+      updateProviderSettings('serper', { verified: false })
+      setSerperHealth('invalid')
+      setSerperHealthMessage(err.message || 'Serper verification failed')
+      toast.error(err.message || 'Could not verify Serper')
     } finally {
-      setIsVerifyingGoogleSearch(false)
+      setIsVerifyingSerper(false)
     }
   }
 
@@ -869,54 +873,67 @@ export default function SettingsPage() {
             <Card>
               <div className="flex items-start justify-between gap-4 mb-4">
                 <div>
-                  <h2 className="text-sm font-heading font-semibold text-text-primary">Google Custom Search</h2>
+                  <h2 className="text-sm font-heading font-semibold text-text-primary">Serper Search</h2>
                   <p className="text-xs text-text-secondary mt-1">
-                    Per-user live SERP research for blog writing, SEO planning, and content-gap discovery.
+                    Per-user live Google SERP research through Serper.dev for blog writing, SEO planning, and content-gap discovery.
                   </p>
                 </div>
                 <Badge
-                  color={googleSearchHealth === 'connected' ? '#00d4aa' : googleSearchHealth === 'invalid' ? '#ff5b7f' : '#8b92a8'}
+                  color={serperHealth === 'connected' ? '#00d4aa' : serperHealth === 'invalid' ? '#ff5b7f' : '#8b92a8'}
                   variant="outline"
                 >
-                  {googleSearchHealth === 'connected' ? 'Verified' : googleSearchHealth === 'testing' ? 'Testing' : 'Not verified'}
+                  {serperHealth === 'connected' ? 'Verified' : serperHealth === 'testing' ? 'Testing' : 'Not verified'}
                 </Badge>
               </div>
 
-              <div className="grid lg:grid-cols-3 gap-4">
+              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Input
-                  label="API Key"
+                  label="Serper API Key"
                   type="password"
-                  value={googleSearchKeyInput}
-                  placeholder={providerSettings.googleSearch?.maskedKey || 'AIza...'}
+                  value={serperKeyInput}
+                  placeholder={providerSettings.serper?.maskedKey || 'Serper API key'}
                   onChange={(e) => {
-                    setGoogleSearchKeyInput(e.target.value)
-                    updateProviderSettings('googleSearch', {
-                      ...(providerSettings.googleSearch || {}),
+                    setSerperKeyInput(e.target.value)
+                    updateProviderSettings('serper', {
+                      ...(providerSettings.serper || {}),
                       verified: false,
                     } as any)
                   }}
                 />
                 <Input
-                  label="Search Engine ID"
-                  value={googleSearchEngineIdInput}
-                  placeholder="Programmable Search Engine cx"
+                  label="Country"
+                  value={serperCountryInput}
+                  placeholder="us"
                   onChange={(e) => {
-                    setGoogleSearchEngineIdInput(e.target.value)
-                    updateProviderSettings('googleSearch', {
-                      ...(providerSettings.googleSearch || {}),
-                      searchEngineId: e.target.value,
+                    setSerperCountryInput(e.target.value)
+                    updateProviderSettings('serper', {
+                      ...(providerSettings.serper || {}),
+                      country: e.target.value,
+                      verified: false,
+                    } as any)
+                  }}
+                />
+                <Input
+                  label="Language"
+                  value={serperLanguageInput}
+                  placeholder="en"
+                  onChange={(e) => {
+                    setSerperLanguageInput(e.target.value)
+                    updateProviderSettings('serper', {
+                      ...(providerSettings.serper || {}),
+                      language: e.target.value,
                       verified: false,
                     } as any)
                   }}
                 />
                 <Input
                   label="Test Query"
-                  value={googleSearchTestQueryInput}
+                  value={serperTestQueryInput}
                   placeholder="content marketing strategy"
                   onChange={(e) => {
-                    setGoogleSearchTestQueryInput(e.target.value)
-                    updateProviderSettings('googleSearch', {
-                      ...(providerSettings.googleSearch || {}),
+                    setSerperTestQueryInput(e.target.value)
+                    updateProviderSettings('serper', {
+                      ...(providerSettings.serper || {}),
                       testQuery: e.target.value,
                       verified: false,
                     } as any)
@@ -927,14 +944,14 @@ export default function SettingsPage() {
               <div className="mt-4 grid lg:grid-cols-[1fr_auto] gap-3 items-end">
                 <div className="rounded-xl border border-border bg-base px-3 py-2">
                   <p className="text-[11px] font-mono uppercase text-text-dim">Status</p>
-                  <p className="mt-1 text-sm text-text-primary">{googleSearchHealthMessage}</p>
+                  <p className="mt-1 text-sm text-text-primary">{serperHealthMessage}</p>
                   <p className="mt-1 text-xs text-text-secondary">
                     Iris uses this only after a successful live validation. The real key is stored server-side and never returned to the browser.
                   </p>
                 </div>
-                <Button variant="secondary" onClick={saveGoogleCustomSearch} disabled={isVerifyingGoogleSearch}>
+                <Button variant="secondary" onClick={saveSerper} disabled={isVerifyingSerper}>
                   <RefreshCcw size={14} />
-                  {isVerifyingGoogleSearch ? 'Checking...' : 'Save & Verify'}
+                  {isVerifyingSerper ? 'Checking...' : 'Save & Verify'}
                 </Button>
               </div>
             </Card>

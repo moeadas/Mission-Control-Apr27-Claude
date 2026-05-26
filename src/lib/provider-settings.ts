@@ -1,4 +1,4 @@
-import { AIProvider, ProviderFallback, ProviderSettings, AnthropicSettings, OpenAISettings, MetaAdsSettings, HiggsFieldSettings, GoogleCustomSearchSettings } from '@/lib/types'
+import { AIProvider, ProviderFallback, ProviderSettings, AnthropicSettings, OpenAISettings, MetaAdsSettings, HiggsFieldSettings, SerperSearchSettings } from '@/lib/types'
 
 /**
  * Default per-provider model used for content-generation deliverables when
@@ -123,12 +123,14 @@ export const DEFAULT_PROVIDER_SETTINGS: ProviderSettings = {
     maskedKey: '',
     workspaceId: '',
   },
-  googleSearch: {
+  serper: {
     enabled: false,
     verified: false,
     apiKey: '',
     maskedKey: '',
-    searchEngineId: '',
+    country: 'us',
+    language: 'en',
+    resultCount: 10,
     testQuery: 'content marketing strategy',
   },
 }
@@ -244,9 +246,9 @@ export function normalizeProviderSettings(input?: Partial<ProviderSettings> | nu
       ...DEFAULT_PROVIDER_SETTINGS.higgsfield!,
       ...(input?.higgsfield || {}),
     },
-    googleSearch: {
-      ...DEFAULT_PROVIDER_SETTINGS.googleSearch!,
-      ...(input?.googleSearch || {}),
+    serper: {
+      ...DEFAULT_PROVIDER_SETTINGS.serper!,
+      ...(input?.serper || {}),
     },
   }
 }
@@ -397,8 +399,8 @@ export function stripProviderSecrets(settings: ProviderSettings) {
     higgsfield: settings.higgsfield
       ? { ...settings.higgsfield, apiKey: '', maskedKey: settings.higgsfield.maskedKey || '' }
       : undefined,
-    googleSearch: settings.googleSearch
-      ? { ...settings.googleSearch, apiKey: '', maskedKey: settings.googleSearch.maskedKey || '' }
+    serper: settings.serper
+      ? { ...settings.serper, apiKey: '', maskedKey: settings.serper.maskedKey || '' }
       : undefined,
   }
 }
