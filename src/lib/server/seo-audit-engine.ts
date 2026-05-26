@@ -1,0 +1,798 @@
+import { ArtifactExecutionStep } from '@/lib/types'
+import { validateDeliverableQuality } from '@/lib/output-quality'
+import { escapeHtml, truncate } from '@/lib/server/text-utils'
+
+type ClientProfileMap = Record<string, string>
+
+type RuntimeHooks = {
+  onPhaseStart?: (input: { phase: { id: string; name: string }; progress: number }) => Promise<void> | void
+  onActivityStart?: (input: {
+    phase: { id: string; name: string }
+    activity: { id: string; name: string; outputs?: string[] }
+    agent: { id: string; name: string; role: string }
+    runtime: { provider: 'ollama'; model: string }
+    progress: number
+  }) => Promise<void> | void
+  onActivityComplete?: (input: {
+    phase: { id: string; name: string }
+    activity: { id: string; name: string; outputs?: string[] }
+    agent: { id: string; name: string; role: string }
+    runtime: { provider: 'ollama'; model: string }
+    summary: string
+    outputIds: string[]
+    progress: number
+  }) => Promise<void> | void
+}
+
+type Issue = {
+  title: string
+  detail: string
+  fix: string
+  severity: 'critical' | 'warning' | 'pass'
+}
+
+type Category = {
+  key: string
+  label: string
+  score: number
+  summary: string
+  critical: Issue[]
+  warnings: Issue[]
+  passed: Issue[]
+  recommendations: Array<{ priority: string; action: string; impact: string; effort: string }>
+}
+
+type PageEvidence = {
+  url: string
+  finalUrl: string
+  fetched: boolean
+  fetchError?: string
+  status?: number
+  responseMs?: number
+  htmlBytes: number
+  title: string
+  metaDescription: string
+  canonical: string
+  lang: string
+  viewport: string
+  robotsMeta: string
+  h1: string[]
+  headings: Array<{ level: number; text: string }>
+  images: Array<{ src: string; alt: string }>
+  links: Array<{ href: string; text: string }>
+  forms: number
+  buttons: number
+  ctas: number
+  scripts: number
+  stylesheets: number
+  schemaCount: number
+  openGraphCount: number
+  twitterCount: number
+  textLength: number
+  wordCount: number
+  hasHttps: boolean
+  hasRobotsTxt: boolean
+  hasSitemap: boolean
+  securityHeaders: Record<string, string>
+}
+
+const WEIGHTS: Record<string, number> = {
+  seo: 0.15,
+  ux: 0.12,
+  ui: 0.1,
+  conversion: 0.12,
+  performance: 0.12,
+  accessibility: 0.1,
+  content: 0.1,
+  security: 0.08,
+  mobile: 0.06,
+  benchmark: 0.05,
+}
+
+function normalizeUrl(value: string) {
+  const trimmed = value.trim().replace(/[.,;:!?]+$/, '')
+  if (!trimmed) return ''
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
+}
+
+function extractWebsiteAuditUrl(message: string, clientProfile?: ClientProfileMap) {
+  const explicit = clientProfile?.website_url || clientProfile?.website || ''
+  if (explicit) return normalizeUrl(explicit)
+  const match = message.match(/\bhttps?:\/\/[^\s<>)"']+|\bwww\.[^\s<>)"']+|\b(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/[^\s<>)"']*)?/i)
+  if (!match) return ''
+  if (match[0].includes('@')) return ''
+  return normalizeUrl(match[0])
+}
+
+function getAttr(tag: string, attr: string) {
+  const match = tag.match(new RegExp(`${attr}\\s*=\\s*["']([^"']*)["']`, 'i'))
+  return match?.[1]?.trim() || ''
+}
+
+function stripHtml(html: string) {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function scoreFromChecks(passed: number, warnings: number, critical: number, neutral = 0) {
+  const total = passed + warnings + critical + neutral
+  if (!total) return 50
+  return Math.max(0, Math.min(100, Math.round(((passed * 100 + warnings * 50 + neutral * 60) / total))))
+}
+
+function labelForScore(score: number) {
+  if (score >= 90) return 'Excellent'
+  if (score >= 70) return 'Good'
+  if (score >= 40) return 'Fair'
+  return 'Poor'
+}
+
+function colorForScore(score: number) {
+  if (score >= 70) return '#4d9f0c'
+  if (score >= 40) return '#d18a00'
+  return '#e02b2b'
+}
+
+function issue(title: string, detail: string, fix: string, severity: Issue['severity']): Issue {
+  return { title, detail, fix, severity }
+}
+
+async function fetchText(url: string, timeoutMs = 12000) {
+  const started = Date.now()
+  const response = await fetch(url, {
+    redirect: 'follow',
+    headers: {
+      'User-Agent': 'MissionControlWebsiteAuditor/1.0',
+      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    },
+    signal: AbortSignal.timeout(timeoutMs),
+  })
+  const text = await response.text()
+  return { response, text, responseMs: Date.now() - started }
+}
+
+async function collectEvidence(url: string): Promise<PageEvidence> {
+  const fallback: PageEvidence = {
+    url,
+    finalUrl: url,
+    fetched: false,
+    htmlBytes: 0,
+    title: '',
+    metaDescription: '',
+    canonical: '',
+    lang: '',
+    viewport: '',
+    robotsMeta: '',
+    h1: [],
+    headings: [],
+    images: [],
+    links: [],
+    forms: 0,
+    buttons: 0,
+    ctas: 0,
+    scripts: 0,
+    stylesheets: 0,
+    schemaCount: 0,
+    openGraphCount: 0,
+    twitterCount: 0,
+    textLength: 0,
+    wordCount: 0,
+    hasHttps: /^https:/i.test(url),
+    hasRobotsTxt: false,
+    hasSitemap: false,
+    securityHeaders: {},
+  }
+
+  try {
+    const { response, text: html, responseMs } = await fetchText(url)
+    const finalUrl = response.url || url
+    const base = new URL(finalUrl)
+    const lower = html.toLowerCase()
+    const title = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.replace(/\s+/g, ' ').trim() || ''
+    const metaDescription =
+      html.match(/<meta[^>]+name=["']description["'][^>]*>/i)?.[0] ||
+      html.match(/<meta[^>]+property=["']og:description["'][^>]*>/i)?.[0] ||
+      ''
+    const headings = Array.from(html.matchAll(/<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/gi)).map((match) => ({
+      level: Number(match[1]),
+      text: stripHtml(match[2]).slice(0, 160),
+    }))
+    const images = Array.from(html.matchAll(/<img\b[^>]*>/gi)).map((match) => ({
+      src: getAttr(match[0], 'src'),
+      alt: getAttr(match[0], 'alt'),
+    }))
+    const links = Array.from(html.matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)).map((match) => ({
+      href: match[1],
+      text: stripHtml(match[2]).slice(0, 120),
+    }))
+    const cleanText = stripHtml(html)
+    const securityHeaders: Record<string, string> = {}
+    for (const header of [
+      'strict-transport-security',
+      'content-security-policy',
+      'x-content-type-options',
+      'x-frame-options',
+      'referrer-policy',
+      'permissions-policy',
+    ]) {
+      securityHeaders[header] = response.headers.get(header) || ''
+    }
+
+    const [robotsResult, sitemapResult] = await Promise.all([
+      fetch(`${base.origin}/robots.txt`, { signal: AbortSignal.timeout(5000) }).then((res) => res.ok).catch(() => false),
+      fetch(`${base.origin}/sitemap.xml`, { signal: AbortSignal.timeout(5000) }).then((res) => res.ok).catch(() => false),
+    ])
+
+    return {
+      ...fallback,
+      finalUrl,
+      fetched: true,
+      status: response.status,
+      responseMs,
+      htmlBytes: Buffer.byteLength(html, 'utf8'),
+      title,
+      metaDescription: metaDescription ? getAttr(metaDescription, 'content') : '',
+      canonical: getAttr(html.match(/<link[^>]+rel=["']canonical["'][^>]*>/i)?.[0] || '', 'href'),
+      lang: getAttr(html.match(/<html[^>]*>/i)?.[0] || '', 'lang'),
+      viewport: getAttr(html.match(/<meta[^>]+name=["']viewport["'][^>]*>/i)?.[0] || '', 'content'),
+      robotsMeta: getAttr(html.match(/<meta[^>]+name=["']robots["'][^>]*>/i)?.[0] || '', 'content'),
+      h1: headings.filter((heading) => heading.level === 1).map((heading) => heading.text),
+      headings,
+      images,
+      links,
+      forms: (lower.match(/<form\b/g) || []).length,
+      buttons: (lower.match(/<button\b/g) || []).length,
+      ctas: (cleanText.match(/\b(contact|book|buy|order|get started|request|quote|call|subscribe|learn more|schedule)\b/gi) || []).length,
+      scripts: (lower.match(/<script\b/g) || []).length,
+      stylesheets: (lower.match(/rel=["']stylesheet["']/g) || []).length,
+      schemaCount: (lower.match(/application\/ld\+json/g) || []).length,
+      openGraphCount: (lower.match(/property=["']og:/g) || []).length,
+      twitterCount: (lower.match(/name=["']twitter:/g) || []).length,
+      textLength: cleanText.length,
+      wordCount: cleanText ? cleanText.split(/\s+/).length : 0,
+      hasHttps: /^https:/i.test(finalUrl),
+      hasRobotsTxt: robotsResult,
+      hasSitemap: sitemapResult,
+      securityHeaders,
+    }
+  } catch (error: any) {
+    return {
+      ...fallback,
+      fetchError: error?.message || 'The website could not be fetched.',
+    }
+  }
+}
+
+function hasHeadingOrderIssue(headings: PageEvidence['headings']) {
+  for (let index = 1; index < headings.length; index += 1) {
+    if (headings[index].level - headings[index - 1].level > 1) return true
+  }
+  return false
+}
+
+function buildCategories(e: PageEvidence, clientProfile: ClientProfileMap): Category[] {
+  const missingAlt = e.images.filter((img) => !img.alt).length
+  const emptyLinks = e.links.filter((link) => !link.text).length
+  const internalLinks = e.links.filter((link) => link.href.startsWith('/') || link.href.includes(new URL(e.finalUrl || e.url).hostname)).length
+  const securityMissing = Object.entries(e.securityHeaders).filter(([, value]) => !value).map(([key]) => key)
+  const headingIssue = hasHeadingOrderIssue(e.headings)
+  const hasPrivacy = /\bprivacy policy\b/i.test(e.links.map((link) => link.text).join(' '))
+  const hasTrust = /\b(testimonial|review|certified|secure|guarantee|partner|client|case study)\b/i.test(`${e.links.map((l) => l.text).join(' ')} ${clientProfile.brand_name || ''}`)
+  const categories: Category[] = []
+
+  const seoCritical = [
+    !e.title ? issue('Missing title tag', 'The page does not expose a readable title tag.', 'Add a unique, keyword-led title tag around 45-60 characters.', 'critical') : null,
+    !e.metaDescription ? issue('Missing meta description', 'No meta description was detected for the audited page.', 'Write a concise 140-160 character meta description focused on the page value proposition.', 'critical') : null,
+    e.h1.length !== 1 ? issue('H1 structure problem', `Detected ${e.h1.length} H1 tags.`, 'Use exactly one descriptive H1 that matches the page search intent.', 'critical') : null,
+    missingAlt > 0 ? issue('Image alt text gaps', `${missingAlt} of ${e.images.length} images have missing or empty alt text.`, 'Add descriptive alt text to meaningful images and empty alt only for decorative assets.', 'critical') : null,
+    headingIssue ? issue('Broken heading hierarchy', 'Heading levels appear to skip hierarchy in at least one place.', 'Restructure headings sequentially from H1 to H2 to H3.', 'critical') : null,
+  ].filter(Boolean) as Issue[]
+  const seoWarnings = [
+    !e.canonical ? issue('Canonical tag not detected', 'No canonical URL was found in the HTML.', 'Add a canonical link to reduce duplicate URL ambiguity.', 'warning') : null,
+    !e.hasSitemap ? issue('Sitemap not detected', '/sitemap.xml did not return a successful response.', 'Publish and submit XML sitemap in Google Search Console.', 'warning') : null,
+    e.openGraphCount < 3 ? issue('Open Graph metadata is thin', `Detected ${e.openGraphCount} Open Graph tags.`, 'Add og:title, og:description, og:image, and og:url.', 'warning') : null,
+    e.twitterCount < 2 ? issue('Twitter/X card metadata missing', `Detected ${e.twitterCount} Twitter card tags.`, 'Add twitter:card, twitter:title, twitter:description, and twitter:image tags.', 'warning') : null,
+  ].filter(Boolean) as Issue[]
+  categories.push({
+    key: 'seo',
+    label: 'SEO',
+    score: scoreFromChecks(8 - seoCritical.length - seoWarnings.length, seoWarnings.length, seoCritical.length),
+    summary: 'Assesses indexability, metadata, headings, image signals, structured data, and social search presentation.',
+    critical: seoCritical,
+    warnings: seoWarnings,
+    passed: [
+      e.hasHttps ? issue('HTTPS is active', 'The audited URL resolves over HTTPS.', 'Maintain HTTPS redirects and certificate renewal.', 'pass') : null,
+      e.schemaCount > 0 ? issue('Structured data found', `${e.schemaCount} JSON-LD blocks were detected.`, 'Validate schema in Rich Results Test and expand by page type.', 'pass') : null,
+      e.hasRobotsTxt ? issue('robots.txt found', 'robots.txt returned a successful response.', 'Keep crawl directives clean and sitemap linked.', 'pass') : null,
+    ].filter(Boolean) as Issue[],
+    recommendations: [
+      { priority: 'High', action: 'Fix title, meta, H1, canonical, and alt text gaps page-by-page.', impact: 'Higher crawl clarity and SERP CTR.', effort: 'Medium' },
+      { priority: 'Medium', action: 'Add FAQ/Product/Organization schema where relevant.', impact: 'Improved rich-result eligibility.', effort: 'Medium' },
+    ],
+  })
+
+  const uxCritical = [
+    e.links.length < 5 ? issue('Sparse navigational signals', `Only ${e.links.length} links were detected.`, 'Expose clear navigation to core services, proof, FAQs, and contact paths.', 'critical') : null,
+    emptyLinks > 0 ? issue('Links without discernible text', `${emptyLinks} links have no readable anchor text.`, 'Give every link descriptive text or aria-labels.', 'critical') : null,
+    !hasPrivacy ? issue('Privacy policy not visible', 'A privacy policy link was not detected in page links.', 'Add a visible privacy policy link in the footer and forms.', 'critical') : null,
+  ].filter(Boolean) as Issue[]
+  const uxWarnings = [
+    e.ctas < 2 ? issue('CTA path is weak', `Only ${e.ctas} CTA-like phrases were detected.`, 'Repeat one primary action above the fold, mid-page, and near the close.', 'warning') : null,
+    !hasTrust ? issue('Trust signals are limited', 'Testimonials, proof, certifications, or partner signals were not strongly detected.', 'Add proof close to decision points.', 'warning') : null,
+  ].filter(Boolean) as Issue[]
+  categories.push({
+    key: 'ux',
+    label: 'UX & Usability',
+    score: scoreFromChecks(6 - uxCritical.length - uxWarnings.length, uxWarnings.length, uxCritical.length),
+    summary: 'Reviews navigation clarity, task completion, trust, link labels, and decision friction.',
+    critical: uxCritical,
+    warnings: uxWarnings,
+    passed: [e.viewport ? issue('Viewport configured', 'A viewport meta tag is present.', 'Keep testing at mobile widths.', 'pass') : null].filter(Boolean) as Issue[],
+    recommendations: [
+      { priority: 'High', action: 'Make one primary user path obvious: learn, trust, act.', impact: 'Lower bounce and clearer conversion flow.', effort: 'Medium' },
+      { priority: 'Medium', action: 'Add proof and FAQ modules next to service CTAs.', impact: 'Higher confidence for first-time visitors.', effort: 'Low' },
+    ],
+  })
+
+  const uiCritical = [
+    e.stylesheets === 0 ? issue('No stylesheet detected', 'The page did not expose linked CSS files.', 'Verify visual styling loads reliably for all users.', 'critical') : null,
+    e.images.length === 0 ? issue('No visual assets detected', 'The page HTML did not expose image assets.', 'Use relevant visuals that support product understanding and trust.', 'critical') : null,
+  ].filter(Boolean) as Issue[]
+  const uiWarnings = [
+    e.images.length > 20 ? issue('Heavy visual surface', `${e.images.length} images were detected.`, 'Audit visual hierarchy and compress non-critical images.', 'warning') : null,
+    e.wordCount > 1800 ? issue('Dense page copy', `${e.wordCount} words were detected on the page.`, 'Use section breaks, cards, bullets, and summaries to improve scannability.', 'warning') : null,
+  ].filter(Boolean) as Issue[]
+  categories.push({
+    key: 'ui',
+    label: 'UI Design',
+    score: scoreFromChecks(5 - uiCritical.length - uiWarnings.length, uiWarnings.length, uiCritical.length, e.fetched ? 0 : 2),
+    summary: 'Evaluates visible design signals inferable from HTML: assets, density, hierarchy, and styling dependencies.',
+    critical: uiCritical,
+    warnings: uiWarnings,
+    passed: [e.stylesheets > 0 ? issue('CSS assets found', `${e.stylesheets} stylesheet link(s) detected.`, 'Keep design tokens consistent across templates.', 'pass') : null].filter(Boolean) as Issue[],
+    recommendations: [
+      { priority: 'Medium', action: 'Create a clear above-the-fold hierarchy with one message, one proof point, and one CTA.', impact: 'Faster comprehension.', effort: 'Medium' },
+    ],
+  })
+
+  const conversionCritical = [
+    e.ctas === 0 ? issue('No clear CTA detected', 'No strong action phrase was detected in page copy.', 'Add a primary CTA connected to the business goal.', 'critical') : null,
+    e.forms === 0 ? issue('No form detected', 'No lead/contact/order form was detected in the HTML.', 'Provide an obvious conversion mechanism or link to the conversion page.', 'critical') : null,
+  ].filter(Boolean) as Issue[]
+  const conversionWarnings = [
+    !hasTrust ? issue('Social proof not prominent', 'Proof language was not clearly detected.', 'Add testimonials, lab credentials, associations, client logos, or case outcomes.', 'warning') : null,
+  ].filter(Boolean) as Issue[]
+  categories.push({
+    key: 'conversion',
+    label: 'Conversion',
+    score: scoreFromChecks(5 - conversionCritical.length - conversionWarnings.length, conversionWarnings.length, conversionCritical.length),
+    summary: 'Assesses CTA visibility, form path, trust proof, and commercial persuasion flow.',
+    critical: conversionCritical,
+    warnings: conversionWarnings,
+    passed: [e.ctas > 0 ? issue('Action language detected', `${e.ctas} CTA-like phrases were found.`, 'Consolidate around one primary action.', 'pass') : null].filter(Boolean) as Issue[],
+    recommendations: [
+      { priority: 'High', action: 'Place a primary CTA in the hero, service sections, and footer.', impact: 'Improves lead capture.', effort: 'Low' },
+      { priority: 'Medium', action: 'Add objection-handling content near forms.', impact: 'Reduces hesitation.', effort: 'Medium' },
+    ],
+  })
+
+  const perfCritical = [
+    e.responseMs && e.responseMs > 2500 ? issue('Slow server response', `Initial HTML response took ${e.responseMs} ms.`, 'Improve hosting, caching, CDN, and backend response time.', 'critical') : null,
+    e.htmlBytes > 900000 ? issue('Large HTML payload', `HTML document is ${(e.htmlBytes / 1024).toFixed(0)} KB.`, 'Reduce inline payload, unused markup, and third-party embeds.', 'critical') : null,
+  ].filter(Boolean) as Issue[]
+  const perfWarnings = [
+    e.scripts > 18 ? issue('High script count', `${e.scripts} script tags were detected.`, 'Remove unused scripts and defer non-critical JavaScript.', 'warning') : null,
+    e.images.length > 12 ? issue('Image optimization risk', `${e.images.length} image tags were detected.`, 'Compress, resize, and lazy-load below-the-fold imagery.', 'warning') : null,
+  ].filter(Boolean) as Issue[]
+  categories.push({
+    key: 'performance',
+    label: 'Performance',
+    score: scoreFromChecks(6 - perfCritical.length - perfWarnings.length, perfWarnings.length, perfCritical.length),
+    summary: 'Uses server response, HTML size, script count, and asset signals as Lighthouse-style proxies.',
+    critical: perfCritical,
+    warnings: perfWarnings,
+    passed: [e.responseMs && e.responseMs <= 1000 ? issue('Fast HTML response', `Initial response was ${e.responseMs} ms.`, 'Keep monitoring Core Web Vitals with Lighthouse/PageSpeed.', 'pass') : null].filter(Boolean) as Issue[],
+    recommendations: [
+      { priority: 'High', action: 'Run Lighthouse/PageSpeed and fix LCP, render-blocking, image, and JavaScript opportunities.', impact: 'Better mobile UX and SEO signals.', effort: 'Medium' },
+    ],
+  })
+
+  const accessibilityCritical = [
+    missingAlt > 0 ? issue('Missing image alternatives', `${missingAlt} images are missing alt text.`, 'Write meaningful alt text for content images.', 'critical') : null,
+    !e.lang ? issue('Missing document language', 'The html lang attribute was not detected.', 'Set the correct language on the html tag.', 'critical') : null,
+    emptyLinks > 0 ? issue('Non-discernible links', `${emptyLinks} links have no readable text.`, 'Add descriptive anchor text or aria-labels.', 'critical') : null,
+  ].filter(Boolean) as Issue[]
+  const accessibilityWarnings = [
+    headingIssue ? issue('Heading order risk', 'Heading hierarchy may not be sequential.', 'Use headings for structure, not visual styling.', 'warning') : null,
+    !e.viewport.includes('width=device-width') ? issue('Viewport may be incomplete', `Viewport content: ${e.viewport || 'none'}.`, 'Use width=device-width and avoid disabling zoom.', 'warning') : null,
+  ].filter(Boolean) as Issue[]
+  categories.push({
+    key: 'accessibility',
+    label: 'Accessibility',
+    score: scoreFromChecks(6 - accessibilityCritical.length - accessibilityWarnings.length, accessibilityWarnings.length, accessibilityCritical.length),
+    summary: 'Checks WCAG-oriented basics: alt text, language, links, headings, and responsive viewport.',
+    critical: accessibilityCritical,
+    warnings: accessibilityWarnings,
+    passed: [e.lang ? issue('Language attribute present', `Language is set to "${e.lang}".`, 'Confirm it matches page content.', 'pass') : null].filter(Boolean) as Issue[],
+    recommendations: [
+      { priority: 'High', action: 'Fix alt text, link names, heading structure, and form labels.', impact: 'Improves WCAG readiness and usability.', effort: 'Medium' },
+    ],
+  })
+
+  const contentCritical = [
+    e.wordCount < 250 ? issue('Thin page content', `${e.wordCount} words detected.`, 'Add enough explanatory content to satisfy search intent and buyer questions.', 'critical') : null,
+  ].filter(Boolean) as Issue[]
+  const contentWarnings = [
+    e.wordCount > 2200 ? issue('Potentially overwhelming copy', `${e.wordCount} words detected.`, 'Break copy into clearer sections and summaries.', 'warning') : null,
+    e.headings.length < 3 ? issue('Limited content structure', `${e.headings.length} headings detected.`, 'Add descriptive H2/H3 sections to support scanning and SEO.', 'warning') : null,
+  ].filter(Boolean) as Issue[]
+  categories.push({
+    key: 'content',
+    label: 'Content',
+    score: scoreFromChecks(6 - contentCritical.length - contentWarnings.length, contentWarnings.length, contentCritical.length),
+    summary: 'Evaluates content depth, readability scaffolding, search intent support, and internal structure.',
+    critical: contentCritical,
+    warnings: contentWarnings,
+    passed: [e.wordCount >= 500 ? issue('Substantive copy found', `${e.wordCount} words detected.`, 'Map sections to keyword intent and funnel stage.', 'pass') : null].filter(Boolean) as Issue[],
+    recommendations: [
+      { priority: 'Medium', action: 'Build topic clusters around service, problem, comparison, and FAQ intents.', impact: 'More organic entry points.', effort: 'Medium' },
+    ],
+  })
+
+  const securityCritical = [
+    !e.hasHttps ? issue('HTTPS not confirmed', 'The final URL is not HTTPS.', 'Force HTTPS and HSTS for all pages.', 'critical') : null,
+    securityMissing.includes('content-security-policy') ? issue('Content-Security-Policy missing', 'CSP header was not detected.', 'Add a CSP to reduce XSS and injection risk.', 'critical') : null,
+    securityMissing.includes('strict-transport-security') ? issue('HSTS missing', 'Strict-Transport-Security header was not detected.', 'Add HSTS after validating HTTPS coverage.', 'critical') : null,
+  ].filter(Boolean) as Issue[]
+  const securityWarnings = securityMissing
+    .filter((header) => !['content-security-policy', 'strict-transport-security'].includes(header))
+    .slice(0, 4)
+    .map((header) => issue(`${header} missing`, `${header} was not detected in response headers.`, `Add or validate the ${header} security header.`, 'warning'))
+  categories.push({
+    key: 'security',
+    label: 'Security',
+    score: scoreFromChecks(6 - securityCritical.length - securityWarnings.length, securityWarnings.length, securityCritical.length),
+    summary: 'Reviews visible transport security and response headers.',
+    critical: securityCritical,
+    warnings: securityWarnings,
+    passed: [e.hasHttps ? issue('HTTPS active', 'The URL uses HTTPS.', 'Maintain automatic redirects and certificate monitoring.', 'pass') : null].filter(Boolean) as Issue[],
+    recommendations: [
+      { priority: 'High', action: 'Add HSTS, CSP, X-Content-Type-Options, frame protection, referrer, and permissions policy headers.', impact: 'Improves user trust and security posture.', effort: 'Medium' },
+    ],
+  })
+
+  const mobileCritical = [
+    !e.viewport ? issue('Viewport meta missing', 'No viewport tag was detected.', 'Add a responsive viewport meta tag.', 'critical') : null,
+  ].filter(Boolean) as Issue[]
+  const mobileWarnings = [
+    e.scripts > 18 ? issue('Mobile script burden risk', `${e.scripts} scripts may slow mobile interaction.`, 'Defer non-critical scripts and audit INP/TBT.', 'warning') : null,
+    e.forms > 0 && e.ctas === 0 ? issue('Form path needs clearer mobile CTA', 'Forms exist but CTA language is not strong.', 'Add sticky or repeated mobile-friendly CTAs.', 'warning') : null,
+  ].filter(Boolean) as Issue[]
+  categories.push({
+    key: 'mobile',
+    label: 'Mobile',
+    score: scoreFromChecks(5 - mobileCritical.length - mobileWarnings.length, mobileWarnings.length, mobileCritical.length),
+    summary: 'Checks responsive viewport, interaction burden, and mobile conversion risk.',
+    critical: mobileCritical,
+    warnings: mobileWarnings,
+    passed: [e.viewport ? issue('Responsive viewport found', e.viewport, 'Validate on real mobile breakpoints.', 'pass') : null].filter(Boolean) as Issue[],
+    recommendations: [
+      { priority: 'Medium', action: 'Test top tasks on mobile: navigation, form submit, contact, and service selection.', impact: 'Improves conversion from mobile traffic.', effort: 'Low' },
+    ],
+  })
+
+  const benchmarkWarnings = [
+    e.schemaCount === 0 ? issue('Structured proof trails lag competitors', 'No JSON-LD schema was detected.', 'Add Organization, Product/Service, FAQ, and Breadcrumb schema.', 'warning') : null,
+    !hasTrust ? issue('Trust proof may underperform category leaders', 'Strong proof signals were not detected in crawled text.', 'Add credentials, associations, testimonials, studies, or outcomes.', 'warning') : null,
+  ].filter(Boolean) as Issue[]
+  categories.push({
+    key: 'benchmark',
+    label: 'Benchmark',
+    score: scoreFromChecks(4 - benchmarkWarnings.length, benchmarkWarnings.length, 0, e.fetched ? 1 : 0),
+    summary: 'Benchmarks visible signals against modern category expectations for trust, clarity, SEO, speed, and conversion.',
+    critical: [],
+    warnings: benchmarkWarnings,
+    passed: [e.fetched ? issue('Live page reviewed', 'The audit used live page evidence from the target URL.', 'Add competitor URLs for deeper benchmarking.', 'pass') : null].filter(Boolean) as Issue[],
+    recommendations: [
+      { priority: 'Medium', action: 'Compare homepage, service pages, proof, and technical SEO against 3 direct competitors.', impact: 'Shows gaps in authority and conversion posture.', effort: 'Medium' },
+    ],
+  })
+
+  return categories.map((category) => ({ ...category, score: Math.max(0, Math.min(100, category.score)) }))
+}
+
+function weightedOverall(categories: Category[]) {
+  const weighted = categories.reduce((sum, category) => sum + category.score * (WEIGHTS[category.key] || 0), 0)
+  return Math.round(weighted)
+}
+
+function topPriorities(categories: Category[]) {
+  return categories
+    .flatMap((category) => [
+      ...category.critical.map((item) => ({ category: category.label, issue: item })),
+      ...category.warnings.map((item) => ({ category: category.label, issue: item })),
+    ])
+    .slice(0, 5)
+}
+
+function renderIssueList(items: Issue[], fallback: string) {
+  if (!items.length) return `- ${fallback}`
+  return items.map((item) => `- **${item.title}**: ${item.detail}\n  Fix: ${item.fix}`).join('\n')
+}
+
+function buildMarkdown(url: string, evidence: PageEvidence, categories: Category[]) {
+  const overall = weightedOverall(categories)
+  const priorities = topPriorities(categories)
+  return [
+    `# Website Audit Report: ${url}`,
+    '',
+    '## Overall Score',
+    `| Score | Label | Basis |`,
+    `|---|---|---|`,
+    `| ${overall}/100 | ${labelForScore(overall)} | Weighted average across all 10 audit categories |`,
+    '',
+    '## Category Scores',
+    '| Category | Score | Label | Weight |',
+    '|---|---:|---|---:|',
+    ...categories.map((category) => `| ${category.label} | ${category.score}/100 | ${labelForScore(category.score)} | ${Math.round((WEIGHTS[category.key] || 0) * 100)}% |`),
+    '',
+    '## Executive Summary',
+    evidence.fetched
+      ? `The audited page at ${evidence.finalUrl} scores ${overall}/100, which places it in the ${labelForScore(overall).toLowerCase()} range. The report is based on live HTML, metadata, response headers, robots/sitemap checks, page structure, links, image attributes, forms, CTA language, and Lighthouse-style proxy signals available from the server-side crawl.`
+      : `The target URL could not be fetched successfully, so the report scores visible risk conservatively and flags the crawl limitation in the evidence appendix. Error: ${evidence.fetchError || 'Unknown fetch error'}.`,
+    `The strongest areas are ${categories.slice().sort((a, b) => b.score - a.score).slice(0, 2).map((c) => `${c.label} (${c.score})`).join(' and ')}. The highest-risk areas are ${categories.slice().sort((a, b) => a.score - b.score).slice(0, 3).map((c) => `${c.label} (${c.score})`).join(', ')}.`,
+    '',
+    '## Top Priorities',
+    priorities.length
+      ? priorities.map((priority, index) => `${index + 1}. **${priority.category}: ${priority.issue.title}**\n   ${priority.issue.detail}\n   Fix: ${priority.issue.fix}`).join('\n')
+      : '1. No critical issue was detected by the automated checks. Continue with manual QA, Lighthouse, Search Console, and competitor benchmarking.',
+    '',
+    '## Category Deep Dives',
+    ...categories.flatMap((category) => [
+      '',
+      `### ${category.label}${category.label === 'SEO' ? ' Analyzer' : category.label === 'Performance' ? ' Analyzer' : category.label === 'Conversion' ? ' Analyzer' : ''} - ${category.score}/100`,
+      category.summary,
+      '',
+      '**AI Insights & Actions**',
+      '',
+      `**Critical Issues (${category.critical.length})**`,
+      renderIssueList(category.critical, 'No critical issue detected by the automated checks.'),
+      '',
+      `**Warnings (${category.warnings.length})**`,
+      renderIssueList(category.warnings, 'No warning detected by the automated checks.'),
+      '',
+      `**Passed Checks (${category.passed.length})**`,
+      renderIssueList(category.passed, 'No pass signal available from the crawl.'),
+      '',
+      '| Priority | Action | Expected Impact | Effort |',
+      '|---|---|---|---|',
+      ...category.recommendations.map((rec) => `| ${rec.priority} | ${rec.action} | ${rec.impact} | ${rec.effort} |`),
+    ]),
+    '',
+    '## 30/60/90 Roadmap',
+    '| Window | Focus | Actions |',
+    '|---|---|---|',
+    '| 0-30 days | Critical technical and trust fixes | Fix metadata/H1/canonical/alt text, add missing security headers, clarify primary CTA, publish privacy policy, submit sitemap. |',
+    '| 30-60 days | Performance, content, and conversion upgrades | Run Lighthouse, compress images, defer scripts, improve service-page copy, add FAQ/schema, add proof near CTAs. |',
+    '| 60-90 days | Authority and benchmark growth | Build topic clusters, add competitor comparison pages, earn relevant backlinks, add Search Console reporting, rerun the audit monthly. |',
+    '',
+    '## Evidence Appendix',
+    '| Evidence | Value |',
+    '|---|---|',
+    `| Final URL | ${evidence.finalUrl} |`,
+    `| HTTP status | ${evidence.status || 'Not available'} |`,
+    `| Response time | ${evidence.responseMs ? `${evidence.responseMs} ms` : 'Not available'} |`,
+    `| Title | ${evidence.title || 'Missing'} |`,
+    `| Meta description | ${evidence.metaDescription || 'Missing'} |`,
+    `| Canonical | ${evidence.canonical || 'Missing'} |`,
+    `| H1 count | ${evidence.h1.length} |`,
+    `| Headings | ${evidence.headings.length} |`,
+    `| Images / missing alt | ${evidence.images.length} / ${evidence.images.filter((img) => !img.alt).length} |`,
+    `| Links / empty link text | ${evidence.links.length} / ${evidence.links.filter((link) => !link.text).length} |`,
+    `| Forms / CTA phrases | ${evidence.forms} / ${evidence.ctas} |`,
+    `| Scripts / stylesheets | ${evidence.scripts} / ${evidence.stylesheets} |`,
+    `| Schema / Open Graph / Twitter | ${evidence.schemaCount} / ${evidence.openGraphCount} / ${evidence.twitterCount} |`,
+    `| robots.txt / sitemap.xml | ${evidence.hasRobotsTxt ? 'Found' : 'Not found'} / ${evidence.hasSitemap ? 'Found' : 'Not found'} |`,
+    `| Security headers missing | ${Object.entries(evidence.securityHeaders).filter(([, value]) => !value).map(([key]) => key).join(', ') || 'None detected'} |`,
+    '',
+    '_Limitations: this audit uses server-side HTML and header evidence. It does not replace Search Console, analytics, authenticated crawl data, or a full browser/Lighthouse run, but it provides a concrete evidence-based starting point._',
+  ].join('\n')
+}
+
+function renderHtml(url: string, evidence: PageEvidence, categories: Category[]) {
+  const overall = weightedOverall(categories)
+  const priorities = topPriorities(categories)
+  const scoreRows = categories.map((category) => {
+    const color = colorForScore(category.score)
+    return `
+      <div class="seo-score-row">
+        <div class="seo-score-meta"><strong>${escapeHtml(category.label)}</strong><span style="color:${color}">${category.score}</span></div>
+        <div class="seo-bar"><i style="width:${category.score}%;background:${color}"></i></div>
+      </div>
+    `
+  }).join('')
+  const categoryCards = categories.map((category) => `
+    <section class="seo-card">
+      <div class="seo-card-head">
+        <h2>${escapeHtml(category.label)}${category.label === 'SEO' || category.label === 'Performance' || category.label === 'Conversion' ? ' Analyzer' : ''}</h2>
+        <strong style="color:${colorForScore(category.score)}">${category.score}/100</strong>
+      </div>
+      <p>${escapeHtml(category.summary)}</p>
+      <h3>AI Insights & Actions</h3>
+      <div class="seo-columns">
+        <div><h4>Critical Issues (${category.critical.length})</h4>${renderHtmlIssues(category.critical, 'No critical issue detected.')}</div>
+        <div><h4>Warnings (${category.warnings.length})</h4>${renderHtmlIssues(category.warnings, 'No warning detected.')}</div>
+      </div>
+      <h4>Passed Checks (${category.passed.length})</h4>
+      ${renderHtmlIssues(category.passed, 'No pass signal available from the crawl.')}
+      <table><thead><tr><th>Priority</th><th>Action</th><th>Impact</th><th>Effort</th></tr></thead><tbody>
+        ${category.recommendations.map((rec) => `<tr><td>${escapeHtml(rec.priority)}</td><td>${escapeHtml(rec.action)}</td><td>${escapeHtml(rec.impact)}</td><td>${escapeHtml(rec.effort)}</td></tr>`).join('')}
+      </tbody></table>
+    </section>
+  `).join('')
+
+  return `
+    <article class="artifact-document seo-audit-report">
+      <style>
+        .seo-audit-report{font-family:Inter,ui-sans-serif,system-ui,sans-serif;color:#172033;background:#fff;padding:28px}
+        .seo-kicker{display:inline-block;border:1px solid #b8d3ff;border-radius:999px;color:#2563eb;padding:6px 14px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+        .seo-title{font-size:30px;line-height:1.1;margin:18px 0 6px}.seo-muted{color:#62708a}
+        .seo-hero,.seo-card{border:1px solid #d9dee8;border-radius:8px;background:#fff;padding:24px;margin:24px 0}
+        .seo-overall{display:grid;place-items:center;gap:10px;padding:24px}.seo-ring{width:168px;height:168px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(${colorForScore(overall)} ${overall * 3.6}deg,#edf0f5 0)}
+        .seo-ring-inner{width:120px;height:120px;border-radius:50%;background:#fff;display:grid;place-items:center;text-align:center}.seo-ring-score{font-size:44px;font-weight:900;color:${colorForScore(overall)}}.seo-ring-label{font-size:11px;font-weight:800;letter-spacing:.18em;text-transform:uppercase}
+        .seo-score-row{margin:16px 0}.seo-score-meta{display:flex;justify-content:space-between;margin-bottom:8px}.seo-score-meta span{font-weight:900}.seo-bar{height:6px;background:#edf0f5;border-radius:999px;overflow:hidden}.seo-bar i{display:block;height:100%;border-radius:999px}
+        .seo-priorities{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.seo-priority{border-top:1px solid #e2e6ee;padding-top:14px}.seo-priority b{font-size:28px;color:#2563eb;margin-right:10px}
+        .seo-card-head{display:flex;justify-content:space-between;gap:16px;align-items:center;border-bottom:1px solid #e5e9f0;padding-bottom:14px;margin-bottom:16px}.seo-card h2{font-size:22px;margin:0}.seo-card h3{margin-top:22px;letter-spacing:.08em;text-transform:uppercase;font-size:13px}.seo-card h4{font-size:13px;text-transform:uppercase;letter-spacing:.06em;margin:18px 0 8px}.seo-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
+        .seo-issue{margin:0 0 14px}.seo-issue strong{display:block}.seo-issue span{display:block;color:#5e6c84}.seo-card table{width:100%;border-collapse:collapse;margin-top:14px}.seo-card th,.seo-card td{border-bottom:1px solid #e6eaf1;text-align:left;padding:10px;vertical-align:top}.seo-card th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#66738a}
+        @media(max-width:760px){.seo-priorities,.seo-columns{grid-template-columns:1fr}.seo-audit-report{padding:18px}}
+      </style>
+      <header>
+        <span class="seo-kicker">Audit Report</span>
+        <h1 class="seo-title">${escapeHtml(url)}</h1>
+        <p class="seo-muted">Generated ${new Date().toLocaleString('en-GB', { timeZone: 'Europe/Madrid', dateStyle: 'medium', timeStyle: 'short' })} Madrid time</p>
+      </header>
+      <section class="seo-hero seo-overall">
+        <div class="seo-ring"><div class="seo-ring-inner"><div><div class="seo-ring-score">${overall}</div><div class="seo-ring-label">Overall</div></div></div></div>
+        <p class="seo-muted">Weighted average across all 10 audit categories. Score label: ${labelForScore(overall)}.</p>
+      </section>
+      <section class="seo-card">
+        <h2>Category Scores</h2>
+        ${scoreRows}
+      </section>
+      <section class="seo-card">
+        <h2>Executive Summary</h2>
+        <p>${escapeHtml(evidence.fetched ? `The audited page scores ${overall}/100. This report uses live crawl evidence from ${evidence.finalUrl}, including metadata, headings, images, links, forms, CTA language, robots/sitemap checks, performance proxies, and security headers.` : `The target URL could not be fetched successfully. ${evidence.fetchError || ''}`)}</p>
+      </section>
+      <section class="seo-card">
+        <h2>Top Priorities</h2>
+        <div class="seo-priorities">
+          ${priorities.map((priority, index) => `<div class="seo-priority"><b>${index + 1}</b><strong>${escapeHtml(priority.category)}: ${escapeHtml(priority.issue.title)}</strong><p>${escapeHtml(priority.issue.detail)}</p><p><strong>Fix:</strong> ${escapeHtml(priority.issue.fix)}</p></div>`).join('')}
+        </div>
+      </section>
+      ${categoryCards}
+    </article>
+  `
+}
+
+function renderHtmlIssues(items: Issue[], fallback: string) {
+  if (!items.length) return `<p class="seo-muted">${escapeHtml(fallback)}</p>`
+  return items.map((item) => `
+    <p class="seo-issue">
+      <strong>${escapeHtml(item.title)}</strong>
+      <span>${escapeHtml(item.detail)}</span>
+      <span><strong>Fix:</strong> ${escapeHtml(item.fix)}</span>
+    </p>
+  `).join('')
+}
+
+export async function executeSeoAuditTask(input: {
+  request: string
+  clientProfile?: ClientProfileMap
+  hooks?: RuntimeHooks
+}) {
+  const url = extractWebsiteAuditUrl(input.request, input.clientProfile)
+  if (!url) throw new Error('Please send the website URL before starting the website audit.')
+
+  const phase = { id: 'website-audit', name: 'Website Audit' }
+  const agent = { id: 'atlas', name: 'Atlas', role: 'Research & Insights Lead' }
+  const runtime = { provider: 'ollama' as const, model: 'deterministic-audit-engine' }
+  const executionSteps: ArtifactExecutionStep[] = []
+
+  await input.hooks?.onPhaseStart?.({ phase, progress: 8 })
+  await input.hooks?.onActivityStart?.({
+    phase,
+    activity: { id: 'collect-website-evidence', name: 'Collect Website Evidence', outputs: ['crawl-evidence'] },
+    agent,
+    runtime,
+    progress: 18,
+  })
+  const evidence = await collectEvidence(url)
+  await input.hooks?.onActivityComplete?.({
+    phase,
+    activity: { id: 'collect-website-evidence', name: 'Collect Website Evidence', outputs: ['crawl-evidence'] },
+    agent,
+    runtime,
+    summary: evidence.fetched
+      ? `Collected live evidence from ${evidence.finalUrl}: ${evidence.wordCount} words, ${evidence.images.length} images, ${evidence.links.length} links, ${evidence.headings.length} headings.`
+      : `Could not fetch the target URL: ${evidence.fetchError || 'unknown error'}.`,
+    outputIds: ['crawl-evidence'],
+    progress: 38,
+  })
+
+  await input.hooks?.onActivityStart?.({
+    phase,
+    activity: { id: 'score-categories', name: 'Score 10 Audit Categories', outputs: ['category-scores'] },
+    agent,
+    runtime,
+    progress: 52,
+  })
+  const categories = buildCategories(evidence, input.clientProfile || {})
+  await input.hooks?.onActivityComplete?.({
+    phase,
+    activity: { id: 'score-categories', name: 'Score 10 Audit Categories', outputs: ['category-scores'] },
+    agent,
+    runtime,
+    summary: `Scored 10 categories with overall weighted score ${weightedOverall(categories)}/100.`,
+    outputIds: ['category-scores'],
+    progress: 76,
+  })
+
+  await input.hooks?.onActivityStart?.({
+    phase,
+    activity: { id: 'final-report', name: 'Build Pinpointer-Style Report', outputs: ['audit-report'] },
+    agent,
+    runtime,
+    progress: 88,
+  })
+  const response = buildMarkdown(url, evidence, categories)
+  const renderedHtml = renderHtml(url, evidence, categories)
+  await input.hooks?.onActivityComplete?.({
+    phase,
+    activity: { id: 'final-report', name: 'Build Pinpointer-Style Report', outputs: ['audit-report'] },
+    agent,
+    runtime,
+    summary: 'Generated the final audit report with score dashboard, top priorities, category deep dives, and evidence appendix.',
+    outputIds: ['audit-report'],
+    progress: 95,
+  })
+
+  executionSteps.push(
+    {
+      id: `seo-evidence-${Date.now()}`,
+      agentId: agent.id,
+      agentName: agent.name,
+      role: 'support',
+      title: 'Website evidence collection',
+      summary: evidence.fetched ? truncate(`Fetched ${evidence.finalUrl}; status ${evidence.status}; response ${evidence.responseMs} ms; title "${evidence.title || 'missing'}".`, 1200) : `Fetch failed: ${evidence.fetchError}`,
+      status: evidence.fetched ? 'completed' : 'warning',
+      provider: runtime.provider,
+      model: runtime.model,
+      skillsUsed: ['seo-audit', 'technical-seo', 'ux-audit'],
+    },
+    {
+      id: `seo-report-${Date.now()}`,
+      agentId: agent.id,
+      agentName: agent.name,
+      role: 'lead',
+      title: 'Pinpointer-style final report',
+      summary: `Overall score ${weightedOverall(categories)}/100 across ${categories.length} categories.`,
+      status: 'completed',
+      provider: runtime.provider,
+      model: runtime.model,
+      skillsUsed: ['seo-audit', 'performance-analysis', 'accessibility-audit'],
+    }
+  )
+
+  const qualityResult = validateDeliverableQuality('seo-audit', response, input.request)
+  return {
+    response,
+    renderedHtml,
+    executionSteps,
+    qualityResult,
+    creative: undefined,
+  }
+}

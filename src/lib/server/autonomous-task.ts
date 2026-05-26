@@ -9,6 +9,7 @@ import {
 } from '@/lib/skills/checklist-validator'
 import { executeCreativeAssetTask } from '@/lib/server/creative-asset-engine'
 import { executeAutomatedContentCalendar } from '@/lib/server/content-calendar-engine'
+import { executeSeoAuditTask } from '@/lib/server/seo-audit-engine'
 import { findAgentByTemplate, isOrchestratorAgent } from '@/lib/server/agent-templates'
 import { looksLikeBoilerplateResponse } from '@/lib/server/text-utils'
 import {
@@ -1021,6 +1022,14 @@ export async function executeAutonomousTask(input: {
       qualityResult: calendarResult.qualityResult,
       creative: undefined,
     }
+  }
+
+  if (input.deliverableType === 'seo-audit' || input.deliverableType === 'ui-audit') {
+    return executeSeoAuditTask({
+      request: input.request,
+      clientProfile,
+      hooks: input.hooks,
+    })
   }
 
   if (input.pipeline?.phases?.length) {
