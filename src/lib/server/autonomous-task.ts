@@ -1388,9 +1388,11 @@ export async function executeAutonomousTask(input: {
 function extractBlogPrimaryKeyword(request: string) {
   const patterns = [
     /\bprimary\s+(?:focus\s+)?keyword\s*(?:is|:|-)?\s*["“]?([^"\n.;]+)["”]?/i,
+    /\bmain\s+focus\s+keyword\s*(?:is|:|-)?\s*["“]?([^"\n.;]+)["”]?/i,
     /\bfocus\s+keyword\s*(?:is|:|-)?\s*["“]?([^"\n.;]+)["”]?/i,
     /\btarget\s+keyword\s*(?:is|:|-)?\s*["“]?([^"\n.;]+)["”]?/i,
-    /\b(?:use|using)\s+["“]?([^"\n.;,]+?)["”]?\s+as\s+(?:the\s+)?primary\s+(?:focus\s+)?keyword\b/i,
+    /\b(?:use|using)\s+["“]?([^"\n.;,]+?)["”]?\s+(?:as|and)\s+(?:the\s+)?(?:main\s+)?(?:primary\s+)?(?:focus\s+)?keyword\b/i,
+    /["“]([^"”\n]{2,})["”]\s+(?:as|and)\s+(?:the\s+)?(?:main\s+)?(?:primary\s+)?(?:focus\s+)?keyword\b/i,
     /\babout\s+([^.\n;,]+?)\s+which\s+you\s+can\s+use\s+as\s+(?:the\s+)?primary\s+(?:focus\s+)?keyword\b/i,
   ]
   for (const pattern of patterns) {

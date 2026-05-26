@@ -437,8 +437,9 @@ function extractBlogTopicFromBrief(message: string) {
 
 function extractBlogPrimaryKeywordFromBrief(message: string) {
   const patterns = [
-    /\b(?:primary\s+(?:focus\s+)?keyword|focus\s+keyword|target\s+keyword)\s*(?:is|:|-)\s*["“]?([^"\n.;]+)["”]?/i,
-    /\b(?:use|using)\s+["“]?([^"\n.;,]+?)["”]?\s+as\s+(?:the\s+)?primary\s+(?:focus\s+)?keyword\b/i,
+    /\b(?:primary\s+(?:focus\s+)?keyword|main\s+focus\s+keyword|focus\s+keyword|target\s+keyword)\s*(?:is|:|-)\s*["“]?([^"\n.;]+)["”]?/i,
+    /\b(?:use|using)\s+["“]?([^"\n.;,]+?)["”]?\s+(?:as|and)\s+(?:the\s+)?(?:main\s+)?(?:primary\s+)?(?:focus\s+)?keyword\b/i,
+    /["“]([^"”\n]{2,})["”]\s+(?:as|and)\s+(?:the\s+)?(?:main\s+)?(?:primary\s+)?(?:focus\s+)?keyword\b/i,
     /\babout\s+([^.\n;,]+?)\s+which\s+you\s+can\s+use\s+as\s+(?:the\s+)?primary\s+(?:focus\s+)?keyword\b/i,
     /\b([^.\n;,]+?)\s+which\s+you\s+can\s+use\s+as\s+(?:the\s+)?primary\s+(?:focus\s+)?keyword\b/i,
   ]
@@ -524,7 +525,7 @@ function extractBriefFields(text: string) {
     { pattern: /\b(lead gen|lead generation|generate leads|capture leads|leads)\b/, value: 'lead generation' },
     { pattern: /\b(traffic|drive traffic|website visits|click-?through)\b/, value: 'traffic' },
     { pattern: /\b(conversions?|convert|sales|revenue|purchase)\b/, value: 'conversions' },
-    { pattern: /\b(education|educate|inform|teach|tutorial)\b/, value: 'education' },
+    { pattern: /\b(education|educate|inform|teach|tutorial|explain|importance|why it matters|guide)\b/, value: 'education' },
     { pattern: /\b(brand building|brand equity|brand love)\b/, value: 'brand building' },
     { pattern: /\b(thought leadership|authority|expert|expertise)\b/, value: 'thought leadership' },
   ]

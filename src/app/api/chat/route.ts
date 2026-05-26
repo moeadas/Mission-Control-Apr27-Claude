@@ -222,8 +222,9 @@ function extractBlogTopicFromBrief(content: string) {
 
 function extractBlogPrimaryKeywordFromBrief(content: string) {
   const patterns = [
-    /\b(?:primary\s+(?:focus\s+)?keyword|focus\s+keyword|target\s+keyword)\s*(?:is|:|-)\s*["“]?([^"\n.;]+)["”]?/i,
-    /\b(?:use|using)\s+["“]?([^"\n.;,]+?)["”]?\s+as\s+(?:the\s+)?primary\s+(?:focus\s+)?keyword\b/i,
+    /\b(?:primary\s+(?:focus\s+)?keyword|main\s+focus\s+keyword|focus\s+keyword|target\s+keyword)\s*(?:is|:|-)\s*["“]?([^"\n.;]+)["”]?/i,
+    /\b(?:use|using)\s+["“]?([^"\n.;,]+?)["”]?\s+(?:as|and)\s+(?:the\s+)?(?:main\s+)?(?:primary\s+)?(?:focus\s+)?keyword\b/i,
+    /["“]([^"”\n]{2,})["”]\s+(?:as|and)\s+(?:the\s+)?(?:main\s+)?(?:primary\s+)?(?:focus\s+)?keyword\b/i,
     /\babout\s+([^.\n;,]+?)\s+which\s+you\s+can\s+use\s+as\s+(?:the\s+)?primary\s+(?:focus\s+)?keyword\b/i,
     /\b([^.\n;,]+?)\s+which\s+you\s+can\s+use\s+as\s+(?:the\s+)?primary\s+(?:focus\s+)?keyword\b/i,
   ]
