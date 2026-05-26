@@ -1,4 +1,4 @@
-import { AIProvider, ProviderFallback, ProviderSettings, AnthropicSettings, OpenAISettings, MetaAdsSettings, HiggsFieldSettings } from '@/lib/types'
+import { AIProvider, ProviderFallback, ProviderSettings, AnthropicSettings, OpenAISettings, MetaAdsSettings, HiggsFieldSettings, GoogleCustomSearchSettings } from '@/lib/types'
 
 /**
  * Default per-provider model used for content-generation deliverables when
@@ -123,6 +123,14 @@ export const DEFAULT_PROVIDER_SETTINGS: ProviderSettings = {
     maskedKey: '',
     workspaceId: '',
   },
+  googleSearch: {
+    enabled: false,
+    verified: false,
+    apiKey: '',
+    maskedKey: '',
+    searchEngineId: '',
+    testQuery: 'content marketing strategy',
+  },
 }
 
 export const THINKING_DELIVERABLE_TYPES = new Set([
@@ -235,6 +243,10 @@ export function normalizeProviderSettings(input?: Partial<ProviderSettings> | nu
     higgsfield: {
       ...DEFAULT_PROVIDER_SETTINGS.higgsfield!,
       ...(input?.higgsfield || {}),
+    },
+    googleSearch: {
+      ...DEFAULT_PROVIDER_SETTINGS.googleSearch!,
+      ...(input?.googleSearch || {}),
     },
   }
 }
@@ -384,6 +396,9 @@ export function stripProviderSecrets(settings: ProviderSettings) {
       : undefined,
     higgsfield: settings.higgsfield
       ? { ...settings.higgsfield, apiKey: '', maskedKey: settings.higgsfield.maskedKey || '' }
+      : undefined,
+    googleSearch: settings.googleSearch
+      ? { ...settings.googleSearch, apiKey: '', maskedKey: settings.googleSearch.maskedKey || '' }
       : undefined,
   }
 }

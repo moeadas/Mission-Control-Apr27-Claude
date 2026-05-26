@@ -531,6 +531,18 @@ export const useAgentsStore = create<AgentsState>()(
                     ...state.providerSettings.mcp,
                     ...normalized.providerSettings.mcp,
                   },
+                  googleSearch: {
+                    ...state.providerSettings.googleSearch,
+                    ...normalized.providerSettings.googleSearch,
+                    apiKey:
+                      normalized.providerSettings.googleSearch?.apiKey ||
+                      state.providerSettings.googleSearch?.apiKey ||
+                      '',
+                    maskedKey:
+                      normalized.providerSettings.googleSearch?.maskedKey ||
+                      state.providerSettings.googleSearch?.maskedKey ||
+                      '',
+                  },
                 })
               : state.providerSettings,
             agentMemories: normalized.agentMemories

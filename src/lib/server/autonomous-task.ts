@@ -1033,7 +1033,7 @@ export async function executeAutonomousTask(input: {
   }
 
   const blogResearchContext = input.deliverableType === 'blog-article'
-    ? await fetchGoogleCustomSearchContext(input.request)
+    ? await fetchGoogleCustomSearchContext(input.request, input.providerSettings)
     : ''
   const generationRequest = blogResearchContext
     ? `${input.request}\n\nLive SERP research context:\n${blogResearchContext}`
@@ -1410,14 +1410,26 @@ function extractBlogTopic(request: string) {
   return ''
 }
 
-async function fetchGoogleCustomSearchContext(request: string) {
+async function fetchGoogleCustomSearchContext(request: string, providerSettings?: ProviderSettings) {
+  const userGoogleSearch = providerSettings?.googleSearch
+  const userSettingsReady = Boolean(
+    userGoogleSearch?.enabled &&
+      userGoogleSearch?.verified &&
+      userGoogleSearch?.apiKey &&
+      userGoogleSearch?.searchEngineId
+  )
   const apiKey =
+    (userSettingsReady ? userGoogleSearch?.apiKey : '') ||
     process.env.GOOGLE_CUSTOM_SEARCH_API_KEY ||
     process.env.GOOGLE_SEARCH_API_KEY ||
     process.env.PAGESPEED_API_KEY ||
     process.env.GOOGLE_PAGESPEED_API_KEY ||
     ''
-  const searchEngineId = process.env.GOOGLE_CUSTOM_SEARCH_ENGINE_ID || process.env.GOOGLE_CSE_ID || ''
+  const searchEngineId =
+    (userSettingsReady ? userGoogleSearch?.searchEngineId : '') ||
+    process.env.GOOGLE_CUSTOM_SEARCH_ENGINE_ID ||
+    process.env.GOOGLE_CSE_ID ||
+    ''
   const primaryKeyword = extractBlogPrimaryKeyword(request)
   const topic = extractBlogTopic(request)
   const query = primaryKeyword || topic
@@ -1425,7 +1437,7 @@ async function fetchGoogleCustomSearchContext(request: string) {
   if (!query) return 'Google Custom Search skipped: no primary keyword or topic was available for the query.'
   if (!apiKey || !searchEngineId) {
     return [
-      'Google Custom Search unavailable: missing GOOGLE_CUSTOM_SEARCH_ENGINE_ID / GOOGLE_CSE_ID.',
+      'Google Custom Search unavailable: missing verified per-user Google Custom Search settings or GOOGLE_CUSTOM_SEARCH_ENGINE_ID / GOOGLE_CSE_ID.',
       `Research query to run when configured: "${query}".`,
       'Do not invent People Also Ask, related searches, rankings, traffic, or competitor claims. Use the writer checklist and mark live SERP research as unavailable.',
     ].join('\n')

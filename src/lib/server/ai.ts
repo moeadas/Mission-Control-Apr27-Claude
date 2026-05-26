@@ -7,8 +7,43 @@ type VerifyPayload =
   | { provider: 'gemini-image'; apiKey: string; model?: string }
   | { provider: 'anthropic'; apiKey: string }
   | { provider: 'openai'; apiKey: string; baseUrl?: string }
+  | { provider: 'google-custom-search'; apiKey: string; searchEngineId: string; testQuery?: string }
 
 export async function verifyProvider(payload: VerifyPayload) {
+  // ── Google Custom Search ───────────────────────────────────────────────────
+  if (payload.provider === 'google-custom-search') {
+    const apiKey = payload.apiKey?.trim()
+    const searchEngineId = payload.searchEngineId?.trim()
+    const testQuery = payload.testQuery?.trim() || 'content marketing strategy'
+    if (!apiKey) throw new Error('Google Custom Search API key is required.')
+    if (!searchEngineId) throw new Error('Google Custom Search Engine ID is required.')
+
+    const endpoint = new URL('https://www.googleapis.com/customsearch/v1')
+    endpoint.searchParams.set('key', apiKey)
+    endpoint.searchParams.set('cx', searchEngineId)
+    endpoint.searchParams.set('q', testQuery)
+    endpoint.searchParams.set('num', '1')
+
+    const response = await fetch(endpoint, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(12000),
+    })
+    const data = await response.json().catch(() => null)
+    if (!response.ok) {
+      const message = data?.error?.message || `Google Custom Search returned HTTP ${response.status}.`
+      throw new Error(message)
+    }
+    const totalResults = Number(data?.searchInformation?.totalResults || 0)
+    const firstResult = Array.isArray(data?.items) ? data.items[0] : null
+    return {
+      ok: true,
+      totalResults,
+      testQuery,
+      sampleTitle: firstResult?.title || '',
+      sampleLink: firstResult?.link || '',
+    }
+  }
+
   // ── Ollama ──────────────────────────────────────────────────────────────────
   if (payload.provider === 'ollama') {
     const baseUrl = (payload.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434').replace(/\/$/, '')

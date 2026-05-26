@@ -235,6 +235,7 @@ function buildMissingBlogBriefResponse(content: string, provider = 'ollama', mod
   return NextResponse.json({
     response: `Please send the ${missing.join(' and ')} before I start the blog post. Secondary keywords are optional, but helpful if you have them.`,
     meta: {
+      intent: 'missing_blog_brief',
       routedAgentId: 'iris',
       leadAgentId: 'iris',
       collaboratorAgentIds: [],
@@ -246,6 +247,43 @@ function buildMissingBlogBriefResponse(content: string, provider = 'ollama', mod
       pipelineName: 'Blog Post Writing',
       qualityChecklist: [],
       handoffNotes: 'Waiting for required blog topic and primary focus keyword before starting the blog writing pipeline.',
+      executionSteps: [],
+      quality: null,
+      executionPrompt: '',
+      renderedHtml: null,
+      provider,
+      model,
+      fallbackUsed: false,
+      conversational: true,
+    },
+  })
+}
+
+function hasVerifiedGoogleCustomSearch(settings: ReturnType<typeof normalizeProviderSettings>) {
+  const googleSearch = settings.googleSearch
+  if (googleSearch?.enabled && googleSearch.verified && googleSearch.apiKey && googleSearch.searchEngineId) return true
+  return Boolean(
+    (process.env.GOOGLE_CUSTOM_SEARCH_API_KEY || process.env.GOOGLE_SEARCH_API_KEY) &&
+      (process.env.GOOGLE_CUSTOM_SEARCH_ENGINE_ID || process.env.GOOGLE_CSE_ID)
+  )
+}
+
+function buildMissingGoogleSearchResponse(provider = 'ollama', model = '') {
+  return NextResponse.json({
+    response: 'I can write the blog post, but live SERP research is not configured yet. Please go to Settings, add your Google Custom Search API key and Search Engine ID, then click Save & Verify. Once it is verified, I can use live search results for search intent, competitor format, content gaps, FAQ ideas, and source opportunities before drafting.',
+    meta: {
+      intent: 'missing_google_custom_search',
+      routedAgentId: 'iris',
+      leadAgentId: 'iris',
+      collaboratorAgentIds: [],
+      assignedAgentIds: ['iris'],
+      clientId: null,
+      campaignId: null,
+      deliverableType: 'blog-article',
+      pipelineId: 'blog-post-writing',
+      pipelineName: 'Blog Post Writing',
+      qualityChecklist: [],
+      handoffNotes: 'Waiting for verified Google Custom Search settings before starting the blog writing pipeline.',
       executionSteps: [],
       quality: null,
       executionPrompt: '',
@@ -413,6 +451,7 @@ export async function POST(req: NextRequest) {
       currentCampaignId,
       missionId,
     } = requestBody
+    const normalizedProviderSettings = normalizeProviderSettings(auth.providerSettings || providerSettings)
 
     const initialLatestUser = Array.isArray(messages)
       ? [...messages].reverse().find((message) => message.role === 'user')
@@ -434,6 +473,9 @@ export async function POST(req: NextRequest) {
     }
     if (!initialConversational && isBlogPostRequest(initialDeliverableType, effectiveInitialUserContent) && (!hasBlogTopic(effectiveInitialUserContent) || !hasBlogPrimaryKeyword(effectiveInitialUserContent))) {
       return buildMissingBlogBriefResponse(effectiveInitialUserContent, provider, model)
+    }
+    if (!initialConversational && isBlogPostRequest(initialDeliverableType, effectiveInitialUserContent) && !hasVerifiedGoogleCustomSearch(normalizedProviderSettings)) {
+      return buildMissingGoogleSearchResponse(provider, model)
     }
     const inferredClientFromRequest = Array.isArray(clients)
       ? [...clients]
@@ -491,8 +533,6 @@ export async function POST(req: NextRequest) {
     const conversational = isConversationalMessage(userContent) || isBriefIntent
     const deliverableType = conversational ? 'status-report' : inferDeliverableType(userContent)
     const auditWebsiteUrl = extractWebsiteAuditUrl(userContent)
-    const normalizedProviderSettings = normalizeProviderSettings(auth.providerSettings || providerSettings)
-
     // Collect all provider secrets from the auth-resolved settings once,
     // then pass them uniformly to every generateText / executeAutonomousTask call.
     const providerKeys = {
@@ -524,6 +564,10 @@ export async function POST(req: NextRequest) {
 
     if (!conversational && isBlogPostRequest(deliverableType, userContent) && (!hasBlogTopic(userContent) || !hasBlogPrimaryKeyword(userContent))) {
       return buildMissingBlogBriefResponse(userContent, actualProvider, actualModel)
+    }
+
+    if (!conversational && isBlogPostRequest(deliverableType, userContent) && !hasVerifiedGoogleCustomSearch(normalizedProviderSettings)) {
+      return buildMissingGoogleSearchResponse(actualProvider, actualModel)
     }
 
     // Kick off brief extraction in parallel with AI response (isBriefIntent already computed above).

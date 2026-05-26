@@ -468,6 +468,16 @@ export interface HiggsFieldSettings {
   workspaceId?: string  // optional — defaults to first available workspace
 }
 
+export interface GoogleCustomSearchSettings {
+  enabled: boolean
+  verified: boolean
+  verifiedAt?: string
+  apiKey: string
+  maskedKey?: string
+  searchEngineId: string
+  testQuery?: string
+}
+
 export interface ProviderSettings {
   routing: ProviderRoutingSettings
   ollama: OllamaSettings
@@ -478,6 +488,7 @@ export interface ProviderSettings {
   mcp: MCPSettings
   meta?: MetaAdsSettings
   higgsfield?: HiggsFieldSettings
+  googleSearch?: GoogleCustomSearchSettings
 }
 
 export interface AgencySettings {

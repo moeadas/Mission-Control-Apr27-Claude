@@ -155,6 +155,14 @@ export default function SettingsPage() {
   const [higgsHealthMessage, setHiggsHealthMessage] = useState<string>(
     providerSettings.higgsfield?.verified ? 'Higgsfield connected' : 'Higgsfield API key not verified yet'
   )
+  const [googleSearchKeyInput, setGoogleSearchKeyInput] = useState('')
+  const [googleSearchEngineIdInput, setGoogleSearchEngineIdInput] = useState(providerSettings.googleSearch?.searchEngineId || '')
+  const [googleSearchTestQueryInput, setGoogleSearchTestQueryInput] = useState(providerSettings.googleSearch?.testQuery || 'content marketing strategy')
+  const [isVerifyingGoogleSearch, setIsVerifyingGoogleSearch] = useState(false)
+  const [googleSearchHealth, setGoogleSearchHealth] = useState<ProviderHealth>(providerSettings.googleSearch?.verified ? 'connected' : 'idle')
+  const [googleSearchHealthMessage, setGoogleSearchHealthMessage] = useState<string>(
+    providerSettings.googleSearch?.verified ? 'Google Custom Search connected' : 'Google Custom Search not verified yet'
+  )
   const [visualHealth, setVisualHealth] = useState<VisualHealth>(providerSettings.visual?.verified ? 'connected' : 'idle')
   const [visualHealthMessage, setVisualHealthMessage] = useState<string>(
     providerSettings.visual?.verified ? 'Visual generation connected' : 'Visual generation not verified yet'
@@ -197,6 +205,24 @@ export default function SettingsPage() {
           : 'Add and verify a Gemini key first.'
     )
   }, [providerSettings.visual?.verified, providerSettings.visual?.model, providerSettings.gemini.maskedKey])
+
+  useEffect(() => {
+    setGoogleSearchEngineIdInput(providerSettings.googleSearch?.searchEngineId || '')
+    setGoogleSearchTestQueryInput(providerSettings.googleSearch?.testQuery || 'content marketing strategy')
+    setGoogleSearchHealth(providerSettings.googleSearch?.verified ? 'connected' : 'idle')
+    setGoogleSearchHealthMessage(
+      providerSettings.googleSearch?.verified
+        ? 'Google Custom Search connected · live SERP research ready'
+        : providerSettings.googleSearch?.maskedKey || providerSettings.googleSearch?.searchEngineId
+          ? 'Saved settings are not verified in this session'
+          : 'Add an API key and Search Engine ID, then verify'
+    )
+  }, [
+    providerSettings.googleSearch?.maskedKey,
+    providerSettings.googleSearch?.searchEngineId,
+    providerSettings.googleSearch?.testQuery,
+    providerSettings.googleSearch?.verified,
+  ])
 
   useEffect(() => {
     const loadStatus = async () => {
@@ -619,6 +645,72 @@ export default function SettingsPage() {
     }
   }
 
+  const saveGoogleCustomSearch = async () => {
+    const key = googleSearchKeyInput.trim()
+    const searchEngineId = googleSearchEngineIdInput.trim()
+    const testQuery = googleSearchTestQueryInput.trim() || 'content marketing strategy'
+    if (!key && !providerSettings.googleSearch?.apiKey) {
+      toast.error('Paste a Google Custom Search API key first')
+      return
+    }
+    if (!searchEngineId) {
+      toast.error('Add your Google Custom Search Engine ID first')
+      return
+    }
+
+    setIsVerifyingGoogleSearch(true)
+    setGoogleSearchHealth('testing')
+    setGoogleSearchHealthMessage('Running a live Google Custom Search test…')
+    try {
+      const authToken = await getAuthToken()
+      const response = await fetch('/api/providers/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) },
+        body: JSON.stringify({
+          provider: 'google-custom-search',
+          apiKey: key || providerSettings.googleSearch?.apiKey || '',
+          searchEngineId,
+          testQuery,
+        }),
+      })
+      const data = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(data?.error || 'Google Custom Search verification failed')
+
+      const nextGoogleSearch = {
+        enabled: true,
+        verified: true,
+        verifiedAt: new Date().toISOString(),
+        apiKey: key || providerSettings.googleSearch?.apiKey || '',
+        maskedKey: key ? `${key.slice(0, 6)}...${key.slice(-4)}` : providerSettings.googleSearch?.maskedKey || '',
+        searchEngineId,
+        testQuery,
+      }
+      updateProviderSettings('googleSearch', nextGoogleSearch)
+      const nextSettings = { ...providerSettings, googleSearch: nextGoogleSearch }
+      const saveRes = await fetch('/api/providers/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) },
+        body: JSON.stringify({ providerSettings: nextSettings }),
+      })
+      if (!saveRes.ok) throw new Error('Google Custom Search verified but settings could not be saved')
+      setGoogleSearchHealth('connected')
+      setGoogleSearchHealthMessage(
+        data?.sampleTitle
+          ? `Connected · sample result: ${data.sampleTitle}`
+          : `Connected · ${data?.totalResults ?? 0} result(s) available for the test query`
+      )
+      setGoogleSearchKeyInput('')
+      toast.success('Google Custom Search verified and saved')
+    } catch (err: any) {
+      updateProviderSettings('googleSearch', { verified: false })
+      setGoogleSearchHealth('invalid')
+      setGoogleSearchHealthMessage(err.message || 'Google Custom Search verification failed')
+      toast.error(err.message || 'Could not verify Google Custom Search')
+    } finally {
+      setIsVerifyingGoogleSearch(false)
+    }
+  }
+
   const verifyVisualGeneration = async () => {
     const geminiKey = providerSettings.gemini.apiKey || geminiKeyInput.trim()
     if (!geminiKey) {
@@ -771,6 +863,79 @@ export default function SettingsPage() {
                     Open Runner
                   </Button>
                 </Link>
+              </div>
+            </Card>
+
+            <Card>
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div>
+                  <h2 className="text-sm font-heading font-semibold text-text-primary">Google Custom Search</h2>
+                  <p className="text-xs text-text-secondary mt-1">
+                    Per-user live SERP research for blog writing, SEO planning, and content-gap discovery.
+                  </p>
+                </div>
+                <Badge
+                  color={googleSearchHealth === 'connected' ? '#00d4aa' : googleSearchHealth === 'invalid' ? '#ff5b7f' : '#8b92a8'}
+                  variant="outline"
+                >
+                  {googleSearchHealth === 'connected' ? 'Verified' : googleSearchHealth === 'testing' ? 'Testing' : 'Not verified'}
+                </Badge>
+              </div>
+
+              <div className="grid lg:grid-cols-3 gap-4">
+                <Input
+                  label="API Key"
+                  type="password"
+                  value={googleSearchKeyInput}
+                  placeholder={providerSettings.googleSearch?.maskedKey || 'AIza...'}
+                  onChange={(e) => {
+                    setGoogleSearchKeyInput(e.target.value)
+                    updateProviderSettings('googleSearch', {
+                      ...(providerSettings.googleSearch || {}),
+                      verified: false,
+                    } as any)
+                  }}
+                />
+                <Input
+                  label="Search Engine ID"
+                  value={googleSearchEngineIdInput}
+                  placeholder="Programmable Search Engine cx"
+                  onChange={(e) => {
+                    setGoogleSearchEngineIdInput(e.target.value)
+                    updateProviderSettings('googleSearch', {
+                      ...(providerSettings.googleSearch || {}),
+                      searchEngineId: e.target.value,
+                      verified: false,
+                    } as any)
+                  }}
+                />
+                <Input
+                  label="Test Query"
+                  value={googleSearchTestQueryInput}
+                  placeholder="content marketing strategy"
+                  onChange={(e) => {
+                    setGoogleSearchTestQueryInput(e.target.value)
+                    updateProviderSettings('googleSearch', {
+                      ...(providerSettings.googleSearch || {}),
+                      testQuery: e.target.value,
+                      verified: false,
+                    } as any)
+                  }}
+                />
+              </div>
+
+              <div className="mt-4 grid lg:grid-cols-[1fr_auto] gap-3 items-end">
+                <div className="rounded-xl border border-border bg-base px-3 py-2">
+                  <p className="text-[11px] font-mono uppercase text-text-dim">Status</p>
+                  <p className="mt-1 text-sm text-text-primary">{googleSearchHealthMessage}</p>
+                  <p className="mt-1 text-xs text-text-secondary">
+                    Iris uses this only after a successful live validation. The real key is stored server-side and never returned to the browser.
+                  </p>
+                </div>
+                <Button variant="secondary" onClick={saveGoogleCustomSearch} disabled={isVerifyingGoogleSearch}>
+                  <RefreshCcw size={14} />
+                  {isVerifyingGoogleSearch ? 'Checking...' : 'Save & Verify'}
+                </Button>
               </div>
             </Card>
 
