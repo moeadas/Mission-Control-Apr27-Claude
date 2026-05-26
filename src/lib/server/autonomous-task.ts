@@ -1390,6 +1390,8 @@ function extractBlogPrimaryKeyword(request: string) {
     /\bprimary\s+(?:focus\s+)?keyword\s*(?:is|:|-)?\s*["“]?([^"\n.;]+)["”]?/i,
     /\bfocus\s+keyword\s*(?:is|:|-)?\s*["“]?([^"\n.;]+)["”]?/i,
     /\btarget\s+keyword\s*(?:is|:|-)?\s*["“]?([^"\n.;]+)["”]?/i,
+    /\b(?:use|using)\s+["“]?([^"\n.;,]+?)["”]?\s+as\s+(?:the\s+)?primary\s+(?:focus\s+)?keyword\b/i,
+    /\babout\s+([^.\n;,]+?)\s+which\s+you\s+can\s+use\s+as\s+(?:the\s+)?primary\s+(?:focus\s+)?keyword\b/i,
   ]
   for (const pattern of patterns) {
     const match = request.match(pattern)
@@ -1400,8 +1402,9 @@ function extractBlogPrimaryKeyword(request: string) {
 
 function extractBlogTopic(request: string) {
   const patterns = [
-    /\b(?:blog post|blog article|article|how-to guide|guide)\s+(?:about|on|for)\s+([^.\n;]+)/i,
     /\btopic\s*(?:is|:|-)?\s*["“]?([^"\n.;]+)["”]?/i,
+    /\b(?:blog post|blog article|article|how-to guide|guide)\s+(?:about|on)\s+([^.\n;]+)/i,
+    /\babout\s+([^.\n;,]+?)(?:\s+which\s+you\s+can\s+use\s+as\s+(?:the\s+)?primary\s+(?:focus\s+)?keyword|\s+as\s+(?:the\s+)?primary\s+(?:focus\s+)?keyword|,|;|\.|\n|$)/i,
   ]
   for (const pattern of patterns) {
     const match = request.match(pattern)

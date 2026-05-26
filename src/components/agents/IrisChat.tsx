@@ -420,12 +420,42 @@ function isBlogPostRequest(message: string) {
   return inferDeliverableFromPrompt(message) === 'blog-article' || /\b(blog post|blog article|write a blog|write an article|seo blog|seo article|long-form article|pillar page|guest post)\b/i.test(message)
 }
 
+function extractBlogTopicFromBrief(message: string) {
+  const patterns = [
+    /\btopic\s*(?:is|:|-)\s*["“]?([^"\n.;]+)["”]?/i,
+    /\b(?:blog post|blog article|article|how-to guide|guide)\s+(?:about|on)\s+([^.\n;]+)/i,
+    /\babout\s+([^.\n;,]+?)(?:\s+which\s+you\s+can\s+use\s+as\s+(?:the\s+)?primary\s+(?:focus\s+)?keyword|\s+as\s+(?:the\s+)?primary\s+(?:focus\s+)?keyword|,|;|\.|\n|$)/i,
+    /\b(?:for|about)\s+([^.\n;,]+?)\s+(?:with|using)\s+(?:the\s+)?(?:primary\s+)?(?:focus\s+)?keyword\b/i,
+  ]
+  for (const pattern of patterns) {
+    const match = message.match(pattern)
+    const value = match?.[1]?.trim()
+    if (value && value.length >= 3) return value
+  }
+  return ''
+}
+
+function extractBlogPrimaryKeywordFromBrief(message: string) {
+  const patterns = [
+    /\b(?:primary\s+(?:focus\s+)?keyword|focus\s+keyword|target\s+keyword)\s*(?:is|:|-)\s*["“]?([^"\n.;]+)["”]?/i,
+    /\b(?:use|using)\s+["“]?([^"\n.;,]+?)["”]?\s+as\s+(?:the\s+)?primary\s+(?:focus\s+)?keyword\b/i,
+    /\babout\s+([^.\n;,]+?)\s+which\s+you\s+can\s+use\s+as\s+(?:the\s+)?primary\s+(?:focus\s+)?keyword\b/i,
+    /\b([^.\n;,]+?)\s+which\s+you\s+can\s+use\s+as\s+(?:the\s+)?primary\s+(?:focus\s+)?keyword\b/i,
+  ]
+  for (const pattern of patterns) {
+    const match = message.match(pattern)
+    const value = match?.[1]?.trim()
+    if (value && value.length >= 2) return value
+  }
+  return ''
+}
+
 function hasBlogTopic(message: string) {
-  return /\b(?:blog post|blog article|article|how-to guide|guide)\s+(?:about|on|for)\s+[^.\n;]{3,}/i.test(message) || /\btopic\s*(?:is|:|-)\s*[^.\n;]{3,}/i.test(message)
+  return Boolean(extractBlogTopicFromBrief(message))
 }
 
 function hasBlogPrimaryKeyword(message: string) {
-  return /\b(primary\s+(?:focus\s+)?keyword|focus\s+keyword|target\s+keyword)\s*(?:is|:|-)\s*[^.\n;]{2,}/i.test(message)
+  return Boolean(extractBlogPrimaryKeywordFromBrief(message))
 }
 
 function buildMissingBlogBriefPrompt(message: string) {
