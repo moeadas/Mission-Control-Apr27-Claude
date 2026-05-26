@@ -51,6 +51,9 @@ services:
       # Optional env wiring for newer batches; safe to leave unset.
       META_GRAPH_API_VERSION: ${META_GRAPH_API_VERSION:-}
       HIGGSFIELD_BASE_URL: ${HIGGSFIELD_BASE_URL:-}
+      # Google PageSpeed Insights API for website audit Lighthouse metrics.
+      PAGESPEED_API_KEY: ${PAGESPEED_API_KEY:-}
+      GOOGLE_PAGESPEED_API_KEY: ${GOOGLE_PAGESPEED_API_KEY:-}
       # Batch E rate-limit secret + Batch F at-rest encryption key.
       CRON_SECRET: ${CRON_SECRET:-}
       PROVIDER_SECRETS_MASTER_KEY: ${PROVIDER_SECRETS_MASTER_KEY:-}

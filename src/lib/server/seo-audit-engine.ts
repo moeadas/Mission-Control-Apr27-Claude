@@ -74,6 +74,37 @@ type PageEvidence = {
   hasRobotsTxt: boolean
   hasSitemap: boolean
   securityHeaders: Record<string, string>
+  pageSpeed: PageSpeedEvidence
+}
+
+type PageSpeedStrategy = 'mobile' | 'desktop'
+
+type PageSpeedRun = {
+  strategy: PageSpeedStrategy
+  available: boolean
+  error?: string
+  finalUrl?: string
+  fetchTime?: string
+  scores: {
+    performance?: number
+    accessibility?: number
+    seo?: number
+    bestPractices?: number
+  }
+  metrics: {
+    firstContentfulPaint?: string
+    largestContentfulPaint?: string
+    totalBlockingTime?: string
+    cumulativeLayoutShift?: string
+    speedIndex?: string
+    timeToInteractive?: string
+  }
+  opportunities: Array<{ title: string; displayValue?: string; savingsMs?: number; savingsBytes?: number }>
+}
+
+type PageSpeedEvidence = {
+  mobile: PageSpeedRun
+  desktop: PageSpeedRun
 }
 
 const WEIGHTS: Record<string, number> = {
@@ -141,6 +172,124 @@ function issue(title: string, detail: string, fix: string, severity: Issue['seve
   return { title, detail, fix, severity }
 }
 
+function emptyPageSpeedRun(strategy: PageSpeedStrategy, error?: string): PageSpeedRun {
+  return {
+    strategy,
+    available: false,
+    error,
+    scores: {},
+    metrics: {},
+    opportunities: [],
+  }
+}
+
+function emptyPageSpeedEvidence(error?: string): PageSpeedEvidence {
+  return {
+    mobile: emptyPageSpeedRun('mobile', error),
+    desktop: emptyPageSpeedRun('desktop', error),
+  }
+}
+
+function scorePercent(value: unknown) {
+  return typeof value === 'number' ? Math.round(value * 100) : undefined
+}
+
+function auditDisplayValue(audits: any, id: string) {
+  const value = audits?.[id]?.displayValue
+  return typeof value === 'string' ? value : undefined
+}
+
+async function fetchPageSpeed(url: string, strategy: PageSpeedStrategy): Promise<PageSpeedRun> {
+  const apiKey = process.env.PAGESPEED_API_KEY || process.env.GOOGLE_PAGESPEED_API_KEY || ''
+  const endpoint = new URL('https://www.googleapis.com/pagespeedonline/v5/runPagespeed')
+  endpoint.searchParams.set('url', url)
+  endpoint.searchParams.set('strategy', strategy)
+  for (const category of ['performance', 'accessibility', 'best-practices', 'seo']) {
+    endpoint.searchParams.append('category', category)
+  }
+  if (apiKey) endpoint.searchParams.set('key', apiKey)
+
+  try {
+    const response = await fetch(endpoint, {
+      signal: AbortSignal.timeout(45000),
+      headers: { Accept: 'application/json' },
+    })
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      throw new Error(text || `PageSpeed API returned HTTP ${response.status}`)
+    }
+    const data = await response.json()
+    const lighthouse = data?.lighthouseResult || {}
+    const categories = lighthouse.categories || {}
+    const audits = lighthouse.audits || {}
+    const opportunityIds = [
+      'largest-contentful-paint-element',
+      'render-blocking-resources',
+      'unused-javascript',
+      'unused-css-rules',
+      'uses-optimized-images',
+      'modern-image-formats',
+      'uses-responsive-images',
+      'efficient-animated-content',
+      'total-byte-weight',
+      'server-response-time',
+      'uses-text-compression',
+    ]
+    const opportunities = opportunityIds
+      .map((id) => audits[id])
+      .filter((audit) => audit && audit.score !== 1)
+      .slice(0, 6)
+      .map((audit) => ({
+        title: String(audit.title || audit.id || 'Performance opportunity'),
+        displayValue: typeof audit.displayValue === 'string' ? audit.displayValue : undefined,
+        savingsMs: typeof audit.details?.overallSavingsMs === 'number' ? Math.round(audit.details.overallSavingsMs) : undefined,
+        savingsBytes: typeof audit.details?.overallSavingsBytes === 'number' ? Math.round(audit.details.overallSavingsBytes) : undefined,
+      }))
+
+    return {
+      strategy,
+      available: true,
+      finalUrl: lighthouse.finalUrl || data.id || url,
+      fetchTime: lighthouse.fetchTime || data.analysisUTCTimestamp,
+      scores: {
+        performance: scorePercent(categories.performance?.score),
+        accessibility: scorePercent(categories.accessibility?.score),
+        seo: scorePercent(categories.seo?.score),
+        bestPractices: scorePercent(categories['best-practices']?.score),
+      },
+      metrics: {
+        firstContentfulPaint: auditDisplayValue(audits, 'first-contentful-paint'),
+        largestContentfulPaint: auditDisplayValue(audits, 'largest-contentful-paint'),
+        totalBlockingTime: auditDisplayValue(audits, 'total-blocking-time'),
+        cumulativeLayoutShift: auditDisplayValue(audits, 'cumulative-layout-shift'),
+        speedIndex: auditDisplayValue(audits, 'speed-index'),
+        timeToInteractive: auditDisplayValue(audits, 'interactive'),
+      },
+      opportunities,
+    }
+  } catch (error: any) {
+    return emptyPageSpeedRun(strategy, error?.message || 'PageSpeed Insights request failed.')
+  }
+}
+
+async function fetchPageSpeedEvidence(url: string): Promise<PageSpeedEvidence> {
+  const [mobile, desktop] = await Promise.all([
+    fetchPageSpeed(url, 'mobile'),
+    fetchPageSpeed(url, 'desktop'),
+  ])
+  return { mobile, desktop }
+}
+
+function blendedScore(primary: number, fallback: number | undefined, weight = 0.6) {
+  if (typeof fallback !== 'number') return primary
+  return Math.round(fallback * weight + primary * (1 - weight))
+}
+
+function weightedPsiScore(mobile?: number, desktop?: number) {
+  if (typeof mobile === 'number' && typeof desktop === 'number') return Math.round(mobile * 0.7 + desktop * 0.3)
+  return mobile ?? desktop
+}
+
 async function fetchText(url: string, timeoutMs = 12000) {
   const started = Date.now()
   const response = await fetch(url, {
@@ -185,12 +334,14 @@ async function collectEvidence(url: string): Promise<PageEvidence> {
     hasRobotsTxt: false,
     hasSitemap: false,
     securityHeaders: {},
+    pageSpeed: emptyPageSpeedEvidence(),
   }
 
   try {
     const { response, text: html, responseMs } = await fetchText(url)
     const finalUrl = response.url || url
     const base = new URL(finalUrl)
+    const pageSpeed = await fetchPageSpeedEvidence(finalUrl)
     const lower = html.toLowerCase()
     const title = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.replace(/\s+/g, ' ').trim() || ''
     const metaDescription =
@@ -258,6 +409,7 @@ async function collectEvidence(url: string): Promise<PageEvidence> {
       hasRobotsTxt: robotsResult,
       hasSitemap: sitemapResult,
       securityHeaders,
+      pageSpeed,
     }
   } catch (error: any) {
     return {
@@ -283,6 +435,11 @@ function buildCategories(e: PageEvidence, clientProfile: ClientProfileMap): Cate
   const hasPrivacy = /\bprivacy policy\b/i.test(e.links.map((link) => link.text).join(' '))
   const hasTrust = /\b(testimonial|review|certified|secure|guarantee|partner|client|case study)\b/i.test(`${e.links.map((l) => l.text).join(' ')} ${clientProfile.brand_name || ''}`)
   const categories: Category[] = []
+  const psiPerf = weightedPsiScore(e.pageSpeed.mobile.scores.performance, e.pageSpeed.desktop.scores.performance)
+  const psiA11y = weightedPsiScore(e.pageSpeed.mobile.scores.accessibility, e.pageSpeed.desktop.scores.accessibility)
+  const psiSeo = weightedPsiScore(e.pageSpeed.mobile.scores.seo, e.pageSpeed.desktop.scores.seo)
+  const psiBestPractices = weightedPsiScore(e.pageSpeed.mobile.scores.bestPractices, e.pageSpeed.desktop.scores.bestPractices)
+  const pageSpeedAvailable = e.pageSpeed.mobile.available || e.pageSpeed.desktop.available
 
   const seoCritical = [
     !e.title ? issue('Missing title tag', 'The page does not expose a readable title tag.', 'Add a unique, keyword-led title tag around 45-60 characters.', 'critical') : null,
@@ -297,10 +454,11 @@ function buildCategories(e: PageEvidence, clientProfile: ClientProfileMap): Cate
     e.openGraphCount < 3 ? issue('Open Graph metadata is thin', `Detected ${e.openGraphCount} Open Graph tags.`, 'Add og:title, og:description, og:image, and og:url.', 'warning') : null,
     e.twitterCount < 2 ? issue('Twitter/X card metadata missing', `Detected ${e.twitterCount} Twitter card tags.`, 'Add twitter:card, twitter:title, twitter:description, and twitter:image tags.', 'warning') : null,
   ].filter(Boolean) as Issue[]
+  const seoCheckScore = scoreFromChecks(8 - seoCritical.length - seoWarnings.length, seoWarnings.length, seoCritical.length)
   categories.push({
     key: 'seo',
     label: 'SEO',
-    score: scoreFromChecks(8 - seoCritical.length - seoWarnings.length, seoWarnings.length, seoCritical.length),
+    score: blendedScore(seoCheckScore, psiSeo, 0.55),
     summary: 'Assesses indexability, metadata, headings, image signals, structured data, and social search presentation.',
     critical: seoCritical,
     warnings: seoWarnings,
@@ -383,21 +541,31 @@ function buildCategories(e: PageEvidence, clientProfile: ClientProfileMap): Cate
   const perfCritical = [
     e.responseMs && e.responseMs > 2500 ? issue('Slow server response', `Initial HTML response took ${e.responseMs} ms.`, 'Improve hosting, caching, CDN, and backend response time.', 'critical') : null,
     e.htmlBytes > 900000 ? issue('Large HTML payload', `HTML document is ${(e.htmlBytes / 1024).toFixed(0)} KB.`, 'Reduce inline payload, unused markup, and third-party embeds.', 'critical') : null,
+    typeof e.pageSpeed.mobile.scores.performance === 'number' && e.pageSpeed.mobile.scores.performance < 50
+      ? issue('Poor mobile Lighthouse performance', `PageSpeed mobile performance is ${e.pageSpeed.mobile.scores.performance}/100. LCP: ${e.pageSpeed.mobile.metrics.largestContentfulPaint || 'n/a'}, FCP: ${e.pageSpeed.mobile.metrics.firstContentfulPaint || 'n/a'}, TBT: ${e.pageSpeed.mobile.metrics.totalBlockingTime || 'n/a'}.`, 'Prioritize LCP element optimization, render-blocking resources, JavaScript reduction, image delivery, and caching.', 'critical')
+      : null,
   ].filter(Boolean) as Issue[]
   const perfWarnings = [
     e.scripts > 18 ? issue('High script count', `${e.scripts} script tags were detected.`, 'Remove unused scripts and defer non-critical JavaScript.', 'warning') : null,
     e.images.length > 12 ? issue('Image optimization risk', `${e.images.length} image tags were detected.`, 'Compress, resize, and lazy-load below-the-fold imagery.', 'warning') : null,
+    pageSpeedAvailable && typeof e.pageSpeed.desktop.scores.performance === 'number' && e.pageSpeed.desktop.scores.performance < 70
+      ? issue('Desktop Lighthouse performance needs work', `PageSpeed desktop performance is ${e.pageSpeed.desktop.scores.performance}/100.`, 'Review PageSpeed opportunities and address the highest savings first.', 'warning')
+      : null,
+    !pageSpeedAvailable ? issue('PageSpeed Insights unavailable', `${e.pageSpeed.mobile.error || e.pageSpeed.desktop.error || 'The PageSpeed API did not return Lighthouse data.'}`, 'Check the PageSpeed API key/quota and rerun the audit.', 'warning') : null,
   ].filter(Boolean) as Issue[]
+  const perfCheckScore = scoreFromChecks(6 - perfCritical.length - perfWarnings.length, perfWarnings.length, perfCritical.length)
   categories.push({
     key: 'performance',
     label: 'Performance',
-    score: scoreFromChecks(6 - perfCritical.length - perfWarnings.length, perfWarnings.length, perfCritical.length),
-    summary: 'Uses server response, HTML size, script count, and asset signals as Lighthouse-style proxies.',
+    score: blendedScore(perfCheckScore, psiPerf, 0.75),
+    summary: pageSpeedAvailable
+      ? 'Uses live PageSpeed Insights Lighthouse data plus server response, HTML size, script count, and asset signals.'
+      : 'Uses server response, HTML size, script count, and asset signals because PageSpeed Insights was unavailable.',
     critical: perfCritical,
     warnings: perfWarnings,
     passed: [e.responseMs && e.responseMs <= 1000 ? issue('Fast HTML response', `Initial response was ${e.responseMs} ms.`, 'Keep monitoring Core Web Vitals with Lighthouse/PageSpeed.', 'pass') : null].filter(Boolean) as Issue[],
     recommendations: [
-      { priority: 'High', action: 'Run Lighthouse/PageSpeed and fix LCP, render-blocking, image, and JavaScript opportunities.', impact: 'Better mobile UX and SEO signals.', effort: 'Medium' },
+      { priority: 'High', action: 'Fix the highest-savings PageSpeed opportunities for LCP, render-blocking resources, image delivery, and JavaScript.', impact: 'Better Core Web Vitals, mobile UX, and SEO signals.', effort: 'Medium' },
     ],
   })
 
@@ -410,11 +578,14 @@ function buildCategories(e: PageEvidence, clientProfile: ClientProfileMap): Cate
     headingIssue ? issue('Heading order risk', 'Heading hierarchy may not be sequential.', 'Use headings for structure, not visual styling.', 'warning') : null,
     !e.viewport.includes('width=device-width') ? issue('Viewport may be incomplete', `Viewport content: ${e.viewport || 'none'}.`, 'Use width=device-width and avoid disabling zoom.', 'warning') : null,
   ].filter(Boolean) as Issue[]
+  const a11yCheckScore = scoreFromChecks(6 - accessibilityCritical.length - accessibilityWarnings.length, accessibilityWarnings.length, accessibilityCritical.length)
   categories.push({
     key: 'accessibility',
     label: 'Accessibility',
-    score: scoreFromChecks(6 - accessibilityCritical.length - accessibilityWarnings.length, accessibilityWarnings.length, accessibilityCritical.length),
-    summary: 'Checks WCAG-oriented basics: alt text, language, links, headings, and responsive viewport.',
+    score: blendedScore(a11yCheckScore, psiA11y, 0.55),
+    summary: pageSpeedAvailable
+      ? 'Combines live Lighthouse accessibility score with WCAG-oriented basics: alt text, language, links, headings, and responsive viewport.'
+      : 'Checks WCAG-oriented basics: alt text, language, links, headings, and responsive viewport.',
     critical: accessibilityCritical,
     warnings: accessibilityWarnings,
     passed: [e.lang ? issue('Language attribute present', `Language is set to "${e.lang}".`, 'Confirm it matches page content.', 'pass') : null].filter(Boolean) as Issue[],
@@ -452,11 +623,14 @@ function buildCategories(e: PageEvidence, clientProfile: ClientProfileMap): Cate
     .filter((header) => !['content-security-policy', 'strict-transport-security'].includes(header))
     .slice(0, 4)
     .map((header) => issue(`${header} missing`, `${header} was not detected in response headers.`, `Add or validate the ${header} security header.`, 'warning'))
+  const securityCheckScore = scoreFromChecks(6 - securityCritical.length - securityWarnings.length, securityWarnings.length, securityCritical.length)
   categories.push({
     key: 'security',
     label: 'Security',
-    score: scoreFromChecks(6 - securityCritical.length - securityWarnings.length, securityWarnings.length, securityCritical.length),
-    summary: 'Reviews visible transport security and response headers.',
+    score: blendedScore(securityCheckScore, psiBestPractices, 0.35),
+    summary: pageSpeedAvailable
+      ? 'Reviews visible transport security, response headers, and Lighthouse best-practices score.'
+      : 'Reviews visible transport security and response headers.',
     critical: securityCritical,
     warnings: securityWarnings,
     passed: [e.hasHttps ? issue('HTTPS active', 'The URL uses HTTPS.', 'Maintain automatic redirects and certificate monitoring.', 'pass') : null].filter(Boolean) as Issue[],
@@ -472,11 +646,14 @@ function buildCategories(e: PageEvidence, clientProfile: ClientProfileMap): Cate
     e.scripts > 18 ? issue('Mobile script burden risk', `${e.scripts} scripts may slow mobile interaction.`, 'Defer non-critical scripts and audit INP/TBT.', 'warning') : null,
     e.forms > 0 && e.ctas === 0 ? issue('Form path needs clearer mobile CTA', 'Forms exist but CTA language is not strong.', 'Add sticky or repeated mobile-friendly CTAs.', 'warning') : null,
   ].filter(Boolean) as Issue[]
+  const mobileCheckScore = scoreFromChecks(5 - mobileCritical.length - mobileWarnings.length, mobileWarnings.length, mobileCritical.length)
   categories.push({
     key: 'mobile',
     label: 'Mobile',
-    score: scoreFromChecks(5 - mobileCritical.length - mobileWarnings.length, mobileWarnings.length, mobileCritical.length),
-    summary: 'Checks responsive viewport, interaction burden, and mobile conversion risk.',
+    score: blendedScore(mobileCheckScore, e.pageSpeed.mobile.scores.performance, 0.55),
+    summary: pageSpeedAvailable
+      ? 'Combines mobile Lighthouse performance with responsive viewport, interaction burden, and mobile conversion risk.'
+      : 'Checks responsive viewport, interaction burden, and mobile conversion risk.',
     critical: mobileCritical,
     warnings: mobileWarnings,
     passed: [e.viewport ? issue('Responsive viewport found', e.viewport, 'Validate on real mobile breakpoints.', 'pass') : null].filter(Boolean) as Issue[],
@@ -489,10 +666,11 @@ function buildCategories(e: PageEvidence, clientProfile: ClientProfileMap): Cate
     e.schemaCount === 0 ? issue('Structured proof trails lag competitors', 'No JSON-LD schema was detected.', 'Add Organization, Product/Service, FAQ, and Breadcrumb schema.', 'warning') : null,
     !hasTrust ? issue('Trust proof may underperform category leaders', 'Strong proof signals were not detected in crawled text.', 'Add credentials, associations, testimonials, studies, or outcomes.', 'warning') : null,
   ].filter(Boolean) as Issue[]
+  const benchmarkCheckScore = scoreFromChecks(4 - benchmarkWarnings.length, benchmarkWarnings.length, 0, e.fetched ? 1 : 0)
   categories.push({
     key: 'benchmark',
     label: 'Benchmark',
-    score: scoreFromChecks(4 - benchmarkWarnings.length, benchmarkWarnings.length, 0, e.fetched ? 1 : 0),
+    score: blendedScore(benchmarkCheckScore, weightedPsiScore(psiPerf, psiSeo), 0.35),
     summary: 'Benchmarks visible signals against modern category expectations for trust, clarity, SEO, speed, and conversion.',
     critical: [],
     warnings: benchmarkWarnings,
@@ -524,6 +702,23 @@ function renderIssueList(items: Issue[], fallback: string) {
   return items.map((item) => `- **${item.title}**: ${item.detail}\n  Fix: ${item.fix}`).join('\n')
 }
 
+function pageSpeedScoreValue(run: PageSpeedRun, key: keyof PageSpeedRun['scores']) {
+  const value = run.scores[key]
+  return typeof value === 'number' ? `${value}/100` : run.available ? 'Not scored' : 'Unavailable'
+}
+
+function pageSpeedMetricValue(run: PageSpeedRun, key: keyof PageSpeedRun['metrics']) {
+  return run.metrics[key] || (run.available ? 'Not available' : 'Unavailable')
+}
+
+function renderPageSpeedOpportunityList(run: PageSpeedRun) {
+  if (!run.available) return `- ${run.error || 'PageSpeed Insights data was unavailable.'}`
+  if (!run.opportunities.length) return '- No major PageSpeed opportunity returned for this strategy.'
+  return run.opportunities
+    .map((item) => `- **${item.title}**${item.displayValue ? `: ${item.displayValue}` : ''}${item.savingsMs ? `; estimated savings ${item.savingsMs} ms` : ''}${item.savingsBytes ? `; estimated bytes ${(item.savingsBytes / 1024).toFixed(0)} KB` : ''}`)
+    .join('\n')
+}
+
 function buildMarkdown(url: string, evidence: PageEvidence, categories: Category[]) {
   const overall = weightedOverall(categories)
   const priorities = topPriorities(categories)
@@ -540,9 +735,23 @@ function buildMarkdown(url: string, evidence: PageEvidence, categories: Category
     '|---|---:|---|---:|',
     ...categories.map((category) => `| ${category.label} | ${category.score}/100 | ${labelForScore(category.score)} | ${Math.round((WEIGHTS[category.key] || 0) * 100)}% |`),
     '',
+    '## PageSpeed Insights',
+    '| Strategy | Performance | Accessibility | SEO | Best Practices | FCP | LCP | TBT | CLS | Speed Index |',
+    '|---|---:|---:|---:|---:|---|---|---|---|---|',
+    ...(['mobile', 'desktop'] as PageSpeedStrategy[]).map((strategy) => {
+      const run = evidence.pageSpeed[strategy]
+      return `| ${strategy} | ${pageSpeedScoreValue(run, 'performance')} | ${pageSpeedScoreValue(run, 'accessibility')} | ${pageSpeedScoreValue(run, 'seo')} | ${pageSpeedScoreValue(run, 'bestPractices')} | ${pageSpeedMetricValue(run, 'firstContentfulPaint')} | ${pageSpeedMetricValue(run, 'largestContentfulPaint')} | ${pageSpeedMetricValue(run, 'totalBlockingTime')} | ${pageSpeedMetricValue(run, 'cumulativeLayoutShift')} | ${pageSpeedMetricValue(run, 'speedIndex')} |`
+    }),
+    '',
+    '**Mobile PageSpeed Opportunities**',
+    renderPageSpeedOpportunityList(evidence.pageSpeed.mobile),
+    '',
+    '**Desktop PageSpeed Opportunities**',
+    renderPageSpeedOpportunityList(evidence.pageSpeed.desktop),
+    '',
     '## Executive Summary',
     evidence.fetched
-      ? `The audited page at ${evidence.finalUrl} scores ${overall}/100, which places it in the ${labelForScore(overall).toLowerCase()} range. The report is based on live HTML, metadata, response headers, robots/sitemap checks, page structure, links, image attributes, forms, CTA language, and Lighthouse-style proxy signals available from the server-side crawl.`
+      ? `The audited page at ${evidence.finalUrl} scores ${overall}/100, which places it in the ${labelForScore(overall).toLowerCase()} range. The report is based on live HTML, metadata, response headers, robots/sitemap checks, page structure, links, image attributes, forms, CTA language, and Google PageSpeed Insights Lighthouse results where available.`
       : `The target URL could not be fetched successfully, so the report scores visible risk conservatively and flags the crawl limitation in the evidence appendix. Error: ${evidence.fetchError || 'Unknown fetch error'}.`,
     `The strongest areas are ${categories.slice().sort((a, b) => b.score - a.score).slice(0, 2).map((c) => `${c.label} (${c.score})`).join(' and ')}. The highest-risk areas are ${categories.slice().sort((a, b) => a.score - b.score).slice(0, 3).map((c) => `${c.label} (${c.score})`).join(', ')}.`,
     '',
@@ -598,14 +807,32 @@ function buildMarkdown(url: string, evidence: PageEvidence, categories: Category
     `| Schema / Open Graph / Twitter | ${evidence.schemaCount} / ${evidence.openGraphCount} / ${evidence.twitterCount} |`,
     `| robots.txt / sitemap.xml | ${evidence.hasRobotsTxt ? 'Found' : 'Not found'} / ${evidence.hasSitemap ? 'Found' : 'Not found'} |`,
     `| Security headers missing | ${Object.entries(evidence.securityHeaders).filter(([, value]) => !value).map(([key]) => key).join(', ') || 'None detected'} |`,
+    `| PageSpeed mobile | ${evidence.pageSpeed.mobile.available ? `Performance ${pageSpeedScoreValue(evidence.pageSpeed.mobile, 'performance')}, LCP ${pageSpeedMetricValue(evidence.pageSpeed.mobile, 'largestContentfulPaint')}` : evidence.pageSpeed.mobile.error || 'Unavailable'} |`,
+    `| PageSpeed desktop | ${evidence.pageSpeed.desktop.available ? `Performance ${pageSpeedScoreValue(evidence.pageSpeed.desktop, 'performance')}, LCP ${pageSpeedMetricValue(evidence.pageSpeed.desktop, 'largestContentfulPaint')}` : evidence.pageSpeed.desktop.error || 'Unavailable'} |`,
     '',
-    '_Limitations: this audit uses server-side HTML and header evidence. It does not replace Search Console, analytics, authenticated crawl data, or a full browser/Lighthouse run, but it provides a concrete evidence-based starting point._',
+    '_Limitations: this audit uses server-side HTML, header evidence, and Google PageSpeed Insights Lighthouse data. It does not replace Search Console, analytics, authenticated crawl data, or manual QA, but it provides a concrete evidence-based starting point._',
   ].join('\n')
 }
 
 function renderHtml(url: string, evidence: PageEvidence, categories: Category[]) {
   const overall = weightedOverall(categories)
   const priorities = topPriorities(categories)
+  const pageSpeedRows = (['mobile', 'desktop'] as PageSpeedStrategy[]).map((strategy) => {
+    const run = evidence.pageSpeed[strategy]
+    return `
+      <tr>
+        <td>${strategy}</td>
+        <td>${escapeHtml(pageSpeedScoreValue(run, 'performance'))}</td>
+        <td>${escapeHtml(pageSpeedScoreValue(run, 'accessibility'))}</td>
+        <td>${escapeHtml(pageSpeedScoreValue(run, 'seo'))}</td>
+        <td>${escapeHtml(pageSpeedScoreValue(run, 'bestPractices'))}</td>
+        <td>${escapeHtml(pageSpeedMetricValue(run, 'firstContentfulPaint'))}</td>
+        <td>${escapeHtml(pageSpeedMetricValue(run, 'largestContentfulPaint'))}</td>
+        <td>${escapeHtml(pageSpeedMetricValue(run, 'totalBlockingTime'))}</td>
+        <td>${escapeHtml(pageSpeedMetricValue(run, 'cumulativeLayoutShift'))}</td>
+      </tr>
+    `
+  }).join('')
   const scoreRows = categories.map((category) => {
     const color = colorForScore(category.score)
     return `
@@ -665,7 +892,15 @@ function renderHtml(url: string, evidence: PageEvidence, categories: Category[])
       </section>
       <section class="seo-card">
         <h2>Executive Summary</h2>
-        <p>${escapeHtml(evidence.fetched ? `The audited page scores ${overall}/100. This report uses live crawl evidence from ${evidence.finalUrl}, including metadata, headings, images, links, forms, CTA language, robots/sitemap checks, performance proxies, and security headers.` : `The target URL could not be fetched successfully. ${evidence.fetchError || ''}`)}</p>
+        <p>${escapeHtml(evidence.fetched ? `The audited page scores ${overall}/100. This report uses live crawl evidence from ${evidence.finalUrl}, including metadata, headings, images, links, forms, CTA language, robots/sitemap checks, security headers, and Google PageSpeed Insights Lighthouse results where available.` : `The target URL could not be fetched successfully. ${evidence.fetchError || ''}`)}</p>
+      </section>
+      <section class="seo-card">
+        <h2>PageSpeed Insights</h2>
+        <table><thead><tr><th>Strategy</th><th>Performance</th><th>Accessibility</th><th>SEO</th><th>Best Practices</th><th>FCP</th><th>LCP</th><th>TBT</th><th>CLS</th></tr></thead><tbody>${pageSpeedRows}</tbody></table>
+        <div class="seo-columns">
+          <div><h4>Mobile Opportunities</h4>${renderHtmlPageSpeedOpportunities(evidence.pageSpeed.mobile)}</div>
+          <div><h4>Desktop Opportunities</h4>${renderHtmlPageSpeedOpportunities(evidence.pageSpeed.desktop)}</div>
+        </div>
       </section>
       <section class="seo-card">
         <h2>Top Priorities</h2>
@@ -676,6 +911,17 @@ function renderHtml(url: string, evidence: PageEvidence, categories: Category[])
       ${categoryCards}
     </article>
   `
+}
+
+function renderHtmlPageSpeedOpportunities(run: PageSpeedRun) {
+  if (!run.available) return `<p class="seo-muted">${escapeHtml(run.error || 'PageSpeed Insights data unavailable.')}</p>`
+  if (!run.opportunities.length) return '<p class="seo-muted">No major PageSpeed opportunity returned for this strategy.</p>'
+  return run.opportunities.map((item) => `
+    <p class="seo-issue">
+      <strong>${escapeHtml(item.title)}</strong>
+      <span>${escapeHtml(item.displayValue || 'Opportunity returned by Lighthouse.')}</span>
+    </p>
+  `).join('')
 }
 
 function renderHtmlIssues(items: Issue[], fallback: string) {
