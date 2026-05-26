@@ -49,6 +49,7 @@ type PageEvidence = {
   fetchError?: string
   status?: number
   responseMs?: number
+  source?: 'seed' | 'sitemap' | 'internal-link'
   htmlBytes: number
   title: string
   metaDescription: string
@@ -56,6 +57,9 @@ type PageEvidence = {
   lang: string
   viewport: string
   robotsMeta: string
+  hreflangCount: number
+  doctypePresent: boolean
+  charset: string
   h1: string[]
   headings: Array<{ level: number; text: string }>
   images: Array<{ src: string; alt: string }>
@@ -75,6 +79,31 @@ type PageEvidence = {
   hasSitemap: boolean
   securityHeaders: Record<string, string>
   pageSpeed: PageSpeedEvidence
+}
+
+type SitemapUrl = {
+  loc: string
+  lastmod?: string
+}
+
+type LinkCheck = {
+  url: string
+  sourceUrl: string
+  status?: number
+  finalUrl?: string
+  redirected: boolean
+  broken: boolean
+  error?: string
+}
+
+type SiteCrawlEvidence = {
+  origin: string
+  seedUrl: string
+  pages: PageEvidence[]
+  sitemapUrls: SitemapUrl[]
+  discoveredUrls: string[]
+  linkChecks: LinkCheck[]
+  inlinkCounts: Record<string, number>
 }
 
 type PageSpeedStrategy = 'mobile' | 'desktop'
@@ -304,11 +333,152 @@ async function fetchText(url: string, timeoutMs = 12000) {
   return { response, text, responseMs: Date.now() - started }
 }
 
-async function collectEvidence(url: string): Promise<PageEvidence> {
+function normalizeCrawlUrl(rawHref: string, baseUrl: string) {
+  const href = rawHref.trim()
+  if (!href || href.startsWith('#')) return ''
+  if (/^(mailto|tel|javascript|data):/i.test(href)) return ''
+  try {
+    const parsed = new URL(href, baseUrl)
+    parsed.hash = ''
+    if (!/^https?:$/i.test(parsed.protocol)) return ''
+    parsed.pathname = parsed.pathname.replace(/\/{2,}/g, '/')
+    return parsed.toString().replace(/\/$/, parsed.pathname === '/' ? '/' : '')
+  } catch {
+    return ''
+  }
+}
+
+function isSameOriginUrl(url: string, origin: string) {
+  try {
+    return new URL(url).origin === origin
+  } catch {
+    return false
+  }
+}
+
+function isLikelyHtmlPage(url: string) {
+  try {
+    const parsed = new URL(url)
+    if (parsed.searchParams.size > 3) return false
+    return !/\.(pdf|jpg|jpeg|png|gif|webp|svg|mp4|mov|avi|zip|rar|css|js|json|xml|txt|ico|woff2?|ttf|eot)$/i.test(parsed.pathname)
+  } catch {
+    return false
+  }
+}
+
+function pageImportanceScore(url: string) {
+  const path = new URL(url).pathname.toLowerCase()
+  let score = path === '/' ? 100 : 40
+  if (/\b(service|product|solution|pricing|contact|about|blog|case|faq|test|shop|audit|genomic|dna|arabian)\b/.test(path)) score += 30
+  if (path.split('/').filter(Boolean).length <= 2) score += 15
+  if (/[?&]/.test(url)) score -= 25
+  return score
+}
+
+function uniqueUrls(urls: string[]) {
+  return Array.from(new Set(urls.filter(Boolean)))
+}
+
+async function fetchSitemapUrls(origin: string, robotsText = '', limit = 40): Promise<SitemapUrl[]> {
+  const sitemapCandidates = uniqueUrls([
+    ...Array.from(robotsText.matchAll(/^sitemap:\s*(\S+)/gim)).map((match) => match[1]),
+    `${origin}/sitemap.xml`,
+    `${origin}/sitemap_index.xml`,
+  ])
+  const seen = new Set<string>()
+  const results: SitemapUrl[] = []
+
+  async function readSitemap(sitemapUrl: string, depth = 0) {
+    if (seen.has(sitemapUrl) || results.length >= limit || depth > 1) return
+    seen.add(sitemapUrl)
+    try {
+      const response = await fetch(sitemapUrl, { signal: AbortSignal.timeout(7000), headers: { Accept: 'application/xml,text/xml,*/*' } })
+      if (!response.ok) return
+      const xml = await response.text()
+      const nested = Array.from(xml.matchAll(/<sitemap>[\s\S]*?<loc>([\s\S]*?)<\/loc>[\s\S]*?<\/sitemap>/gi))
+        .map((match) => match[1].trim())
+      if (nested.length) {
+        for (const nestedUrl of nested.slice(0, 8)) await readSitemap(nestedUrl, depth + 1)
+        return
+      }
+      for (const match of xml.matchAll(/<url>[\s\S]*?<loc>([\s\S]*?)<\/loc>([\s\S]*?)<\/url>/gi)) {
+        if (results.length >= limit) break
+        const loc = match[1].trim()
+        if (!isSameOriginUrl(loc, origin) || !isLikelyHtmlPage(loc)) continue
+        const lastmod = match[2].match(/<lastmod>([\s\S]*?)<\/lastmod>/i)?.[1]?.trim()
+        results.push({ loc, lastmod })
+      }
+    } catch {
+      // Sitemap discovery is opportunistic; the audit continues with internal links.
+    }
+  }
+
+  for (const sitemapUrl of sitemapCandidates) await readSitemap(sitemapUrl)
+  const deduped = new Map<string, SitemapUrl>()
+  for (const item of results) if (!deduped.has(item.loc)) deduped.set(item.loc, item)
+  return Array.from(deduped.values())
+}
+
+async function checkInternalLinks(pages: PageEvidence[], origin: string, limit = 25): Promise<LinkCheck[]> {
+  const checks: Array<{ url: string; sourceUrl: string }> = []
+  const seen = new Set<string>()
+  for (const page of pages) {
+    for (const link of page.links) {
+      const normalized = normalizeCrawlUrl(link.href, page.finalUrl || page.url)
+      if (!normalized || !isSameOriginUrl(normalized, origin) || !isLikelyHtmlPage(normalized) || seen.has(normalized)) continue
+      seen.add(normalized)
+      checks.push({ url: normalized, sourceUrl: page.finalUrl || page.url })
+      if (checks.length >= limit) break
+    }
+    if (checks.length >= limit) break
+  }
+
+  return Promise.all(checks.map(async (item) => {
+    try {
+      const response = await fetch(item.url, {
+        method: 'HEAD',
+        redirect: 'follow',
+        signal: AbortSignal.timeout(6000),
+        headers: { 'User-Agent': 'MissionControlWebsiteAuditor/1.0' },
+      })
+      return {
+        ...item,
+        status: response.status,
+        finalUrl: response.url || item.url,
+        redirected: response.url ? response.url !== item.url : false,
+        broken: response.status >= 400,
+      }
+    } catch (error: any) {
+      return {
+        ...item,
+        redirected: false,
+        broken: true,
+        error: error?.message || 'Link check failed',
+      }
+    }
+  }))
+}
+
+function computeInlinkCounts(pages: PageEvidence[], origin: string) {
+  const counts: Record<string, number> = {}
+  const crawled = new Set(pages.map((page) => page.finalUrl || page.url))
+  for (const page of pages) {
+    const source = page.finalUrl || page.url
+    for (const link of page.links) {
+      const normalized = normalizeCrawlUrl(link.href, source)
+      if (!normalized || !isSameOriginUrl(normalized, origin) || !crawled.has(normalized) || normalized === source) continue
+      counts[normalized] = (counts[normalized] || 0) + 1
+    }
+  }
+  return counts
+}
+
+async function collectEvidence(url: string, options?: { includePageSpeed?: boolean; source?: PageEvidence['source'] }): Promise<PageEvidence> {
   const fallback: PageEvidence = {
     url,
     finalUrl: url,
     fetched: false,
+    source: options?.source,
     htmlBytes: 0,
     title: '',
     metaDescription: '',
@@ -316,6 +486,9 @@ async function collectEvidence(url: string): Promise<PageEvidence> {
     lang: '',
     viewport: '',
     robotsMeta: '',
+    hreflangCount: 0,
+    doctypePresent: false,
+    charset: '',
     h1: [],
     headings: [],
     images: [],
@@ -341,7 +514,7 @@ async function collectEvidence(url: string): Promise<PageEvidence> {
     const { response, text: html, responseMs } = await fetchText(url)
     const finalUrl = response.url || url
     const base = new URL(finalUrl)
-    const pageSpeed = await fetchPageSpeedEvidence(finalUrl)
+    const pageSpeed = options?.includePageSpeed === false ? emptyPageSpeedEvidence() : await fetchPageSpeedEvidence(finalUrl)
     const lower = html.toLowerCase()
     const title = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.replace(/\s+/g, ' ').trim() || ''
     const metaDescription =
@@ -382,6 +555,7 @@ async function collectEvidence(url: string): Promise<PageEvidence> {
       ...fallback,
       finalUrl,
       fetched: true,
+      source: options?.source || fallback.source,
       status: response.status,
       responseMs,
       htmlBytes: Buffer.byteLength(html, 'utf8'),
@@ -391,6 +565,9 @@ async function collectEvidence(url: string): Promise<PageEvidence> {
       lang: getAttr(html.match(/<html[^>]*>/i)?.[0] || '', 'lang'),
       viewport: getAttr(html.match(/<meta[^>]+name=["']viewport["'][^>]*>/i)?.[0] || '', 'content'),
       robotsMeta: getAttr(html.match(/<meta[^>]+name=["']robots["'][^>]*>/i)?.[0] || '', 'content'),
+      hreflangCount: (lower.match(/rel=["']alternate["'][^>]+hreflang=/g) || []).length,
+      doctypePresent: /^<!doctype html>/i.test(html.trim()),
+      charset: getAttr(html.match(/<meta[^>]+charset=["']?([^"'\s>]+)/i)?.[0] || '', 'charset'),
       h1: headings.filter((heading) => heading.level === 1).map((heading) => heading.text),
       headings,
       images,
@@ -416,6 +593,43 @@ async function collectEvidence(url: string): Promise<PageEvidence> {
       ...fallback,
       fetchError: error?.message || 'The website could not be fetched.',
     }
+  }
+}
+
+async function collectSiteEvidence(seedUrl: string): Promise<SiteCrawlEvidence> {
+  const seed = await collectEvidence(seedUrl, { includePageSpeed: true, source: 'seed' })
+  const origin = new URL(seed.finalUrl || seedUrl).origin
+  const robotsText = await fetch(`${origin}/robots.txt`, { signal: AbortSignal.timeout(5000) }).then((res) => res.ok ? res.text() : '').catch(() => '')
+  const sitemapUrls = await fetchSitemapUrls(origin, robotsText)
+  const seedInternalUrls = seed.links
+    .map((link) => normalizeCrawlUrl(link.href, seed.finalUrl || seed.url))
+    .filter((link) => link && isSameOriginUrl(link, origin) && isLikelyHtmlPage(link))
+  const crawlCandidates = uniqueUrls([
+    ...sitemapUrls.map((item) => item.loc),
+    ...seedInternalUrls,
+  ])
+    .filter((candidate) => candidate !== (seed.finalUrl || seed.url))
+    .sort((a, b) => pageImportanceScore(b) - pageImportanceScore(a))
+    .slice(0, 7)
+
+  const crawledPages = await Promise.all(
+    crawlCandidates.map((candidate) =>
+      collectEvidence(candidate, {
+        includePageSpeed: false,
+        source: sitemapUrls.some((item) => item.loc === candidate) ? 'sitemap' : 'internal-link',
+      })
+    )
+  )
+  const pages = [seed, ...crawledPages]
+  const linkChecks = await checkInternalLinks(pages, origin)
+  return {
+    origin,
+    seedUrl,
+    pages,
+    sitemapUrls,
+    discoveredUrls: crawlCandidates,
+    linkChecks,
+    inlinkCounts: computeInlinkCounts(pages, origin),
   }
 }
 
@@ -719,9 +933,143 @@ function renderPageSpeedOpportunityList(run: PageSpeedRun) {
     .join('\n')
 }
 
-function buildMarkdown(url: string, evidence: PageEvidence, categories: Category[]) {
+function truncateUrlForReport(url: string) {
+  try {
+    const parsed = new URL(url)
+    return `${parsed.pathname || '/'}${parsed.search || ''}`.slice(0, 90) || '/'
+  } catch {
+    return url.slice(0, 90)
+  }
+}
+
+function pageSeoScore(page: PageEvidence) {
+  const missingAlt = page.images.filter((img) => !img.alt).length
+  const critical =
+    (!page.title ? 1 : 0) +
+    (!page.metaDescription ? 1 : 0) +
+    (page.h1.length !== 1 ? 1 : 0) +
+    (missingAlt > 0 ? 1 : 0) +
+    (/noindex/i.test(page.robotsMeta) ? 1 : 0)
+  const warnings =
+    (!page.canonical ? 1 : 0) +
+    (page.openGraphCount < 3 ? 1 : 0) +
+    (page.wordCount < 250 ? 1 : 0)
+  return scoreFromChecks(8 - critical - warnings, warnings, critical)
+}
+
+function pageIssueSummary(page: PageEvidence) {
+  const issues: string[] = []
+  if (!page.fetched) issues.push('Fetch failed')
+  if (!page.title) issues.push('Missing title')
+  if (!page.metaDescription) issues.push('Missing meta')
+  if (page.h1.length !== 1) issues.push(`${page.h1.length} H1`)
+  const missingAlt = page.images.filter((img) => !img.alt).length
+  if (missingAlt) issues.push(`${missingAlt} missing alt`)
+  if (!page.canonical) issues.push('Missing canonical')
+  if (/noindex/i.test(page.robotsMeta)) issues.push('Noindex')
+  if (page.wordCount < 250) issues.push('Thin content')
+  return issues.length ? issues.join(', ') : 'No major automated issue'
+}
+
+function inferKeywordTopics(site: SiteCrawlEvidence, clientProfile: ClientProfileMap) {
+  const stop = new Set(['and', 'the', 'for', 'with', 'from', 'your', 'you', 'our', 'are', 'about', 'more', 'home', 'page', 'contact', 'privacy', 'terms'])
+  const terms = new Map<string, number>()
+  const phraseCandidates: string[] = []
+  for (const page of site.pages) {
+    const text = [page.title, page.metaDescription, page.h1.join(' '), ...page.headings.slice(0, 8).map((heading) => heading.text)].join(' ')
+    for (const phrase of text.match(/\b[A-Za-z][A-Za-z0-9'-]*(?:\s+[A-Za-z][A-Za-z0-9'-]*){1,3}\b/g) || []) {
+      const clean = phrase.toLowerCase().replace(/\s+/g, ' ').trim()
+      if (clean.length > 8 && !Array.from(stop).some((word) => clean === word)) phraseCandidates.push(clean)
+    }
+    for (const word of text.toLowerCase().match(/\b[a-z][a-z0-9'-]{3,}\b/g) || []) {
+      if (!stop.has(word)) terms.set(word, (terms.get(word) || 0) + 1)
+    }
+  }
+  const brandWords = (clientProfile.brand_name || new URL(site.origin).hostname.replace(/^www\./, '')).toLowerCase().split(/[^a-z0-9]+/).filter(Boolean)
+  const strategic = Array.from(terms.entries())
+    .filter(([word]) => !brandWords.includes(word))
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 12)
+    .map(([word, count]) => ({ keyword: word, evidence: `${count} page signal${count === 1 ? '' : 's'}` }))
+  const topics = Array.from(new Set(phraseCandidates))
+    .filter((phrase) => !brandWords.some((brand) => phrase === brand))
+    .slice(0, 10)
+  const branded = Array.from(terms.entries())
+    .filter(([word]) => brandWords.includes(word))
+    .map(([word, count]) => ({ keyword: word, evidence: `${count} page signal${count === 1 ? '' : 's'}` }))
+  return { strategic, topics, branded }
+}
+
+function sitemapFreshness(site: SiteCrawlEvidence) {
+  const dated = site.sitemapUrls
+    .map((item) => ({ ...item, time: item.lastmod ? Date.parse(item.lastmod) : NaN }))
+    .filter((item) => Number.isFinite(item.time))
+    .sort((a, b) => b.time - a.time)
+  return dated.slice(0, 5)
+}
+
+function buildMetricAvailabilityRows() {
+  return [
+    ['Search traffic dashboard', 'Needs Analytics/Search Console', 'Not available without connected traffic data.'],
+    ['AI visibility', 'Partially available', 'Can inspect schema, crawlability, and content clarity; cannot measure AI mention share externally.'],
+    ['Click-through rates', 'Needs Search Console', 'CTR requires impression/click data.'],
+    ['Google updates', 'Available as context only', 'Can include known public update context, not site impact without analytics.'],
+    ['Traffic acquisition', 'Needs Analytics', 'Channel sessions and conversions require analytics access.'],
+    ['Keyword cannibalization', 'Partially available', 'Can flag duplicate titles/H1/topic overlap across crawled pages; rankings need Search Console or SEO provider data.'],
+    ['New/lost/growing/declining keywords', 'Needs ranking history', 'Requires Search Console or third-party rank tracker.'],
+    ['Backlink overview/monitor', 'Needs backlink index', 'Requires Ahrefs/Semrush/Moz/GSC or similar.'],
+    ['Backlink opportunities', 'Available as strategy', 'Can suggest likely sources from niche and content gaps, not verify live backlink data.'],
+  ]
+}
+
+function buildSiteMetrics(site: SiteCrawlEvidence) {
+  const pages = site.pages
+  const fetchedPages = pages.filter((page) => page.fetched)
+  const missingTitles = fetchedPages.filter((page) => !page.title).length
+  const missingMetas = fetchedPages.filter((page) => !page.metaDescription).length
+  const h1Issues = fetchedPages.filter((page) => page.h1.length !== 1).length
+  const missingAlt = fetchedPages.reduce((sum, page) => sum + page.images.filter((img) => !img.alt).length, 0)
+  const totalImages = fetchedPages.reduce((sum, page) => sum + page.images.length, 0)
+  const duplicateTitles = fetchedPages.length - new Set(fetchedPages.map((page) => page.title).filter(Boolean)).size
+  const duplicateMetas = fetchedPages.length - new Set(fetchedPages.map((page) => page.metaDescription).filter(Boolean)).size
+  const canonicalMissing = fetchedPages.filter((page) => !page.canonical).length
+  const noindexPages = fetchedPages.filter((page) => /noindex/i.test(page.robotsMeta)).length
+  const hreflangPages = fetchedPages.filter((page) => page.hreflangCount > 0).length
+  const schemaPages = fetchedPages.filter((page) => page.schemaCount > 0).length
+  const ogPages = fetchedPages.filter((page) => page.openGraphCount >= 3).length
+  const orphanPages = fetchedPages.filter((page) => page.source === 'sitemap' && !site.inlinkCounts[page.finalUrl]).length
+  const brokenLinks = site.linkChecks.filter((link) => link.broken).length
+  const redirects = site.linkChecks.filter((link) => link.redirected).length
+  const avgWords = fetchedPages.length ? Math.round(fetchedPages.reduce((sum, page) => sum + page.wordCount, 0) / fetchedPages.length) : 0
+  return {
+    crawledPages: pages.length,
+    sitemapUrls: site.sitemapUrls.length,
+    discoveredUrls: site.discoveredUrls.length,
+    missingTitles,
+    missingMetas,
+    duplicateTitles: Math.max(0, duplicateTitles),
+    duplicateMetas: Math.max(0, duplicateMetas),
+    h1Issues,
+    missingAlt,
+    totalImages,
+    canonicalMissing,
+    noindexPages,
+    hreflangPages,
+    schemaPages,
+    ogPages,
+    orphanPages,
+    brokenLinks,
+    redirects,
+    avgWords,
+  }
+}
+
+function buildMarkdown(url: string, evidence: PageEvidence, categories: Category[], site?: SiteCrawlEvidence, clientProfile: ClientProfileMap = {}) {
   const overall = weightedOverall(categories)
   const priorities = topPriorities(categories)
+  const metrics = site ? buildSiteMetrics(site) : null
+  const keywordTopics = site ? inferKeywordTopics(site, clientProfile) : { strategic: [], topics: [], branded: [] }
+  const freshContent = site ? sitemapFreshness(site) : []
   return [
     `# Website Audit Report: ${url}`,
     '',
@@ -749,9 +1097,41 @@ function buildMarkdown(url: string, evidence: PageEvidence, categories: Category
     '**Desktop PageSpeed Opportunities**',
     renderPageSpeedOpportunityList(evidence.pageSpeed.desktop),
     '',
+    site ? '## Multi-Page Crawl Summary' : '',
+    site ? '| Metric | Value | Notes |' : '',
+    site ? '|---|---:|---|' : '',
+    site && metrics ? `| Pages crawled | ${metrics.crawledPages} | Seed URL plus sitemap/internal-link candidates |` : '',
+    site && metrics ? `| Sitemap URLs discovered | ${metrics.sitemapUrls} | Used for crawl prioritization and orphan-page approximation |` : '',
+    site && metrics ? `| Missing titles / metas | ${metrics.missingTitles} / ${metrics.missingMetas} | On crawled pages only |` : '',
+    site && metrics ? `| Duplicate titles / metas | ${metrics.duplicateTitles} / ${metrics.duplicateMetas} | Exact-match duplicate check across crawled pages |` : '',
+    site && metrics ? `| H1 issues | ${metrics.h1Issues} | Pages with zero or multiple H1s |` : '',
+    site && metrics ? `| Image alt text gaps | ${metrics.missingAlt} / ${metrics.totalImages} | Missing or empty alt attributes |` : '',
+    site && metrics ? `| Canonical missing / noindex pages | ${metrics.canonicalMissing} / ${metrics.noindexPages} | Indexation and duplicate-content signals |` : '',
+    site && metrics ? `| Structured data / hreflang pages | ${metrics.schemaPages} / ${metrics.hreflangPages} | Pages with JSON-LD or hreflang alternates |` : '',
+    site && metrics ? `| Broken internal links / redirects | ${metrics.brokenLinks} / ${metrics.redirects} | Sampled from crawled internal links |` : '',
+    site && metrics ? `| Possible orphan pages | ${metrics.orphanPages} | Sitemap pages with no inlinks from the crawled set |` : '',
+    site ? '' : '',
+    site ? '## Page-by-Page Findings' : '',
+    site ? '| Page | Source | Status | Score | Title | Words | Images / Missing Alt | Inlinks | Issues |' : '',
+    site ? '|---|---|---:|---:|---|---:|---:|---:|---|' : '',
+    ...(site ? site.pages.map((page) => `| ${truncateUrlForReport(page.finalUrl || page.url)} | ${page.source || 'seed'} | ${page.status || 'n/a'} | ${pageSeoScore(page)}/100 | ${page.title || 'Missing'} | ${page.wordCount} | ${page.images.length} / ${page.images.filter((img) => !img.alt).length} | ${site.inlinkCounts[page.finalUrl] || 0} | ${pageIssueSummary(page)} |`) : []),
+    site ? '' : '',
+    site ? '## Search & Keyword Signals Available Without Analytics' : '',
+    site ? '| Area | Evidence | Notes |' : '',
+    site ? '|---|---|---|' : '',
+    site ? `| Search topics | ${keywordTopics.topics.slice(0, 8).join(', ') || 'Not enough topic signals detected'} | Inferred from titles, descriptions, H1s, and headings. |` : '',
+    site ? `| Focus keyword candidates | ${keywordTopics.strategic.slice(0, 10).map((item) => item.keyword).join(', ') || 'Not enough keyword signals detected'} | Frequency-based page signals, not ranking data. |` : '',
+    site ? `| Branded keyword signals | ${keywordTopics.branded.map((item) => item.keyword).join(', ') || 'No strong branded term repetition detected'} | Based on crawled page text. |` : '',
+    site ? `| New content proxy | ${freshContent.map((item) => `${truncateUrlForReport(item.loc)} (${item.lastmod})`).join('; ') || 'No sitemap lastmod data available'} | Uses sitemap lastmod only, not traffic growth. |` : '',
+    site ? '' : '',
+    site ? '## Metric Availability Matrix' : '',
+    site ? '| Requested Metric | Availability | How this report handles it |' : '',
+    site ? '|---|---|---|' : '',
+    ...(site ? buildMetricAvailabilityRows().map((row) => `| ${row[0]} | ${row[1]} | ${row[2]} |`) : []),
+    site ? '' : '',
     '## Executive Summary',
     evidence.fetched
-      ? `The audited page at ${evidence.finalUrl} scores ${overall}/100, which places it in the ${labelForScore(overall).toLowerCase()} range. The report is based on live HTML, metadata, response headers, robots/sitemap checks, page structure, links, image attributes, forms, CTA language, and Google PageSpeed Insights Lighthouse results where available.`
+      ? `The audited site scores ${overall}/100 on the primary URL. The report is based on live HTML, metadata, response headers, robots/sitemap checks, page structure, links, image attributes, forms, CTA language, Google PageSpeed Insights Lighthouse results for the submitted URL, and a bounded crawl of important internal pages where available.`
       : `The target URL could not be fetched successfully, so the report scores visible risk conservatively and flags the crawl limitation in the evidence appendix. Error: ${evidence.fetchError || 'Unknown fetch error'}.`,
     `The strongest areas are ${categories.slice().sort((a, b) => b.score - a.score).slice(0, 2).map((c) => `${c.label} (${c.score})`).join(' and ')}. The highest-risk areas are ${categories.slice().sort((a, b) => a.score - b.score).slice(0, 3).map((c) => `${c.label} (${c.score})`).join(', ')}.`,
     '',
@@ -810,7 +1190,7 @@ function buildMarkdown(url: string, evidence: PageEvidence, categories: Category
     `| PageSpeed mobile | ${evidence.pageSpeed.mobile.available ? `Performance ${pageSpeedScoreValue(evidence.pageSpeed.mobile, 'performance')}, LCP ${pageSpeedMetricValue(evidence.pageSpeed.mobile, 'largestContentfulPaint')}` : evidence.pageSpeed.mobile.error || 'Unavailable'} |`,
     `| PageSpeed desktop | ${evidence.pageSpeed.desktop.available ? `Performance ${pageSpeedScoreValue(evidence.pageSpeed.desktop, 'performance')}, LCP ${pageSpeedMetricValue(evidence.pageSpeed.desktop, 'largestContentfulPaint')}` : evidence.pageSpeed.desktop.error || 'Unavailable'} |`,
     '',
-    '_Limitations: this audit uses server-side HTML, header evidence, and Google PageSpeed Insights Lighthouse data. It does not replace Search Console, analytics, authenticated crawl data, or manual QA, but it provides a concrete evidence-based starting point._',
+    '_Limitations: this audit uses server-side HTML, header evidence, a bounded internal crawl, sampled internal link checks, sitemap/robots probes, and Google PageSpeed Insights Lighthouse data for the submitted URL. It does not replace Search Console, analytics, authenticated crawl data, paid backlink/rank indexes, or manual QA, but it provides a concrete evidence-based starting point._',
   ].join('\n')
 }
 
@@ -841,11 +1221,18 @@ const SEO_REPORT_STYLES = {
   table: 'width:100%;border-collapse:collapse;background:#fff;min-width:760px;',
   th: 'border-bottom:1px solid #e6eaf1;text-align:left;padding:10px 12px;vertical-align:top;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#66738a;background:#f8fafc;font-weight:850;white-space:nowrap;',
   td: 'border-bottom:1px solid #eef2f7;text-align:left;padding:11px 12px;vertical-align:top;color:#263244;font-size:14px;',
+  metricGrid: 'display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;',
+  metric: 'border:1px solid #e4e9f1;border-radius:8px;padding:14px;background:#fbfdff;',
+  metricLabel: 'display:block;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.08em;font-weight:850;',
+  metricValue: 'display:block;color:#111827;font-size:28px;line-height:1.15;font-weight:900;margin-top:5px;',
 }
 
-function renderHtml(url: string, evidence: PageEvidence, categories: Category[]) {
+function renderHtml(url: string, evidence: PageEvidence, categories: Category[], site?: SiteCrawlEvidence, clientProfile: ClientProfileMap = {}) {
   const overall = weightedOverall(categories)
   const priorities = topPriorities(categories)
+  const metrics = site ? buildSiteMetrics(site) : null
+  const keywordTopics = site ? inferKeywordTopics(site, clientProfile) : { strategic: [], topics: [], branded: [] }
+  const freshContent = site ? sitemapFreshness(site) : []
   const pageSpeedRows = (['mobile', 'desktop'] as PageSpeedStrategy[]).map((strategy) => {
     const run = evidence.pageSpeed[strategy]
     return `
@@ -893,6 +1280,49 @@ function renderHtml(url: string, evidence: PageEvidence, categories: Category[])
       </tbody></table></div>
     </section>
   `).join('')
+  const pageRows = site ? site.pages.map((page) => `
+    <tr>
+      <td style="${SEO_REPORT_STYLES.td}"><strong>${escapeHtml(truncateUrlForReport(page.finalUrl || page.url))}</strong></td>
+      <td style="${SEO_REPORT_STYLES.td}">${escapeHtml(page.source || 'seed')}</td>
+      <td style="${SEO_REPORT_STYLES.td}">${page.status || 'n/a'}</td>
+      <td style="${SEO_REPORT_STYLES.td}"><strong style="color:${colorForScore(pageSeoScore(page))}">${pageSeoScore(page)}/100</strong></td>
+      <td style="${SEO_REPORT_STYLES.td}">${escapeHtml(page.title || 'Missing')}</td>
+      <td style="${SEO_REPORT_STYLES.td}">${page.wordCount}</td>
+      <td style="${SEO_REPORT_STYLES.td}">${page.images.length} / ${page.images.filter((img) => !img.alt).length}</td>
+      <td style="${SEO_REPORT_STYLES.td}">${site.inlinkCounts[page.finalUrl] || 0}</td>
+      <td style="${SEO_REPORT_STYLES.td}">${escapeHtml(pageIssueSummary(page))}</td>
+    </tr>
+  `).join('') : ''
+  const metricTiles = metrics ? [
+    ['Pages Crawled', metrics.crawledPages],
+    ['Sitemap URLs', metrics.sitemapUrls],
+    ['Missing Titles', metrics.missingTitles],
+    ['Missing Metas', metrics.missingMetas],
+    ['H1 Issues', metrics.h1Issues],
+    ['Alt Gaps', `${metrics.missingAlt}/${metrics.totalImages}`],
+    ['Broken Links', metrics.brokenLinks],
+    ['Redirects', metrics.redirects],
+  ].map(([label, value]) => `
+    <div style="${SEO_REPORT_STYLES.metric}">
+      <span style="${SEO_REPORT_STYLES.metricLabel}">${escapeHtml(String(label))}</span>
+      <span style="${SEO_REPORT_STYLES.metricValue}">${escapeHtml(String(value))}</span>
+    </div>
+  `).join('') : ''
+  const linkRows = site ? site.linkChecks.slice(0, 12).map((link) => `
+    <tr>
+      <td style="${SEO_REPORT_STYLES.td}">${escapeHtml(truncateUrlForReport(link.url))}</td>
+      <td style="${SEO_REPORT_STYLES.td}">${link.status || 'n/a'}</td>
+      <td style="${SEO_REPORT_STYLES.td}">${link.redirected ? 'Redirect' : link.broken ? 'Broken' : 'OK'}</td>
+      <td style="${SEO_REPORT_STYLES.td}">${escapeHtml(truncateUrlForReport(link.sourceUrl))}</td>
+    </tr>
+  `).join('') : ''
+  const availabilityRows = buildMetricAvailabilityRows().map((row) => `
+    <tr>
+      <td style="${SEO_REPORT_STYLES.td}">${escapeHtml(row[0])}</td>
+      <td style="${SEO_REPORT_STYLES.td}"><strong>${escapeHtml(row[1])}</strong></td>
+      <td style="${SEO_REPORT_STYLES.td}">${escapeHtml(row[2])}</td>
+    </tr>
+  `).join('')
 
   return `
     <article class="artifact-document seo-audit-report" style="${SEO_REPORT_STYLES.document}">
@@ -916,9 +1346,50 @@ function renderHtml(url: string, evidence: PageEvidence, categories: Category[])
         <h2 style="${SEO_REPORT_STYLES.h2}">Category Scores</h2>
         <div style="${SEO_REPORT_STYLES.scoreGrid}">${scoreRows}</div>
       </section>
+      ${metrics && site ? `
+        <section class="seo-card" style="${SEO_REPORT_STYLES.card}">
+          <h2 style="${SEO_REPORT_STYLES.h2}">Multi-Page Crawl</h2>
+          <p style="color:#475569;margin:0 0 16px;">Crawled the submitted URL plus prioritized sitemap/internal-link pages. PageSpeed is run on the submitted URL; secondary pages use live HTML and link evidence.</p>
+          <div style="${SEO_REPORT_STYLES.metricGrid}">${metricTiles}</div>
+        </section>
+        <section class="seo-card" style="${SEO_REPORT_STYLES.card}">
+          <h2 style="${SEO_REPORT_STYLES.h2}">Page-by-Page Findings</h2>
+          <div style="${SEO_REPORT_STYLES.tableWrap}"><table style="${SEO_REPORT_STYLES.table}"><thead><tr><th style="${SEO_REPORT_STYLES.th}">Page</th><th style="${SEO_REPORT_STYLES.th}">Source</th><th style="${SEO_REPORT_STYLES.th}">Status</th><th style="${SEO_REPORT_STYLES.th}">Score</th><th style="${SEO_REPORT_STYLES.th}">Title</th><th style="${SEO_REPORT_STYLES.th}">Words</th><th style="${SEO_REPORT_STYLES.th}">Images / Alt Gaps</th><th style="${SEO_REPORT_STYLES.th}">Inlinks</th><th style="${SEO_REPORT_STYLES.th}">Issues</th></tr></thead><tbody>${pageRows}</tbody></table></div>
+        </section>
+        <section class="seo-card" style="${SEO_REPORT_STYLES.card}">
+          <h2 style="${SEO_REPORT_STYLES.h2}">Search & Keyword Signals</h2>
+          <div style="${SEO_REPORT_STYLES.columns}">
+            <div>
+              <h4 style="${SEO_REPORT_STYLES.h4}">Search Topics</h4>
+              <p style="color:#334155;margin:0;">${escapeHtml(keywordTopics.topics.slice(0, 10).join(', ') || 'Not enough topic signals detected.')}</p>
+            </div>
+            <div>
+              <h4 style="${SEO_REPORT_STYLES.h4}">Focus Keyword Candidates</h4>
+              <p style="color:#334155;margin:0;">${escapeHtml(keywordTopics.strategic.slice(0, 12).map((item) => item.keyword).join(', ') || 'Not enough keyword signals detected.')}</p>
+            </div>
+            <div>
+              <h4 style="${SEO_REPORT_STYLES.h4}">Branded Signals</h4>
+              <p style="color:#334155;margin:0;">${escapeHtml(keywordTopics.branded.map((item) => item.keyword).join(', ') || 'No strong branded term repetition detected.')}</p>
+            </div>
+            <div>
+              <h4 style="${SEO_REPORT_STYLES.h4}">New Content Proxy</h4>
+              <p style="color:#334155;margin:0;">${escapeHtml(freshContent.map((item) => `${truncateUrlForReport(item.loc)} (${item.lastmod})`).join('; ') || 'No sitemap lastmod data available.')}</p>
+            </div>
+          </div>
+        </section>
+        <section class="seo-card" style="${SEO_REPORT_STYLES.card}">
+          <h2 style="${SEO_REPORT_STYLES.h2}">Internal Linking</h2>
+          <div style="${SEO_REPORT_STYLES.tableWrap}"><table style="${SEO_REPORT_STYLES.table}"><thead><tr><th style="${SEO_REPORT_STYLES.th}">URL</th><th style="${SEO_REPORT_STYLES.th}">Status</th><th style="${SEO_REPORT_STYLES.th}">Finding</th><th style="${SEO_REPORT_STYLES.th}">Found On</th></tr></thead><tbody>${linkRows || `<tr><td style="${SEO_REPORT_STYLES.td}" colspan="4">No internal links were available for sampling.</td></tr>`}</tbody></table></div>
+        </section>
+        <section class="seo-card" style="${SEO_REPORT_STYLES.card}">
+          <h2 style="${SEO_REPORT_STYLES.h2}">Metric Availability</h2>
+          <p style="color:#475569;margin:0 0 16px;">These are the requested metrics separated by what can be measured from public crawl data versus what needs Search Console, Analytics, or backlink/rank providers.</p>
+          <div style="${SEO_REPORT_STYLES.tableWrap}"><table style="${SEO_REPORT_STYLES.table}"><thead><tr><th style="${SEO_REPORT_STYLES.th}">Metric</th><th style="${SEO_REPORT_STYLES.th}">Availability</th><th style="${SEO_REPORT_STYLES.th}">Handling</th></tr></thead><tbody>${availabilityRows}</tbody></table></div>
+        </section>
+      ` : ''}
       <section class="seo-card" style="${SEO_REPORT_STYLES.card}">
         <h2 style="${SEO_REPORT_STYLES.h2}">Executive Summary</h2>
-        <p style="color:#334155;margin:0;font-size:15px;">${escapeHtml(evidence.fetched ? `The audited page scores ${overall}/100. This report uses live crawl evidence from ${evidence.finalUrl}, including metadata, headings, images, links, forms, CTA language, robots/sitemap checks, security headers, and Google PageSpeed Insights Lighthouse results where available.` : `The target URL could not be fetched successfully. ${evidence.fetchError || ''}`)}</p>
+        <p style="color:#334155;margin:0;font-size:15px;">${escapeHtml(evidence.fetched ? `The audited site scores ${overall}/100 on the submitted URL. This report uses live crawl evidence from ${evidence.finalUrl}, metadata, headings, images, links, forms, CTA language, robots/sitemap checks, security headers, PageSpeed Insights for the submitted URL, and page-by-page evidence from a bounded internal crawl.` : `The target URL could not be fetched successfully. ${evidence.fetchError || ''}`)}</p>
       </section>
       <section class="seo-card" style="${SEO_REPORT_STYLES.card}">
         <h2 style="${SEO_REPORT_STYLES.h2}">PageSpeed Insights</h2>
@@ -982,14 +1453,15 @@ export async function executeSeoAuditTask(input: {
     runtime,
     progress: 18,
   })
-  const evidence = await collectEvidence(url)
+  const site = await collectSiteEvidence(url)
+  const evidence = site.pages[0]
   await input.hooks?.onActivityComplete?.({
     phase,
     activity: { id: 'collect-website-evidence', name: 'Collect Website Evidence', outputs: ['crawl-evidence'] },
     agent,
     runtime,
     summary: evidence.fetched
-      ? `Collected live evidence from ${evidence.finalUrl}: ${evidence.wordCount} words, ${evidence.images.length} images, ${evidence.links.length} links, ${evidence.headings.length} headings.`
+      ? `Collected live evidence from ${site.pages.length} page(s), ${site.sitemapUrls.length} sitemap URL(s), and ${site.linkChecks.length} sampled internal link(s).`
       : `Could not fetch the target URL: ${evidence.fetchError || 'unknown error'}.`,
     outputIds: ['crawl-evidence'],
     progress: 38,
@@ -1020,14 +1492,14 @@ export async function executeSeoAuditTask(input: {
     runtime,
     progress: 88,
   })
-  const response = buildMarkdown(url, evidence, categories)
-  const renderedHtml = renderHtml(url, evidence, categories)
+  const response = buildMarkdown(url, evidence, categories, site, input.clientProfile || {})
+  const renderedHtml = renderHtml(url, evidence, categories, site, input.clientProfile || {})
   await input.hooks?.onActivityComplete?.({
     phase,
     activity: { id: 'final-report', name: 'Build Pinpointer-Style Report', outputs: ['audit-report'] },
     agent,
     runtime,
-    summary: 'Generated the final audit report with score dashboard, top priorities, category deep dives, and evidence appendix.',
+    summary: 'Generated the final audit report with score dashboard, multi-page crawl summary, page findings, top priorities, category deep dives, and evidence appendix.',
     outputIds: ['audit-report'],
     progress: 95,
   })
@@ -1039,7 +1511,7 @@ export async function executeSeoAuditTask(input: {
       agentName: agent.name,
       role: 'support',
       title: 'Website evidence collection',
-      summary: evidence.fetched ? truncate(`Fetched ${evidence.finalUrl}; status ${evidence.status}; response ${evidence.responseMs} ms; title "${evidence.title || 'missing'}".`, 1200) : `Fetch failed: ${evidence.fetchError}`,
+      summary: evidence.fetched ? truncate(`Fetched ${site.pages.length} page(s) starting at ${evidence.finalUrl}; sampled ${site.linkChecks.length} internal link(s); primary status ${evidence.status}; title "${evidence.title || 'missing'}".`, 1200) : `Fetch failed: ${evidence.fetchError}`,
       status: evidence.fetched ? 'completed' : 'warning',
       provider: runtime.provider,
       model: runtime.model,
