@@ -1032,9 +1032,19 @@ export async function executeAutonomousTask(input: {
     })
   }
 
+  const blogResearchContext = input.deliverableType === 'blog-article'
+    ? await fetchGoogleCustomSearchContext(input.request)
+    : ''
+  const generationRequest = blogResearchContext
+    ? `${input.request}\n\nLive SERP research context:\n${blogResearchContext}`
+    : input.request
+  const generationExecutionPrompt = blogResearchContext
+    ? `${input.executionPrompt}\n\nLive SERP research context:\n${blogResearchContext}`
+    : input.executionPrompt
+
   if (input.pipeline?.phases?.length) {
     const pipelineRun = await runPipelineExecution({
-      request: input.request,
+      request: generationRequest,
       deliverableType: input.deliverableType,
       provider: input.provider,
       model: input.model,
@@ -1077,7 +1087,7 @@ export async function executeAutonomousTask(input: {
         skillLookup,
         selectedSkills,
         input.deliverableType,
-        input.request
+        generationRequest
       )
       const runtime = resolveAgentRuntime(agent, input)
 
@@ -1105,7 +1115,7 @@ export async function executeAutonomousTask(input: {
             role: 'system',
             content: buildSupportPrompt({
               agent,
-              request: input.request,
+              request: generationRequest,
               clientContext: input.clientContext,
               deliverableType: input.deliverableType,
               pipeline: input.pipeline,
@@ -1160,7 +1170,7 @@ export async function executeAutonomousTask(input: {
     context: leadSkillContext,
     primarySkillId: leadPrimarySkillId,
     outputTemplate: leadPrimarySkillOutputTemplate,
-  } = buildSkillContextForLead(leadAgent, skillLookup, leadSelectedSkills, input.deliverableType, input.request)
+  } = buildSkillContextForLead(leadAgent, skillLookup, leadSelectedSkills, input.deliverableType, generationRequest)
   const leadRuntime = resolveAgentRuntime(leadAgent, input)
 
   // Batch Q: emit a hook so the Live Task Tracker shows the long-running
@@ -1184,10 +1194,10 @@ export async function executeAutonomousTask(input: {
         role: 'system',
         content: buildLeadPrompt({
           agent: leadAgent,
-          request: input.request,
+          request: generationRequest,
           clientContext: input.clientContext,
           deliverableType: input.deliverableType,
-          executionPrompt: input.executionPrompt,
+          executionPrompt: generationExecutionPrompt,
           pipeline: input.pipeline,
           qualityChecklist: input.qualityChecklist,
           skillContext: leadSkillContext,
@@ -1218,10 +1228,10 @@ export async function executeAutonomousTask(input: {
           content: [
             buildLeadPrompt({
               agent: leadAgent,
-              request: input.request,
+              request: generationRequest,
               clientContext: input.clientContext,
               deliverableType: input.deliverableType,
-              executionPrompt: input.executionPrompt,
+              executionPrompt: generationExecutionPrompt,
               pipeline: input.pipeline,
               qualityChecklist: input.qualityChecklist,
               skillContext: leadSkillContext,
@@ -1308,10 +1318,10 @@ export async function executeAutonomousTask(input: {
           content: [
             buildLeadPrompt({
               agent: leadAgent,
-              request: input.request,
+              request: generationRequest,
               clientContext: input.clientContext,
               deliverableType: input.deliverableType,
-              executionPrompt: input.executionPrompt,
+              executionPrompt: generationExecutionPrompt,
               pipeline: input.pipeline,
               qualityChecklist: input.qualityChecklist,
               skillContext: leadSkillContext,
@@ -1322,7 +1332,7 @@ export async function executeAutonomousTask(input: {
               officeContext: input.officeContextByAgent?.[leadAgent.id],
             }),
             buildQualityRepairPrompt({
-              request: input.request,
+              request: generationRequest,
               deliverableType: input.deliverableType,
               qualityIssues: qualityResult.issues,
               previousResponse: response,
@@ -1372,5 +1382,75 @@ export async function executeAutonomousTask(input: {
     renderedHtml: undefined,
     executionSteps,
     qualityResult,
+  }
+}
+
+function extractBlogPrimaryKeyword(request: string) {
+  const patterns = [
+    /\bprimary\s+(?:focus\s+)?keyword\s*(?:is|:|-)?\s*["“]?([^"\n.;]+)["”]?/i,
+    /\bfocus\s+keyword\s*(?:is|:|-)?\s*["“]?([^"\n.;]+)["”]?/i,
+    /\btarget\s+keyword\s*(?:is|:|-)?\s*["“]?([^"\n.;]+)["”]?/i,
+  ]
+  for (const pattern of patterns) {
+    const match = request.match(pattern)
+    if (match?.[1]?.trim()) return match[1].trim().slice(0, 120)
+  }
+  return ''
+}
+
+function extractBlogTopic(request: string) {
+  const patterns = [
+    /\b(?:blog post|blog article|article|how-to guide|guide)\s+(?:about|on|for)\s+([^.\n;]+)/i,
+    /\btopic\s*(?:is|:|-)?\s*["“]?([^"\n.;]+)["”]?/i,
+  ]
+  for (const pattern of patterns) {
+    const match = request.match(pattern)
+    if (match?.[1]?.trim()) return match[1].trim().slice(0, 180)
+  }
+  return ''
+}
+
+async function fetchGoogleCustomSearchContext(request: string) {
+  const apiKey =
+    process.env.GOOGLE_CUSTOM_SEARCH_API_KEY ||
+    process.env.GOOGLE_SEARCH_API_KEY ||
+    process.env.PAGESPEED_API_KEY ||
+    process.env.GOOGLE_PAGESPEED_API_KEY ||
+    ''
+  const searchEngineId = process.env.GOOGLE_CUSTOM_SEARCH_ENGINE_ID || process.env.GOOGLE_CSE_ID || ''
+  const primaryKeyword = extractBlogPrimaryKeyword(request)
+  const topic = extractBlogTopic(request)
+  const query = primaryKeyword || topic
+
+  if (!query) return 'Google Custom Search skipped: no primary keyword or topic was available for the query.'
+  if (!apiKey || !searchEngineId) {
+    return [
+      'Google Custom Search unavailable: missing GOOGLE_CUSTOM_SEARCH_ENGINE_ID / GOOGLE_CSE_ID.',
+      `Research query to run when configured: "${query}".`,
+      'Do not invent People Also Ask, related searches, rankings, traffic, or competitor claims. Use the writer checklist and mark live SERP research as unavailable.',
+    ].join('\n')
+  }
+
+  try {
+    const endpoint = new URL('https://www.googleapis.com/customsearch/v1')
+    endpoint.searchParams.set('key', apiKey)
+    endpoint.searchParams.set('cx', searchEngineId)
+    endpoint.searchParams.set('q', query)
+    endpoint.searchParams.set('num', '5')
+    const response = await fetch(endpoint, { signal: AbortSignal.timeout(12000), headers: { Accept: 'application/json' } })
+    if (!response.ok) throw new Error(`Google Custom Search returned HTTP ${response.status}`)
+    const data = await response.json()
+    const items = Array.isArray(data.items) ? data.items.slice(0, 5) : []
+    if (!items.length) return `Google Custom Search returned no organic results for "${query}".`
+    return [
+      `Google Custom Search query: "${query}"`,
+      'Top public search results:',
+      ...items.map((item: any, index: number) =>
+        `${index + 1}. ${String(item.title || 'Untitled').trim()} — ${String(item.link || '').trim()}\n   Snippet: ${String(item.snippet || '').replace(/\s+/g, ' ').trim()}`
+      ),
+      'Use these results to infer winning formats, angles, content gaps, and source opportunities. Do not claim rankings beyond this sampled result set.',
+    ].join('\n')
+  } catch (error: any) {
+    return `Google Custom Search failed: ${error?.message || 'unknown error'}. Continue with the checklist and clearly mark live SERP evidence as unavailable.`
   }
 }

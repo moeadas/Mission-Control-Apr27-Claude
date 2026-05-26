@@ -78,7 +78,7 @@ export function validateDeliverableQuality(
   const requiredSections: Record<DeliverableType, string[]> = {
     'short-form-copy': [], // bios, taglines, one-liners — no structural headers required
     'email-campaign': ['Objective', 'Subject Line Options', 'Email Body', 'CTA'],
-    'blog-article': ['Objective', 'Working Title', 'Article Draft'],
+    'blog-article': ['Objective', 'SEO Package', 'Article Outline', 'Key Takeaways', 'Article Draft', 'FAQ', 'Schema & Publishing Checklist'],
     'website-copy': ['Objective', 'Hero Copy', 'Supporting Sections', 'CTA'],
     'video-script': ['Objective', 'Hook', 'Script', 'CTA'],
     'presentation': ['Objective', 'Narrative Arc', 'Slide-by-Slide Outline'],

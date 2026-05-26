@@ -201,6 +201,63 @@ function expandWebsiteAuditFollowUp(content: string, messages: any[]) {
   return `Do a full SEO audit for ${url}`
 }
 
+function isBlogPostRequest(deliverableType: string, content: string) {
+  return deliverableType === 'blog-article' || /\b(blog post|blog article|write a blog|write an article|seo blog|seo article|long-form article|pillar page|guest post)\b/i.test(content)
+}
+
+function hasBlogTopic(content: string) {
+  return /\b(?:blog post|blog article|article|how-to guide|guide)\s+(?:about|on|for)\s+[^.\n;]{3,}/i.test(content) || /\btopic\s*(?:is|:|-)\s*[^.\n;]{3,}/i.test(content)
+}
+
+function hasBlogPrimaryKeyword(content: string) {
+  return /\b(primary\s+(?:focus\s+)?keyword|focus\s+keyword|target\s+keyword)\s*(?:is|:|-)\s*[^.\n;]{2,}/i.test(content)
+}
+
+function isAwaitingBlogBrief(messages: any[]) {
+  return messages.slice(-8).some((message: any) => {
+    const role = String(message?.role || '')
+    const content = String(message?.content || '')
+    return role === 'assistant' && /main blog post topic|primary focus keyword|Secondary keywords are optional/i.test(content)
+  })
+}
+
+function expandBlogBriefFollowUp(content: string, messages: any[]) {
+  if (isBlogPostRequest(inferDeliverableType(content), content) || !isAwaitingBlogBrief(messages)) return content
+  if (!hasBlogTopic(content) && !hasBlogPrimaryKeyword(content)) return content
+  return `Write a blog post using this brief: ${content}`
+}
+
+function buildMissingBlogBriefResponse(content: string, provider = 'ollama', model = '') {
+  const missing = [
+    !hasBlogTopic(content) ? 'main blog post topic' : '',
+    !hasBlogPrimaryKeyword(content) ? 'primary focus keyword' : '',
+  ].filter(Boolean)
+  return NextResponse.json({
+    response: `Please send the ${missing.join(' and ')} before I start the blog post. Secondary keywords are optional, but helpful if you have them.`,
+    meta: {
+      routedAgentId: 'iris',
+      leadAgentId: 'iris',
+      collaboratorAgentIds: [],
+      assignedAgentIds: ['iris'],
+      clientId: null,
+      campaignId: null,
+      deliverableType: 'blog-article',
+      pipelineId: 'blog-post-writing',
+      pipelineName: 'Blog Post Writing',
+      qualityChecklist: [],
+      handoffNotes: 'Waiting for required blog topic and primary focus keyword before starting the blog writing pipeline.',
+      executionSteps: [],
+      quality: null,
+      executionPrompt: '',
+      renderedHtml: null,
+      provider,
+      model,
+      fallbackUsed: false,
+      conversational: true,
+    },
+  })
+}
+
 function buildMissingWebsiteUrlResponse(deliverableType = 'seo-audit', provider = 'ollama', model = '') {
   return NextResponse.json({
     response: 'Please send me the website URL you want me to audit. Once I have the URL, I can run the full website audit covering SEO, UX/UI, performance, accessibility, security, content, mobile, conversion, and benchmark recommendations.',
@@ -365,17 +422,24 @@ export async function POST(req: NextRequest) {
       initialRawUserContent,
       Array.isArray(messages) ? messages : []
     )
-    const initialConversational = isConversationalMessage(initialUserContent) || detectClientBriefIntent(initialUserContent)
-    const initialDeliverableType = initialConversational ? 'status-report' : inferDeliverableType(initialUserContent)
-    const initialAuditWebsiteUrl = extractWebsiteAuditUrl(initialUserContent)
-    if (!initialConversational && isWebsiteAuditRequest(initialDeliverableType, initialUserContent) && !initialAuditWebsiteUrl) {
+    const effectiveInitialUserContent = expandBlogBriefFollowUp(
+      initialUserContent,
+      Array.isArray(messages) ? messages : []
+    )
+    const initialConversational = isConversationalMessage(effectiveInitialUserContent) || detectClientBriefIntent(effectiveInitialUserContent)
+    const initialDeliverableType = initialConversational ? 'status-report' : inferDeliverableType(effectiveInitialUserContent)
+    const initialAuditWebsiteUrl = extractWebsiteAuditUrl(effectiveInitialUserContent)
+    if (!initialConversational && isWebsiteAuditRequest(initialDeliverableType, effectiveInitialUserContent) && !initialAuditWebsiteUrl) {
       return buildMissingWebsiteUrlResponse(initialDeliverableType, provider, model)
+    }
+    if (!initialConversational && isBlogPostRequest(initialDeliverableType, effectiveInitialUserContent) && (!hasBlogTopic(effectiveInitialUserContent) || !hasBlogPrimaryKeyword(effectiveInitialUserContent))) {
+      return buildMissingBlogBriefResponse(effectiveInitialUserContent, provider, model)
     }
     const inferredClientFromRequest = Array.isArray(clients)
       ? [...clients]
           .filter((client: any) => client?.id && client?.name)
           .sort((a: any, b: any) => String(b.name).length - String(a.name).length)
-          .find((client: any) => initialUserContent.toLowerCase().includes(String(client.name).toLowerCase()))
+          .find((client: any) => effectiveInitialUserContent.toLowerCase().includes(String(client.name).toLowerCase()))
       : null
     const missionClientId = currentClientId || inferredClientFromRequest?.id || (Array.isArray(clients) && clients.length === 1 ? clients[0]?.id : null)
 
@@ -420,7 +484,7 @@ export async function POST(req: NextRequest) {
     }
 
     const latestUser = initialLatestUser || [...messages].reverse().find((message) => message.role === 'user')
-    const userContent = initialUserContent || latestUser?.content || ''
+    const userContent = effectiveInitialUserContent || latestUser?.content || ''
     // Client brief intent forces conversational path — we never want to route a
     // pasted brief through executeAutonomousTask (which may fail on Ollama etc.)
     const isBriefIntent = detectClientBriefIntent(userContent)
@@ -456,6 +520,10 @@ export async function POST(req: NextRequest) {
 
     if (!conversational && isWebsiteAuditRequest(deliverableType, userContent) && !auditWebsiteUrl) {
       return buildMissingWebsiteUrlResponse(deliverableType, actualProvider, actualModel)
+    }
+
+    if (!conversational && isBlogPostRequest(deliverableType, userContent) && (!hasBlogTopic(userContent) || !hasBlogPrimaryKeyword(userContent))) {
+      return buildMissingBlogBriefResponse(userContent, actualProvider, actualModel)
     }
 
     // Kick off brief extraction in parallel with AI response (isBriefIntent already computed above).

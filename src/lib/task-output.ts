@@ -99,12 +99,23 @@ export function getDeliverableOutputSpec(deliverableType: DeliverableType, reque
   if (deliverableType === 'blog-article') {
     return [
       formatRules,
-      'Produce the actual long-form article draft.',
+      'Produce the actual long-form blog post deliverable, not a planning note.',
+      'Follow the complete content writer checklist: research, search intent, title, slug, meta, intro, structure, TOC, keyword usage, E-E-A-T, visual suggestions, linking, AEO/GEO, conclusion, pre-publish checks, and after-publish maintenance.',
       'Output sections in this exact order:',
       '## Objective',
-      '## Working Title',
-      '## Meta Description',
+      '## Search Intent & SERP Notes',
+      '## SEO Package',
+      'Include 5 SEO title options, recommended URL slug, meta description, primary keyword, secondary keywords, target audience, and suggested word count.',
+      '## Article Outline',
+      'Include H1, H2/H3 hierarchy, and table of contents anchors.',
+      '## Key Takeaways',
       '## Article Draft',
+      'The draft must include the primary keyword naturally in the first 100 words, a 40-60 word direct answer near the top, short paragraphs, useful H2/H3s, FAQ, and a natural conclusion.',
+      '## FAQ',
+      '## Internal & External Link Suggestions',
+      '## Visual & Alt Text Suggestions',
+      '## Schema & Publishing Checklist',
+      '## Post-Publish Plan',
       '## CTA',
     ].join('\n')
   }
@@ -483,6 +494,15 @@ function getDefaultQualityChecklist(deliverableType: DeliverableType, lowerReque
   }
 
   if (deliverableType === 'blog-article' || deliverableType === 'website-copy' || deliverableType === 'video-script') {
+    if (deliverableType === 'blog-article') {
+      return [
+        '1. Confirm main blog topic, primary focus keyword, and optional secondary keywords',
+        '2. Research search intent, SERP patterns, PAA-style questions, related searches, and content gaps',
+        '3. Plan SEO title options, slug, meta description, outline, TOC, and AEO/GEO extraction blocks',
+        '4. Draft the full reader-first article with client tone, E-E-A-T signals, visuals, links, FAQ, conclusion, and CTA',
+        '5. Run the full pre-publish checklist and add post-publish maintenance actions',
+      ]
+    }
     return [
       '1. Confirm objective, audience, and core message',
       '2. Build the structure for the deliverable',

@@ -416,6 +416,40 @@ function buildWebsiteAuditPromptFromUrl(url: string) {
   return `Do a full SEO audit for ${url}`
 }
 
+function isBlogPostRequest(message: string) {
+  return inferDeliverableFromPrompt(message) === 'blog-article' || /\b(blog post|blog article|write a blog|write an article|seo blog|seo article|long-form article|pillar page|guest post)\b/i.test(message)
+}
+
+function hasBlogTopic(message: string) {
+  return /\b(?:blog post|blog article|article|how-to guide|guide)\s+(?:about|on|for)\s+[^.\n;]{3,}/i.test(message) || /\btopic\s*(?:is|:|-)\s*[^.\n;]{3,}/i.test(message)
+}
+
+function hasBlogPrimaryKeyword(message: string) {
+  return /\b(primary\s+(?:focus\s+)?keyword|focus\s+keyword|target\s+keyword)\s*(?:is|:|-)\s*[^.\n;]{2,}/i.test(message)
+}
+
+function buildMissingBlogBriefPrompt(message: string) {
+  const missing = [
+    !hasBlogTopic(message) ? 'main blog post topic' : '',
+    !hasBlogPrimaryKeyword(message) ? 'primary focus keyword' : '',
+  ].filter(Boolean)
+  return `Please send the ${missing.join(' and ')} before I start the blog post. Secondary keywords are optional, but helpful if you have them.`
+}
+
+function isAwaitingBlogBrief(conversation?: { messages?: ChatMessage[]; briefing?: IrisConversationBriefing | null } | null) {
+  const recentMessages = (conversation?.messages || []).slice(-8)
+  return recentMessages.some((message) => {
+    const content = String(message.content || '')
+    return message.role === 'assistant' && /main blog post topic|primary focus keyword|Secondary keywords are optional/i.test(content)
+  }) || conversation?.briefing?.deliverableType === 'blog-article'
+}
+
+function expandBlogBriefFollowUp(message: string, conversation?: { messages?: ChatMessage[]; briefing?: IrisConversationBriefing | null } | null) {
+  if (isBlogPostRequest(message) || !isAwaitingBlogBrief(conversation)) return message
+  if (!hasBlogTopic(message) && !hasBlogPrimaryKeyword(message)) return message
+  return `Write a blog post using this brief: ${message}`
+}
+
 // Stub kept for the legacy structure of the function body that still references
 // `bestId` for downstream early-return safety. The real return path is above.
 function _legacy_inferDeliverableFromPrompt_unused(message: string) {
@@ -1551,7 +1585,7 @@ export function IrisChat() {
       isAwaitingWebsiteAuditUrl(liveConversationForPreflight)
     const executionPrompt = isAuditUrlFollowUp && followUpAuditUrl
       ? buildWebsiteAuditPromptFromUrl(followUpAuditUrl)
-      : finalPrompt
+      : expandBlogBriefFollowUp(finalPrompt, liveConversationForPreflight)
 
     if (isWebsiteAuditRequest(executionPrompt) && !extractWebsiteAuditUrl(executionPrompt)) {
       addAssistantMessage(conversationId, buildMissingWebsiteUrlPrompt(), 'iris', {
@@ -1561,6 +1595,25 @@ export function IrisChat() {
         handoffNotes: 'Waiting for the target website URL before starting the website audit.',
       })
       updateConversationBriefing(conversationId, null)
+      setActivePipelineInfo(null)
+      setChatStatus('idle')
+      return
+    }
+
+    if (isBlogPostRequest(executionPrompt) && (!hasBlogTopic(executionPrompt) || !hasBlogPrimaryKeyword(executionPrompt))) {
+      addAssistantMessage(conversationId, buildMissingBlogBriefPrompt(executionPrompt), 'iris', {
+        deliverableType: 'blog-article' as any,
+        pipelineId: 'blog-post-writing',
+        pipelineName: 'Blog Post Writing',
+        handoffNotes: 'Waiting for required blog topic and primary focus keyword before starting the blog writing pipeline.',
+      })
+      updateConversationBriefing(conversationId, {
+        active: true,
+        originalRequest: executionPrompt,
+        deliverableType: 'blog-article' as any,
+        fields: {},
+        awaitingField: 'objective' as any,
+      })
       setActivePipelineInfo(null)
       setChatStatus('idle')
       return
@@ -1663,7 +1716,7 @@ export function IrisChat() {
     const lastHistoryMessage = historyMessages[historyMessages.length - 1]
     const outboundMessages =
       lastHistoryMessage?.role === 'user' && lastHistoryMessage.content === finalPrompt
-        ? isAuditUrlFollowUp
+        ? executionPrompt !== finalPrompt
           ? [...historyMessages, { role: 'user', content: executionPrompt }]
           : historyMessages
         : [...historyMessages, { role: 'user', content: executionPrompt }]

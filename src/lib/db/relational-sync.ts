@@ -12,6 +12,7 @@ import { loadConfigSkillCategories } from '@/lib/server/skills-catalog'
 function inferMissionPipelineMetadata(deliverableType: Mission['deliverableType']) {
   switch (deliverableType) {
     case 'content-calendar': return { pipelineId: 'content-calendar', pipelineName: 'Content Calendar' }
+    case 'blog-article':     return { pipelineId: 'blog-post-writing', pipelineName: 'Blog Post Writing' }
     case 'creative-asset':   return { pipelineId: 'ad-creative',      pipelineName: 'Ad Creative' }
     case 'client-brief':     return { pipelineId: 'client-brief',     pipelineName: 'Client Brief' }
     case 'strategy-brief':   return { pipelineId: 'strategy-brief',   pipelineName: 'Strategy Brief' }

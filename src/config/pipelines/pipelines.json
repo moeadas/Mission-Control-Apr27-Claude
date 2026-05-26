@@ -312,6 +312,171 @@
       ]
     },
     {
+      "id": "blog-post-writing",
+      "name": "Blog Post Writing",
+      "description": "Create a reader-first SEO blog post with SERP-informed planning, keyword strategy, AEO/GEO optimization, article draft, publishing checklist, and post-publish plan",
+      "version": "1.0",
+      "isDefault": true,
+      "estimatedDuration": "1-2 days",
+      "clientProfileFields": [
+        { "id": "brand_name", "label": "Brand Name", "type": "text", "required": false },
+        { "id": "blog_topic", "label": "Main Blog Post Topic", "type": "textarea", "required": true },
+        { "id": "primary_keyword", "label": "Primary Focus Keyword", "type": "text", "required": true },
+        { "id": "secondary_keywords", "label": "Secondary Keywords", "type": "textarea", "required": false },
+        { "id": "target_audience", "label": "Target Audience", "type": "textarea", "required": false },
+        { "id": "search_market", "label": "Target Market / Country", "type": "text", "required": false },
+        { "id": "tone", "label": "Brand Voice / Tone", "type": "text", "required": false },
+        { "id": "cta_goal", "label": "CTA / Business Goal", "type": "textarea", "required": false }
+      ],
+      "phases": [
+        {
+          "id": "intake",
+          "name": "Topic & Keyword Intake",
+          "color": "#4f8ef7",
+          "activities": [
+            {
+              "id": "confirm-blog-brief",
+              "name": "Confirm Blog Brief",
+              "description": "Confirm the main blog topic and primary focus keyword before drafting; collect secondary keywords when provided.",
+              "assignedRole": "client-services",
+              "inputs": ["user-request", "client-context"],
+              "outputs": ["approved-blog-brief"],
+              "checklist": [
+                "Main blog post topic is explicit",
+                "Primary focus keyword is explicit",
+                "Secondary keywords captured if provided",
+                "Target audience, tone, client context, and CTA goal noted",
+                "Missing required fields are requested before writing"
+              ],
+              "prompts": {
+                "en": "Confirm the blog brief. Required before drafting: main blog post topic and primary focus keyword. Secondary keywords are optional. Use client context for audience, tone, product/service, and CTA if available.",
+                "ar": "تأكيد موجز المقال. المطلوب قبل الكتابة: موضوع المقال والكلمة المفتاحية الرئيسية. الكلمات الثانوية اختيارية."
+              }
+            }
+          ]
+        },
+        {
+          "id": "research",
+          "name": "SERP & Intent Research",
+          "color": "#38bdf8",
+          "activities": [
+            {
+              "id": "serp-intent-map",
+              "name": "Map Search Intent & SERP Pattern",
+              "description": "Use Google Custom Search data when available; otherwise mark live SERP evidence as unavailable and infer from the prompt/client context.",
+              "assignedRole": "seo-specialist",
+              "inputs": ["approved-blog-brief", "google-custom-search-results"],
+              "outputs": ["serp-intent-notes"],
+              "checklist": [
+                "Winning format identified or marked unavailable",
+                "Search intent classified",
+                "Top result angles summarized when search data is available",
+                "People Also Ask style questions proposed",
+                "Related-search style subtopics proposed",
+                "Content gaps and differentiation angle documented"
+              ],
+              "prompts": {
+                "en": "Study the primary keyword. If Google Custom Search context is present, summarize top result formats, angles, snippets, gaps, and source opportunities. If not present, clearly state live SERP data is unavailable and produce a best-practice research plan without inventing rankings or People Also Ask results.",
+                "ar": "دراسة الكلمة المفتاحية الرئيسية. إذا توفرت نتائج البحث، لخص الشكل والزوايا والفجوات. إذا لم تتوفر، اذكر ذلك بوضوح ولا تخترع بيانات."
+              }
+            }
+          ]
+        },
+        {
+          "id": "planning",
+          "name": "SEO Content Architecture",
+          "color": "#9b6dff",
+          "activities": [
+            {
+              "id": "build-seo-package",
+              "name": "Build SEO Package & Outline",
+              "description": "Plan title options, URL slug, meta description, TOC, H2/H3 structure, target length, key takeaways, FAQ, schema, and visual plan.",
+              "assignedRole": "content-strategist",
+              "inputs": ["approved-blog-brief", "serp-intent-notes"],
+              "outputs": ["seo-package-outline"],
+              "checklist": [
+                "Five title options under 60 characters where possible",
+                "Primary keyword near the beginning of at least one title",
+                "Recommended URL slug is lowercase, hyphenated, keyword-aligned, and date-free",
+                "Meta description is 150-155 characters with primary keyword and soft CTA",
+                "Outline uses one H1 and logical H2/H3 hierarchy",
+                "Primary keyword appears in at least one H2 naturally",
+                "Secondary keywords mapped to H2/H3 where they fit",
+                "TOC included for posts over 1,000 words",
+                "Key takeaways / TL;DR planned near the top",
+                "FAQ, schema, internal links, external links, and visuals planned"
+              ],
+              "prompts": {
+                "en": "Build the SEO package and outline using the complete writer checklist. Include five title options, recommended slug, meta description, search intent notes, suggested word count, TOC, H1/H2/H3 outline, key takeaways, FAQ plan, visual plan, internal/external link plan, schema recommendation, and pre-publish checklist.",
+                "ar": "إنشاء حزمة SEO وهيكل المقال باستخدام قائمة التحقق الكاملة."
+              }
+            }
+          ]
+        },
+        {
+          "id": "drafting",
+          "name": "Article Drafting",
+          "color": "#ffd166",
+          "activities": [
+            {
+              "id": "write-blog-draft",
+              "name": "Write Full Blog Post",
+              "description": "Draft the full blog post with reader-first depth, short paragraphs, direct answer, keyword discipline, E-E-A-T, AEO/GEO structure, FAQ, and CTA.",
+              "assignedRole": "copy",
+              "inputs": ["seo-package-outline", "client-context"],
+              "outputs": ["blog-draft"],
+              "checklist": [
+                "Primary keyword appears naturally in first 100 words",
+                "Intro includes a 40-60 word direct answer",
+                "Paragraphs are mostly 1-3 sentences and never wall-of-text",
+                "Primary keyword density stays natural and below spam threshold",
+                "Secondary keywords appear naturally",
+                "Question-format headings used where appropriate",
+                "Comparison tables, lists, or callouts included where useful",
+                "E-E-A-T signals, source/citation placeholders, and methodology notes included where relevant",
+                "At least one visual suggestion per 300-400 words when appropriate",
+                "Conclusion avoids 'In conclusion' and ends with a clear CTA"
+              ],
+              "prompts": {
+                "en": "Write the full blog post. Optimize for readers first, search engines second. Include a direct answer near the top, key takeaways, TOC, full article, FAQ, natural CTA, source/citation placeholders for factual claims, and publishing notes. Do not keyword-stuff.",
+                "ar": "كتابة المقال كاملاً للقارئ أولاً ثم محركات البحث. تضمين إجابة مباشرة وملخص وجدول محتويات وأسئلة شائعة ودعوة لاتخاذ إجراء."
+              }
+            }
+          ]
+        },
+        {
+          "id": "optimization",
+          "name": "Pre-Publish Optimization",
+          "color": "#00d4aa",
+          "activities": [
+            {
+              "id": "optimize-checklist",
+              "name": "Run Full Writer Checklist",
+              "description": "Review the article against title, slug, meta, intro, headings, TOC, readability, links, visuals, accessibility, AEO/GEO, schema, and post-publish checklist.",
+              "assignedRole": "seo-specialist",
+              "inputs": ["blog-draft", "seo-package-outline"],
+              "outputs": ["optimized-blog-final"],
+              "checklist": [
+                "Title, slug, and meta description satisfy checklist",
+                "Heading hierarchy is valid",
+                "TOC and key takeaways are present",
+                "Readability guidance is followed",
+                "Internal and external link suggestions are descriptive",
+                "Visual alt text suggestions include primary keyword naturally at least once",
+                "Article schema and FAQ schema guidance included",
+                "Pre-publish checklist included",
+                "After-publish and long-term maintenance checklist included"
+              ],
+              "prompts": {
+                "en": "Perform a final optimization pass using every checklist item in the content writer guide. Return a client-ready blog deliverable with SEO package, article draft, FAQ, links, visual/alt text plan, schema guidance, pre-publish checklist, post-publish plan, and maintenance notes.",
+                "ar": "إجراء مراجعة نهائية وفقاً لكل عناصر قائمة التحقق وتقديم مقال جاهز للعميل."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "campaign-brief",
       "name": "Campaign Brief",
       "description": "Standard workflow for creating a complete campaign from client intake to approved strategy",
