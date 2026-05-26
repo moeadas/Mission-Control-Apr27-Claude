@@ -814,6 +814,35 @@ function buildMarkdown(url: string, evidence: PageEvidence, categories: Category
   ].join('\n')
 }
 
+const SEO_REPORT_STYLES = {
+  document: 'font-family:Inter,ui-sans-serif,system-ui,sans-serif;color:#172033;background:#f7f9fc;padding:28px;border-radius:8px;line-height:1.55;',
+  kicker: 'display:inline-block;border:1px solid #b8d3ff;border-radius:999px;color:#2563eb;background:#eff6ff;padding:6px 14px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;',
+  title: 'font-size:30px;line-height:1.1;margin:18px 0 6px;color:#111827;font-weight:850;letter-spacing:0;',
+  muted: 'color:#62708a;margin:0;',
+  hero: 'border:1px solid #d9dee8;border-radius:8px;background:#ffffff;padding:24px;margin:24px 0;box-shadow:0 12px 28px rgba(15,23,42,.06);',
+  card: 'border:1px solid #d9dee8;border-radius:8px;background:#ffffff;padding:24px;margin:24px 0;box-shadow:0 12px 28px rgba(15,23,42,.06);',
+  cardHead: 'display:flex;justify-content:space-between;gap:16px;align-items:center;border-bottom:1px solid #e5e9f0;padding-bottom:14px;margin-bottom:16px;',
+  h2: 'font-size:22px;line-height:1.25;margin:0 0 16px;color:#111827;font-weight:850;letter-spacing:0;',
+  h2Compact: 'font-size:22px;line-height:1.25;margin:0;color:#111827;font-weight:850;letter-spacing:0;',
+  h3: 'margin:22px 0 10px;letter-spacing:.08em;text-transform:uppercase;font-size:13px;color:#475569;font-weight:850;',
+  h4: 'font-size:13px;text-transform:uppercase;letter-spacing:.06em;margin:18px 0 8px;color:#475569;font-weight:850;',
+  scoreGrid: 'display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;',
+  scoreTile: 'border:1px solid #e4e9f1;border-radius:8px;padding:14px;background:#fbfdff;',
+  scoreMeta: 'display:flex;justify-content:space-between;gap:12px;margin-bottom:10px;align-items:baseline;',
+  bar: 'height:7px;background:#edf0f5;border-radius:999px;overflow:hidden;',
+  columns: 'display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px;',
+  priorities: 'display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;',
+  priority: 'border:1px solid #e4e9f1;border-radius:8px;padding:16px;background:#fbfdff;',
+  priorityIndex: 'display:inline-grid;place-items:center;width:32px;height:32px;border-radius:999px;background:#2563eb;color:#fff;font-size:15px;font-weight:900;margin-right:10px;',
+  issue: 'margin:0 0 14px;padding:12px;border-left:3px solid #d7e3f8;background:#f8fbff;border-radius:6px;',
+  issueTitle: 'display:block;color:#111827;font-weight:850;margin-bottom:3px;',
+  issueText: 'display:block;color:#5e6c84;',
+  tableWrap: 'width:100%;overflow-x:auto;border:1px solid #e4e9f1;border-radius:8px;margin-top:14px;',
+  table: 'width:100%;border-collapse:collapse;background:#fff;min-width:760px;',
+  th: 'border-bottom:1px solid #e6eaf1;text-align:left;padding:10px 12px;vertical-align:top;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#66738a;background:#f8fafc;font-weight:850;white-space:nowrap;',
+  td: 'border-bottom:1px solid #eef2f7;text-align:left;padding:11px 12px;vertical-align:top;color:#263244;font-size:14px;',
+}
+
 function renderHtml(url: string, evidence: PageEvidence, categories: Category[]) {
   const overall = weightedOverall(categories)
   const priorities = topPriorities(categories)
@@ -821,91 +850,88 @@ function renderHtml(url: string, evidence: PageEvidence, categories: Category[])
     const run = evidence.pageSpeed[strategy]
     return `
       <tr>
-        <td>${strategy}</td>
-        <td>${escapeHtml(pageSpeedScoreValue(run, 'performance'))}</td>
-        <td>${escapeHtml(pageSpeedScoreValue(run, 'accessibility'))}</td>
-        <td>${escapeHtml(pageSpeedScoreValue(run, 'seo'))}</td>
-        <td>${escapeHtml(pageSpeedScoreValue(run, 'bestPractices'))}</td>
-        <td>${escapeHtml(pageSpeedMetricValue(run, 'firstContentfulPaint'))}</td>
-        <td>${escapeHtml(pageSpeedMetricValue(run, 'largestContentfulPaint'))}</td>
-        <td>${escapeHtml(pageSpeedMetricValue(run, 'totalBlockingTime'))}</td>
-        <td>${escapeHtml(pageSpeedMetricValue(run, 'cumulativeLayoutShift'))}</td>
+        <td style="${SEO_REPORT_STYLES.td}">${strategy}</td>
+        <td style="${SEO_REPORT_STYLES.td}">${escapeHtml(pageSpeedScoreValue(run, 'performance'))}</td>
+        <td style="${SEO_REPORT_STYLES.td}">${escapeHtml(pageSpeedScoreValue(run, 'accessibility'))}</td>
+        <td style="${SEO_REPORT_STYLES.td}">${escapeHtml(pageSpeedScoreValue(run, 'seo'))}</td>
+        <td style="${SEO_REPORT_STYLES.td}">${escapeHtml(pageSpeedScoreValue(run, 'bestPractices'))}</td>
+        <td style="${SEO_REPORT_STYLES.td}">${escapeHtml(pageSpeedMetricValue(run, 'firstContentfulPaint'))}</td>
+        <td style="${SEO_REPORT_STYLES.td}">${escapeHtml(pageSpeedMetricValue(run, 'largestContentfulPaint'))}</td>
+        <td style="${SEO_REPORT_STYLES.td}">${escapeHtml(pageSpeedMetricValue(run, 'totalBlockingTime'))}</td>
+        <td style="${SEO_REPORT_STYLES.td}">${escapeHtml(pageSpeedMetricValue(run, 'cumulativeLayoutShift'))}</td>
       </tr>
     `
   }).join('')
   const scoreRows = categories.map((category) => {
     const color = colorForScore(category.score)
     return `
-      <div class="seo-score-row">
-        <div class="seo-score-meta"><strong>${escapeHtml(category.label)}</strong><span style="color:${color}">${category.score}</span></div>
-        <div class="seo-bar"><i style="width:${category.score}%;background:${color}"></i></div>
+      <div class="seo-score-row" style="${SEO_REPORT_STYLES.scoreTile}">
+        <div class="seo-score-meta" style="${SEO_REPORT_STYLES.scoreMeta}">
+          <strong style="font-size:14px;color:#172033;">${escapeHtml(category.label)}</strong>
+          <span style="color:${color};font-size:24px;font-weight:900;line-height:1;">${category.score}</span>
+        </div>
+        <div class="seo-bar" style="${SEO_REPORT_STYLES.bar}"><i style="display:block;height:100%;border-radius:999px;width:${category.score}%;background:${color}"></i></div>
       </div>
     `
   }).join('')
   const categoryCards = categories.map((category) => `
-    <section class="seo-card">
-      <div class="seo-card-head">
-        <h2>${escapeHtml(category.label)}${category.label === 'SEO' || category.label === 'Performance' || category.label === 'Conversion' ? ' Analyzer' : ''}</h2>
-        <strong style="color:${colorForScore(category.score)}">${category.score}/100</strong>
+    <section class="seo-card" style="${SEO_REPORT_STYLES.card}">
+      <div class="seo-card-head" style="${SEO_REPORT_STYLES.cardHead}">
+        <h2 style="${SEO_REPORT_STYLES.h2Compact}">${escapeHtml(category.label)}${category.label === 'SEO' || category.label === 'Performance' || category.label === 'Conversion' ? ' Analyzer' : ''}</h2>
+        <strong style="color:${colorForScore(category.score)};font-size:24px;white-space:nowrap;">${category.score}/100</strong>
       </div>
-      <p>${escapeHtml(category.summary)}</p>
-      <h3>AI Insights & Actions</h3>
-      <div class="seo-columns">
-        <div><h4>Critical Issues (${category.critical.length})</h4>${renderHtmlIssues(category.critical, 'No critical issue detected.')}</div>
-        <div><h4>Warnings (${category.warnings.length})</h4>${renderHtmlIssues(category.warnings, 'No warning detected.')}</div>
+      <p style="color:#475569;margin:0 0 10px;">${escapeHtml(category.summary)}</p>
+      <h3 style="${SEO_REPORT_STYLES.h3}">AI Insights & Actions</h3>
+      <div class="seo-columns" style="${SEO_REPORT_STYLES.columns}">
+        <div><h4 style="${SEO_REPORT_STYLES.h4}">Critical Issues (${category.critical.length})</h4>${renderHtmlIssues(category.critical, 'No critical issue detected.')}</div>
+        <div><h4 style="${SEO_REPORT_STYLES.h4}">Warnings (${category.warnings.length})</h4>${renderHtmlIssues(category.warnings, 'No warning detected.')}</div>
       </div>
-      <h4>Passed Checks (${category.passed.length})</h4>
+      <h4 style="${SEO_REPORT_STYLES.h4}">Passed Checks (${category.passed.length})</h4>
       ${renderHtmlIssues(category.passed, 'No pass signal available from the crawl.')}
-      <table><thead><tr><th>Priority</th><th>Action</th><th>Impact</th><th>Effort</th></tr></thead><tbody>
-        ${category.recommendations.map((rec) => `<tr><td>${escapeHtml(rec.priority)}</td><td>${escapeHtml(rec.action)}</td><td>${escapeHtml(rec.impact)}</td><td>${escapeHtml(rec.effort)}</td></tr>`).join('')}
-      </tbody></table>
+      <div style="${SEO_REPORT_STYLES.tableWrap}"><table style="${SEO_REPORT_STYLES.table}"><thead><tr><th style="${SEO_REPORT_STYLES.th}">Priority</th><th style="${SEO_REPORT_STYLES.th}">Action</th><th style="${SEO_REPORT_STYLES.th}">Impact</th><th style="${SEO_REPORT_STYLES.th}">Effort</th></tr></thead><tbody>
+        ${category.recommendations.map((rec) => `<tr><td style="${SEO_REPORT_STYLES.td}">${escapeHtml(rec.priority)}</td><td style="${SEO_REPORT_STYLES.td}">${escapeHtml(rec.action)}</td><td style="${SEO_REPORT_STYLES.td}">${escapeHtml(rec.impact)}</td><td style="${SEO_REPORT_STYLES.td}">${escapeHtml(rec.effort)}</td></tr>`).join('')}
+      </tbody></table></div>
     </section>
   `).join('')
 
   return `
-    <article class="artifact-document seo-audit-report">
-      <style>
-        .seo-audit-report{font-family:Inter,ui-sans-serif,system-ui,sans-serif;color:#172033;background:#fff;padding:28px}
-        .seo-kicker{display:inline-block;border:1px solid #b8d3ff;border-radius:999px;color:#2563eb;padding:6px 14px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
-        .seo-title{font-size:30px;line-height:1.1;margin:18px 0 6px}.seo-muted{color:#62708a}
-        .seo-hero,.seo-card{border:1px solid #d9dee8;border-radius:8px;background:#fff;padding:24px;margin:24px 0}
-        .seo-overall{display:grid;place-items:center;gap:10px;padding:24px}.seo-ring{width:168px;height:168px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(${colorForScore(overall)} ${overall * 3.6}deg,#edf0f5 0)}
-        .seo-ring-inner{width:120px;height:120px;border-radius:50%;background:#fff;display:grid;place-items:center;text-align:center}.seo-ring-score{font-size:44px;font-weight:900;color:${colorForScore(overall)}}.seo-ring-label{font-size:11px;font-weight:800;letter-spacing:.18em;text-transform:uppercase}
-        .seo-score-row{margin:16px 0}.seo-score-meta{display:flex;justify-content:space-between;margin-bottom:8px}.seo-score-meta span{font-weight:900}.seo-bar{height:6px;background:#edf0f5;border-radius:999px;overflow:hidden}.seo-bar i{display:block;height:100%;border-radius:999px}
-        .seo-priorities{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.seo-priority{border-top:1px solid #e2e6ee;padding-top:14px}.seo-priority b{font-size:28px;color:#2563eb;margin-right:10px}
-        .seo-card-head{display:flex;justify-content:space-between;gap:16px;align-items:center;border-bottom:1px solid #e5e9f0;padding-bottom:14px;margin-bottom:16px}.seo-card h2{font-size:22px;margin:0}.seo-card h3{margin-top:22px;letter-spacing:.08em;text-transform:uppercase;font-size:13px}.seo-card h4{font-size:13px;text-transform:uppercase;letter-spacing:.06em;margin:18px 0 8px}.seo-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
-        .seo-issue{margin:0 0 14px}.seo-issue strong{display:block}.seo-issue span{display:block;color:#5e6c84}.seo-card table{width:100%;border-collapse:collapse;margin-top:14px}.seo-card th,.seo-card td{border-bottom:1px solid #e6eaf1;text-align:left;padding:10px;vertical-align:top}.seo-card th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#66738a}
-        @media(max-width:760px){.seo-priorities,.seo-columns{grid-template-columns:1fr}.seo-audit-report{padding:18px}}
-      </style>
+    <article class="artifact-document seo-audit-report" style="${SEO_REPORT_STYLES.document}">
       <header>
-        <span class="seo-kicker">Audit Report</span>
-        <h1 class="seo-title">${escapeHtml(url)}</h1>
-        <p class="seo-muted">Generated ${new Date().toLocaleString('en-GB', { timeZone: 'Europe/Madrid', dateStyle: 'medium', timeStyle: 'short' })} Madrid time</p>
+        <span class="seo-kicker" style="${SEO_REPORT_STYLES.kicker}">Audit Report</span>
+        <h1 class="seo-title" style="${SEO_REPORT_STYLES.title}">${escapeHtml(url)}</h1>
+        <p class="seo-muted" style="${SEO_REPORT_STYLES.muted}">Generated ${new Date().toLocaleString('en-GB', { timeZone: 'Europe/Madrid', dateStyle: 'medium', timeStyle: 'short' })} Madrid time</p>
       </header>
-      <section class="seo-hero seo-overall">
-        <div class="seo-ring"><div class="seo-ring-inner"><div><div class="seo-ring-score">${overall}</div><div class="seo-ring-label">Overall</div></div></div></div>
-        <p class="seo-muted">Weighted average across all 10 audit categories. Score label: ${labelForScore(overall)}.</p>
-      </section>
-      <section class="seo-card">
-        <h2>Category Scores</h2>
-        ${scoreRows}
-      </section>
-      <section class="seo-card">
-        <h2>Executive Summary</h2>
-        <p>${escapeHtml(evidence.fetched ? `The audited page scores ${overall}/100. This report uses live crawl evidence from ${evidence.finalUrl}, including metadata, headings, images, links, forms, CTA language, robots/sitemap checks, security headers, and Google PageSpeed Insights Lighthouse results where available.` : `The target URL could not be fetched successfully. ${evidence.fetchError || ''}`)}</p>
-      </section>
-      <section class="seo-card">
-        <h2>PageSpeed Insights</h2>
-        <table><thead><tr><th>Strategy</th><th>Performance</th><th>Accessibility</th><th>SEO</th><th>Best Practices</th><th>FCP</th><th>LCP</th><th>TBT</th><th>CLS</th></tr></thead><tbody>${pageSpeedRows}</tbody></table>
-        <div class="seo-columns">
-          <div><h4>Mobile Opportunities</h4>${renderHtmlPageSpeedOpportunities(evidence.pageSpeed.mobile)}</div>
-          <div><h4>Desktop Opportunities</h4>${renderHtmlPageSpeedOpportunities(evidence.pageSpeed.desktop)}</div>
+      <section class="seo-hero seo-overall" style="${SEO_REPORT_STYLES.hero}display:grid;grid-template-columns:minmax(150px,190px) 1fr;gap:22px;align-items:center;">
+        <div class="seo-ring" style="width:168px;height:168px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(${colorForScore(overall)} ${overall * 3.6}deg,#edf0f5 0);">
+          <div class="seo-ring-inner" style="width:120px;height:120px;border-radius:50%;background:#fff;display:grid;place-items:center;text-align:center;box-shadow:inset 0 0 0 1px #e5e9f0;">
+            <div><div class="seo-ring-score" style="font-size:44px;font-weight:900;color:${colorForScore(overall)};line-height:1;">${overall}</div><div class="seo-ring-label" style="font-size:11px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:#64748b;margin-top:6px;">Overall</div></div>
+          </div>
+        </div>
+        <div>
+          <h2 style="${SEO_REPORT_STYLES.h2Compact}">Website Health: ${labelForScore(overall)}</h2>
+          <p class="seo-muted" style="color:#62708a;margin:8px 0 0;">Weighted average across all 10 audit categories. The strongest opportunities are prioritized below with evidence and recommended fixes.</p>
         </div>
       </section>
-      <section class="seo-card">
-        <h2>Top Priorities</h2>
-        <div class="seo-priorities">
-          ${priorities.map((priority, index) => `<div class="seo-priority"><b>${index + 1}</b><strong>${escapeHtml(priority.category)}: ${escapeHtml(priority.issue.title)}</strong><p>${escapeHtml(priority.issue.detail)}</p><p><strong>Fix:</strong> ${escapeHtml(priority.issue.fix)}</p></div>`).join('')}
+      <section class="seo-card" style="${SEO_REPORT_STYLES.card}">
+        <h2 style="${SEO_REPORT_STYLES.h2}">Category Scores</h2>
+        <div style="${SEO_REPORT_STYLES.scoreGrid}">${scoreRows}</div>
+      </section>
+      <section class="seo-card" style="${SEO_REPORT_STYLES.card}">
+        <h2 style="${SEO_REPORT_STYLES.h2}">Executive Summary</h2>
+        <p style="color:#334155;margin:0;font-size:15px;">${escapeHtml(evidence.fetched ? `The audited page scores ${overall}/100. This report uses live crawl evidence from ${evidence.finalUrl}, including metadata, headings, images, links, forms, CTA language, robots/sitemap checks, security headers, and Google PageSpeed Insights Lighthouse results where available.` : `The target URL could not be fetched successfully. ${evidence.fetchError || ''}`)}</p>
+      </section>
+      <section class="seo-card" style="${SEO_REPORT_STYLES.card}">
+        <h2 style="${SEO_REPORT_STYLES.h2}">PageSpeed Insights</h2>
+        <div style="${SEO_REPORT_STYLES.tableWrap}"><table style="${SEO_REPORT_STYLES.table}"><thead><tr><th style="${SEO_REPORT_STYLES.th}">Strategy</th><th style="${SEO_REPORT_STYLES.th}">Performance</th><th style="${SEO_REPORT_STYLES.th}">Accessibility</th><th style="${SEO_REPORT_STYLES.th}">SEO</th><th style="${SEO_REPORT_STYLES.th}">Best Practices</th><th style="${SEO_REPORT_STYLES.th}">FCP</th><th style="${SEO_REPORT_STYLES.th}">LCP</th><th style="${SEO_REPORT_STYLES.th}">TBT</th><th style="${SEO_REPORT_STYLES.th}">CLS</th></tr></thead><tbody>${pageSpeedRows}</tbody></table></div>
+        <div class="seo-columns" style="${SEO_REPORT_STYLES.columns}">
+          <div><h4 style="${SEO_REPORT_STYLES.h4}">Mobile Opportunities</h4>${renderHtmlPageSpeedOpportunities(evidence.pageSpeed.mobile)}</div>
+          <div><h4 style="${SEO_REPORT_STYLES.h4}">Desktop Opportunities</h4>${renderHtmlPageSpeedOpportunities(evidence.pageSpeed.desktop)}</div>
+        </div>
+      </section>
+      <section class="seo-card" style="${SEO_REPORT_STYLES.card}">
+        <h2 style="${SEO_REPORT_STYLES.h2}">Top Priorities</h2>
+        <div class="seo-priorities" style="${SEO_REPORT_STYLES.priorities}">
+          ${priorities.map((priority, index) => `<div class="seo-priority" style="${SEO_REPORT_STYLES.priority}"><span style="${SEO_REPORT_STYLES.priorityIndex}">${index + 1}</span><strong style="color:#111827;font-size:15px;">${escapeHtml(priority.category)}: ${escapeHtml(priority.issue.title)}</strong><p style="color:#475569;margin:12px 0 6px;">${escapeHtml(priority.issue.detail)}</p><p style="color:#334155;margin:0;"><strong>Fix:</strong> ${escapeHtml(priority.issue.fix)}</p></div>`).join('')}
         </div>
       </section>
       ${categoryCards}
@@ -914,23 +940,23 @@ function renderHtml(url: string, evidence: PageEvidence, categories: Category[])
 }
 
 function renderHtmlPageSpeedOpportunities(run: PageSpeedRun) {
-  if (!run.available) return `<p class="seo-muted">${escapeHtml(run.error || 'PageSpeed Insights data unavailable.')}</p>`
-  if (!run.opportunities.length) return '<p class="seo-muted">No major PageSpeed opportunity returned for this strategy.</p>'
+  if (!run.available) return `<p class="seo-muted" style="${SEO_REPORT_STYLES.muted}">${escapeHtml(run.error || 'PageSpeed Insights data unavailable.')}</p>`
+  if (!run.opportunities.length) return `<p class="seo-muted" style="${SEO_REPORT_STYLES.muted}">No major PageSpeed opportunity returned for this strategy.</p>`
   return run.opportunities.map((item) => `
-    <p class="seo-issue">
-      <strong>${escapeHtml(item.title)}</strong>
-      <span>${escapeHtml(item.displayValue || 'Opportunity returned by Lighthouse.')}</span>
+    <p class="seo-issue" style="${SEO_REPORT_STYLES.issue}">
+      <strong style="${SEO_REPORT_STYLES.issueTitle}">${escapeHtml(item.title)}</strong>
+      <span style="${SEO_REPORT_STYLES.issueText}">${escapeHtml(item.displayValue || 'Opportunity returned by Lighthouse.')}</span>
     </p>
   `).join('')
 }
 
 function renderHtmlIssues(items: Issue[], fallback: string) {
-  if (!items.length) return `<p class="seo-muted">${escapeHtml(fallback)}</p>`
+  if (!items.length) return `<p class="seo-muted" style="${SEO_REPORT_STYLES.muted}">${escapeHtml(fallback)}</p>`
   return items.map((item) => `
-    <p class="seo-issue">
-      <strong>${escapeHtml(item.title)}</strong>
-      <span>${escapeHtml(item.detail)}</span>
-      <span><strong>Fix:</strong> ${escapeHtml(item.fix)}</span>
+    <p class="seo-issue" style="${SEO_REPORT_STYLES.issue}">
+      <strong style="${SEO_REPORT_STYLES.issueTitle}">${escapeHtml(item.title)}</strong>
+      <span style="${SEO_REPORT_STYLES.issueText}">${escapeHtml(item.detail)}</span>
+      <span style="${SEO_REPORT_STYLES.issueText}"><strong>Fix:</strong> ${escapeHtml(item.fix)}</span>
     </p>
   `).join('')
 }
