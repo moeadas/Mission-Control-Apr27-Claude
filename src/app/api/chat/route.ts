@@ -16,6 +16,7 @@ import { isConversationalMessage } from '@/lib/intents/intent-classifier'
 import { buildTaskExecutionPlan } from '@/lib/task-output'
 import { executeAutonomousTask } from '@/lib/server/autonomous-task'
 import { buildArtifactHtml } from '@/lib/output-html'
+import { splitBlogArticleArtifacts } from '@/lib/blog-artifacts'
 import { getDb } from '@/lib/db/client'
 import { resolveAuthContextFromToken, getAuthTokenFromRequest } from '@/lib/auth/server'
 import { normalizeProviderSettings, resolveFallbackRuntime, resolveTaskRuntime, shouldRunCompareMode } from '@/lib/provider-settings'
@@ -1447,6 +1448,7 @@ Orchestration trace:
       }
     }
     const renderedHtml = renderedHtmlFromTask || buildArtifactHtml(responseText)
+    const blogArtifacts = deliverableType === 'blog-article' ? splitBlogArticleArtifacts(responseText) : null
 
     const clientBriefAction = clientBriefActionPromise ? await clientBriefActionPromise : null
     const meta = {
@@ -1469,6 +1471,7 @@ Orchestration trace:
       quality: qualityResult,
       executionPrompt,
       renderedHtml,
+      blogArtifacts,
       creative: creativeFromTask,
       provider: actualProvider,
       model: actualModel,

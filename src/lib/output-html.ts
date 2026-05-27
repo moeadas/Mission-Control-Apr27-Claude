@@ -114,6 +114,58 @@ function renderSectionBody(body: string) {
   return htmlParts.join('')
 }
 
+function renderContinuousMarkdown(body: string) {
+  const lines = body
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line && !/^---+$/.test(line))
+
+  const htmlParts: string[] = []
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index]
+
+    if (/^##\s+/.test(line)) {
+      htmlParts.push(`<h2 class="artifact-section-head">${formatInline(line.replace(/^##\s+/, ''))}</h2>`)
+      continue
+    }
+
+    if (/^###\s+/.test(line)) {
+      htmlParts.push(`<h3 class="artifact-subheading">${formatInline(line.replace(/^###\s+/, ''))}</h3>`)
+      continue
+    }
+
+    if (/^\|.*\|$/.test(line)) {
+      const tableLines = [line]
+      while (index + 1 < lines.length && /^\|.*\|$/.test(lines[index + 1])) {
+        tableLines.push(lines[index + 1])
+        index += 1
+      }
+      htmlParts.push(renderTable(tableLines))
+      continue
+    }
+
+    if (/^!\[([^\]]*)\]\(([^)]+)\)$/.test(line)) {
+      htmlParts.push(renderImage(line))
+      continue
+    }
+
+    if (/^[-*]\s+/.test(line) || /^\d+\.\s+/.test(line)) {
+      const listLines = [line]
+      while (index + 1 < lines.length && (/^[-*]\s+/.test(lines[index + 1]) || /^\d+\.\s+/.test(lines[index + 1]))) {
+        listLines.push(lines[index + 1])
+        index += 1
+      }
+      htmlParts.push(renderList(listLines))
+      continue
+    }
+
+    htmlParts.push(`<p class="artifact-paragraph">${formatInline(line)}</p>`)
+  }
+
+  return htmlParts.join('')
+}
+
 function buildTitleFromContent(cleaned: string) {
   if (cleaned.startsWith('# ')) {
     const [titleLine, ...rest] = cleaned.split('\n')
@@ -146,6 +198,18 @@ export function buildArtifactHtml(content: string) {
   }
 
   const { title, body } = buildTitleFromContent(cleaned)
+  const isCopyableArticle = /^##\s+Table of Contents\s*$/im.test(body) && /^##\s+FAQ\s*$/im.test(body)
+  if (isCopyableArticle) {
+    return `
+      <article class="artifact-document artifact-copyable-article">
+        ${title ? `<header class="artifact-header"><p class="artifact-kicker">Copy-ready Article</p><h1>${formatInline(title)}</h1></header>` : ''}
+        <div class="artifact-section artifact-article-body">
+          <div class="artifact-section-body">${renderContinuousMarkdown(body)}</div>
+        </div>
+      </article>
+    `
+  }
+
   const rawSections = body
     ? body.split(/\n(?=##\s+)/g).map((chunk) => chunk.trim()).filter(Boolean)
     : []

@@ -113,11 +113,12 @@ export function getDeliverableOutputSpec(deliverableType: DeliverableType, reque
       'Include anchor-style links to every major article section.',
       '## Key Takeaways',
       '## Article Draft',
-      'The draft must include a single article H1, the primary keyword naturally in the first 100 words, a 40-60 word direct answer near the top, short paragraphs, useful H2/H3s, at least one scannable table or callout, internal/external link placeholders, FAQ, and a natural conclusion.',
+      'The draft must be one continuous copy-and-paste-ready post. It must include a single article H1, key takeaways, the Table of Contents inside the post body, the primary keyword naturally in the first 100 words, a 40-60 word direct answer near the top, short paragraphs, useful H2/H3s, at least one scannable table or callout, internal/external link placeholders, FAQ, and a natural conclusion.',
       '## FAQ',
       '## Internal & External Link Suggestions',
       '## Visual & Alt Text Suggestions',
       '## Schema & Publishing Checklist',
+      'Include a Rank Math checklist covering: focus keyword in SEO title, meta description, URL slug, first 10% of content, body, subheading, image alt text, keyword density, URL length under 75 characters, internal link, external link, title sentiment, power word, number in title, TOC, short paragraphs, and 4 media suggestions.',
       '## Post-Publish Plan',
       '## CTA',
     ].join('\n')

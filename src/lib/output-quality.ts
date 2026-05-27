@@ -193,6 +193,10 @@ export function validateDeliverableQuality(
       issues.push('Missing linked Table of Contents with anchor-style links.')
     }
 
+    if (!hasSection(articleDraft, 'Table of Contents') || !/\[[^\]]+\]\(#[^)]+\)/.test(getSectionContent(articleDraft, 'Table of Contents'))) {
+      issues.push('Article Draft must include the linked Table of Contents inside the copyable post content.')
+    }
+
     if (!/\|.+\|.+\|/.test(articleDraft) && !/\b(Key takeaway|Pro tip|Quick answer|Important)\b/i.test(articleDraft)) {
       issues.push('Article Draft is missing a scannable table or callout block.')
     }
