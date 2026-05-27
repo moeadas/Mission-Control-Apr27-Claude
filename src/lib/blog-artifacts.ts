@@ -1,14 +1,3 @@
-const BLOG_PLANNING_SECTIONS = [
-  'Objective',
-  'Search Intent & SERP Notes',
-  'SEO Package',
-  'Article Outline',
-  'Internal & External Link Suggestions',
-  'Visual & Alt Text Suggestions',
-  'Schema & Publishing Checklist',
-  'Post-Publish Plan',
-]
-
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
@@ -31,18 +20,73 @@ function injectAfterFirstHeading(markdown: string, block: string) {
   return [...lines.slice(0, index + 1), '', block, '', ...lines.slice(index + 1)].join('\n').trim()
 }
 
+function cleanValue(value: string) {
+  return value
+    .replace(/^[-*]\s+/, '')
+    .replace(/^\d+[.)]\s+/, '')
+    .replace(/\*\*/g, '')
+    .trim()
+}
+
+function extractLabeledValue(text: string, labels: string[]) {
+  for (const label of labels) {
+    const escaped = escapeRegExp(label)
+    const match = text.match(new RegExp(`(?:^|\\n)\\s*(?:[-*]\\s*)?(?:\\*\\*)?${escaped}(?:\\*\\*)?\\s*[:\\-–]\\s*([^\\n]+)`, 'i'))
+    if (match?.[1]) return cleanValue(match[1])
+  }
+  return ''
+}
+
+function extractTitle(seoPackage: string) {
+  return (
+    extractLabeledValue(seoPackage, ['Meta Title', 'SEO Title', 'Recommended Title', 'Final Title', 'Title']) ||
+    extractLabeledValue(seoPackage, ['Title Option 1', 'Option 1']) ||
+    cleanValue(seoPackage.split('\n').find((line) => /title/i.test(line)) || '')
+  )
+}
+
+function compactSummary(...parts: string[]) {
+  return parts
+    .map((part) => part.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .join(' ')
+    .slice(0, 700)
+}
+
+function buildSeoSummaryArtifact(source: string) {
+  const objective = getMarkdownSection(source, 'Objective')
+  const serpNotes = getMarkdownSection(source, 'Search Intent & SERP Notes')
+  const seoPackage = getMarkdownSection(source, 'SEO Package')
+  const outline = getMarkdownSection(source, 'Article Outline')
+
+  const summary = compactSummary(objective, serpNotes)
+  const focusKeyword = extractLabeledValue(seoPackage, ['Primary Keyword', 'Primary Focus Keyword', 'Focus Keyword'])
+  const secondaryKeywords = extractLabeledValue(seoPackage, ['Secondary Keywords', 'Secondary Keyword'])
+  const title = extractTitle(seoPackage)
+  const slug = extractLabeledValue(seoPackage, ['URL Slug', 'Slug', 'Recommended URL Slug'])
+  const metaDescription = extractLabeledValue(seoPackage, ['Meta Description', 'SEO Description'])
+
+  return [
+    '# Blog SEO Summary',
+    '',
+    '| Field | Value |',
+    '|---|---|',
+    `| Summary | ${summary || 'Not specified.'} |`,
+    `| Focus keyword | ${focusKeyword || 'Not specified.'} |`,
+    `| Secondary keyword(s) | ${secondaryKeywords || 'Not specified.'} |`,
+    `| SEO title | ${title || 'Not specified.'} |`,
+    `| URL slug | ${slug || 'Not specified.'} |`,
+    `| Meta description | ${metaDescription || 'Not specified.'} |`,
+    outline ? `\nArticle structure: ${outline.replace(/\s+/g, ' ').trim().slice(0, 500)}` : '',
+  ].filter(Boolean).join('\n').trim()
+}
+
 export function splitBlogArticleArtifacts(content: string) {
   const source = (content || '').trim()
   const articleDraft = getMarkdownSection(source, 'Article Draft')
   if (!source || !articleDraft) return null
 
-  const planning = [
-    '# Blog Planning & SEO Package',
-    ...BLOG_PLANNING_SECTIONS.flatMap((heading) => {
-      const section = getMarkdownSection(source, heading)
-      return section ? [`## ${heading}`, section] : []
-    }),
-  ].join('\n\n').trim()
+  const planning = buildSeoSummaryArtifact(source)
 
   const toc = getMarkdownSection(source, 'Table of Contents')
   const keyTakeaways = getMarkdownSection(source, 'Key Takeaways')
