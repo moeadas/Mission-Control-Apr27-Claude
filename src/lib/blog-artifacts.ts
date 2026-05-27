@@ -66,6 +66,10 @@ function buildSeoSummaryArtifact(source: string) {
   const serpNotes = getMarkdownSection(source, 'Search Intent & SERP Notes')
   const seoPackage = getMarkdownSection(source, 'SEO Package')
   const outline = getMarkdownSection(source, 'Article Outline')
+  const internalLinks = getMarkdownSection(source, 'Internal & External Link Suggestions')
+  const visuals = getMarkdownSection(source, 'Visual & Alt Text Suggestions')
+  const schemaChecklist = getMarkdownSection(source, 'Schema & Publishing Checklist')
+  const postPublishPlan = getMarkdownSection(source, 'Post-Publish Plan')
 
   const summary = compactSummary(objective, serpNotes)
   const focusKeyword = extractLabeledValue(seoPackage, ['Primary Keyword', 'Primary Focus Keyword', 'Focus Keyword'])
@@ -85,16 +89,20 @@ function buildSeoSummaryArtifact(source: string) {
     `| SEO title | ${title || 'Not specified.'} |`,
     `| URL slug | ${slug || 'Not specified.'} |`,
     `| Meta description | ${metaDescription || 'Not specified.'} |`,
-    outline ? `\nArticle structure: ${outline.replace(/\s+/g, ' ').trim().slice(0, 500)}` : '',
+    outline ? `\n## Article Structure\n\n${outline.trim()}` : '',
+    internalLinks ? `\n## Link Suggestions\n\n${internalLinks.trim()}` : '',
+    visuals ? `\n## Visual & Alt Text Suggestions\n\n${visuals.trim()}` : '',
+    schemaChecklist ? `\n## Schema & Publishing Checklist\n\n${schemaChecklist.trim()}` : '',
+    postPublishPlan ? `\n## Post-Publish Plan\n\n${postPublishPlan.trim()}` : '',
   ].filter(Boolean).join('\n').trim()
 }
 
-export function splitBlogArticleArtifacts(content: string) {
+export function buildBlogPostArtifact(content: string) {
   const source = (content || '').trim()
   const articleDraft = getMarkdownSection(source, 'Article Draft')
   if (!source || !articleDraft) return null
 
-  const planning = buildSeoSummaryArtifact(source)
+  const settings = buildSeoSummaryArtifact(source)
 
   const toc = getMarkdownSection(source, 'Table of Contents')
   const keyTakeaways = getMarkdownSection(source, 'Key Takeaways')
@@ -117,7 +125,10 @@ export function splitBlogArticleArtifacts(content: string) {
   draft = normalizeArticleMarkdown(draft)
 
   return {
-    planning,
+    settings,
     draft,
+    combined: ['# Blog Post Package', '', '## Post Settings', '', settings, '', '## Blog Post', '', draft].join('\n').trim(),
   }
 }
+
+export const splitBlogArticleArtifacts = buildBlogPostArtifact

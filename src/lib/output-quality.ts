@@ -177,8 +177,8 @@ export function validateDeliverableQuality(
     const articleWordCount = countWords(articleDraft)
     const requestedShort = request ? /\b(short|brief|quick|summary|outline only|draft outline)\b/i.test(request) : false
 
-    if (!requestedShort && articleWordCount < 1200) {
-      issues.push(`Article Draft is too short for the blog checklist (${articleWordCount} words; expected at least 1200).`)
+    if (!requestedShort && articleWordCount < 2000) {
+      issues.push(`Article Draft is too short for the blog checklist (${articleWordCount} words; expected at least 2000).`)
     }
 
     if (!/^#{1,2}\s+.+/m.test(articleDraft)) {

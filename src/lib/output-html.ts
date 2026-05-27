@@ -10,6 +10,7 @@ function escapeHtml(value: string) {
 function formatInline(value: string) {
   let safe = escapeHtml(value)
   safe = safe.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+  safe = safe.replace(/\[([^\]]+)\]\((#[A-Za-z0-9_-]+)\)/g, '<a href="$2">$1</a>')
   safe = safe.replace(/`([^`]+)`/g, '<code>$1</code>')
   safe = safe.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
   safe = safe.replace(/\*([^*]+)\*/g, '<em>$1</em>')
@@ -201,6 +202,27 @@ export function buildArtifactHtml(content: string) {
   }
 
   const { title, body } = buildTitleFromContent(cleaned)
+  const blogPostSplit = body.split(/^##\s+Blog Post\s*$/im)
+  const isBlogPackage = /^##\s+Post Settings\s*$/im.test(body) && blogPostSplit.length > 1
+  if (isBlogPackage) {
+    const settings = blogPostSplit[0].replace(/^##\s+Post Settings\s*$/im, '').trim()
+    const article = blogPostSplit.slice(1).join('\n## Blog Post\n').trim()
+
+    return `
+      <article class="artifact-document artifact-blog-package">
+        ${title ? `<header class="artifact-header"><p class="artifact-kicker">Blog Post Package</p><h1>${formatInline(title)}</h1></header>` : ''}
+        <section class="artifact-section artifact-post-settings">
+          <h2 class="artifact-section-head">Post Settings</h2>
+          <div class="artifact-section-body">${renderSectionBody(settings)}</div>
+        </section>
+        <section class="artifact-section artifact-article-body">
+          <h2 class="artifact-section-head">Blog Post</h2>
+          <div class="artifact-section-body">${renderContinuousMarkdown(article)}</div>
+        </section>
+      </article>
+    `
+  }
+
   const hasNavigation = /^##\s+(?:Quick Navigation|Table of Contents)\s*$/im.test(body)
   const isCopyableArticle = hasNavigation && /^##\s+FAQ\s*$/im.test(body)
   if (isCopyableArticle) {
