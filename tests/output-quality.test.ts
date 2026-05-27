@@ -32,6 +32,6 @@ describe('validateDeliverableQuality blog articles', () => {
     expect(result.issues).toContain('Missing required section: Table of Contents.')
     expect(result.issues.some((issue) => issue.includes('Article Draft is too short'))).toBe(true)
     expect(result.issues).toContain('Missing linked Table of Contents with anchor-style links.')
-    expect(result.issues).toContain('Article Draft must include the linked Table of Contents inside the copyable post content.')
+    expect(result.issues).toContain('Article Draft must include linked Quick Navigation inside the copyable post content.')
   })
 })

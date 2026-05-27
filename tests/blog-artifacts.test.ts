@@ -25,6 +25,7 @@ describe('splitBlogArticleArtifacts', () => {
       '## Article Draft',
       '# Whole Genome Sequencing for Horse Owners',
       'Whole Genome Sequencing helps owners understand health and performance risks.',
+      '<a id="why-it-matters"></a>',
       '## Why It Matters',
       'Useful body copy.',
       '## FAQ',
@@ -41,7 +42,8 @@ describe('splitBlogArticleArtifacts', () => {
     expect(result?.planning).toContain('| SEO title | Whole Genome Sequencing for Horse Owners |')
     expect(result?.planning).not.toContain('## Article Draft')
     expect(result?.planning).not.toContain('## SEO Package')
-    expect(result?.draft).toContain('## Table of Contents')
+    expect(result?.draft).toContain('## Quick Navigation')
+    expect(result?.draft).not.toContain('<a id=')
     expect(result?.draft).toContain('# Whole Genome Sequencing for Horse Owners')
     expect(result?.draft).toContain('## FAQ')
     expect(result?.draft).toContain('## CTA')

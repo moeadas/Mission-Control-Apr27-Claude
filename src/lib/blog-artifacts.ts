@@ -20,6 +20,14 @@ function injectAfterFirstHeading(markdown: string, block: string) {
   return [...lines.slice(0, index + 1), '', block, '', ...lines.slice(index + 1)].join('\n').trim()
 }
 
+function normalizeArticleMarkdown(markdown: string) {
+  return markdown
+    .replace(/<a\s+id=["'][^"']+["']\s*><\/a>/gi, '')
+    .replace(/^\s*##\s+Table of Contents\s*$/gim, '## Quick Navigation')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 function cleanValue(value: string) {
   return value
     .replace(/^[-*]\s+/, '')
@@ -93,9 +101,9 @@ export function splitBlogArticleArtifacts(content: string) {
   const faq = getMarkdownSection(source, 'FAQ')
   const cta = getMarkdownSection(source, 'CTA')
 
-  let draft = articleDraft.trim()
-  if (toc && !hasHeading(draft, 'Table of Contents')) {
-    draft = injectAfterFirstHeading(draft, `## Table of Contents\n\n${toc}`)
+  let draft = normalizeArticleMarkdown(articleDraft)
+  if (toc && !hasHeading(draft, 'Quick Navigation')) {
+    draft = injectAfterFirstHeading(draft, `## Quick Navigation\n\n${toc}`)
   }
   if (keyTakeaways && !hasHeading(draft, 'Key Takeaways')) {
     draft = injectAfterFirstHeading(draft, `## Key Takeaways\n\n${keyTakeaways}`)
@@ -106,6 +114,7 @@ export function splitBlogArticleArtifacts(content: string) {
   if (cta && !hasHeading(draft, 'CTA')) {
     draft = `${draft}\n\n## CTA\n\n${cta}`.trim()
   }
+  draft = normalizeArticleMarkdown(draft)
 
   return {
     planning,

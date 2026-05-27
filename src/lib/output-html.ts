@@ -179,7 +179,10 @@ function buildTitleFromContent(cleaned: string) {
 }
 
 export function buildArtifactHtml(content: string) {
-  const cleaned = content.replace(/\r/g, '').trim()
+  const cleaned = content
+    .replace(/\r/g, '')
+    .replace(/<a\s+id=["'][^"']+["']\s*><\/a>/gi, '')
+    .trim()
   if (!cleaned) {
     return `
       <article class="artifact-document">
@@ -198,7 +201,8 @@ export function buildArtifactHtml(content: string) {
   }
 
   const { title, body } = buildTitleFromContent(cleaned)
-  const isCopyableArticle = /^##\s+Table of Contents\s*$/im.test(body) && /^##\s+FAQ\s*$/im.test(body)
+  const hasNavigation = /^##\s+(?:Quick Navigation|Table of Contents)\s*$/im.test(body)
+  const isCopyableArticle = hasNavigation && /^##\s+FAQ\s*$/im.test(body)
   if (isCopyableArticle) {
     return `
       <article class="artifact-document artifact-copyable-article">
