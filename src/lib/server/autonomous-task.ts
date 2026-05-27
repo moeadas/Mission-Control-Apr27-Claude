@@ -460,6 +460,10 @@ async function generateContentFirstText(input: {
     openAiApiKey: input.openAiApiKey,
     openAiBaseUrl: input.openAiBaseUrl,
   }
+  const effectiveMaxTokens =
+    input.deliverableType === 'blog-article'
+      ? Math.max(Number(input.maxTokens || 0), 8192)
+      : input.maxTokens
 
   // For content tasks we resolve the preferred provider+model through the
   // user-scoped Settings (DEFAULT_CONTENT_TASK_MODELS provides the fallback
@@ -477,7 +481,7 @@ async function generateContentFirstText(input: {
       provider: primaryRuntime.provider,
       model: primaryRuntime.model,
       temperature: input.temperature,
-      maxTokens: input.maxTokens,
+      maxTokens: effectiveMaxTokens,
       messages: input.messages,
       ...providerKeys,
       // Content chunks (especially calendar posts at 4k tokens) regularly
@@ -503,7 +507,7 @@ async function generateContentFirstText(input: {
       provider: fallbackRuntime.provider,
       model: fallbackRuntime.model,
       temperature: input.temperature,
-      maxTokens: input.maxTokens,
+      maxTokens: effectiveMaxTokens,
       messages: input.messages,
       ...providerKeys,
       // Fallback path has the same headroom as the primary call. The

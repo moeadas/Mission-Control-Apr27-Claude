@@ -1,4 +1,4 @@
-import { DeliverableType } from '@/lib/types'
+import type { DeliverableType } from '@/lib/types'
 
 export interface DeliverableQualityResult {
   ok: boolean
@@ -33,6 +33,36 @@ function isShortFormCopyRequest(request: string) {
 
 function hasSection(text: string, section: string) {
   return new RegExp(`^##\\s+${section.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'im').test(text)
+}
+
+function getSectionContent(text: string, section: string) {
+  const escaped = section.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const match = text.match(new RegExp(`^##\\s+${escaped}\\s*$([\\s\\S]*?)(?=^##\\s+|(?![\\s\\S]))`, 'im'))
+  return match?.[1]?.trim() || ''
+}
+
+function countWords(text: string) {
+  return text.trim().split(/\s+/).filter(Boolean).length
+}
+
+function extractBlogPrimaryKeyword(request?: string) {
+  if (!request) return ''
+  const patterns = [
+    /\bprimary\s+(?:focus\s+)?keyword\s*(?:is|:|-)?\s*["“]?([^"\n.;]+)["”]?/i,
+    /\bmain\s+focus\s+keyword\s*(?:is|:|-)?\s*["“]?([^"\n.;]+)["”]?/i,
+    /\bfocus\s+keyword\s*(?:is|:|-)?\s*["“]?([^"\n.;]+)["”]?/i,
+    /\b(?:use|using)\s+["“]?([^"\n.;,]+?)["”]?\s+(?:as|and)\s+(?:the\s+)?(?:main\s+)?(?:primary\s+)?(?:focus\s+)?keyword\b/i,
+    /["“]([^"”\n]{2,})["”]\s+(?:as|and)\s+(?:the\s+)?(?:main\s+)?(?:primary\s+)?(?:focus\s+)?keyword\b/i,
+  ]
+  for (const pattern of patterns) {
+    const match = request.match(pattern)
+    if (match?.[1]?.trim()) return match[1].trim()
+  }
+  return ''
+}
+
+function getKeywordRegex(keyword: string) {
+  return new RegExp(keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
 }
 
 // Deliverable types that are lightweight prose/copy — no H1 or H2 structure required
@@ -78,7 +108,21 @@ export function validateDeliverableQuality(
   const requiredSections: Record<DeliverableType, string[]> = {
     'short-form-copy': [], // bios, taglines, one-liners — no structural headers required
     'email-campaign': ['Objective', 'Subject Line Options', 'Email Body', 'CTA'],
-    'blog-article': ['Objective', 'SEO Package', 'Article Outline', 'Key Takeaways', 'Article Draft', 'FAQ', 'Schema & Publishing Checklist'],
+    'blog-article': [
+      'Objective',
+      'Search Intent & SERP Notes',
+      'SEO Package',
+      'Article Outline',
+      'Table of Contents',
+      'Key Takeaways',
+      'Article Draft',
+      'FAQ',
+      'Internal & External Link Suggestions',
+      'Visual & Alt Text Suggestions',
+      'Schema & Publishing Checklist',
+      'Post-Publish Plan',
+      'CTA',
+    ],
     'website-copy': ['Objective', 'Hero Copy', 'Supporting Sections', 'CTA'],
     'video-script': ['Objective', 'Hook', 'Script', 'CTA'],
     'presentation': ['Objective', 'Narrative Arc', 'Slide-by-Slide Outline'],
@@ -126,6 +170,47 @@ export function validateDeliverableQuality(
 
   if (deliverableType === 'content-calendar' && !/\|.+\|.+\|/.test(trimmed)) {
     issues.push('Content calendar is missing a table layout.')
+  }
+
+  if (deliverableType === 'blog-article') {
+    const articleDraft = getSectionContent(trimmed, 'Article Draft')
+    const articleWordCount = countWords(articleDraft)
+    const requestedShort = request ? /\b(short|brief|quick|summary|outline only|draft outline)\b/i.test(request) : false
+
+    if (!requestedShort && articleWordCount < 1200) {
+      issues.push(`Article Draft is too short for the blog checklist (${articleWordCount} words; expected at least 1200).`)
+    }
+
+    if (!/^#{1,2}\s+.+/m.test(articleDraft)) {
+      issues.push('Article Draft is missing its article H1/H2 title.')
+    }
+
+    if ((articleDraft.match(/^#{2,3}\s+.+/gm) || []).length < 4) {
+      issues.push('Article Draft needs at least four useful H2/H3 sections.')
+    }
+
+    if (!hasSection(trimmed, 'Table of Contents') || !/\[[^\]]+\]\(#[^)]+\)/.test(getSectionContent(trimmed, 'Table of Contents'))) {
+      issues.push('Missing linked Table of Contents with anchor-style links.')
+    }
+
+    if (!/\|.+\|.+\|/.test(articleDraft) && !/\b(Key takeaway|Pro tip|Quick answer|Important)\b/i.test(articleDraft)) {
+      issues.push('Article Draft is missing a scannable table or callout block.')
+    }
+
+    const titleOptionCount = (getSectionContent(trimmed, 'SEO Package').match(/\btitle\s+option\b|\boption\s+\d\b|^\s*\d+[.)]\s+/gim) || []).length
+    if (titleOptionCount < 5) {
+      issues.push('SEO Package needs five title options.')
+    }
+
+    if (request) {
+      const primaryKeyword = extractBlogPrimaryKeyword(request)
+      if (primaryKeyword) {
+        const firstHundredWords = articleDraft.split(/\s+/).slice(0, 100).join(' ')
+        if (!getKeywordRegex(primaryKeyword).test(firstHundredWords)) {
+          issues.push('Primary keyword is missing from the first 100 words of the Article Draft.')
+        }
+      }
+    }
   }
 
   if (deliverableType === 'short-form-copy' && request) {
