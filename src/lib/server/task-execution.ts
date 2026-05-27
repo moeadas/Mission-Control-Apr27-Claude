@@ -304,17 +304,30 @@ export async function upsertWorkflowExecutionState(input: {
 
   const id = toStableUuid(`workflow:${input.taskId}`)
   const db = getDb()
+  let resolvedPipelineId: string | null = null
+  if (input.pipelineId) {
+    const pipelineRows = await db`
+      SELECT id FROM pipelines
+      WHERE id = ${input.pipelineId}
+      LIMIT 1
+    `
+    resolvedPipelineId = pipelineRows[0]?.id || null
+  }
+  const context = {
+    ...(input.context || {}),
+    requestedPipelineId: input.pipelineId || input.context?.requestedPipelineId || null,
+  }
   const rows = await db`
     INSERT INTO workflow_instances (id, agency_id, pipeline_id, task_id, status, current_phase, progress, context)
     VALUES (
       ${id},
       ${agencyId},
-      ${input.pipelineId || null},
+      ${resolvedPipelineId},
       ${input.taskId},
       ${input.status},
       ${input.currentPhase || null},
       ${input.progress},
-      ${db.json(input.context || {})}
+      ${db.json(context)}
     )
     ON CONFLICT (id) DO UPDATE SET
       status = EXCLUDED.status,
