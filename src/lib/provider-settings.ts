@@ -258,10 +258,20 @@ export function isThinkingDeliverableType(deliverableType?: string) {
 }
 
 export function providerIsConfigured(settings: ProviderSettings, provider: AIProvider) {
-  if (provider === 'ollama') return settings.ollama.enabled !== false
-  if (provider === 'gemini') return Boolean(settings.gemini.enabled && settings.gemini.verified && settings.gemini.apiKey)
-  if (provider === 'anthropic') return Boolean(settings.anthropic.enabled && settings.anthropic.verified && settings.anthropic.apiKey)
-  if (provider === 'openai') return Boolean(settings.openai.enabled && settings.openai.verified && settings.openai.apiKey)
+  const env = typeof process !== 'undefined' ? process.env : undefined
+  if (provider === 'ollama') {
+    const hasExplicitKey = Boolean(settings.ollama.apiKey || env?.OLLAMA_API_KEY)
+    return settings.ollama.enabled !== false && (!hasExplicitKey || settings.ollama.verified)
+  }
+  if (provider === 'gemini') {
+    return Boolean((settings.gemini.enabled && settings.gemini.verified && settings.gemini.apiKey) || env?.GEMINI_API_KEY)
+  }
+  if (provider === 'anthropic') {
+    return Boolean((settings.anthropic.enabled && settings.anthropic.verified && settings.anthropic.apiKey) || env?.ANTHROPIC_API_KEY)
+  }
+  if (provider === 'openai') {
+    return Boolean((settings.openai.enabled && settings.openai.verified && settings.openai.apiKey) || env?.OPENAI_API_KEY)
+  }
   return false
 }
 
@@ -361,14 +371,25 @@ export function resolveFallbackRuntime(input: {
 }) {
   const settings = normalizeProviderSettings(input.settings)
   const configuredFallback = settings.routing.fallbackProvider
-  const fallbackProvider: AIProvider | null =
-    configuredFallback !== 'none' && configuredFallback !== input.currentProvider
-      ? configuredFallback
-      : input.currentProvider === 'ollama'
-        ? 'gemini'
-        : 'ollama'
+  const fallbackCandidates: AIProvider[] = [
+    ...(configuredFallback !== 'none' && configuredFallback !== input.currentProvider
+      ? [configuredFallback as AIProvider]
+      : []),
+    input.currentProvider === 'ollama' ? 'gemini' : 'ollama',
+    'anthropic',
+    'openai',
+    'gemini',
+    'ollama',
+  ]
+  const fallbackProvider =
+    fallbackCandidates.find(
+      (provider, index) =>
+        provider !== input.currentProvider &&
+        fallbackCandidates.indexOf(provider) === index &&
+        providerIsConfigured(settings, provider)
+    ) || null
 
-  if (!fallbackProvider || !providerIsConfigured(settings, fallbackProvider)) {
+  if (!fallbackProvider) {
     return null
   }
 
