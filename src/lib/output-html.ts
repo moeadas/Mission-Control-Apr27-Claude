@@ -275,14 +275,14 @@ export function buildArtifactHtml(content: string) {
     return `
       <article class="artifact-document artifact-blog-package">
         ${title ? `<header class="artifact-header"><p class="artifact-kicker">Blog Post Package</p><h1>${formatInline(title)}</h1></header>` : ''}
-        <div class="blog-package-part blog-package-article">
+        <section class="blog-package-card blog-package-article">
           <h2 class="blog-package-label">Full Blog Post</h2>
           <div class="blog-article-content">${renderBlogArticleMarkdown(article)}</div>
-        </div>
-        <div class="blog-package-part blog-package-settings">
+        </section>
+        <section class="blog-package-card blog-package-settings">
           <h2 class="blog-package-label">Post SEO Settings</h2>
           <div class="blog-settings-content">${renderSectionBody(settings)}</div>
-        </div>
+        </section>
       </article>
     `
   }

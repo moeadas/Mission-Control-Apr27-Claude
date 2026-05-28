@@ -4,6 +4,7 @@ import React, { useMemo, useState } from 'react'
 
 import { Artifact } from '@/lib/types'
 import { buildArtifactHtml } from '@/lib/output-html'
+import { buildBlogPostArtifact } from '@/lib/blog-artifacts'
 import { sanitizeHtml } from '@/lib/html-sanitizer'
 
 // Client-side escapeHtml — the server version in `@/lib/server/text-utils`
@@ -200,8 +201,12 @@ export function ArtifactOutputView({ artifact }: { artifact: Artifact }) {
   const html = useMemo(() => {
     const rendered = typeof artifact.renderedHtml === 'string' ? artifact.renderedHtml : ''
     const content = typeof artifact.content === 'string' ? artifact.content : ''
+    if (artifact.deliverableType === 'blog-article') {
+      const normalizedBlog = buildBlogPostArtifact(content)
+      return renderSafeHtml(normalizedBlog?.combined || content)
+    }
     return renderSafeHtml(rendered || content)
-  }, [artifact.content, artifact.renderedHtml])
+  }, [artifact.content, artifact.deliverableType, artifact.renderedHtml])
 
   if (artifact.deliverableType === 'creative-asset') {
     return <CreativeArtifactView artifact={artifact} />

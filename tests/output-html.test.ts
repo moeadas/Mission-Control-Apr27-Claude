@@ -26,6 +26,7 @@ describe('buildArtifactHtml', () => {
     expect(html).toContain('artifact-blog-package')
     expect(html).toContain('Full Blog Post')
     expect(html).toContain('Post SEO Settings')
+    expect((html.match(/blog-package-card/g) || []).length).toBe(2)
     expect(html).toContain('blog-article-heading')
     expect(html).not.toContain('artifact-section-head">What is WGS?')
     expect(html).not.toContain('artifact-grid')

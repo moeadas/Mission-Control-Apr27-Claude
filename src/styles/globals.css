@@ -752,11 +752,12 @@ textarea { resize: vertical; min-height: 120px; }
   gap: 1.5rem;
 }
 
-.artifact-render .blog-package-part {
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
+.artifact-render .blog-package-card {
+  border: 1px solid color-mix(in srgb, var(--accent-blue) 8%, var(--border));
+  border-radius: 0.55rem;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.045);
+  padding: 1.2rem;
 }
 
 .artifact-render .blog-package-label {
@@ -827,10 +828,9 @@ textarea { resize: vertical; min-height: 120px; }
 }
 
 .artifact-render .blog-settings-content {
-  border: 1px solid color-mix(in srgb, var(--accent-blue) 8%, var(--border));
-  border-radius: 0.55rem;
-  background: rgba(248, 250, 252, 0.72);
-  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
 }
 
 /* === Editor surfaces === */
