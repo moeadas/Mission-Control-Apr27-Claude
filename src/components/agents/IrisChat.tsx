@@ -455,6 +455,7 @@ function extractBlogBrandFromBrief(message: string) {
   const patterns = [
     /\b(?:brand|company|client)\s*(?:name\s*)?(?:is|:|-)\s*["“]?([^"\n.;]+)["”]?/i,
     /\b(?:for my client|for client|for the client)\s+([^.\n;,]+)/i,
+    /\bfor\s+([^.\n;,]+?)\s*,\s*(?:about|on|using|with)\b/i,
     /\bfor\s+([A-Z][A-Za-z0-9&'’.\-\s]{2,60}?)(?:\s+(?:about|on|using|with)|,|;|\.|\n|$)/,
   ]
   for (const pattern of patterns) {
@@ -475,6 +476,14 @@ function hasBlogPrimaryKeyword(message: string) {
 
 function hasBlogBrandName(message: string) {
   return Boolean(extractBlogBrandFromBrief(message))
+}
+
+function findClientMentionInPrompt(message: string, clients: Array<{ id?: string; name?: string }>) {
+  const lower = message.toLowerCase()
+  return [...(clients || [])]
+    .filter((client) => client?.id && client?.name)
+    .sort((a, b) => String(b.name).length - String(a.name).length)
+    .find((client) => lower.includes(String(client.name).toLowerCase()))
 }
 
 function buildMissingBlogBriefPrompt(message: string) {
@@ -1651,7 +1660,8 @@ export function IrisChat() {
 
     if (
       isBlogPostRequest(executionPrompt) &&
-      (!hasBlogPrimaryKeyword(executionPrompt) || (!hasBlogBrandName(executionPrompt) && !activeMission?.clientId))
+      (!hasBlogPrimaryKeyword(executionPrompt) ||
+        (!hasBlogBrandName(executionPrompt) && !activeMission?.clientId && !findClientMentionInPrompt(executionPrompt, clients)))
     ) {
       addAssistantMessage(conversationId, buildMissingBlogBriefPrompt(executionPrompt), 'iris', {
         deliverableType: 'blog-article' as any,

@@ -241,6 +241,7 @@ function extractBlogBrandFromBrief(content: string) {
   const patterns = [
     /\b(?:brand|company|client)\s*(?:name\s*)?(?:is|:|-)\s*["“]?([^"\n.;]+)["”]?/i,
     /\b(?:for my client|for client|for the client)\s+([^.\n;,]+)/i,
+    /\bfor\s+([^.\n;,]+?)\s*,\s*(?:about|on|using|with)\b/i,
     /\bfor\s+([A-Z][A-Za-z0-9&'’.\-\s]{2,60}?)(?:\s+(?:about|on|using|with)|,|;|\.|\n|$)/,
   ]
   for (const pattern of patterns) {
@@ -261,6 +262,16 @@ function hasBlogPrimaryKeyword(content: string) {
 
 function hasBlogBrandName(content: string) {
   return Boolean(extractBlogBrandFromBrief(content))
+}
+
+function findClientMentionInPrompt(content: string, clients: any[]) {
+  const lower = String(content || '').toLowerCase()
+  return Array.isArray(clients)
+    ? [...clients]
+        .filter((client: any) => client?.id && client?.name)
+        .sort((a: any, b: any) => String(b.name).length - String(a.name).length)
+        .find((client: any) => lower.includes(String(client.name).toLowerCase()))
+    : null
 }
 
 function isAwaitingBlogBrief(messages: any[]) {
@@ -518,22 +529,19 @@ export async function POST(req: NextRequest) {
     if (!initialConversational && isWebsiteAuditRequest(initialDeliverableType, effectiveInitialUserContent) && !initialAuditWebsiteUrl) {
       return buildMissingWebsiteUrlResponse(initialDeliverableType, provider, model)
     }
+    const inferredInitialClientFromRequest = findClientMentionInPrompt(effectiveInitialUserContent, clients)
     if (
       !initialConversational &&
       isBlogPostRequest(initialDeliverableType, effectiveInitialUserContent) &&
-      (!hasBlogPrimaryKeyword(effectiveInitialUserContent) || (!hasBlogBrandName(effectiveInitialUserContent) && !currentClientId))
+      (!hasBlogPrimaryKeyword(effectiveInitialUserContent) ||
+        (!hasBlogBrandName(effectiveInitialUserContent) && !currentClientId && !inferredInitialClientFromRequest))
     ) {
       return buildMissingBlogBriefResponse(effectiveInitialUserContent, provider, model)
     }
     if (!initialConversational && isBlogPostRequest(initialDeliverableType, effectiveInitialUserContent) && !hasVerifiedSerper(normalizedProviderSettings)) {
       return buildMissingSerperResponse(provider, model)
     }
-    const inferredClientFromRequest = Array.isArray(clients)
-      ? [...clients]
-          .filter((client: any) => client?.id && client?.name)
-          .sort((a: any, b: any) => String(b.name).length - String(a.name).length)
-          .find((client: any) => effectiveInitialUserContent.toLowerCase().includes(String(client.name).toLowerCase()))
-      : null
+    const inferredClientFromRequest = inferredInitialClientFromRequest
     const missionClientId = currentClientId || inferredClientFromRequest?.id || (Array.isArray(clients) && clients.length === 1 ? clients[0]?.id : null)
 
     // Batch Q: if the client provided a missionId but the task row hasn't
@@ -616,7 +624,8 @@ export async function POST(req: NextRequest) {
     if (
       !conversational &&
       isBlogPostRequest(deliverableType, userContent) &&
-      (!hasBlogPrimaryKeyword(userContent) || (!hasBlogBrandName(userContent) && !currentClientId))
+      (!hasBlogPrimaryKeyword(userContent) ||
+        (!hasBlogBrandName(userContent) && !currentClientId && !findClientMentionInPrompt(userContent, clients)))
     ) {
       return buildMissingBlogBriefResponse(userContent, actualProvider, actualModel)
     }
