@@ -22,16 +22,15 @@ describe('validateDeliverableQuality blog articles', () => {
       'Whole Genome Sequencing helps horse owners understand genetics.',
       '## FAQ',
       'Q: Is it useful? A: Yes.',
-      '## Schema & Publishing Checklist',
-      '- Article schema',
+      '## Post SEO Settings',
+      '1. SUGGESTED SEO TITLE TAG: Whole Genome Sequencing Guide',
     ].join('\n\n')
 
     const result = validateDeliverableQuality('blog-article', weakOutput, request)
 
     expect(result.ok).toBe(false)
-    expect(result.issues).toContain('Missing required section: Table of Contents.')
     expect(result.issues.some((issue) => issue.includes('Article Draft is too short'))).toBe(true)
-    expect(result.issues).toContain('Missing linked Table of Contents with anchor-style links.')
     expect(result.issues).toContain('Article Draft must include linked Quick Navigation inside the copyable post content.')
+    expect(result.issues).toContain('Post SEO Settings missing: SUGGESTED META DESCRIPTION.')
   })
 })

@@ -237,6 +237,20 @@ function extractBlogPrimaryKeywordFromBrief(content: string) {
   return ''
 }
 
+function extractBlogBrandFromBrief(content: string) {
+  const patterns = [
+    /\b(?:brand|company|client)\s*(?:name\s*)?(?:is|:|-)\s*["“]?([^"\n.;]+)["”]?/i,
+    /\b(?:for my client|for client|for the client)\s+([^.\n;,]+)/i,
+    /\bfor\s+([A-Z][A-Za-z0-9&'’.\-\s]{2,60}?)(?:\s+(?:about|on|using|with)|,|;|\.|\n|$)/,
+  ]
+  for (const pattern of patterns) {
+    const match = content.match(pattern)
+    const value = match?.[1]?.trim()
+    if (value && value.length >= 2 && !/\b(horse owners|audience|readers|customers|users)\b/i.test(value)) return value
+  }
+  return ''
+}
+
 function hasBlogTopic(content: string) {
   return Boolean(extractBlogTopicFromBrief(content))
 }
@@ -245,27 +259,31 @@ function hasBlogPrimaryKeyword(content: string) {
   return Boolean(extractBlogPrimaryKeywordFromBrief(content))
 }
 
+function hasBlogBrandName(content: string) {
+  return Boolean(extractBlogBrandFromBrief(content))
+}
+
 function isAwaitingBlogBrief(messages: any[]) {
   return messages.slice(-8).some((message: any) => {
     const role = String(message?.role || '')
     const content = String(message?.content || '')
-    return role === 'assistant' && /main blog post topic|primary focus keyword|Secondary keywords are optional/i.test(content)
+    return role === 'assistant' && /brand\/company name|primary focus keyword|Secondary keywords/i.test(content)
   })
 }
 
 function expandBlogBriefFollowUp(content: string, messages: any[]) {
   if (isBlogPostRequest(inferDeliverableType(content), content) || !isAwaitingBlogBrief(messages)) return content
-  if (!hasBlogTopic(content) && !hasBlogPrimaryKeyword(content)) return content
+  if (!hasBlogTopic(content) && !hasBlogPrimaryKeyword(content) && !hasBlogBrandName(content)) return content
   return `Write a blog post using this brief: ${content}`
 }
 
 function buildMissingBlogBriefResponse(content: string, provider = 'ollama', model = '') {
   const missing = [
-    !hasBlogTopic(content) ? 'main blog post topic' : '',
     !hasBlogPrimaryKeyword(content) ? 'primary focus keyword' : '',
+    !hasBlogBrandName(content) ? 'brand/company name' : '',
   ].filter(Boolean)
   return NextResponse.json({
-    response: `Please send the ${missing.join(' and ')} before I start the blog post. Secondary keywords are optional, but helpful if you have them.`,
+    response: `Please send the ${missing.join(' and ')} before I start the blog post. Secondary keywords, target audience, product/service, website URL, contact email, and social links are optional, but helpful if you have them.`,
     meta: {
       intent: 'missing_blog_brief',
       routedAgentId: 'iris',
@@ -278,7 +296,7 @@ function buildMissingBlogBriefResponse(content: string, provider = 'ollama', mod
       pipelineId: 'blog-post-writing',
       pipelineName: 'Blog Post Writing',
       qualityChecklist: [],
-      handoffNotes: 'Waiting for required blog topic and primary focus keyword before starting the blog writing pipeline.',
+      handoffNotes: 'Waiting for required blog primary focus keyword and brand/company name before starting the blog writing pipeline.',
       executionSteps: [],
       quality: null,
       executionPrompt: '',
@@ -500,7 +518,11 @@ export async function POST(req: NextRequest) {
     if (!initialConversational && isWebsiteAuditRequest(initialDeliverableType, effectiveInitialUserContent) && !initialAuditWebsiteUrl) {
       return buildMissingWebsiteUrlResponse(initialDeliverableType, provider, model)
     }
-    if (!initialConversational && isBlogPostRequest(initialDeliverableType, effectiveInitialUserContent) && (!hasBlogTopic(effectiveInitialUserContent) || !hasBlogPrimaryKeyword(effectiveInitialUserContent))) {
+    if (
+      !initialConversational &&
+      isBlogPostRequest(initialDeliverableType, effectiveInitialUserContent) &&
+      (!hasBlogPrimaryKeyword(effectiveInitialUserContent) || (!hasBlogBrandName(effectiveInitialUserContent) && !currentClientId))
+    ) {
       return buildMissingBlogBriefResponse(effectiveInitialUserContent, provider, model)
     }
     if (!initialConversational && isBlogPostRequest(initialDeliverableType, effectiveInitialUserContent) && !hasVerifiedSerper(normalizedProviderSettings)) {
@@ -591,7 +613,11 @@ export async function POST(req: NextRequest) {
       return buildMissingWebsiteUrlResponse(deliverableType, actualProvider, actualModel)
     }
 
-    if (!conversational && isBlogPostRequest(deliverableType, userContent) && (!hasBlogTopic(userContent) || !hasBlogPrimaryKeyword(userContent))) {
+    if (
+      !conversational &&
+      isBlogPostRequest(deliverableType, userContent) &&
+      (!hasBlogPrimaryKeyword(userContent) || (!hasBlogBrandName(userContent) && !currentClientId))
+    ) {
       return buildMissingBlogBriefResponse(userContent, actualProvider, actualModel)
     }
 

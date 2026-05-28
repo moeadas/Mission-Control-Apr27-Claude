@@ -31,24 +31,32 @@ describe('splitBlogArticleArtifacts', () => {
       '## FAQ',
       '### Is WGS useful?',
       'Yes.',
-      '## CTA',
-      'Explore VGnome.',
+      '## Post SEO Settings',
+      '1. SUGGESTED SEO TITLE TAG: Whole Genome Sequencing Guide 2026',
+      '2. SUGGESTED META DESCRIPTION: Whole Genome Sequencing helps horse owners understand health, performance, ancestry, and breeding insights.',
+      '3. SUGGESTED URL SLUG: /whole-genome-sequencing-horse-owners',
+      '4. PRIMARY FOCUS KEYWORD: Whole Genome Sequencing',
+      '5. SECONDARY KEYWORDS USED: Horse DNA testing',
+      '6. ESTIMATED WORD COUNT: 2,800',
+      '7. IMAGE PLACEMENT NOTES: Hero image alt text.',
+      '8. INTERNAL LINK SUGGESTIONS: VGnome page.',
+      '9. SCHEMA MARKUP NOTES: Article and FAQ schema.',
     ].join('\n\n')
 
     const result = splitBlogArticleArtifacts(source)
 
-    expect(result?.settings).toContain('# Blog SEO Summary')
-    expect(result?.settings).toContain('| Focus keyword | Whole Genome Sequencing |')
-    expect(result?.settings).toContain('| SEO title | Whole Genome Sequencing for Horse Owners |')
+    expect(result?.settings).toContain('# Post SEO Settings')
+    expect(result?.settings).toContain('| Primary focus keyword | Whole Genome Sequencing |')
+    expect(result?.settings).toContain('| Suggested SEO title tag | Whole Genome Sequencing Guide 2026 |')
     expect(result?.settings).not.toContain('## Article Draft')
     expect(result?.settings).not.toContain('## SEO Package')
     expect(result?.combined).toContain('# Blog Post Package')
-    expect(result?.combined).toContain('## Post Settings')
-    expect(result?.combined).toContain('## Blog Post')
+    expect(result?.combined).toContain('## Full Blog Post')
+    expect(result?.combined).toContain('## Post SEO Settings')
+    expect(result?.combined.indexOf('## Full Blog Post')).toBeLessThan(result?.combined.indexOf('## Post SEO Settings') || 0)
     expect(result?.draft).toContain('## Quick Navigation')
     expect(result?.draft).not.toContain('<a id=')
     expect(result?.draft).toContain('# Whole Genome Sequencing for Horse Owners')
     expect(result?.draft).toContain('## FAQ')
-    expect(result?.draft).toContain('## CTA')
   })
 })

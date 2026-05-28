@@ -390,12 +390,13 @@
             {
               "id": "build-seo-package",
               "name": "Build SEO Package & Outline",
-              "description": "Plan title options, URL slug, meta description, TOC, H2/H3 structure, target length, key takeaways, FAQ, schema, and visual plan.",
+              "description": "Plan the mandatory primary keyword and brand/company context, URL slug, meta description, TOC, H2/H3 structure, target length, key takeaways, FAQ, schema, visuals, and final post settings.",
               "assignedRole": "content-strategist",
               "inputs": ["approved-blog-brief", "serp-intent-notes"],
               "outputs": ["seo-package-outline"],
               "checklist": [
-                "Five title options under 60 characters where possible",
+                "Primary Focus Keyword and Brand/Company Name confirmed before writing",
+                "SEO title tag under 60 characters where possible",
                 "Primary keyword near the beginning of at least one title",
                 "Recommended URL slug is lowercase, hyphenated, keyword-aligned, and date-free",
                 "Meta description is 150-155 characters with primary keyword and soft CTA",
@@ -404,10 +405,10 @@
                 "Secondary keywords mapped to H2/H3 where they fit",
                 "TOC included for posts over 1,000 words",
                 "Key takeaways / TL;DR planned near the top",
-                "FAQ, schema, internal links, external links, and visuals planned"
+                "FAQ, schema, internal links, external links, image placement notes, and post SEO settings planned"
               ],
               "prompts": {
-                "en": "Build the SEO package and outline using the complete writer checklist. Include five title options, recommended slug, meta description, search intent notes, suggested word count, TOC, H1/H2/H3 outline, key takeaways, FAQ plan, visual plan, internal/external link plan, schema recommendation, and pre-publish checklist.",
+                "en": "Build the SEO package and outline using the complete writer checklist. Confirm Primary Focus Keyword and Brand/Company Name. Plan recommended slug, meta description, search intent notes, suggested word count, Quick Navigation anchors, the full 18-section article structure, key takeaways, FAQ plan, comparison table, case studies, visual plan, internal/external links, schema recommendation, and final Post SEO Settings.",
                 "ar": "إنشاء حزمة SEO وهيكل المقال باستخدام قائمة التحقق الكاملة."
               }
             }
@@ -421,7 +422,7 @@
             {
               "id": "write-blog-draft",
               "name": "Write Full Blog Post",
-              "description": "Draft the full blog post with reader-first depth, short paragraphs, direct answer, keyword discipline, E-E-A-T, AEO/GEO structure, FAQ, and CTA.",
+              "description": "Draft the full 2,500+ word blog post with the exact high-scoring structure, reader-first depth, short paragraphs, direct answer, keyword discipline, E-E-A-T, FAQ, comparison table, case studies, and CTA.",
               "assignedRole": "copy",
               "inputs": ["seo-package-outline", "client-context"],
               "outputs": ["blog-draft"],
@@ -434,11 +435,11 @@
                 "Question-format headings used where appropriate",
                 "Comparison tables, lists, or callouts included where useful",
                 "E-E-A-T signals, source/citation placeholders, and methodology notes included where relevant",
-                "At least one visual suggestion per 300-400 words when appropriate",
-                "Conclusion avoids 'In conclusion' and ends with a clear CTA"
+                "At least one image placement note per major section where appropriate",
+                "Article includes urgency, summary, about brand, author bio, footer, and clear CTA"
               ],
               "prompts": {
-                "en": "Write the full blog post. Optimize for readers first, search engines second. Include a direct answer near the top, key takeaways, TOC, full article, FAQ, natural CTA, source/citation placeholders for factual claims, and publishing notes. Do not keyword-stuff.",
+                "en": "Write the full 2,500+ word blog post. Optimize for readers first, search engines second. Follow the exact structure: H1/header, Quick Navigation, Key Takeaways, What is/definition, step-by-step process, complete value section, Why choose brand, FAQ part 1, FAQ part 2, comparison table, three case studies, getting started/packages, future technology, technical FAQ, urgency, CTA, summary, about brand/author, footer. Keep the Article Draft copy-paste-ready and put SEO settings only in the final Post SEO Settings section. Do not keyword-stuff.",
                 "ar": "كتابة المقال كاملاً للقارئ أولاً ثم محركات البحث. تضمين إجابة مباشرة وملخص وجدول محتويات وأسئلة شائعة ودعوة لاتخاذ إجراء."
               }
             }

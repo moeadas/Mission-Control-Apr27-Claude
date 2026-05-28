@@ -462,7 +462,7 @@ async function generateContentFirstText(input: {
   }
   const effectiveMaxTokens =
     input.deliverableType === 'blog-article'
-      ? Math.max(Number(input.maxTokens || 0), 8192)
+      ? Math.max(Number(input.maxTokens || 0), 14000)
       : input.maxTokens
 
   // For content tasks we resolve the preferred provider+model through the

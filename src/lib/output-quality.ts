@@ -41,6 +41,13 @@ function getSectionContent(text: string, section: string) {
   return match?.[1]?.trim() || ''
 }
 
+function getBlogArticleDraftContent(text: string) {
+  const match = text.match(
+    /^##\s+Article Draft\s*$([\s\S]*?)(?=^##\s+Post SEO Settings\s*$|^##\s+Internal & External Link Suggestions\s*$|^##\s+Visual & Alt Text Suggestions\s*$|^##\s+Schema & Publishing Checklist\s*$|^##\s+Post-Publish Plan\s*$|(?![\s\S]))/im
+  )
+  return match?.[1]?.trim() || ''
+}
+
 function countWords(text: string) {
   return text.trim().split(/\s+/).filter(Boolean).length
 }
@@ -108,21 +115,7 @@ export function validateDeliverableQuality(
   const requiredSections: Record<DeliverableType, string[]> = {
     'short-form-copy': [], // bios, taglines, one-liners — no structural headers required
     'email-campaign': ['Objective', 'Subject Line Options', 'Email Body', 'CTA'],
-    'blog-article': [
-      'Objective',
-      'Search Intent & SERP Notes',
-      'SEO Package',
-      'Article Outline',
-      'Table of Contents',
-      'Key Takeaways',
-      'Article Draft',
-      'FAQ',
-      'Internal & External Link Suggestions',
-      'Visual & Alt Text Suggestions',
-      'Schema & Publishing Checklist',
-      'Post-Publish Plan',
-      'CTA',
-    ],
+    'blog-article': ['Article Draft', 'Post SEO Settings'],
     'website-copy': ['Objective', 'Hero Copy', 'Supporting Sections', 'CTA'],
     'video-script': ['Objective', 'Hook', 'Script', 'CTA'],
     'presentation': ['Objective', 'Narrative Arc', 'Slide-by-Slide Outline'],
@@ -173,24 +166,20 @@ export function validateDeliverableQuality(
   }
 
   if (deliverableType === 'blog-article') {
-    const articleDraft = getSectionContent(trimmed, 'Article Draft')
+    const articleDraft = getBlogArticleDraftContent(trimmed)
     const articleWordCount = countWords(articleDraft)
     const requestedShort = request ? /\b(short|brief|quick|summary|outline only|draft outline)\b/i.test(request) : false
 
-    if (!requestedShort && articleWordCount < 2000) {
-      issues.push(`Article Draft is too short for the blog checklist (${articleWordCount} words; expected at least 2000).`)
+    if (!requestedShort && articleWordCount < 2500) {
+      issues.push(`Article Draft is too short for the blog checklist (${articleWordCount} words; expected at least 2500).`)
     }
 
     if (!/^#{1,2}\s+.+/m.test(articleDraft)) {
       issues.push('Article Draft is missing its article H1/H2 title.')
     }
 
-    if ((articleDraft.match(/^#{2,3}\s+.+/gm) || []).length < 4) {
-      issues.push('Article Draft needs at least four useful H2/H3 sections.')
-    }
-
-    if (!hasSection(trimmed, 'Table of Contents') || !/\[[^\]]+\]\(#[^)]+\)/.test(getSectionContent(trimmed, 'Table of Contents'))) {
-      issues.push('Missing linked Table of Contents with anchor-style links.')
+    if ((articleDraft.match(/^##\s+.+/gm) || []).length < 14) {
+      issues.push('Article Draft needs the full long-form blog structure with at least fourteen H2 sections.')
     }
 
     const articleNavigation =
@@ -199,13 +188,41 @@ export function validateDeliverableQuality(
       issues.push('Article Draft must include linked Quick Navigation inside the copyable post content.')
     }
 
+    const requiredArticlePatterns = [
+      [/^##\s+Key Takeaways:/im, 'Article Draft is missing the Key Takeaways benefits section.'],
+      [/^##\s+What is .+Why Does Every/im, 'Article Draft is missing the What is/definition section.'],
+      [/^##\s+How Does .+Work\?/im, 'Article Draft is missing the step-by-step process section.'],
+      [/^##\s+Common Questions About/im, 'Article Draft is missing Common Questions FAQ section.'],
+      [/^##\s+Additional Questions About/im, 'Article Draft is missing Additional Questions FAQ section.'],
+      [/^##\s+Real-World Success Stories:/im, 'Article Draft is missing case studies.'],
+      [/^##\s+Frequently Asked Technical Questions/im, 'Article Draft is missing technical FAQ section.'],
+      [/^##\s+Why Now\?/im, 'Article Draft is missing urgency section.'],
+      [/^##\s+Summary:/im, 'Article Draft is missing summary section.'],
+    ] as const
+    for (const [pattern, issue] of requiredArticlePatterns) {
+      if (!pattern.test(articleDraft)) issues.push(issue)
+    }
+
     if (!/\|.+\|.+\|/.test(articleDraft) && !/\b(Key takeaway|Pro tip|Quick answer|Important)\b/i.test(articleDraft)) {
       issues.push('Article Draft is missing a scannable table or callout block.')
     }
 
-    const titleOptionCount = (getSectionContent(trimmed, 'SEO Package').match(/\btitle\s+option\b|\boption\s+\d\b|^\s*\d+[.)]\s+/gim) || []).length
-    if (titleOptionCount < 5) {
-      issues.push('SEO Package needs five title options.')
+    const postSeoSettings = getSectionContent(trimmed, 'Post SEO Settings')
+    const requiredSettings = [
+      'SUGGESTED SEO TITLE TAG',
+      'SUGGESTED META DESCRIPTION',
+      'SUGGESTED URL SLUG',
+      'PRIMARY FOCUS KEYWORD',
+      'SECONDARY KEYWORDS USED',
+      'ESTIMATED WORD COUNT',
+      'IMAGE PLACEMENT NOTES',
+      'INTERNAL LINK SUGGESTIONS',
+      'SCHEMA MARKUP NOTES',
+    ]
+    for (const setting of requiredSettings) {
+      if (!postSeoSettings.toUpperCase().includes(setting)) {
+        issues.push(`Post SEO Settings missing: ${setting}.`)
+      }
     }
 
     if (request) {

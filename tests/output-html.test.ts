@@ -7,12 +7,7 @@ describe('buildArtifactHtml', () => {
     const html = buildArtifactHtml(
       [
         '# Blog Post Package',
-        '## Post Settings',
-        '# Blog SEO Summary',
-        '| Field | Value |',
-        '|---|---|',
-        '| SEO title | Whole Genome Sequencing for Horse Owners |',
-        '## Blog Post',
+        '## Full Blog Post',
         '# Whole Genome Sequencing for Horse Owners',
         '## Quick Navigation',
         '- [What is WGS?](#what-is-wgs)',
@@ -21,12 +16,18 @@ describe('buildArtifactHtml', () => {
         '## FAQ',
         '### Is WGS useful?',
         'Yes.',
+        '## Post SEO Settings',
+        '| Field | Value |',
+        '|---|---|',
+        '| SEO title | Whole Genome Sequencing for Horse Owners |',
       ].join('\n\n')
     )
 
     expect(html).toContain('artifact-blog-package')
-    expect(html).toContain('Post Settings')
-    expect(html).toContain('Blog Post')
+    expect(html).toContain('Full Blog Post')
+    expect(html).toContain('Post SEO Settings')
+    expect(html).toContain('blog-article-heading')
+    expect(html).not.toContain('artifact-section-head">What is WGS?')
     expect(html).not.toContain('artifact-grid')
   })
 

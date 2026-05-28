@@ -748,6 +748,91 @@ textarea { resize: vertical; min-height: 120px; }
   background: rgba(248, 250, 252, 0.75);
 }
 
+.artifact-render .artifact-blog-package {
+  gap: 1.5rem;
+}
+
+.artifact-render .blog-package-part {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.artifact-render .blog-package-label {
+  margin: 0 0 1rem;
+  padding: 0 0 0.65rem;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--accent-blue);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.74rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.artifact-render .blog-article-content {
+  max-width: 980px;
+  display: block;
+}
+
+.artifact-render .blog-article-title {
+  margin: 0 0 0.85rem;
+  color: var(--text-primary);
+  font-size: clamp(1.75rem, 3vw, 2.45rem);
+  line-height: 1.12;
+  letter-spacing: 0;
+}
+
+.artifact-render .blog-article-heading {
+  margin: 2.1rem 0 0.75rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 1.42rem;
+  line-height: 1.25;
+  letter-spacing: 0;
+  text-transform: none;
+  font-family: var(--font-heading), ui-sans-serif, system-ui, sans-serif;
+}
+
+.artifact-render .blog-article-subheading {
+  margin: 1.35rem 0 0.55rem;
+  color: var(--text-primary);
+  font-size: 1.08rem;
+  line-height: 1.35;
+  font-weight: 700;
+}
+
+.artifact-render .blog-article-minor-heading {
+  margin: 1.1rem 0 0.45rem;
+  color: var(--text-primary);
+  font-size: 0.98rem;
+  line-height: 1.35;
+  font-weight: 700;
+}
+
+.artifact-render .blog-article-paragraph {
+  margin: 0 0 0.85rem;
+  color: var(--text-primary);
+  font-size: 1rem;
+  line-height: 1.78;
+  overflow-wrap: anywhere;
+}
+
+.artifact-render .blog-article-content .artifact-list,
+.artifact-render .blog-article-content .artifact-table-wrap,
+.artifact-render .blog-article-content .artifact-figure {
+  margin: 0.7rem 0 1rem;
+}
+
+.artifact-render .blog-settings-content {
+  border: 1px solid color-mix(in srgb, var(--accent-blue) 8%, var(--border));
+  border-radius: 0.55rem;
+  background: rgba(248, 250, 252, 0.72);
+  padding: 1rem;
+}
+
 /* === Editor surfaces === */
 .editor-theme {
   color: var(--text-primary);

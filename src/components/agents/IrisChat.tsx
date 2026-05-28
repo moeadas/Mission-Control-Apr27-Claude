@@ -451,6 +451,20 @@ function extractBlogPrimaryKeywordFromBrief(message: string) {
   return ''
 }
 
+function extractBlogBrandFromBrief(message: string) {
+  const patterns = [
+    /\b(?:brand|company|client)\s*(?:name\s*)?(?:is|:|-)\s*["“]?([^"\n.;]+)["”]?/i,
+    /\b(?:for my client|for client|for the client)\s+([^.\n;,]+)/i,
+    /\bfor\s+([A-Z][A-Za-z0-9&'’.\-\s]{2,60}?)(?:\s+(?:about|on|using|with)|,|;|\.|\n|$)/,
+  ]
+  for (const pattern of patterns) {
+    const match = message.match(pattern)
+    const value = match?.[1]?.trim()
+    if (value && value.length >= 2 && !/\b(horse owners|audience|readers|customers|users)\b/i.test(value)) return value
+  }
+  return ''
+}
+
 function hasBlogTopic(message: string) {
   return Boolean(extractBlogTopicFromBrief(message))
 }
@@ -459,25 +473,29 @@ function hasBlogPrimaryKeyword(message: string) {
   return Boolean(extractBlogPrimaryKeywordFromBrief(message))
 }
 
+function hasBlogBrandName(message: string) {
+  return Boolean(extractBlogBrandFromBrief(message))
+}
+
 function buildMissingBlogBriefPrompt(message: string) {
   const missing = [
-    !hasBlogTopic(message) ? 'main blog post topic' : '',
     !hasBlogPrimaryKeyword(message) ? 'primary focus keyword' : '',
+    !hasBlogBrandName(message) ? 'brand/company name' : '',
   ].filter(Boolean)
-  return `Please send the ${missing.join(' and ')} before I start the blog post. Secondary keywords are optional, but helpful if you have them.`
+  return `Please send the ${missing.join(' and ')} before I start the blog post. Secondary keywords, target audience, product/service, website URL, contact email, and social links are optional, but helpful if you have them.`
 }
 
 function isAwaitingBlogBrief(conversation?: { messages?: ChatMessage[]; briefing?: IrisConversationBriefing | null } | null) {
   const recentMessages = (conversation?.messages || []).slice(-8)
   return recentMessages.some((message) => {
     const content = String(message.content || '')
-    return message.role === 'assistant' && /main blog post topic|primary focus keyword|Secondary keywords are optional/i.test(content)
+    return message.role === 'assistant' && /brand\/company name|primary focus keyword|Secondary keywords/i.test(content)
   }) || conversation?.briefing?.deliverableType === 'blog-article'
 }
 
 function expandBlogBriefFollowUp(message: string, conversation?: { messages?: ChatMessage[]; briefing?: IrisConversationBriefing | null } | null) {
   if (isBlogPostRequest(message) || !isAwaitingBlogBrief(conversation)) return message
-  if (!hasBlogTopic(message) && !hasBlogPrimaryKeyword(message)) return message
+  if (!hasBlogTopic(message) && !hasBlogPrimaryKeyword(message) && !hasBlogBrandName(message)) return message
   return `Write a blog post using this brief: ${message}`
 }
 
@@ -1631,12 +1649,15 @@ export function IrisChat() {
       return
     }
 
-    if (isBlogPostRequest(executionPrompt) && (!hasBlogTopic(executionPrompt) || !hasBlogPrimaryKeyword(executionPrompt))) {
+    if (
+      isBlogPostRequest(executionPrompt) &&
+      (!hasBlogPrimaryKeyword(executionPrompt) || (!hasBlogBrandName(executionPrompt) && !activeMission?.clientId))
+    ) {
       addAssistantMessage(conversationId, buildMissingBlogBriefPrompt(executionPrompt), 'iris', {
         deliverableType: 'blog-article' as any,
         pipelineId: 'blog-post-writing',
         pipelineName: 'Blog Post Writing',
-        handoffNotes: 'Waiting for required blog topic and primary focus keyword before starting the blog writing pipeline.',
+        handoffNotes: 'Waiting for required blog primary focus keyword and brand/company name before starting the blog writing pipeline.',
       })
       updateConversationBriefing(conversationId, {
         active: true,

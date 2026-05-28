@@ -167,6 +167,68 @@ function renderContinuousMarkdown(body: string) {
   return htmlParts.join('')
 }
 
+function renderBlogArticleMarkdown(body: string) {
+  const lines = body
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line && !/^---+$/.test(line))
+
+  const htmlParts: string[] = []
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index]
+
+    if (/^#\s+/.test(line)) {
+      htmlParts.push(`<h1 class="blog-article-title">${formatInline(line.replace(/^#\s+/, ''))}</h1>`)
+      continue
+    }
+
+    if (/^##\s+/.test(line)) {
+      htmlParts.push(`<h2 class="blog-article-heading">${formatInline(line.replace(/^##\s+/, ''))}</h2>`)
+      continue
+    }
+
+    if (/^###\s+/.test(line)) {
+      htmlParts.push(`<h3 class="blog-article-subheading">${formatInline(line.replace(/^###\s+/, ''))}</h3>`)
+      continue
+    }
+
+    if (/^####\s+/.test(line)) {
+      htmlParts.push(`<h4 class="blog-article-minor-heading">${formatInline(line.replace(/^####\s+/, ''))}</h4>`)
+      continue
+    }
+
+    if (/^\|.*\|$/.test(line)) {
+      const tableLines = [line]
+      while (index + 1 < lines.length && /^\|.*\|$/.test(lines[index + 1])) {
+        tableLines.push(lines[index + 1])
+        index += 1
+      }
+      htmlParts.push(renderTable(tableLines))
+      continue
+    }
+
+    if (/^!\[([^\]]*)\]\(([^)]+)\)$/.test(line)) {
+      htmlParts.push(renderImage(line))
+      continue
+    }
+
+    if (/^[-*]\s+/.test(line) || /^\d+\.\s+/.test(line)) {
+      const listLines = [line]
+      while (index + 1 < lines.length && (/^[-*]\s+/.test(lines[index + 1]) || /^\d+\.\s+/.test(lines[index + 1]))) {
+        listLines.push(lines[index + 1])
+        index += 1
+      }
+      htmlParts.push(renderList(listLines))
+      continue
+    }
+
+    htmlParts.push(`<p class="blog-article-paragraph">${formatInline(line)}</p>`)
+  }
+
+  return htmlParts.join('')
+}
+
 function buildTitleFromContent(cleaned: string) {
   if (cleaned.startsWith('# ')) {
     const [titleLine, ...rest] = cleaned.split('\n')
@@ -202,23 +264,25 @@ export function buildArtifactHtml(content: string) {
   }
 
   const { title, body } = buildTitleFromContent(cleaned)
-  const blogPostSplit = body.split(/^##\s+Blog Post\s*$/im)
-  const isBlogPackage = /^##\s+Post Settings\s*$/im.test(body) && blogPostSplit.length > 1
+  const blogPostSplit = body.split(/^##\s+(?:Full Blog Post|Blog Post)\s*$/im)
+  const isBlogPackage = /^##\s+Post SEO Settings\s*$/im.test(body) && blogPostSplit.length > 1
   if (isBlogPackage) {
-    const settings = blogPostSplit[0].replace(/^##\s+Post Settings\s*$/im, '').trim()
-    const article = blogPostSplit.slice(1).join('\n## Blog Post\n').trim()
+    const afterArticle = blogPostSplit.slice(1).join('\n## Full Blog Post\n')
+    const [articlePart, settingsPart = ''] = afterArticle.split(/^##\s+Post SEO Settings\s*$/im)
+    const article = articlePart.trim()
+    const settings = settingsPart.trim()
 
     return `
       <article class="artifact-document artifact-blog-package">
         ${title ? `<header class="artifact-header"><p class="artifact-kicker">Blog Post Package</p><h1>${formatInline(title)}</h1></header>` : ''}
-        <section class="artifact-section artifact-post-settings">
-          <h2 class="artifact-section-head">Post Settings</h2>
-          <div class="artifact-section-body">${renderSectionBody(settings)}</div>
-        </section>
-        <section class="artifact-section artifact-article-body">
-          <h2 class="artifact-section-head">Blog Post</h2>
-          <div class="artifact-section-body">${renderContinuousMarkdown(article)}</div>
-        </section>
+        <div class="blog-package-part blog-package-article">
+          <h2 class="blog-package-label">Full Blog Post</h2>
+          <div class="blog-article-content">${renderBlogArticleMarkdown(article)}</div>
+        </div>
+        <div class="blog-package-part blog-package-settings">
+          <h2 class="blog-package-label">Post SEO Settings</h2>
+          <div class="blog-settings-content">${renderSectionBody(settings)}</div>
+        </div>
       </article>
     `
   }

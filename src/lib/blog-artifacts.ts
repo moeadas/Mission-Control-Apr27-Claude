@@ -13,6 +13,13 @@ function hasHeading(content: string, heading: string) {
   return new RegExp(`^##\\s+${escapeRegExp(heading)}\\s*$`, 'im').test(content || '')
 }
 
+function getBlogArticleDraftSection(content: string) {
+  const match = (content || '').match(
+    /^##\s+Article Draft\s*$([\s\S]*?)(?=^##\s+Post SEO Settings\s*$|^##\s+Internal & External Link Suggestions\s*$|^##\s+Visual & Alt Text Suggestions\s*$|^##\s+Schema & Publishing Checklist\s*$|^##\s+Post-Publish Plan\s*$|(?![\s\S]))/im
+  )
+  return match?.[1]?.trim() || ''
+}
+
 function injectAfterFirstHeading(markdown: string, block: string) {
   const lines = markdown.split('\n')
   const index = lines.findIndex((line) => /^#\s+.+/.test(line.trim()))
@@ -65,30 +72,35 @@ function buildSeoSummaryArtifact(source: string) {
   const objective = getMarkdownSection(source, 'Objective')
   const serpNotes = getMarkdownSection(source, 'Search Intent & SERP Notes')
   const seoPackage = getMarkdownSection(source, 'SEO Package')
+  const postSeoSettings = getMarkdownSection(source, 'Post SEO Settings')
   const outline = getMarkdownSection(source, 'Article Outline')
   const internalLinks = getMarkdownSection(source, 'Internal & External Link Suggestions')
   const visuals = getMarkdownSection(source, 'Visual & Alt Text Suggestions')
   const schemaChecklist = getMarkdownSection(source, 'Schema & Publishing Checklist')
   const postPublishPlan = getMarkdownSection(source, 'Post-Publish Plan')
+  const settingsSource = postSeoSettings || seoPackage
 
   const summary = compactSummary(objective, serpNotes)
-  const focusKeyword = extractLabeledValue(seoPackage, ['Primary Keyword', 'Primary Focus Keyword', 'Focus Keyword'])
-  const secondaryKeywords = extractLabeledValue(seoPackage, ['Secondary Keywords', 'Secondary Keyword'])
-  const title = extractTitle(seoPackage)
-  const slug = extractLabeledValue(seoPackage, ['URL Slug', 'Slug', 'Recommended URL Slug'])
-  const metaDescription = extractLabeledValue(seoPackage, ['Meta Description', 'SEO Description'])
+  const focusKeyword = extractLabeledValue(settingsSource, ['Primary Focus Keyword', 'Primary Keyword', 'Focus Keyword'])
+  const secondaryKeywords = extractLabeledValue(settingsSource, ['Secondary Keywords Used', 'Secondary Keywords', 'Secondary Keyword'])
+  const title = extractTitle(settingsSource)
+  const slug = extractLabeledValue(settingsSource, ['Suggested URL Slug', 'URL Slug', 'Slug', 'Recommended URL Slug'])
+  const metaDescription = extractLabeledValue(settingsSource, ['Suggested Meta Description', 'Meta Description', 'SEO Description'])
+  const estimatedWordCount = extractLabeledValue(settingsSource, ['Estimated Word Count', 'Word Count'])
 
   return [
-    '# Blog SEO Summary',
+    '# Post SEO Settings',
     '',
     '| Field | Value |',
     '|---|---|',
     `| Summary | ${summary || 'Not specified.'} |`,
-    `| Focus keyword | ${focusKeyword || 'Not specified.'} |`,
-    `| Secondary keyword(s) | ${secondaryKeywords || 'Not specified.'} |`,
-    `| SEO title | ${title || 'Not specified.'} |`,
-    `| URL slug | ${slug || 'Not specified.'} |`,
-    `| Meta description | ${metaDescription || 'Not specified.'} |`,
+    `| Suggested SEO title tag | ${title || 'Not specified.'} |`,
+    `| Suggested meta description | ${metaDescription || 'Not specified.'} |`,
+    `| Suggested URL slug | ${slug || 'Not specified.'} |`,
+    `| Primary focus keyword | ${focusKeyword || 'Not specified.'} |`,
+    `| Secondary keywords used | ${secondaryKeywords || 'Not specified.'} |`,
+    `| Estimated word count | ${estimatedWordCount || 'Not specified.'} |`,
+    postSeoSettings ? `\n${postSeoSettings.trim()}` : '',
     outline ? `\n## Article Structure\n\n${outline.trim()}` : '',
     internalLinks ? `\n## Link Suggestions\n\n${internalLinks.trim()}` : '',
     visuals ? `\n## Visual & Alt Text Suggestions\n\n${visuals.trim()}` : '',
@@ -99,7 +111,7 @@ function buildSeoSummaryArtifact(source: string) {
 
 export function buildBlogPostArtifact(content: string) {
   const source = (content || '').trim()
-  const articleDraft = getMarkdownSection(source, 'Article Draft')
+  const articleDraft = getBlogArticleDraftSection(source)
   if (!source || !articleDraft) return null
 
   const settings = buildSeoSummaryArtifact(source)
@@ -127,7 +139,7 @@ export function buildBlogPostArtifact(content: string) {
   return {
     settings,
     draft,
-    combined: ['# Blog Post Package', '', '## Post Settings', '', settings, '', '## Blog Post', '', draft].join('\n').trim(),
+    combined: ['# Blog Post Package', '', '## Full Blog Post', '', draft, '', '## Post SEO Settings', '', settings].join('\n').trim(),
   }
 }
 
