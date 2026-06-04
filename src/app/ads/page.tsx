@@ -1,50 +1,105 @@
 'use client'
 
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  BarChart3,
+  ChevronRight,
+  DollarSign,
+  Eye,
+  Filter,
+  Layers3,
+  Loader2,
+  MousePointerClick,
+  RefreshCcw,
+  Search,
+  Settings,
+  Sparkles,
+  Target,
+  Video,
+  Wand2,
+  Zap,
+} from 'lucide-react'
+
 import { ClientShell } from '@/components/ClientShell'
-import { Card } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { Select } from '@/components/ui/Input'
 import { toast } from '@/components/ui/Toast'
 import { getAuthToken } from '@/lib/auth/browser'
 import {
-  TrendingUp, TrendingDown, AlertTriangle, Sparkles, RefreshCcw,
-  DollarSign, MousePointerClick, Eye, Target, Video, ChevronRight,
-  Loader2, Settings, BarChart3, Zap,
-} from 'lucide-react'
-
-// ─── Types ────────────────────────────────────────────────────────────────────
+  META_MARKET_OPTIONS,
+  analyzeMetaCampaign,
+  getMetaCountryBenchmark,
+  mapMetaObjectiveToFamily,
+  type MetaMarketCode,
+  type MetaOptimizationSuggestion,
+} from '@/lib/meta-ads-intelligence'
 
 interface AdAccount {
   id: string
+  account_id?: string
   name: string
   account_status: number
   currency: string
   timezone_name: string
 }
 
+interface MetaCampaign {
+  id: string
+  name: string
+  objective?: string
+  status?: string
+  daily_budget?: string
+  lifetime_budget?: string
+  start_time?: string
+  stop_time?: string
+  created_time?: string
+  updated_time?: string
+  buying_type?: string
+}
+
 interface CampaignInsight {
   campaign_id: string
   campaign_name: string
-  impressions: string
-  clicks: string
-  spend: string
-  cpm: string
-  cpc: string
-  ctr: string
-  reach: string
-  conversions?: string
+  impressions?: string
+  clicks?: string
+  spend?: string
+  cpm?: string
+  cpc?: string
+  ctr?: string
+  reach?: string
+  frequency?: string
+  conversions?: string | number
+  leads?: string | number
+  purchases?: string | number
+  post_engagements?: string | number
+  video_views?: string | number
+  conversion_rate?: string
   cost_per_conversion?: string
+  cost_per_lead?: string
+  engagement_rate?: string
 }
 
 interface AccountSummary {
-  impressions: string
-  clicks: string
-  spend: string
-  cpm: string
-  cpc: string
-  ctr: string
-  reach: string
+  impressions?: string
+  clicks?: string
+  spend?: string
+  cpm?: string
+  cpc?: string
+  ctr?: string
+  reach?: string
+  frequency?: string
+  conversions?: string | number
+  leads?: string | number
+}
+
+interface CampaignDetails {
+  campaign: MetaCampaign
+  insight: CampaignInsight | null
+  adsets: Array<Record<string, any>>
+  ads: Array<Record<string, any>>
+  creatives: Array<Record<string, any>>
 }
 
 interface OptimizationRec {
@@ -60,413 +115,677 @@ interface OptimizationResult {
   recommendations: OptimizationRec[]
   quickWins: string[]
   watchOut: string[]
+  ruleFindings?: any[]
 }
 
 const DATE_PRESETS = [
+  { value: 'today', label: 'Today' },
+  { value: 'yesterday', label: 'Yesterday' },
   { value: 'last_7d', label: 'Last 7 days' },
   { value: 'last_14d', label: 'Last 14 days' },
   { value: 'last_30d', label: 'Last 30 days' },
   { value: 'last_90d', label: 'Last 90 days' },
   { value: 'this_month', label: 'This month' },
+  { value: 'last_month', label: 'Last month' },
 ]
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+const STATUS_FILTERS = [
+  { value: 'all', label: 'All' },
+  { value: 'active', label: 'Active' },
+  { value: 'paused', label: 'Paused' },
+  { value: 'ended', label: 'Ended' },
+]
 
-function fmt(n: string | number | undefined, prefix = '') {
-  const v = parseFloat(String(n || 0))
-  if (isNaN(v)) return '—'
-  if (v >= 1_000_000) return `${prefix}${(v / 1_000_000).toFixed(1)}M`
-  if (v >= 1_000) return `${prefix}${(v / 1_000).toFixed(1)}K`
-  return `${prefix}${v.toFixed(2)}`
+function num(value: unknown) {
+  const parsed = Number.parseFloat(String(value ?? 0))
+  return Number.isFinite(parsed) ? parsed : 0
 }
 
-function fmtCurrency(n: string | number | undefined, currency = 'USD') {
-  const v = parseFloat(String(n || 0))
-  if (isNaN(v)) return '—'
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v)
+function fmt(value: unknown, digits = 0) {
+  const parsed = num(value)
+  if (parsed >= 1_000_000) return `${(parsed / 1_000_000).toFixed(1)}M`
+  if (parsed >= 1_000) return `${(parsed / 1_000).toFixed(1)}K`
+  return parsed.toFixed(digits)
 }
 
-function priorityColor(p: string) {
-  if (p === 'high') return '#ef4444'
-  if (p === 'medium') return '#f59e0b'
-  return '#22d3ee'
+function fmtCurrency(value: unknown, currency = 'USD', digits = 0) {
+  const parsed = num(value)
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency || 'USD',
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(parsed)
 }
 
-// ─── KPI Card ─────────────────────────────────────────────────────────────────
+function percent(value: unknown) {
+  return `${num(value).toFixed(2)}%`
+}
 
-function KpiCard({ icon: Icon, label, value, sub, color }: {
-  icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }>
+function budget(value?: string) {
+  if (!value) return 'Not set'
+  return fmtCurrency(num(value) / 100)
+}
+
+function isEnded(campaign: MetaCampaign) {
+  return Boolean(campaign.stop_time && new Date(campaign.stop_time).getTime() < Date.now())
+}
+
+function campaignStatus(campaign: MetaCampaign) {
+  if (isEnded(campaign)) return 'ended'
+  return (campaign.status || '').toLowerCase()
+}
+
+function priorityColor(priority: string) {
+  if (priority === 'critical' || priority === 'high') return '#ff7f7f'
+  if (priority === 'medium') return '#f4c84f'
+  return '#18c7b6'
+}
+
+function typeColor(type: string) {
+  if (type === 'error') return '#ff7f7f'
+  if (type === 'warning') return '#f4c84f'
+  if (type === 'success') return '#18c7b6'
+  return '#4f8ef7'
+}
+
+function KpiCard({
+  icon: Icon,
+  label,
+  value,
+  sub,
+  color,
+}: {
+  icon: React.ComponentType<{ size?: number; className?: string; style?: React.CSSProperties }>
   label: string
   value: string
   sub?: string
   color: string
 }) {
   return (
-    <Card style={{ padding: '16px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-        <div style={{ width: 32, height: 32, borderRadius: 8, background: `${color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Icon size={16} style={{ color }} />
+    <Card className="p-4 rounded-lg">
+      <div className="flex items-center gap-3">
+        <span className="flex h-9 w-9 items-center justify-center rounded-md" style={{ backgroundColor: `${color}18`, color }}>
+          <Icon size={17} />
+        </span>
+        <div className="min-w-0">
+          <p className="text-[11px] font-mono uppercase tracking-wider text-text-dim">{label}</p>
+          <p className="mt-1 text-xl font-heading font-semibold text-text-primary">{value}</p>
+          {sub ? <p className="mt-0.5 text-[11px] text-text-secondary">{sub}</p> : null}
         </div>
-        <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{label}</span>
       </div>
-      <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)' }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>{sub}</div>}
     </Card>
   )
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
-
-export default function AdsPage() {
-  const [accounts, setAccounts] = useState<AdAccount[]>([])
-  const [selectedAccountId, setSelectedAccountId] = useState('')
-  const [datePreset, setDatePreset] = useState('last_30d')
-  const [insights, setInsights] = useState<CampaignInsight[]>([])
-  const [summary, setSummary] = useState<AccountSummary | null>(null)
-  const [optimization, setOptimization] = useState<OptimizationResult | null>(null)
-  const [loadingAccounts, setLoadingAccounts] = useState(false)
-  const [loadingInsights, setLoadingInsights] = useState(false)
-  const [loadingOptimize, setLoadingOptimize] = useState(false)
-  const [notConfigured, setNotConfigured] = useState(false)
-
-  // ── Load accounts ────────────────────────────────────────────────────────
-  useEffect(() => {
-    async function load() {
-      setLoadingAccounts(true)
-      try {
-        const token = await getAuthToken()
-        const res = await fetch('/api/integrations/meta/accounts', {
-          headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        })
-        const data = await res.json()
-        if (res.status === 400 && data.error?.includes('not configured')) {
-          setNotConfigured(true)
-          return
-        }
-        if (!res.ok) throw new Error(data.error || 'Failed to load accounts')
-        setAccounts(data.accounts || [])
-        if (data.accounts?.length) setSelectedAccountId(data.accounts[0].id)
-      } catch (err: any) {
-        // Meta not configured — show empty state instead of toast
-        if (err.message?.includes('not configured')) {
-          setNotConfigured(true)
-        } else {
-          toast.error(err.message || 'Failed to load Meta accounts')
-        }
-      } finally {
-        setLoadingAccounts(false)
-      }
-    }
-    load()
-  }, [])
-
-  // ── Load insights ────────────────────────────────────────────────────────
-  const loadInsights = useCallback(async () => {
-    if (!selectedAccountId) return
-    setLoadingInsights(true)
-    setOptimization(null)
-    try {
-      const token = await getAuthToken()
-      const res = await fetch(
-        `/api/integrations/meta/insights?accountId=${selectedAccountId}&datePreset=${datePreset}`,
-        { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } }
-      )
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to load insights')
-      setInsights(data.insights || [])
-      setSummary(data.summary || null)
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to load insights')
-    } finally {
-      setLoadingInsights(false)
-    }
-  }, [selectedAccountId, datePreset])
-
-  useEffect(() => {
-    if (selectedAccountId) loadInsights()
-  }, [selectedAccountId, datePreset, loadInsights])
-
-  // ── AI Optimise ──────────────────────────────────────────────────────────
-  async function handleOptimize() {
-    if (!insights.length && !summary) {
-      toast.error('Load insights first')
-      return
-    }
-    setLoadingOptimize(true)
-    try {
-      const token = await getAuthToken()
-      const res = await fetch('/api/integrations/meta/optimize', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ insights, summary }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Optimisation failed')
-      setOptimization(data)
-    } catch (err: any) {
-      toast.error(err.message || 'Optimisation failed')
-    } finally {
-      setLoadingOptimize(false)
-    }
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-
-  if (notConfigured) {
-    return (
-      <ClientShell>
-        <div style={{ padding: 32, maxWidth: 480, margin: '80px auto', textAlign: 'center' }}>
-          <div style={{ width: 64, height: 64, borderRadius: 16, background: 'var(--surface-raised)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-            <BarChart3 size={28} style={{ color: '#9b6dff' }} />
-          </div>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>Meta Ads not connected</h2>
-          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 24 }}>
-            Add your Meta access token and ad account ID in Settings to start pulling campaign data.
-          </p>
-          <Button variant="primary" onClick={() => window.location.href = '/settings'}>
-            <Settings size={14} /> Go to Settings
-          </Button>
-        </div>
-      </ClientShell>
-    )
-  }
-
+function EmptyConnectState() {
   return (
     <ClientShell>
-      <div style={{ padding: '24px 32px', maxWidth: 1200, margin: '0 auto' }}>
-
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
-          <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Meta Ads</h1>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>Campaign performance dashboard</p>
-          </div>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-            {/* Account selector */}
-            {accounts.length > 0 && (
-              <select
-                value={selectedAccountId}
-                onChange={(e) => setSelectedAccountId(e.target.value)}
-                style={{ minWidth: 200, padding: '6px 10px', background: 'var(--surface-base)', border: '1px solid var(--border-subtle)', borderRadius: 6, color: 'var(--text-primary)', fontSize: 13, cursor: 'pointer' }}
-              >
-                {accounts.map(a => (
-                  <option key={a.id} value={a.id}>{a.name}</option>
-                ))}
-              </select>
-            )}
-            {/* Date preset */}
-            <select
-              value={datePreset}
-              onChange={(e) => setDatePreset(e.target.value)}
-              style={{ minWidth: 140, padding: '6px 10px', background: 'var(--surface-base)', border: '1px solid var(--border-subtle)', borderRadius: 6, color: 'var(--text-primary)', fontSize: 13, cursor: 'pointer' }}
-            >
-              {DATE_PRESETS.map(d => (
-                <option key={d.value} value={d.value}>{d.label}</option>
-              ))}
-            </select>
-            <Button variant="secondary" onClick={loadInsights} disabled={loadingInsights || !selectedAccountId}>
-              <RefreshCcw size={14} className={loadingInsights ? 'animate-spin' : ''} />
-              {loadingInsights ? 'Loading…' : 'Refresh'}
-            </Button>
-            <Button variant="primary" onClick={handleOptimize} disabled={loadingOptimize || !insights.length}>
-              {loadingOptimize ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-              {loadingOptimize ? 'Analysing…' : 'AI Optimise'}
-            </Button>
-          </div>
+      <div className="mx-auto flex min-h-[70vh] max-w-lg flex-col items-center justify-center px-6 text-center">
+        <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-lg border border-border bg-card shadow-[var(--shadow-card)]">
+          <BarChart3 size={28} className="text-accent-purple" />
         </div>
-
-        {/* Loading state */}
-        {loadingAccounts && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text-secondary)', padding: '40px 0' }}>
-            <Loader2 size={18} className="animate-spin" />
-            <span style={{ fontSize: 13 }}>Loading accounts…</span>
-          </div>
-        )}
-
-        {/* KPI Summary */}
-        {summary && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 24 }}>
-            <KpiCard icon={DollarSign} label="Spend" value={fmtCurrency(summary.spend)} sub="Total for period" color="#9b6dff" />
-            <KpiCard icon={Eye} label="Impressions" value={fmt(summary.impressions)} color="#60a5fa" />
-            <KpiCard icon={MousePointerClick} label="Clicks" value={fmt(summary.clicks)} color="#2dd4bf" />
-            <KpiCard icon={Target} label="CTR" value={`${parseFloat(summary.ctr || '0').toFixed(2)}%`} color="#f59e0b" />
-            <KpiCard icon={BarChart3} label="CPM" value={`$${parseFloat(summary.cpm || '0').toFixed(2)}`} sub="per 1K impressions" color="#fb923c" />
-            <KpiCard icon={MousePointerClick} label="CPC" value={`$${parseFloat(summary.cpc || '0').toFixed(2)}`} sub="per click" color="#34d399" />
-          </div>
-        )}
-
-        <div style={{ display: 'grid', gridTemplateColumns: optimization ? '1fr 380px' : '1fr', gap: 20 }}>
-
-          {/* Campaign table */}
-          <div>
-            <Card style={{ padding: 0, overflow: 'hidden' }}>
-              <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
-                  Campaign Performance
-                </h2>
-                {insights.length > 0 && (
-                  <Badge color="#6b7280">{insights.length} campaigns</Badge>
-                )}
-              </div>
-
-              {loadingInsights ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 32, color: 'var(--text-secondary)' }}>
-                  <Loader2 size={16} className="animate-spin" />
-                  <span style={{ fontSize: 13 }}>Loading campaign data…</span>
-                </div>
-              ) : insights.length === 0 ? (
-                <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)', fontSize: 13 }}>
-                  {selectedAccountId ? 'No campaign data for this period' : 'Select an ad account to load data'}
-                </div>
-              ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                    <thead>
-                      <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                        {['Campaign', 'Spend', 'Impressions', 'Clicks', 'CTR', 'CPC', 'CPM'].map(h => (
-                          <th key={h} style={{ padding: '10px 16px', textAlign: h === 'Campaign' ? 'left' : 'right', color: 'var(--text-secondary)', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                            {h}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {insights.map((row, i) => {
-                        const ctr = parseFloat(row.ctr || '0')
-                        const cpc = parseFloat(row.cpc || '0')
-                        return (
-                          <tr
-                            key={row.campaign_id || i}
-                            style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background 0.15s' }}
-                            onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-raised)')}
-                            onMouseLeave={e => (e.currentTarget.style.background = '')}
-                          >
-                            <td style={{ padding: '12px 16px', maxWidth: 240 }}>
-                              <div style={{ fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {row.campaign_name}
-                              </div>
-                              <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 2 }}>
-                                {row.campaign_id}
-                              </div>
-                            </td>
-                            <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: 'var(--text-primary)' }}>
-                              {fmtCurrency(row.spend)}
-                            </td>
-                            <td style={{ padding: '12px 16px', textAlign: 'right', color: 'var(--text-secondary)' }}>{fmt(row.impressions)}</td>
-                            <td style={{ padding: '12px 16px', textAlign: 'right', color: 'var(--text-secondary)' }}>{fmt(row.clicks)}</td>
-                            <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                              <span style={{ color: ctr >= 2 ? '#22d3ee' : ctr >= 1 ? '#f59e0b' : '#ef4444' }}>
-                                {ctr.toFixed(2)}%
-                              </span>
-                            </td>
-                            <td style={{ padding: '12px 16px', textAlign: 'right', color: 'var(--text-secondary)' }}>
-                              ${cpc.toFixed(2)}
-                            </td>
-                            <td style={{ padding: '12px 16px', textAlign: 'right', color: 'var(--text-secondary)' }}>
-                              ${parseFloat(row.cpm || '0').toFixed(2)}
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </Card>
-          </div>
-
-          {/* AI Optimisation Panel */}
-          {optimization && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {/* Summary */}
-              <Card style={{ padding: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                  <Sparkles size={14} style={{ color: '#9b6dff' }} />
-                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>AI Analysis</span>
-                </div>
-                <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
-                  {optimization.summary}
-                </p>
-              </Card>
-
-              {/* Recommendations */}
-              {optimization.recommendations?.length > 0 && (
-                <Card style={{ padding: 16 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12 }}>Recommendations</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {optimization.recommendations.slice(0, 5).map((r, i) => (
-                      <div key={i} style={{ borderLeft: `2px solid ${priorityColor(r.priority)}`, paddingLeft: 10 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)' }}>{r.title}</span>
-                          <Badge color={r.priority === 'high' ? '#ef4444' : r.priority === 'medium' ? '#f59e0b' : '#6b7280'}>
-                            {r.priority}
-                          </Badge>
-                        </div>
-                        <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>{r.detail}</p>
-                        {r.estimatedImpact && (
-                          <p style={{ fontSize: 10, color: '#22d3ee', marginTop: 3, display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <TrendingUp size={10} />{r.estimatedImpact}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-              )}
-
-              {/* Quick wins */}
-              {optimization.quickWins?.length > 0 && (
-                <Card style={{ padding: 16 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                    <Zap size={13} style={{ color: '#f59e0b' }} />
-                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>Quick Wins</span>
-                  </div>
-                  <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {optimization.quickWins.map((w, i) => (
-                      <li key={i} style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 11, color: 'var(--text-secondary)' }}>
-                        <ChevronRight size={11} style={{ color: '#f59e0b', flexShrink: 0, marginTop: 1 }} />
-                        {w}
-                      </li>
-                    ))}
-                  </ul>
-                </Card>
-              )}
-
-              {/* Watch out */}
-              {optimization.watchOut?.length > 0 && (
-                <Card style={{ padding: 16 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                    <AlertTriangle size={13} style={{ color: '#ef4444' }} />
-                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>Watch Out</span>
-                  </div>
-                  <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {optimization.watchOut.map((w, i) => (
-                      <li key={i} style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 11, color: 'var(--text-secondary)' }}>
-                        <ChevronRight size={11} style={{ color: '#ef4444', flexShrink: 0, marginTop: 1 }} />
-                        {w}
-                      </li>
-                    ))}
-                  </ul>
-                </Card>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Higgsfield Video Generation */}
-        <div style={{ marginTop: 28 }}>
-          <VideoGenerationPanel />
-        </div>
-
+        <h1 className="font-heading text-2xl font-semibold text-text-primary">Meta Ads is not connected</h1>
+        <p className="mt-3 text-sm leading-relaxed text-text-secondary">
+          Add and verify your own Meta access token in Settings. Mission Control stores it per user and uses it server-side for campaign data.
+        </p>
+        <Button className="mt-6" variant="primary" onClick={() => (window.location.href = '/settings')}>
+          <Settings size={15} />
+          Open Settings
+        </Button>
       </div>
     </ClientShell>
   )
 }
 
-// ─── Video Generation Panel ───────────────────────────────────────────────────
+function SuggestionList({ suggestions }: { suggestions: MetaOptimizationSuggestion[] }) {
+  return (
+    <div className="space-y-3">
+      {suggestions.slice(0, 4).map((item, index) => (
+        <div key={`${item.title}-${index}`} className="rounded-lg border border-border bg-base/60 p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: typeColor(item.type) }} />
+                <p className="text-sm font-semibold text-text-primary">{item.title}</p>
+              </div>
+              <p className="mt-1 text-xs leading-relaxed text-text-secondary">{item.description}</p>
+            </div>
+            <Badge color={priorityColor(item.priority)} variant="outline">
+              {item.priority}
+            </Badge>
+          </div>
+          {item.recommendations?.length ? (
+            <ul className="mt-2 space-y-1">
+              {item.recommendations.slice(0, 2).map((rec) => (
+                <li key={rec} className="flex gap-1.5 text-[11px] leading-relaxed text-text-secondary">
+                  <ChevronRight size={12} className="mt-0.5 shrink-0 text-accent-blue" />
+                  {rec}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+export default function AdsPage() {
+  const [accounts, setAccounts] = useState<AdAccount[]>([])
+  const [selectedAccountId, setSelectedAccountId] = useState('')
+  const [datePreset, setDatePreset] = useState('last_30d')
+  const [market, setMarket] = useState<MetaMarketCode>('JO')
+  const [campaigns, setCampaigns] = useState<MetaCampaign[]>([])
+  const [insights, setInsights] = useState<CampaignInsight[]>([])
+  const [summary, setSummary] = useState<AccountSummary | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
+  const [selectedCampaignId, setSelectedCampaignId] = useState('')
+  const [details, setDetails] = useState<CampaignDetails | null>(null)
+  const [optimization, setOptimization] = useState<OptimizationResult | null>(null)
+  const [loadingAccounts, setLoadingAccounts] = useState(false)
+  const [loadingData, setLoadingData] = useState(false)
+  const [loadingDetails, setLoadingDetails] = useState(false)
+  const [loadingOptimize, setLoadingOptimize] = useState(false)
+  const [notConfigured, setNotConfigured] = useState(false)
+
+  useEffect(() => {
+    async function loadAccounts() {
+      setLoadingAccounts(true)
+      try {
+        const token = await getAuthToken()
+        const response = await fetch('/api/integrations/meta/accounts', {
+          cache: 'no-store',
+          headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        })
+        const payload = await response.json()
+        if (response.status === 400 && payload.code === 'META_NOT_CONNECTED') {
+          setNotConfigured(true)
+          return
+        }
+        if (!response.ok) throw new Error(payload.error || 'Failed to load Meta accounts')
+        const nextAccounts = payload.accounts || []
+        setAccounts(nextAccounts)
+        setMarket((payload.primaryMarket || 'JO') as MetaMarketCode)
+        const defaultAccount = payload.defaultAccountId || nextAccounts[0]?.id || ''
+        setSelectedAccountId(defaultAccount)
+      } catch (error: any) {
+        toast.error(error.message || 'Failed to load Meta accounts')
+      } finally {
+        setLoadingAccounts(false)
+      }
+    }
+    loadAccounts()
+  }, [])
+
+  const loadAccountData = useCallback(async () => {
+    if (!selectedAccountId) return
+    setLoadingData(true)
+    setOptimization(null)
+    try {
+      const token = await getAuthToken()
+      const headers = { ...(token ? { Authorization: `Bearer ${token}` } : {}) }
+      const [campaignResponse, insightResponse] = await Promise.all([
+        fetch(`/api/integrations/meta/campaigns?accountId=${encodeURIComponent(selectedAccountId)}&datePreset=${datePreset}`, {
+          cache: 'no-store',
+          headers,
+        }),
+        fetch(`/api/integrations/meta/insights?accountId=${encodeURIComponent(selectedAccountId)}&datePreset=${datePreset}&level=campaign`, {
+          cache: 'no-store',
+          headers,
+        }),
+      ])
+      const campaignPayload = await campaignResponse.json()
+      const insightPayload = await insightResponse.json()
+      if (!campaignResponse.ok) throw new Error(campaignPayload.error || 'Failed to load campaigns')
+      if (!insightResponse.ok) throw new Error(insightPayload.error || 'Failed to load insights')
+      setCampaigns(campaignPayload.campaigns || [])
+      setInsights(insightPayload.insights || [])
+      setSummary(insightPayload.summary || null)
+      if (!selectedCampaignId && campaignPayload.campaigns?.[0]?.id) setSelectedCampaignId(campaignPayload.campaigns[0].id)
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to load Meta data')
+    } finally {
+      setLoadingData(false)
+    }
+  }, [datePreset, selectedAccountId, selectedCampaignId])
+
+  useEffect(() => {
+    if (selectedAccountId) loadAccountData()
+  }, [selectedAccountId, datePreset, loadAccountData])
+
+  const insightByCampaign = useMemo(() => {
+    const map = new Map<string, CampaignInsight>()
+    insights.forEach((row) => {
+      if (row.campaign_id) map.set(row.campaign_id, row)
+    })
+    return map
+  }, [insights])
+
+  const rows = useMemo(() => {
+    return campaigns.map((campaign) => {
+      const insight = insightByCampaign.get(campaign.id) || null
+      const analysis = analyzeMetaCampaign(insight, campaign, market)
+      return { campaign, insight, analysis }
+    })
+  }, [campaigns, insightByCampaign, market])
+
+  const filteredRows = useMemo(() => {
+    const needle = searchTerm.trim().toLowerCase()
+    return rows.filter(({ campaign }) => {
+      const matchesSearch = !needle || campaign.name.toLowerCase().includes(needle)
+      const status = campaignStatus(campaign)
+      const matchesStatus = statusFilter === 'all' || status === statusFilter
+      return matchesSearch && matchesStatus
+    })
+  }, [rows, searchTerm, statusFilter])
+
+  const selectedAccount = accounts.find((account) => account.id === selectedAccountId)
+  const selectedRow = rows.find((row) => row.campaign.id === selectedCampaignId)
+  const benchmark = getMetaCountryBenchmark(market)
+  const accountCurrency = selectedAccount?.currency || 'USD'
+
+  useEffect(() => {
+    if (!selectedCampaignId) {
+      setDetails(null)
+      return
+    }
+    async function loadDetails() {
+      setLoadingDetails(true)
+      try {
+        const token = await getAuthToken()
+        const response = await fetch(
+          `/api/integrations/meta/campaigns/${encodeURIComponent(selectedCampaignId)}/details?datePreset=${datePreset}`,
+          {
+            cache: 'no-store',
+            headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          }
+        )
+        const payload = await response.json()
+        if (!response.ok) throw new Error(payload.error || 'Failed to load campaign details')
+        setDetails(payload)
+      } catch (error: any) {
+        toast.error(error.message || 'Failed to load campaign details')
+      } finally {
+        setLoadingDetails(false)
+      }
+    }
+    loadDetails()
+  }, [datePreset, selectedCampaignId])
+
+  async function handleOptimize() {
+    if (!rows.length) {
+      toast.error('Load campaigns first')
+      return
+    }
+    setLoadingOptimize(true)
+    try {
+      const token = await getAuthToken()
+      const ruleFindings = rows.map((row) => ({
+        campaignId: row.campaign.id,
+        campaignName: row.campaign.name,
+        objective: row.campaign.objective,
+        objectiveFamily: row.analysis.objectiveFamily,
+        market: row.analysis.benchmark.country,
+        score: row.analysis.score,
+        suggestions: row.analysis.suggestions.slice(0, 5),
+      }))
+      const response = await fetch('/api/integrations/meta/optimize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          campaigns,
+          insights,
+          summary,
+          market,
+          ruleFindings,
+        }),
+      })
+      const payload = await response.json()
+      if (!response.ok) throw new Error(payload.error || 'Optimization failed')
+      setOptimization(payload)
+    } catch (error: any) {
+      toast.error(error.message || 'Optimization failed')
+    } finally {
+      setLoadingOptimize(false)
+    }
+  }
+
+  if (notConfigured) return <EmptyConnectState />
+
+  return (
+    <ClientShell>
+      <div className="mx-auto max-w-[1500px] px-5 py-6 lg:px-8">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-text-dim">Performance command center</p>
+            <h1 className="mt-1 font-heading text-2xl font-semibold text-text-primary">Meta Ads Intelligence</h1>
+            <p className="mt-1 text-sm text-text-secondary">
+              Objective-aware campaign diagnostics with local MENA benchmarks, drill-downs, and AI recommendations.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="secondary" onClick={loadAccountData} disabled={loadingData || !selectedAccountId}>
+              <RefreshCcw size={14} className={loadingData ? 'animate-spin' : ''} />
+              Refresh
+            </Button>
+            <Button variant="primary" onClick={handleOptimize} disabled={loadingOptimize || !rows.length}>
+              {loadingOptimize ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+              AI Optimize
+            </Button>
+          </div>
+        </div>
+
+        <Card className="mb-5 rounded-lg p-4">
+          <div className="grid gap-3 lg:grid-cols-[minmax(260px,1.4fr)_160px_170px_1fr_auto]">
+            <Select
+              label="Ad Account"
+              value={selectedAccountId}
+              onChange={(event) => setSelectedAccountId(event.target.value)}
+              options={
+                accounts.length
+                  ? accounts.map((account) => ({ value: account.id, label: `${account.name} (${account.currency || 'Meta'})` }))
+                  : [{ value: '', label: loadingAccounts ? 'Loading accounts...' : 'No accounts found' }]
+              }
+            />
+            <Select
+              label="Date Range"
+              value={datePreset}
+              onChange={(event) => setDatePreset(event.target.value)}
+              options={DATE_PRESETS}
+            />
+            <Select
+              label="Benchmark Market"
+              value={market}
+              onChange={(event) => setMarket(event.target.value as MetaMarketCode)}
+              options={META_MARKET_OPTIONS}
+            />
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-mono uppercase tracking-wider text-text-secondary">Search Campaigns</label>
+              <div className="relative">
+                <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-dim" />
+                <input
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  className="w-full rounded-lg border border-border bg-base py-2 pl-9 pr-3 text-sm text-text-primary outline-none transition-colors placeholder:text-text-dim focus:border-accent-blue focus:ring-1 focus:ring-accent-blue/30"
+                  placeholder="Search by campaign name"
+                />
+              </div>
+            </div>
+            <div className="flex items-end gap-2">
+              <Button variant={viewMode === 'cards' ? 'primary' : 'secondary'} size="sm" onClick={() => setViewMode('cards')}>
+                Cards
+              </Button>
+              <Button variant={viewMode === 'table' ? 'primary' : 'secondary'} size="sm" onClick={() => setViewMode('table')}>
+                Table
+              </Button>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <Filter size={14} className="text-text-dim" />
+              {STATUS_FILTERS.map((filter) => (
+                <button
+                  key={filter.value}
+                  type="button"
+                  onClick={() => setStatusFilter(filter.value)}
+                  className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                    statusFilter === filter.value
+                      ? 'border-accent-blue bg-accent-blue/15 text-accent-blue'
+                      : 'border-border bg-base text-text-secondary hover:border-border-glow hover:text-text-primary'
+                  }`}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-text-secondary">
+              <Badge color="#4f8ef7" variant="outline">{filteredRows.length} of {rows.length} campaigns</Badge>
+              <Badge color="#18c7b6" variant="outline">{benchmark.country}</Badge>
+              <span>{benchmark.marketContext}</span>
+            </div>
+          </div>
+        </Card>
+
+        {summary ? (
+          <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+            <KpiCard icon={DollarSign} label="Spend" value={fmtCurrency(summary.spend, accountCurrency)} sub="Selected period" color="#8f72ff" />
+            <KpiCard icon={Eye} label="Reach" value={fmt(summary.reach)} sub={`${fmt(summary.impressions)} impressions`} color="#4f8ef7" />
+            <KpiCard icon={MousePointerClick} label="Clicks" value={fmt(summary.clicks)} sub={`${percent(summary.ctr)} CTR`} color="#18c7b6" />
+            <KpiCard icon={Target} label="CPC" value={fmtCurrency(summary.cpc, accountCurrency, 2)} sub="Traffic cost" color="#2ecf91" />
+            <KpiCard icon={BarChart3} label="CPM" value={fmtCurrency(summary.cpm, accountCurrency, 2)} sub="Reach cost" color="#f4c84f" />
+            <KpiCard icon={Zap} label="Events" value={fmt(num(summary.conversions) + num(summary.leads))} sub="Detected actions" color="#ff8a5b" />
+          </div>
+        ) : null}
+
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+          <div className="space-y-4">
+            {loadingData ? (
+              <Card className="flex items-center gap-3 rounded-lg p-8 text-text-secondary">
+                <Loader2 size={18} className="animate-spin text-accent-blue" />
+                Loading campaigns, insights, and objective diagnostics...
+              </Card>
+            ) : viewMode === 'table' ? (
+              <Card className="overflow-hidden rounded-lg p-0">
+                <div className="border-b border-border px-4 py-3">
+                  <h2 className="text-sm font-semibold text-text-primary">Campaign Table</h2>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[920px] border-collapse text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-left text-[11px] uppercase tracking-wider text-text-dim">
+                        {['Campaign', 'Objective', 'Score', 'Spend', 'CTR', 'CPC', 'CPM', 'Top Alert'].map((heading) => (
+                          <th key={heading} className="px-4 py-3 font-mono">{heading}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredRows.map(({ campaign, insight, analysis }) => (
+                        <tr
+                          key={campaign.id}
+                          className="cursor-pointer border-b border-border/70 hover:bg-base/60"
+                          onClick={() => setSelectedCampaignId(campaign.id)}
+                        >
+                          <td className="px-4 py-3">
+                            <p className="font-medium text-text-primary">{campaign.name}</p>
+                            <p className="text-[11px] text-text-dim">{campaign.id}</p>
+                          </td>
+                          <td className="px-4 py-3">
+                            <Badge color="#4f8ef7" variant="outline">{analysis.objectiveFamily}</Badge>
+                          </td>
+                          <td className="px-4 py-3 font-semibold text-text-primary">{analysis.score}</td>
+                          <td className="px-4 py-3">{fmtCurrency(insight?.spend, accountCurrency)}</td>
+                          <td className="px-4 py-3">{percent(insight?.ctr)}</td>
+                          <td className="px-4 py-3">{fmtCurrency(insight?.cpc, accountCurrency, 2)}</td>
+                          <td className="px-4 py-3">{fmtCurrency(insight?.cpm, accountCurrency, 2)}</td>
+                          <td className="px-4 py-3 text-text-secondary">{analysis.suggestions[0]?.title || 'Healthy'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            ) : filteredRows.length ? (
+              filteredRows.map(({ campaign, insight, analysis }) => (
+                <Card
+                  key={campaign.id}
+                  hover
+                  onClick={() => setSelectedCampaignId(campaign.id)}
+                  className={`rounded-lg p-4 ${selectedCampaignId === campaign.id ? 'border-accent-blue shadow-[var(--shadow-glow-blue)]' : ''}`}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="mb-2 flex flex-wrap items-center gap-2">
+                        <Badge color={campaignStatus(campaign) === 'active' ? '#2ecf91' : campaignStatus(campaign) === 'paused' ? '#f4c84f' : '#93a1b5'} variant="outline">
+                          {campaignStatus(campaign) || 'unknown'}
+                        </Badge>
+                        <Badge color="#4f8ef7" variant="outline">{analysis.objectiveFamily}</Badge>
+                        <Badge color="#18c7b6" variant="outline">{analysis.benchmark.country}</Badge>
+                      </div>
+                      <h2 className="truncate font-heading text-lg font-semibold text-text-primary">{campaign.name}</h2>
+                      <p className="mt-1 text-xs text-text-secondary">
+                        {campaign.objective || 'No objective'} · Daily {budget(campaign.daily_budget)} · Lifetime {budget(campaign.lifetime_budget)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-mono text-[11px] uppercase tracking-wider text-text-dim">Health Score</p>
+                      <p className="font-heading text-3xl font-semibold text-text-primary">{analysis.score}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 md:grid-cols-6">
+                    <div className="rounded-lg border border-border bg-base/55 p-3">
+                      <p className="text-[10px] font-mono uppercase text-text-dim">Spend</p>
+                      <p className="mt-1 font-semibold text-text-primary">{fmtCurrency(insight?.spend, accountCurrency)}</p>
+                    </div>
+                    <div className="rounded-lg border border-border bg-base/55 p-3">
+                      <p className="text-[10px] font-mono uppercase text-text-dim">Reach</p>
+                      <p className="mt-1 font-semibold text-text-primary">{fmt(insight?.reach)}</p>
+                    </div>
+                    <div className="rounded-lg border border-border bg-base/55 p-3">
+                      <p className="text-[10px] font-mono uppercase text-text-dim">CTR</p>
+                      <p className="mt-1 font-semibold text-text-primary">{percent(insight?.ctr)}</p>
+                    </div>
+                    <div className="rounded-lg border border-border bg-base/55 p-3">
+                      <p className="text-[10px] font-mono uppercase text-text-dim">CPC</p>
+                      <p className="mt-1 font-semibold text-text-primary">{fmtCurrency(insight?.cpc, accountCurrency, 2)}</p>
+                    </div>
+                    <div className="rounded-lg border border-border bg-base/55 p-3">
+                      <p className="text-[10px] font-mono uppercase text-text-dim">Events</p>
+                      <p className="mt-1 font-semibold text-text-primary">{fmt(num(insight?.conversions) + num(insight?.leads))}</p>
+                    </div>
+                    <div className="rounded-lg border border-border bg-base/55 p-3">
+                      <p className="text-[10px] font-mono uppercase text-text-dim">Frequency</p>
+                      <p className="mt-1 font-semibold text-text-primary">{fmt(insight?.frequency, 2)}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <SuggestionList suggestions={analysis.suggestions} />
+                  </div>
+                </Card>
+              ))
+            ) : (
+              <Card className="rounded-lg p-10 text-center">
+                <p className="text-sm font-medium text-text-primary">No campaigns match this view.</p>
+                <p className="mt-1 text-xs text-text-secondary">Try a wider date range, remove search, or change the status filter.</p>
+              </Card>
+            )}
+          </div>
+
+          <aside className="space-y-4 xl:sticky xl:top-6 xl:self-start">
+            <Card className="rounded-lg p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-mono text-[11px] uppercase tracking-wider text-text-dim">Selected Campaign</p>
+                  <h2 className="mt-1 text-sm font-semibold text-text-primary">{selectedRow?.campaign.name || 'No campaign selected'}</h2>
+                </div>
+                {loadingDetails ? <Loader2 size={16} className="animate-spin text-accent-blue" /> : <Layers3 size={17} className="text-accent-blue" />}
+              </div>
+
+              {selectedRow ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-lg border border-border bg-base/60 p-3">
+                      <p className="text-[10px] font-mono uppercase text-text-dim">Objective</p>
+                      <p className="mt-1 text-sm font-semibold text-text-primary">{mapMetaObjectiveToFamily(selectedRow.campaign.objective)}</p>
+                    </div>
+                    <div className="rounded-lg border border-border bg-base/60 p-3">
+                      <p className="text-[10px] font-mono uppercase text-text-dim">Score</p>
+                      <p className="mt-1 text-sm font-semibold text-text-primary">{selectedRow.analysis.score}/100</p>
+                    </div>
+                  </div>
+                  <SuggestionList suggestions={selectedRow.analysis.suggestions} />
+
+                  <div className="rounded-lg border border-border bg-base/60">
+                    <div className="flex items-center justify-between border-b border-border px-3 py-2">
+                      <p className="text-xs font-semibold text-text-primary">Ad Sets</p>
+                      <Badge color="#4f8ef7" variant="outline">{details?.adsets?.length || 0}</Badge>
+                    </div>
+                    <div className="max-h-52 overflow-auto p-2">
+                      {(details?.adsets || []).slice(0, 8).map((adset: any) => (
+                        <div key={adset.id} className="rounded-md px-2 py-2 text-xs hover:bg-card">
+                          <p className="font-medium text-text-primary">{adset.name}</p>
+                          <p className="mt-0.5 text-text-dim">
+                            {adset.status || adset.effective_status || 'unknown'} · {adset.optimization_goal || 'no optimization goal'}
+                          </p>
+                        </div>
+                      ))}
+                      {!details?.adsets?.length ? <p className="px-2 py-3 text-xs text-text-dim">No ad sets loaded.</p> : null}
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-border bg-base/60">
+                    <div className="flex items-center justify-between border-b border-border px-3 py-2">
+                      <p className="text-xs font-semibold text-text-primary">Ads & Creatives</p>
+                      <Badge color="#18c7b6" variant="outline">{details?.ads?.length || 0}</Badge>
+                    </div>
+                    <div className="max-h-64 overflow-auto p-2">
+                      {(details?.ads || []).slice(0, 8).map((ad: any) => {
+                        const creative = details?.creatives?.find((item: any) => item.adId === ad.id)
+                        return (
+                          <div key={ad.id} className="rounded-md px-2 py-2 text-xs hover:bg-card">
+                            <p className="font-medium text-text-primary">{ad.name}</p>
+                            <p className="mt-0.5 text-text-dim">{ad.status || ad.effective_status || 'unknown'}</p>
+                            {creative?.thumbnail_url || creative?.image_url ? (
+                              <img
+                                src={creative.thumbnail_url || creative.image_url}
+                                alt={creative.name || ad.name}
+                                className="mt-2 h-24 w-full rounded-md border border-border object-cover"
+                              />
+                            ) : null}
+                            {creative?.body ? <p className="mt-2 line-clamp-3 text-text-secondary">{creative.body}</p> : null}
+                          </div>
+                        )
+                      })}
+                      {!details?.ads?.length ? <p className="px-2 py-3 text-xs text-text-dim">No ads loaded.</p> : null}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-text-secondary">Select a campaign to inspect its ad sets, ads, creative, and objective-aware findings.</p>
+              )}
+            </Card>
+
+            {optimization ? (
+              <Card className="rounded-lg p-4">
+                <div className="mb-3 flex items-center gap-2">
+                  <Wand2 size={16} className="text-accent-purple" />
+                  <h2 className="text-sm font-semibold text-text-primary">AI Optimization</h2>
+                </div>
+                <p className="text-xs leading-relaxed text-text-secondary">{optimization.summary}</p>
+                {optimization.recommendations?.length ? (
+                  <div className="mt-4 space-y-3">
+                    {optimization.recommendations.slice(0, 5).map((rec, index) => (
+                      <div key={`${rec.title}-${index}`} className="border-l-2 pl-3" style={{ borderColor: priorityColor(rec.priority) }}>
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-semibold text-text-primary">{rec.title}</p>
+                          <Badge color={priorityColor(rec.priority)} variant="outline">{rec.priority}</Badge>
+                        </div>
+                        <p className="mt-1 text-[11px] leading-relaxed text-text-secondary">{rec.detail}</p>
+                        {rec.estimatedImpact ? <p className="mt-1 text-[11px] text-accent-cyan">{rec.estimatedImpact}</p> : null}
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </Card>
+            ) : null}
+          </aside>
+        </div>
+
+        <div className="mt-6">
+          <VideoGenerationPanel />
+        </div>
+      </div>
+    </ClientShell>
+  )
+}
 
 function VideoGenerationPanel() {
   const [prompt, setPrompt] = useState('')
@@ -488,123 +807,103 @@ function VideoGenerationPanel() {
         const data = await res.json()
         setVideoStatus(data)
         if (data.status === 'completed' || data.status === 'failed' || data.videoUrl) {
-          clearInterval(pollRef.current!)
+          if (pollRef.current) clearInterval(pollRef.current)
           pollRef.current = null
         }
-      } catch { /* silent */ }
+      } catch {
+        // Keep polling quiet; the status call can transiently fail while jobs are queued.
+      }
     }, 4000)
   }, [])
 
   useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current) }, [])
 
   async function handleGenerate() {
-    if (!prompt.trim()) { toast.error('Enter a prompt'); return }
+    if (!prompt.trim()) {
+      toast.error('Enter a prompt')
+      return
+    }
     setGenerating(true)
     setVideoStatus(null)
     setJobId(null)
     try {
       const token = await getAuthToken()
-      const res = await fetch('/api/integrations/higgsfield/generate', {
+      const response = await fetch('/api/integrations/higgsfield/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ prompt, aspectRatio, duration }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Generation failed')
-      setJobId(data.jobId)
-      setVideoStatus({ status: data.status || 'queued', progress: 0 })
-      if (data.jobId) startPolling(data.jobId)
+      const payload = await response.json()
+      if (!response.ok) throw new Error(payload.error || 'Generation failed')
+      setJobId(payload.jobId)
+      setVideoStatus({ status: payload.status || 'queued', progress: 0 })
+      if (payload.jobId) startPolling(payload.jobId)
       toast.success('Video generation started')
-    } catch (err: any) {
-      if (err.message?.includes('not configured')) {
-        toast.error('Add Higgsfield API key in Settings to generate videos')
-      } else {
-        toast.error(err.message || 'Generation failed')
-      }
+    } catch (error: any) {
+      toast.error(error.message?.includes('not configured') ? 'Add Higgsfield API key in Settings to generate videos' : error.message || 'Generation failed')
     } finally {
       setGenerating(false)
     }
   }
 
   return (
-    <Card style={{ padding: 20 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-        <Video size={16} style={{ color: '#9b6dff' }} />
-        <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Video Generation</h2>
-        <Badge color="#9b6dff">Higgsfield AI</Badge>
+    <Card className="rounded-lg p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Video size={16} className="text-accent-purple" />
+          <div>
+            <h2 className="text-sm font-semibold text-text-primary">Creative Video Generator</h2>
+            <p className="text-xs text-text-secondary">Generate quick ad-video concepts through the existing Higgsfield integration.</p>
+          </div>
+        </div>
+        <Badge color="#8f72ff" variant="outline">Higgsfield</Badge>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px 120px auto', gap: 10, alignItems: 'end' }}>
-        <div>
-          <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Prompt</label>
-          <input
-            value={prompt}
-            onChange={e => setPrompt(e.target.value)}
-            placeholder="A product showcase with motion blur and cinematic lighting…"
-            style={{
-              width: '100%', padding: '8px 12px', background: 'var(--surface-raised)',
-              border: '1px solid var(--border-subtle)', borderRadius: 6, color: 'var(--text-primary)',
-              fontSize: 12, outline: 'none', boxSizing: 'border-box',
-            }}
-          />
-        </div>
-        <div>
-          <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Aspect ratio</label>
-          <select value={aspectRatio} onChange={e => setAspectRatio(e.target.value)} style={{ width: '100%', padding: '7px 10px', background: 'var(--surface-base)', border: '1px solid var(--border-subtle)', borderRadius: 6, color: 'var(--text-primary)', fontSize: 12, cursor: 'pointer' }}>
-            <option value="16:9">16:9 (landscape)</option>
-            <option value="9:16">9:16 (vertical)</option>
-            <option value="1:1">1:1 (square)</option>
-          </select>
-        </div>
-        <div>
-          <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Duration</label>
-          <select value={duration} onChange={e => setDuration(Number(e.target.value))} style={{ width: '100%', padding: '7px 10px', background: 'var(--surface-base)', border: '1px solid var(--border-subtle)', borderRadius: 6, color: 'var(--text-primary)', fontSize: 12, cursor: 'pointer' }}>
-            <option value={3}>3 seconds</option>
-            <option value={5}>5 seconds</option>
-            <option value={8}>8 seconds</option>
-          </select>
-        </div>
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_150px_130px_auto]">
+        <input
+          value={prompt}
+          onChange={(event) => setPrompt(event.target.value)}
+          placeholder="Product showcase with kinetic typography, clean lighting, and a strong CTA"
+          className="rounded-lg border border-border bg-base px-3 py-2 text-sm text-text-primary outline-none placeholder:text-text-dim focus:border-accent-blue focus:ring-1 focus:ring-accent-blue/30"
+        />
+        <select
+          value={aspectRatio}
+          onChange={(event) => setAspectRatio(event.target.value)}
+          className="rounded-lg border border-border bg-base px-3 py-2 text-sm text-text-primary outline-none focus:border-accent-blue"
+        >
+          <option value="16:9">16:9 landscape</option>
+          <option value="9:16">9:16 vertical</option>
+          <option value="1:1">1:1 square</option>
+        </select>
+        <select
+          value={duration}
+          onChange={(event) => setDuration(Number(event.target.value))}
+          className="rounded-lg border border-border bg-base px-3 py-2 text-sm text-text-primary outline-none focus:border-accent-blue"
+        >
+          <option value={3}>3 seconds</option>
+          <option value={5}>5 seconds</option>
+          <option value={8}>8 seconds</option>
+        </select>
         <Button variant="primary" onClick={handleGenerate} disabled={generating || !prompt.trim()}>
-          {generating ? <Loader2 size={13} className="animate-spin" /> : <Video size={13} />}
-          {generating ? 'Starting…' : 'Generate'}
+          {generating ? <Loader2 size={14} className="animate-spin" /> : <Video size={14} />}
+          Generate
         </Button>
       </div>
-
-      {/* Status */}
-      {videoStatus && (
-        <div style={{ marginTop: 16, padding: '12px 16px', background: 'var(--surface-raised)', borderRadius: 8 }}>
+      {videoStatus ? (
+        <div className="mt-4 rounded-lg border border-border bg-base/60 p-4">
           {videoStatus.videoUrl ? (
             <div>
-              <div style={{ fontSize: 12, color: '#22d3ee', fontWeight: 600, marginBottom: 10 }}>✓ Video ready</div>
-              <video
-                src={videoStatus.videoUrl}
-                controls
-                style={{ width: '100%', maxWidth: 480, borderRadius: 8, background: '#000' }}
-              />
-              <a
-                href={videoStatus.videoUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#9b6dff', marginTop: 8 }}
-              >
-                Open in new tab <ChevronRight size={10} />
-              </a>
+              <p className="mb-3 text-sm font-semibold text-accent-cyan">Video ready</p>
+              <video src={videoStatus.videoUrl} controls className="max-h-[420px] w-full rounded-lg border border-border bg-black" />
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <Loader2 size={14} className="animate-spin" style={{ color: '#9b6dff' }} />
-              <div>
-                <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 500, textTransform: 'capitalize' }}>
-                  {videoStatus.status}
-                  {videoStatus.progress != null && videoStatus.progress > 0 ? ` — ${Math.round(videoStatus.progress * 100)}%` : ''}
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
-                  Job ID: {jobId}
-                </div>
-              </div>
+            <div className="flex items-center gap-3 text-sm text-text-secondary">
+              <Loader2 size={15} className="animate-spin text-accent-purple" />
+              <span className="capitalize">{videoStatus.status}</span>
+              {jobId ? <span className="font-mono text-[11px] text-text-dim">Job {jobId}</span> : null}
             </div>
           )}
         </div>
-      )}
+      ) : null}
     </Card>
   )
 }

@@ -15,25 +15,14 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { resolveAuthContextFromToken, getAuthTokenFromRequest } from '@/lib/auth/server'
 import { normalizeProviderSettings } from '@/lib/provider-settings'
-import { getOAuthToken } from '@/lib/server/oauth-tokens'
+import { enrichInsight, fetchAllMetaPages, metaGraphRequest, normalizeAdAccountId, resolveMetaToken } from '@/lib/server/meta-ads-api'
 
 function getBearerToken(r: NextRequest) {
   // Batch P.2: cookie OR bearer. Local wrapper kept so call sites don't change.
   return getAuthTokenFromRequest(r)
 }
 
-const META_GRAPH_VERSION = process.env.META_GRAPH_API_VERSION || 'v20.0'
-const META_GRAPH = `https://graph.facebook.com/${META_GRAPH_VERSION}`
-
 export const dynamic = 'force-dynamic'
-
-async function resolveMetaAccessToken(userId: string, settingsToken?: string | null): Promise<string | null> {
-  // 1. Stored OAuth token (encrypted at rest).
-  const oauth = await getOAuthToken(userId, 'meta')
-  if (oauth?.accessToken) return oauth.accessToken
-  // 2. Legacy: provider-settings access token from the Settings UI.
-  return settingsToken && settingsToken.length > 0 ? settingsToken : null
-}
 
 export async function GET(request: NextRequest) {
   try {
@@ -41,7 +30,7 @@ export async function GET(request: NextRequest) {
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const settings = normalizeProviderSettings(auth.providerSettings)
-    const token = await resolveMetaAccessToken(auth.userId, settings.meta?.accessToken)
+    const token = await resolveMetaToken(auth.userId, settings)
     const url = new URL(request.url)
     const accountId = url.searchParams.get('accountId') || settings.meta?.adAccountId
     const datePreset = url.searchParams.get('datePreset') || 'last_30d'
@@ -55,7 +44,7 @@ export async function GET(request: NextRequest) {
     }
     if (!accountId) return NextResponse.json({ error: 'Ad account ID required' }, { status: 400 })
 
-    const adAccount = accountId.startsWith('act_') ? accountId : `act_${accountId}`
+    const adAccount = normalizeAdAccountId(accountId)
 
     const fields = [
       'campaign_name', 'campaign_id',
@@ -63,28 +52,27 @@ export async function GET(request: NextRequest) {
       'spend', 'cpm', 'cpc', 'ctr',
       'conversions', 'cost_per_conversion',
       'frequency', 'unique_clicks',
-      'actions', 'action_values',
+      'actions', 'action_values', 'cost_per_action_type',
+      'inline_link_clicks', 'inline_link_click_ctr', 'cost_per_inline_link_click',
     ].join(',')
 
-    // Token in header (not URL query) so it doesn't end up in access logs.
-    const headers = { Authorization: `Bearer ${token}` }
-    const qs = new URLSearchParams({ fields, date_preset: datePreset, level, limit: '50' })
-
-    const res = await fetch(`${META_GRAPH}/${adAccount}/insights?${qs.toString()}`, { headers })
-    const data = await res.json()
-    if (!res.ok || data.error) {
-      return NextResponse.json({ error: data.error?.message || 'Meta API error' }, { status: res.status })
-    }
+    const insights = await fetchAllMetaPages(`/${adAccount}/insights`, token, {
+      fields,
+      date_preset: datePreset,
+      level,
+      limit: 100,
+    })
 
     // Account-level summary
-    const summaryQs = new URLSearchParams({ fields, date_preset: datePreset, level: 'account' })
-    const summaryRes = await fetch(`${META_GRAPH}/${adAccount}/insights?${summaryQs.toString()}`, { headers })
-    const summaryData = await summaryRes.json()
+    const summaryData = await metaGraphRequest<{ data?: any[] }>(`/${adAccount}/insights`, token, {
+      fields,
+      date_preset: datePreset,
+      level: 'account',
+    })
 
     return NextResponse.json({
-      insights: data.data || [],
-      summary: summaryData.data?.[0] || null,
-      paging: data.paging,
+      insights: insights.map(enrichInsight),
+      summary: summaryData.data?.[0] ? enrichInsight(summaryData.data[0]) : null,
       datePreset,
       level,
     })

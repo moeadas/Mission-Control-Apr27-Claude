@@ -2,15 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { resolveAuthContextFromToken, getAuthTokenFromRequest } from '@/lib/auth/server'
 import { normalizeProviderSettings } from '@/lib/provider-settings'
-import { getOAuthToken } from '@/lib/server/oauth-tokens'
+import { fetchAllMetaPages, resolveMetaToken } from '@/lib/server/meta-ads-api'
 
 function getBearerToken(r: NextRequest) {
   // Batch P.2: cookie OR bearer. Local wrapper kept so call sites don't change.
   return getAuthTokenFromRequest(r)
 }
-
-const META_GRAPH_VERSION = process.env.META_GRAPH_API_VERSION || 'v20.0'
-const META_GRAPH = `https://graph.facebook.com/${META_GRAPH_VERSION}`
 
 export const dynamic = 'force-dynamic'
 
@@ -20,8 +17,7 @@ export async function GET(request: NextRequest) {
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const settings = normalizeProviderSettings(auth.providerSettings)
-    const oauth = await getOAuthToken(auth.userId, 'meta')
-    const token = oauth?.accessToken || settings.meta?.accessToken
+    const token = await resolveMetaToken(auth.userId, settings)
     if (!token) {
       return NextResponse.json(
         { error: 'Meta access token not configured. Connect Meta in Settings.', code: 'META_NOT_CONNECTED' },
@@ -29,16 +25,17 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const res = await fetch(
-      `${META_GRAPH}/me/adaccounts?fields=id,name,account_status,currency,timezone_name,business&limit=50`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    )
-    const data = await res.json()
-    if (!res.ok || data.error) {
-      return NextResponse.json({ error: data.error?.message || 'Meta API error' }, { status: res.status })
-    }
+    const accounts = await fetchAllMetaPages('/me/adaccounts', token, {
+      fields: 'id,name,account_id,account_status,currency,timezone_name,business',
+      limit: 100,
+    })
 
-    return NextResponse.json({ accounts: data.data || [] })
+    return NextResponse.json({
+      accounts,
+      count: accounts.length,
+      defaultAccountId: settings.meta?.adAccountId || accounts[0]?.id || '',
+      primaryMarket: settings.meta?.primaryMarket || 'JO',
+    })
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Failed to fetch Meta accounts' }, { status: 500 })
   }

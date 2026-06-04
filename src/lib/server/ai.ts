@@ -8,8 +8,38 @@ type VerifyPayload =
   | { provider: 'anthropic'; apiKey: string }
   | { provider: 'openai'; apiKey: string; baseUrl?: string }
   | { provider: 'serper'; apiKey: string; testQuery?: string; country?: string; language?: string; resultCount?: number }
+  | { provider: 'meta'; accessToken: string }
 
 export async function verifyProvider(payload: VerifyPayload) {
+  // ── Meta Ads ────────────────────────────────────────────────────────────────
+  if (payload.provider === 'meta') {
+    const accessToken = payload.accessToken?.trim()
+    if (!accessToken) throw new Error('Meta access token is required.')
+    const response = await fetch(
+      'https://graph.facebook.com/v20.0/me/adaccounts?fields=id,name,account_status,currency,timezone_name,business&limit=100',
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        signal: AbortSignal.timeout(12000),
+      }
+    )
+    const data = await response.json().catch(() => null)
+    if (!response.ok || data?.error) {
+      throw new Error(data?.error?.message || `Meta returned HTTP ${response.status}.`)
+    }
+    const accounts = Array.isArray(data?.data) ? data.data : []
+    return {
+      ok: true,
+      accounts: accounts.map((account: any) => ({
+        id: account.id,
+        name: account.name,
+        account_status: account.account_status,
+        currency: account.currency,
+        timezone_name: account.timezone_name,
+      })),
+      count: accounts.length,
+    }
+  }
+
   // ── Serper.dev ──────────────────────────────────────────────────────────────
   if (payload.provider === 'serper') {
     const apiKey = payload.apiKey?.trim()

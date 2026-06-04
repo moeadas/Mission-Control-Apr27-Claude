@@ -457,6 +457,7 @@ export interface MetaAdsSettings {
   maskedToken?: string
   adAccountId: string   // e.g. "act_123456789"
   businessId?: string
+  primaryMarket?: string
 }
 
 export interface HiggsFieldSettings {

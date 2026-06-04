@@ -115,6 +115,7 @@ export const DEFAULT_PROVIDER_SETTINGS: ProviderSettings = {
     maskedToken: '',
     adAccountId: '',
     businessId: '',
+    primaryMarket: 'JO',
   },
   higgsfield: {
     enabled: false,

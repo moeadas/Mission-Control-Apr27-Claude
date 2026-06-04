@@ -11,6 +11,7 @@ import { toast } from '@/components/ui/Toast'
 import { useAgentsStore } from '@/lib/agents-store'
 import { getProviderModels, MODEL_OPTIONS, PROVIDER_OPTIONS } from '@/lib/providers'
 import { ProviderFallback, ThemeMode } from '@/lib/types'
+import { META_MARKET_OPTIONS } from '@/lib/meta-ads-intelligence'
 import { getAuthToken } from '@/lib/auth/browser'
 import { Lock } from 'lucide-react'
 import Link from 'next/link'
@@ -142,6 +143,7 @@ export default function SettingsPage() {
   )
   const [metaTokenInput, setMetaTokenInput] = useState('')
   const [metaAccountIdInput, setMetaAccountIdInput] = useState(providerSettings.meta?.adAccountId || '')
+  const [metaPrimaryMarketInput, setMetaPrimaryMarketInput] = useState(providerSettings.meta?.primaryMarket || 'JO')
   const [metaDiscoveredAccounts, setMetaDiscoveredAccounts] = useState<{ id: string; name: string }[]>([])
   const [showMetaGuide, setShowMetaGuide] = useState(false)
   const [isVerifyingMeta, setIsVerifyingMeta] = useState(false)
@@ -225,6 +227,24 @@ export default function SettingsPage() {
     providerSettings.serper?.maskedKey,
     providerSettings.serper?.testQuery,
     providerSettings.serper?.verified,
+  ])
+
+  useEffect(() => {
+    setMetaAccountIdInput(providerSettings.meta?.adAccountId || '')
+    setMetaPrimaryMarketInput(providerSettings.meta?.primaryMarket || 'JO')
+    setMetaHealth(providerSettings.meta?.verified ? 'connected' : 'idle')
+    setMetaHealthMessage(
+      providerSettings.meta?.verified
+        ? `Meta Ads connected · ${providerSettings.meta?.primaryMarket || 'JO'} benchmark market`
+        : providerSettings.meta?.maskedToken
+          ? 'Saved token is not verified in this session'
+          : 'Meta access token not verified yet'
+    )
+  }, [
+    providerSettings.meta?.adAccountId,
+    providerSettings.meta?.maskedToken,
+    providerSettings.meta?.primaryMarket,
+    providerSettings.meta?.verified,
   ])
 
   useEffect(() => {
@@ -544,24 +564,29 @@ export default function SettingsPage() {
   const saveMeta = async () => {
     const token = metaTokenInput.trim()
     const accountId = metaAccountIdInput.trim()
-    if (!token && !providerSettings.meta?.accessToken) {
+    const primaryMarket = metaPrimaryMarketInput || providerSettings.meta?.primaryMarket || 'JO'
+    if (!token && !providerSettings.meta?.maskedToken) {
       toast.error('Paste a Meta access token first')
       return
     }
     setIsVerifyingMeta(true)
     setMetaHealth('testing')
-    setMetaHealthMessage('Verifying Meta token…')
+    setMetaHealthMessage(token ? 'Verifying Meta token…' : 'Saving Meta preferences…')
     try {
       const authToken = await getAuthToken()
-      // Quick verify: list ALL ad accounts accessible to this token
-      const verifyRes = await fetch(
-        `https://graph.facebook.com/v20.0/me/adaccounts?fields=id,name,account_status&limit=50&access_token=${token || providerSettings.meta?.accessToken}`
-      )
-      const verifyData = await verifyRes.json()
-      if (!verifyRes.ok || verifyData.error) {
-        throw new Error(verifyData.error?.message || 'Invalid Meta access token')
+      let accounts: { id: string; name: string }[] = []
+      if (token) {
+        const verifyRes = await fetch('/api/providers/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) },
+          body: JSON.stringify({ provider: 'meta', accessToken: token }),
+        })
+        const verifyData = await verifyRes.json().catch(() => null)
+        if (!verifyRes.ok || !verifyData?.ok) {
+          throw new Error(verifyData?.error || 'Invalid Meta access token')
+        }
+        accounts = verifyData.accounts || []
       }
-      const accounts: { id: string; name: string }[] = verifyData.data || []
       setMetaDiscoveredAccounts(accounts)
       // Auto-select first account if nothing set yet
       const defaultAccountId = accountId || providerSettings.meta?.adAccountId || accounts[0]?.id || ''
@@ -577,6 +602,7 @@ export default function SettingsPage() {
         maskedToken,
         adAccountId: defaultAccountId,
         businessId: providerSettings.meta?.businessId || '',
+        primaryMarket,
       }
       updateProviderSettings('meta' as any, nextMeta)
       const nextSettings = { ...providerSettings, meta: nextMeta }
@@ -587,9 +613,13 @@ export default function SettingsPage() {
       })
       if (!saveRes.ok) throw new Error('Token verified but settings could not be saved')
       setMetaHealth('connected')
-      setMetaHealthMessage(`Meta connected · ${accounts.length} ad account(s) found`)
+      setMetaHealthMessage(
+        token
+          ? `Meta connected · ${accounts.length} ad account(s) found · ${primaryMarket} benchmark market`
+          : `Meta preferences saved · ${primaryMarket} benchmark market`
+      )
       setMetaTokenInput('')
-      toast.success(`Meta Ads connected · ${accounts.length} account(s) available`)
+      toast.success(token ? `Meta Ads connected · ${accounts.length} account(s) available` : 'Meta Ads preferences saved')
     } catch (err: any) {
       setMetaHealth('invalid')
       setMetaHealthMessage(err.message || 'Meta verification failed')
@@ -1461,6 +1491,16 @@ export default function SettingsPage() {
                       )}
                     </div>
                   )}
+
+                  <Select
+                    label="Primary Benchmark Market"
+                    value={metaPrimaryMarketInput}
+                    onChange={(e) => setMetaPrimaryMarketInput(e.target.value)}
+                    options={META_MARKET_OPTIONS.map((market) => ({ value: market.value, label: market.label }))}
+                  />
+                  <p className="text-[11px] text-text-dim">
+                    Used by the Ads dashboard to judge CPC, CPM, CTR, CPL, and CPA against local MENA benchmarks.
+                  </p>
 
                   <div className="rounded-xl border border-border bg-base px-3 py-2">
                     <p className="text-[11px] font-mono uppercase text-text-dim">Status</p>
