@@ -12,7 +12,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { google } from 'googleapis'
 
 import { resolveAuthContextFromToken, getAuthTokenFromRequest } from '@/lib/auth/server'
-import { signToken, verifyToken } from '@/lib/auth/jwt'
+import { signToken } from '@/lib/auth/jwt'
 
 const DEFAULT_SCOPES = [
   'openid',
@@ -29,6 +29,14 @@ function getBearerToken(request: NextRequest) {
   return getAuthTokenFromRequest(request)
 }
 
+function publicOrigin(request: NextRequest) {
+  const configured = process.env.NEXT_PUBLIC_APP_URL?.trim()
+  if (configured) return configured.replace(/\/$/, '')
+  const proto = request.headers.get('x-forwarded-proto') || 'https'
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || new URL(request.url).host
+  return `${proto}://${host}`.replace(/\/$/, '')
+}
+
 export async function GET(request: NextRequest) {
   // Accept the JWT either as a Bearer header or as `?session=…` so the user
   // can simply click an `<a href>` from the Settings page.
@@ -36,17 +44,17 @@ export async function GET(request: NextRequest) {
   const inlineToken = url.searchParams.get('session')
   const auth = await resolveAuthContextFromToken(getBearerToken(request) ?? inlineToken)
   if (!auth) {
-    return NextResponse.redirect(new URL('/login?next=' + encodeURIComponent('/settings?integrations=google'), url.origin))
+    return NextResponse.redirect(new URL('/login?next=' + encodeURIComponent('/settings?integrations=google'), publicOrigin(request)))
   }
 
   const clientId = process.env.GOOGLE_CLIENT_ID
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET
   const redirectUri =
     process.env.GOOGLE_REDIRECT_URI ||
-    `${process.env.NEXT_PUBLIC_APP_URL || url.origin}/api/auth/google/callback`
+    `${publicOrigin(request)}/api/auth/google/callback`
 
   if (!clientId || !clientSecret) {
-    return NextResponse.redirect(new URL('/settings?google=misconfigured', url.origin))
+    return NextResponse.redirect(new URL('/settings?google=misconfigured', publicOrigin(request)))
   }
 
   const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri)

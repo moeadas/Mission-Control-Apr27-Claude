@@ -22,34 +22,43 @@ function settingsUrl(origin: string, params: Record<string, string>) {
   return url
 }
 
+function publicOrigin(request: NextRequest) {
+  const configured = process.env.NEXT_PUBLIC_APP_URL?.trim()
+  if (configured) return configured.replace(/\/$/, '')
+  const proto = request.headers.get('x-forwarded-proto') || 'https'
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || new URL(request.url).host
+  return `${proto}://${host}`.replace(/\/$/, '')
+}
+
 export async function GET(request: NextRequest) {
   const url = new URL(request.url)
+  const appOrigin = publicOrigin(request)
   const code = url.searchParams.get('code')
   const state = url.searchParams.get('state')
   const error = url.searchParams.get('error')
 
   if (error) {
     console.warn('[google-oauth] consent denied:', error)
-    return NextResponse.redirect(settingsUrl(url.origin, { google: 'denied' }))
+    return NextResponse.redirect(settingsUrl(appOrigin, { google: 'denied' }))
   }
 
   if (!code || !state) {
-    return NextResponse.redirect(settingsUrl(url.origin, { google: 'missing_params' }))
+    return NextResponse.redirect(settingsUrl(appOrigin, { google: 'missing_params' }))
   }
 
   const payload = await verifyToken(state)
   if (!payload?.sub) {
-    return NextResponse.redirect(settingsUrl(url.origin, { google: 'invalid_state' }))
+    return NextResponse.redirect(settingsUrl(appOrigin, { google: 'invalid_state' }))
   }
 
   const clientId = process.env.GOOGLE_CLIENT_ID
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET
   const redirectUri =
     process.env.GOOGLE_REDIRECT_URI ||
-    `${process.env.NEXT_PUBLIC_APP_URL || url.origin}/api/auth/google/callback`
+    `${appOrigin}/api/auth/google/callback`
 
   if (!clientId || !clientSecret) {
-    return NextResponse.redirect(settingsUrl(url.origin, { google: 'misconfigured' }))
+    return NextResponse.redirect(settingsUrl(appOrigin, { google: 'misconfigured' }))
   }
 
   try {
@@ -77,9 +86,9 @@ export async function GET(request: NextRequest) {
       expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
     })
 
-    return NextResponse.redirect(settingsUrl(url.origin, { google: 'connected' }))
+    return NextResponse.redirect(settingsUrl(appOrigin, { google: 'connected' }))
   } catch (err) {
     console.error('[google-oauth] token exchange failed:', err)
-    return NextResponse.redirect(settingsUrl(url.origin, { google: 'exchange_failed' }))
+    return NextResponse.redirect(settingsUrl(appOrigin, { google: 'exchange_failed' }))
   }
 }
