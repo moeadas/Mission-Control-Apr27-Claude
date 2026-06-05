@@ -64,6 +64,7 @@ interface CampaignInsight {
   campaign_name: string
   impressions?: string
   clicks?: string
+  unique_clicks?: string
   spend?: string
   cpm?: string
   cpc?: string
@@ -73,12 +74,20 @@ interface CampaignInsight {
   conversions?: string | number
   leads?: string | number
   purchases?: string | number
+  add_to_cart?: string | number
+  page_views?: string | number
   post_engagements?: string | number
   video_views?: string | number
   conversion_rate?: string
   cost_per_conversion?: string
   cost_per_lead?: string
   engagement_rate?: string
+  cost_per_engagement?: string
+  cost_per_video_view?: string
+  inline_link_clicks?: string | number
+  inline_link_click_ctr?: string
+  cost_per_inline_link_click?: string
+  link_clicks_action?: string | number
 }
 
 interface AccountSummary {
@@ -162,6 +171,12 @@ function percent(value: unknown) {
   return `${num(value).toFixed(2)}%`
 }
 
+function rate(numerator: unknown, denominator: unknown) {
+  const top = num(numerator)
+  const bottom = num(denominator)
+  return bottom > 0 ? `${((top / bottom) * 100).toFixed(2)}%` : '0.00%'
+}
+
 function budget(value?: string) {
   if (!value) return 'Not set'
   return fmtCurrency(num(value) / 100)
@@ -187,6 +202,144 @@ function typeColor(type: string) {
   if (type === 'warning') return '#f4c84f'
   if (type === 'success') return '#18c7b6'
   return '#4f8ef7'
+}
+
+type CampaignMetric = {
+  key: string
+  label: string
+  value: string
+  sub?: string
+  color: string
+}
+
+function compactMetric({
+  label,
+  value,
+  sub,
+  color,
+}: {
+  label: string
+  value: string
+  sub?: string
+  color: string
+}) {
+  return { key: label, label, value, sub, color }
+}
+
+function objectiveResultMetric(insight: CampaignInsight | null | undefined, objectiveFamily: string, currency: string): CampaignMetric {
+  if (objectiveFamily === 'leads') {
+    return compactMetric({
+      label: 'Leads',
+      value: fmt(insight?.leads),
+      sub: `${fmtCurrency(insight?.cost_per_lead, currency, 2)} cost / lead`,
+      color: '#18c7b6',
+    })
+  }
+  if (objectiveFamily === 'engagement') {
+    return compactMetric({
+      label: 'Engagements',
+      value: fmt(insight?.post_engagements),
+      sub: `${fmtCurrency(insight?.cost_per_engagement, currency, 2)} cost / engagement`,
+      color: '#8f72ff',
+    })
+  }
+  if (objectiveFamily === 'traffic') {
+    const linkClicks = num(insight?.inline_link_clicks) || num(insight?.link_clicks_action) || num(insight?.clicks)
+    return compactMetric({
+      label: 'Link Clicks',
+      value: fmt(linkClicks),
+      sub: `${fmtCurrency(insight?.cost_per_inline_link_click || insight?.cpc, currency, 2)} cost / click`,
+      color: '#4f8ef7',
+    })
+  }
+  if (objectiveFamily === 'app_promotion') {
+    return compactMetric({
+      label: 'App Events',
+      value: fmt(num(insight?.conversions) + num(insight?.purchases)),
+      sub: `${fmtCurrency(insight?.cost_per_conversion, currency, 2)} cost / event`,
+      color: '#ff8a5b',
+    })
+  }
+  if (objectiveFamily === 'awareness') {
+    return compactMetric({
+      label: 'Result Reach',
+      value: fmt(insight?.reach),
+      sub: `${fmtCurrency(insight?.cpm, currency, 2)} CPM`,
+      color: '#4f8ef7',
+    })
+  }
+  return compactMetric({
+    label: 'Purchases',
+    value: fmt(num(insight?.purchases) || num(insight?.conversions)),
+    sub: `${fmtCurrency(insight?.cost_per_conversion, currency, 2)} cost / conversion`,
+    color: '#2ecf91',
+  })
+}
+
+function campaignKpiMetrics(
+  insight: CampaignInsight | null | undefined,
+  objectiveFamily: string,
+  currency: string
+): CampaignMetric[] {
+  const clicks = num(insight?.inline_link_clicks) || num(insight?.link_clicks_action) || num(insight?.clicks)
+  const leads = num(insight?.leads)
+  const conversions = num(insight?.conversions)
+  const purchases = num(insight?.purchases) || conversions
+  const engagements = num(insight?.post_engagements)
+  const videoViews = num(insight?.video_views)
+
+  const byObjective: Record<string, CampaignMetric[]> = {
+    leads: [
+      objectiveResultMetric(insight, 'leads', currency),
+      compactMetric({ label: 'Cost / Lead', value: fmtCurrency(insight?.cost_per_lead, currency, 2), sub: 'Lead efficiency', color: '#2ecf91' }),
+      compactMetric({ label: 'Lead Rate', value: rate(leads, clicks), sub: `${fmt(clicks)} clicks`, color: '#18c7b6' }),
+      compactMetric({ label: 'Link Clicks', value: fmt(clicks), sub: percent(insight?.ctr), color: '#4f8ef7' }),
+      compactMetric({ label: 'CPC', value: fmtCurrency(insight?.cpc, currency, 2), sub: 'Traffic cost', color: '#f4c84f' }),
+      compactMetric({ label: 'CPM', value: fmtCurrency(insight?.cpm, currency, 2), sub: 'Auction cost', color: '#ff8a5b' }),
+    ],
+    engagement: [
+      objectiveResultMetric(insight, 'engagement', currency),
+      compactMetric({ label: 'Cost / Engage', value: fmtCurrency(insight?.cost_per_engagement, currency, 2), sub: 'Engagement efficiency', color: '#2ecf91' }),
+      compactMetric({ label: 'Engagement Rate', value: percent(insight?.engagement_rate), sub: `${fmt(engagements)} engagements`, color: '#18c7b6' }),
+      compactMetric({ label: 'Video Views', value: fmt(videoViews), sub: `${fmtCurrency(insight?.cost_per_video_view, currency, 3)} cost / view`, color: '#4f8ef7' }),
+      compactMetric({ label: 'CTR', value: percent(insight?.ctr), sub: `${fmt(clicks)} clicks`, color: '#f4c84f' }),
+      compactMetric({ label: 'Frequency', value: fmt(insight?.frequency, 2), sub: 'Fatigue signal', color: '#ff8a5b' }),
+    ],
+    traffic: [
+      objectiveResultMetric(insight, 'traffic', currency),
+      compactMetric({ label: 'Cost / Link Click', value: fmtCurrency(insight?.cost_per_inline_link_click || insight?.cpc, currency, 2), sub: 'Traffic efficiency', color: '#2ecf91' }),
+      compactMetric({ label: 'CTR', value: percent(insight?.inline_link_click_ctr || insight?.ctr), sub: 'Click quality', color: '#18c7b6' }),
+      compactMetric({ label: 'Landing Views', value: fmt(insight?.page_views), sub: 'Detected page views', color: '#4f8ef7' }),
+      compactMetric({ label: 'CPC', value: fmtCurrency(insight?.cpc, currency, 2), sub: 'All clicks', color: '#f4c84f' }),
+      compactMetric({ label: 'CPM', value: fmtCurrency(insight?.cpm, currency, 2), sub: 'Auction cost', color: '#ff8a5b' }),
+    ],
+    awareness: [
+      objectiveResultMetric(insight, 'awareness', currency),
+      compactMetric({ label: 'CPM', value: fmtCurrency(insight?.cpm, currency, 2), sub: 'Reach efficiency', color: '#2ecf91' }),
+      compactMetric({ label: 'Frequency', value: fmt(insight?.frequency, 2), sub: 'Exposure depth', color: '#18c7b6' }),
+      compactMetric({ label: 'CTR', value: percent(insight?.ctr), sub: 'Creative pull', color: '#4f8ef7' }),
+      compactMetric({ label: 'Video Views', value: fmt(videoViews), sub: 'Attention signal', color: '#f4c84f' }),
+      compactMetric({ label: 'Cost / View', value: fmtCurrency(insight?.cost_per_video_view, currency, 3), sub: 'Video efficiency', color: '#ff8a5b' }),
+    ],
+    app_promotion: [
+      objectiveResultMetric(insight, 'app_promotion', currency),
+      compactMetric({ label: 'Cost / Event', value: fmtCurrency(insight?.cost_per_conversion, currency, 2), sub: 'Install/event proxy', color: '#2ecf91' }),
+      compactMetric({ label: 'Conversion Rate', value: percent(insight?.conversion_rate), sub: `${fmt(clicks)} clicks`, color: '#18c7b6' }),
+      compactMetric({ label: 'Link Clicks', value: fmt(clicks), sub: percent(insight?.ctr), color: '#4f8ef7' }),
+      compactMetric({ label: 'CPC', value: fmtCurrency(insight?.cpc, currency, 2), sub: 'Traffic cost', color: '#f4c84f' }),
+      compactMetric({ label: 'CPM', value: fmtCurrency(insight?.cpm, currency, 2), sub: 'Auction cost', color: '#ff8a5b' }),
+    ],
+    sales: [
+      objectiveResultMetric(insight, 'sales', currency),
+      compactMetric({ label: 'Cost / Conversion', value: fmtCurrency(insight?.cost_per_conversion, currency, 2), sub: 'Sales efficiency', color: '#2ecf91' }),
+      compactMetric({ label: 'Conversion Rate', value: percent(insight?.conversion_rate), sub: `${fmt(clicks)} clicks`, color: '#18c7b6' }),
+      compactMetric({ label: 'Add to Cart', value: fmt(insight?.add_to_cart), sub: 'Mid-funnel actions', color: '#4f8ef7' }),
+      compactMetric({ label: 'CTR', value: percent(insight?.ctr), sub: 'Creative pull', color: '#f4c84f' }),
+      compactMetric({ label: 'CPC', value: fmtCurrency(insight?.cpc, currency, 2), sub: 'Traffic cost', color: '#ff8a5b' }),
+    ],
+  }
+
+  return byObjective[objectiveFamily] || byObjective.sales
 }
 
 function KpiCard({
@@ -612,65 +765,67 @@ export default function AdsPage() {
                 </div>
               </Card>
             ) : filteredRows.length ? (
-              filteredRows.map(({ campaign, insight, analysis }) => (
-                <Card
-                  key={campaign.id}
-                  hover
-                  onClick={() => setSelectedCampaignId(campaign.id)}
-                  className={`rounded-lg p-4 ${selectedCampaignId === campaign.id ? 'border-accent-blue shadow-[var(--shadow-glow-blue)]' : ''}`}
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="mb-2 flex flex-wrap items-center gap-2">
-                        <Badge color={campaignStatus(campaign) === 'active' ? '#2ecf91' : campaignStatus(campaign) === 'paused' ? '#f4c84f' : '#93a1b5'} variant="outline">
-                          {campaignStatus(campaign) || 'unknown'}
-                        </Badge>
-                        <Badge color="#4f8ef7" variant="outline">{analysis.objectiveFamily}</Badge>
-                        <Badge color="#18c7b6" variant="outline">{analysis.benchmark.country}</Badge>
+              filteredRows.map(({ campaign, insight, analysis }) => {
+                const objectiveKpis = campaignKpiMetrics(insight, analysis.objectiveFamily, accountCurrency)
+
+                return (
+                  <Card
+                    key={campaign.id}
+                    hover
+                    onClick={() => setSelectedCampaignId(campaign.id)}
+                    className={`rounded-lg p-4 ${selectedCampaignId === campaign.id ? 'border-accent-blue shadow-[var(--shadow-glow-blue)]' : ''}`}
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="mb-2 flex flex-wrap items-center gap-2">
+                          <Badge color={campaignStatus(campaign) === 'active' ? '#2ecf91' : campaignStatus(campaign) === 'paused' ? '#f4c84f' : '#93a1b5'} variant="outline">
+                            {campaignStatus(campaign) || 'unknown'}
+                          </Badge>
+                          <Badge color="#4f8ef7" variant="outline">{analysis.objectiveFamily}</Badge>
+                          <Badge color="#18c7b6" variant="outline">{analysis.benchmark.country}</Badge>
+                        </div>
+                        <h2 className="truncate font-heading text-lg font-semibold text-text-primary">{campaign.name}</h2>
+                        <p className="mt-1 text-xs text-text-secondary">
+                          {campaign.objective || 'No objective'} · Daily {budget(campaign.daily_budget)} · Lifetime {budget(campaign.lifetime_budget)}
+                        </p>
                       </div>
-                      <h2 className="truncate font-heading text-lg font-semibold text-text-primary">{campaign.name}</h2>
-                      <p className="mt-1 text-xs text-text-secondary">
-                        {campaign.objective || 'No objective'} · Daily {budget(campaign.daily_budget)} · Lifetime {budget(campaign.lifetime_budget)}
-                      </p>
+                      <div className="text-right">
+                        <p className="font-mono text-[11px] uppercase tracking-wider text-text-dim">Health Score</p>
+                        <p className="font-heading text-3xl font-semibold text-text-primary">{analysis.score}</p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-mono text-[11px] uppercase tracking-wider text-text-dim">Health Score</p>
-                      <p className="font-heading text-3xl font-semibold text-text-primary">{analysis.score}</p>
-                    </div>
-                  </div>
 
-                  <div className="mt-4 grid gap-3 md:grid-cols-6">
-                    <div className="rounded-lg border border-border bg-base/55 p-3">
-                      <p className="text-[10px] font-mono uppercase text-text-dim">Spend</p>
-                      <p className="mt-1 font-semibold text-text-primary">{fmtCurrency(insight?.spend, accountCurrency)}</p>
+                    <div className="mt-4 grid gap-3 md:grid-cols-3">
+                      {[
+                        { label: 'Spend', value: fmtCurrency(insight?.spend, accountCurrency), sub: 'Selected period' },
+                        { label: 'Impressions', value: fmt(insight?.impressions), sub: `${fmtCurrency(insight?.cpm, accountCurrency, 2)} CPM` },
+                        { label: 'Reach', value: fmt(insight?.reach), sub: `${fmt(insight?.frequency, 2)} frequency` },
+                      ].map((metric) => (
+                        <div key={metric.label} className="rounded-lg border border-border bg-base/75 p-3">
+                          <p className="text-[10px] font-mono uppercase tracking-wider text-text-dim">{metric.label}</p>
+                          <p className="mt-1 font-heading text-lg font-semibold text-text-primary">{metric.value}</p>
+                          <p className="mt-0.5 text-[11px] text-text-secondary">{metric.sub}</p>
+                        </div>
+                      ))}
                     </div>
-                    <div className="rounded-lg border border-border bg-base/55 p-3">
-                      <p className="text-[10px] font-mono uppercase text-text-dim">Reach</p>
-                      <p className="mt-1 font-semibold text-text-primary">{fmt(insight?.reach)}</p>
-                    </div>
-                    <div className="rounded-lg border border-border bg-base/55 p-3">
-                      <p className="text-[10px] font-mono uppercase text-text-dim">CTR</p>
-                      <p className="mt-1 font-semibold text-text-primary">{percent(insight?.ctr)}</p>
-                    </div>
-                    <div className="rounded-lg border border-border bg-base/55 p-3">
-                      <p className="text-[10px] font-mono uppercase text-text-dim">CPC</p>
-                      <p className="mt-1 font-semibold text-text-primary">{fmtCurrency(insight?.cpc, accountCurrency, 2)}</p>
-                    </div>
-                    <div className="rounded-lg border border-border bg-base/55 p-3">
-                      <p className="text-[10px] font-mono uppercase text-text-dim">Events</p>
-                      <p className="mt-1 font-semibold text-text-primary">{fmt(num(insight?.conversions) + num(insight?.leads))}</p>
-                    </div>
-                    <div className="rounded-lg border border-border bg-base/55 p-3">
-                      <p className="text-[10px] font-mono uppercase text-text-dim">Frequency</p>
-                      <p className="mt-1 font-semibold text-text-primary">{fmt(insight?.frequency, 2)}</p>
-                    </div>
-                  </div>
 
-                  <div className="mt-4">
-                    <SuggestionList suggestions={analysis.suggestions} />
-                  </div>
-                </Card>
-              ))
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+                      {objectiveKpis.map((metric) => (
+                        <div key={metric.key} className="rounded-lg border border-border bg-base/55 p-3">
+                          <div className="mb-2 h-1 w-10 rounded-full" style={{ backgroundColor: metric.color }} />
+                          <p className="text-[10px] font-mono uppercase tracking-wider text-text-dim">{metric.label}</p>
+                          <p className="mt-1 font-semibold text-text-primary">{metric.value}</p>
+                          {metric.sub ? <p className="mt-0.5 text-[11px] text-text-secondary">{metric.sub}</p> : null}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mt-4">
+                      <SuggestionList suggestions={analysis.suggestions} />
+                    </div>
+                  </Card>
+                )
+              })
             ) : (
               <Card className="rounded-lg p-10 text-center">
                 <p className="text-sm font-medium text-text-primary">No campaigns match this view.</p>
