@@ -1,425 +1,496 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import { ClientShell } from '@/components/ClientShell'
-import { useAnalyticsStore } from '@/lib/analytics-store'
-import { useAgentsStore } from '@/lib/agents-store'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
-  BarChart3,
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  Award,
-  Target,
-  Clock,
-  Zap,
-  Brain,
   AlertTriangle,
+  BarChart3,
   CheckCircle2,
-  Users,
-  Activity,
+  Clock,
+  ExternalLink,
+  LineChart,
+  Loader2,
+  RefreshCcw,
+  Sparkles,
+  Table2,
+  TrendingDown,
+  TrendingUp,
 } from 'lucide-react'
-import { clsx } from 'clsx'
-import { buildAgentLeaderboard } from '@/lib/live-ops'
-import { AgentLeaderboardPanel } from '@/components/analytics/AgentLeaderboardPanel'
 
-// Mock data for demonstration
-const MOCK_CAMPAIGNS = [
-  { id: 'camp-1', name: 'Summer Sale 2025', spend: 12500, conversions: 342, roas: 3.2 },
-  { id: 'camp-2', name: 'Brand Awareness', spend: 8000, conversions: 156, roas: 2.1 },
-  { id: 'camp-3', name: 'Product Launch', spend: 15000, conversions: 423, roas: 4.5 },
-]
+import { ClientShell } from '@/components/ClientShell'
+import { Badge } from '@/components/ui/Badge'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { Select } from '@/components/ui/Input'
+import { toast } from '@/components/ui/Toast'
+import { getAuthToken } from '@/lib/auth/browser'
+import { GA4_DATE_RANGES, GA4_PRESETS, type Ga4WidgetConfig } from '@/lib/ga4-presets'
 
-export default function AnalyticsPage() {
-  const agents = useAgentsStore(state => state.agents)
-  const campaigns = useAgentsStore(state => state.campaigns)
-  const missions = useAgentsStore(state => state.missions)
-  const artifacts = useAgentsStore(state => state.artifacts)
-  const { learnedPatterns, abTests, getAgentLeaderboard, getPredictiveTimeline } = useAnalyticsStore()
-  
-  const [activeTab, setActiveTab] = useState<'overview' | 'campaigns' | 'agents' | 'intelligence'>('overview')
-  const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d'>('30d')
+interface Ga4Property {
+  account: string
+  accountId: string
+  propertyId: string
+  propertyName: string
+  propertyResource: string
+}
 
-  // Calculate mock stats
-  const totalSpend = MOCK_CAMPAIGNS.reduce((sum, c) => sum + c.spend, 0)
-  const totalConversions = MOCK_CAMPAIGNS.reduce((sum, c) => sum + c.conversions, 0)
-  const avgRoas = MOCK_CAMPAIGNS.reduce((sum, c) => sum + c.roas, 0) / MOCK_CAMPAIGNS.length
-  const leaderboard = buildAgentLeaderboard({ agents, missions, artifacts })
-  const topAgent = leaderboard[0]
+interface DashboardPayload {
+  propertyId: string
+  preset: { presetId: string; label: string; description: string; widgets: Ga4WidgetConfig[] }
+  dateRange: { value: string; label: string; startDate: string; endDate: string }
+  widgets: Record<string, any>
+  insights: Array<{ type: string; title: string; evidence: string; severity: string; action: string }>
+  freshness: { label: string; generatedAt: string }
+}
 
+function n(value: unknown) {
+  const parsed = Number.parseFloat(String(value ?? 0))
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function fmtNumber(value: unknown, digits = 0) {
+  const parsed = n(value)
+  if (parsed >= 1_000_000) return `${(parsed / 1_000_000).toFixed(1)}M`
+  if (parsed >= 1_000) return `${(parsed / 1_000).toFixed(1)}K`
+  return parsed.toLocaleString('en-US', { maximumFractionDigits: digits, minimumFractionDigits: digits })
+}
+
+function fmtCurrency(value: unknown) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n(value))
+}
+
+function fmtPercent(value: unknown) {
+  const parsed = n(value)
+  const pct = parsed <= 1 ? parsed * 100 : parsed
+  return `${pct.toFixed(1)}%`
+}
+
+function fmtDuration(seconds: unknown) {
+  const value = n(seconds)
+  if (value >= 3600) return `${(value / 3600).toFixed(1)}h`
+  if (value >= 60) return `${(value / 60).toFixed(1)}m`
+  return `${value.toFixed(0)}s`
+}
+
+function formatMetric(value: unknown, format?: string) {
+  if (format === 'currency') return fmtCurrency(value)
+  if (format === 'percent') return fmtPercent(value)
+  if (format === 'duration') return fmtDuration(value)
+  return fmtNumber(value, n(value) % 1 ? 2 : 0)
+}
+
+function firstMetricValue(widget: any) {
+  const metric = widget?.config?.query?.metrics?.[0]
+  return metric ? widget?.current?.totals?.[metric] ?? widget?.current?.rows?.[0]?.[metric] ?? 0 : 0
+}
+
+function previousMetricValue(widget: any) {
+  const metric = widget?.config?.query?.metrics?.[0]
+  return metric ? widget?.previous?.totals?.[metric] ?? widget?.previous?.rows?.[0]?.[metric] ?? 0 : 0
+}
+
+function delta(widget: any) {
+  const previous = n(previousMetricValue(widget))
+  if (!previous) return null
+  return ((n(firstMetricValue(widget)) - previous) / previous) * 100
+}
+
+function WidgetCard({ widget }: { widget: any }) {
+  const config: Ga4WidgetConfig = widget.config
+  if (config.chartType === 'kpi') return <KpiWidget widget={widget} />
+  if (config.chartType === 'table') return <TableWidget widget={widget} />
+  if (config.chartType === 'funnel') return <FunnelWidget widget={widget} />
+  if (config.chartType === 'donut') return <DonutWidget widget={widget} />
+  if (config.chartType === 'line') return <LineWidget widget={widget} />
+  if (config.chartType === 'scatter') return <ScatterWidget widget={widget} />
+  return <BarWidget widget={widget} />
+}
+
+function KpiWidget({ widget }: { widget: any }) {
+  const config: Ga4WidgetConfig = widget.config
+  const change = delta(widget)
+  const value = firstMetricValue(widget)
+  const up = (change || 0) >= 0
   return (
-    <ClientShell>
-      <div className="flex flex-col h-full">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-border flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-heading font-bold text-text-primary flex items-center gap-2">
-                <BarChart3 size={20} className="text-accent-purple" />
-                Analytics & Intelligence
-              </h1>
-              <p className="text-xs text-text-secondary mt-0.5">
-                Performance dashboards, AI insights, and predictive timelines
-              </p>
+    <Card className="rounded-lg p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="font-mono text-[11px] uppercase tracking-wider text-text-dim">{config.title}</p>
+          <p className="mt-2 font-heading text-3xl font-semibold text-text-primary">{formatMetric(value, config.viz?.valueFormat)}</p>
+        </div>
+        <span className="flex h-9 w-9 items-center justify-center rounded-md bg-accent-purple/15 text-accent-purple">
+          <BarChart3 size={17} />
+        </span>
+      </div>
+      {change !== null ? (
+        <div className={`mt-3 flex items-center gap-1 text-xs ${up ? 'text-accent-green' : 'text-accent-red'}`}>
+          {up ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
+          {Math.abs(change).toFixed(1)}% vs previous period
+        </div>
+      ) : (
+        <p className="mt-3 text-xs text-text-secondary">Previous-period comparison unavailable</p>
+      )}
+    </Card>
+  )
+}
+
+function BarWidget({ widget }: { widget: any }) {
+  const config: Ga4WidgetConfig = widget.config
+  const rows = widget.current?.rows || []
+  const dimension = config.query.dimensions?.[0]
+  const metric = config.query.metrics?.[0]
+  const max = Math.max(...rows.map((row: any) => n(row[metric || ''])), 1)
+  return (
+    <Card className="rounded-lg p-4 lg:col-span-6">
+      <WidgetHeader icon={BarChart3} title={config.title} rows={rows.length} />
+      <div className="mt-4 space-y-3">
+        {rows.slice(0, 10).map((row: any, index: number) => (
+          <div key={`${row[dimension || 'label']}-${index}`}>
+            <div className="mb-1 flex items-center justify-between gap-3 text-xs">
+              <span className="truncate text-text-secondary">{row[dimension || ''] || '(not set)'}</span>
+              <span className="font-mono text-text-primary">{formatMetric(row[metric || ''], config.viz?.valueFormat)}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <select
-                value={timeRange}
-                onChange={e => setTimeRange(e.target.value as any)}
-                className="bg-base border border-border rounded-lg px-3 py-2 text-sm"
-              >
-                <option value="7d">Last 7 days</option>
-                <option value="30d">Last 30 days</option>
-                <option value="90d">Last 90 days</option>
-              </select>
+            <div className="h-2 rounded-full bg-base">
+              <div className="h-2 rounded-full bg-accent-purple" style={{ width: `${Math.max(3, (n(row[metric || '']) / max) * 100)}%` }} />
             </div>
           </div>
-        </div>
+        ))}
+      </div>
+    </Card>
+  )
+}
 
-        {/* Tabs */}
-        <div className="px-6 border-b border-border flex gap-4 flex-shrink-0">
-          {[
-            { id: 'overview', label: 'Overview', icon: BarChart3 },
-            { id: 'campaigns', label: 'Campaigns', icon: Target },
-            { id: 'agents', label: 'Agents', icon: Users },
-            { id: 'intelligence', label: 'AI Intelligence', icon: Brain },
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={clsx(
-                'py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5',
-                activeTab === tab.id
-                  ? 'border-accent-purple text-accent-purple'
-                  : 'border-transparent text-text-secondary hover:text-text-primary'
-              )}
-            >
-              <tab.icon size={14} />
-              {tab.label}
-            </button>
-          ))}
-        </div>
+function LineWidget({ widget }: { widget: any }) {
+  const config: Ga4WidgetConfig = widget.config
+  const rows = widget.current?.rows || []
+  const metric = config.query.metrics?.[0]
+  const values = rows.slice(-28).map((row: any) => n(row[metric || '']))
+  const max = Math.max(...values, 1)
+  return (
+    <Card className="rounded-lg p-4 lg:col-span-12">
+      <WidgetHeader icon={LineChart} title={config.title} rows={rows.length} />
+      <div className="mt-4 flex h-44 items-end gap-1 rounded-lg border border-border bg-base/50 p-3">
+        {values.map((value: number, index: number) => (
+          <div key={index} className="flex-1 rounded-t bg-accent-cyan/80" style={{ height: `${Math.max(4, (value / max) * 100)}%` }} />
+        ))}
+      </div>
+    </Card>
+  )
+}
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {/* Overview Tab */}
-          {activeTab === 'overview' && (
-            <div className="space-y-6">
-              {/* Key Metrics */}
-              <div className="grid grid-cols-4 gap-4">
-                <MetricCard
-                  label="Total Spend"
-                  value={`$${totalSpend.toLocaleString()}`}
-                  trend="+12%"
-                  trendUp={true}
-                  icon={Target}
-                  color="#ff5fa0"
-                />
-                <MetricCard
-                  label="Conversions"
-                  value={totalConversions.toString()}
-                  trend="+8%"
-                  trendUp={true}
-                  icon={CheckCircle2}
-                  color="#22c55e"
-                />
-                <MetricCard
-                  label="Avg ROAS"
-                  value={avgRoas.toFixed(2)}
-                  trend="+0.3"
-                  trendUp={true}
-                  icon={TrendingUp}
-                  color="#9b6dff"
-                />
-                <MetricCard
-                  label="Top Agent"
-                  value={topAgent?.agentName || '—'}
-                  trend={topAgent ? `${topAgent.tasksCompleted} completed` : 'No runs yet'}
-                  trendUp={true}
-                  icon={Zap}
-                  color="#00d4aa"
-                />
-              </div>
-
-              {/* Campaign Performance */}
-              <div className="bg-base-200 rounded-xl p-6">
-                <h3 className="font-medium mb-4">Campaign Performance</h3>
-                <div className="space-y-3">
-                  {MOCK_CAMPAIGNS.map(camp => (
-                    <div key={camp.id} className="flex items-center justify-between p-4 bg-base rounded-lg">
-                      <div>
-                        <p className="font-medium">{camp.name}</p>
-                        <p className="text-xs text-text-secondary">${camp.spend.toLocaleString()} spend</p>
-                      </div>
-                      <div className="text-right">
-                        <p className={clsx(
-                          'font-bold',
-                          camp.roas >= 3 ? 'text-accent-green' : camp.roas >= 2 ? 'text-accent-yellow' : 'text-accent-red'
-                        )}>
-                          {camp.roas}x ROAS
-                        </p>
-                        <p className="text-xs text-text-secondary">{camp.conversions} conversions</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Agent Leaderboard */}
-              <AgentLeaderboardPanel entries={leaderboard} />
-
-              {/* Predicted Timeline */}
-              <div className="bg-base-200 rounded-xl p-6">
-                <h3 className="font-medium mb-4 flex items-center gap-2">
-                  <Clock size={16} />
-                  Predicted Timelines
-                </h3>
-                <div className="space-y-3">
-                  {MOCK_CAMPAIGNS.slice(0, 2).map(camp => (
-                    <div key={camp.id} className="p-4 bg-base rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="font-medium">{camp.name}</p>
-                        <span className="text-xs text-accent-green bg-accent-green/10 px-2 py-0.5 rounded">
-                          92% confidence
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-4 text-sm text-text-secondary">
-                        <span>Est. completion: <strong className="text-text-primary">Mar 28, 2025</strong></span>
-                        <span>Risk: <strong className="text-accent-yellow">Medium</strong></span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+function FunnelWidget({ widget }: { widget: any }) {
+  const rows = widget.current?.rows || []
+  const max = Math.max(...rows.map((row: any) => n(row.eventCount)), 1)
+  return (
+    <Card className="rounded-lg p-4 lg:col-span-4">
+      <WidgetHeader icon={TrendingDown} title={widget.config.title} rows={rows.length} />
+      <div className="mt-4 space-y-3">
+        {rows.map((row: any) => (
+          <div key={row.eventName}>
+            <div className="mb-1 flex justify-between text-xs">
+              <span className="text-text-secondary">{String(row.eventName).replaceAll('_', ' ')}</span>
+              <span className="font-mono text-text-primary">{fmtNumber(row.eventCount)}</span>
             </div>
-          )}
-
-          {/* Campaigns Tab */}
-          {activeTab === 'campaigns' && (
-            <div className="space-y-6">
-              <div className="bg-base-200 rounded-xl p-6">
-                <h3 className="font-medium mb-4">Campaign Details</h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="text-left text-sm text-text-secondary border-b border-border">
-                        <th className="pb-3">Campaign</th>
-                        <th className="pb-3">Spend</th>
-                        <th className="pb-3">Conversions</th>
-                        <th className="pb-3">CPC</th>
-                        <th className="pb-3">CTR</th>
-                        <th className="pb-3">ROAS</th>
-                        <th className="pb-3">Trend</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-sm">
-                      {MOCK_CAMPAIGNS.map(camp => (
-                        <tr key={camp.id} className="border-b border-border last:border-0">
-                          <td className="py-3 font-medium">{camp.name}</td>
-                          <td className="py-3">${camp.spend.toLocaleString()}</td>
-                          <td className="py-3">{camp.conversions}</td>
-                          <td className="py-3">${(camp.spend / camp.conversions).toFixed(2)}</td>
-                          <td className="py-3">2.4%</td>
-                          <td className="py-3">
-                            <span className={clsx(
-                              'font-bold',
-                              camp.roas >= 3 ? 'text-accent-green' : camp.roas >= 2 ? 'text-accent-yellow' : 'text-accent-red'
-                            )}>
-                              {camp.roas}x
-                            </span>
-                          </td>
-                          <td className="py-3">
-                            <div className="flex items-center gap-1 text-accent-green">
-                              <TrendingUp size={14} />
-                              +12%
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+            <div className="h-3 rounded-full bg-base">
+              <div className="h-3 rounded-full bg-accent-blue" style={{ width: `${Math.max(4, (n(row.eventCount) / max) * 100)}%` }} />
             </div>
-          )}
+            <p className="mt-1 text-[10px] text-text-dim">{fmtPercent(row.stepConversionRate)} step conversion</p>
+          </div>
+        ))}
+      </div>
+    </Card>
+  )
+}
 
-          {/* Agents Tab */}
-          {activeTab === 'agents' && (
-            <div className="space-y-6">
-              <AgentLeaderboardPanel
-                entries={leaderboard}
-                title="Agent of the Week"
-                subtitle="Weighted from completed tasks, lead wins, support contributions, and current streak."
-              />
-              <div className="grid grid-cols-2 gap-4">
-                {leaderboard.map(agent => (
-                  <div key={agent.agentId} className="bg-base-200 rounded-xl p-6">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 rounded-full bg-accent-purple/20 flex items-center justify-center text-accent-purple font-bold">
-                        {agent.agentName[0]}
-                      </div>
-                      <div>
-                        <p className="font-medium">{agent.agentName}</p>
-                        <p className="text-xs text-text-secondary">{agent.tasksCompleted} tasks completed</p>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-text-secondary">Lead Wins</span>
-                        <span>{agent.leadWins}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-text-secondary">Support Wins</span>
-                        <span className="text-accent-green">{agent.supportWins}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-text-secondary">Momentum</span>
-                        <span className="text-accent-blue">{agent.currentHotStreak} recent</span>
-                      </div>
-                    </div>
-                  </div>
+function DonutWidget({ widget }: { widget: any }) {
+  const config: Ga4WidgetConfig = widget.config
+  const rows = widget.current?.rows || []
+  const dimension = config.query.dimensions?.[0]
+  const metric = config.query.metrics?.[0]
+  const total = rows.reduce((sum: number, row: any) => sum + n(row[metric || '']), 0) || 1
+  return (
+    <Card className="rounded-lg p-4 lg:col-span-5">
+      <WidgetHeader icon={BarChart3} title={config.title} rows={rows.length} />
+      <div className="mt-4 space-y-3">
+        {rows.slice(0, 6).map((row: any, index: number) => {
+          const pct = (n(row[metric || '']) / total) * 100
+          return (
+            <div key={`${row[dimension || '']}-${index}`} className="flex items-center gap-3">
+              <span className="h-3 w-3 rounded-full" style={{ backgroundColor: ['#8f72ff', '#4f8ef7', '#18c7b6', '#f4c84f', '#ff8a5b', '#ff7f7f'][index % 6] }} />
+              <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">{row[dimension || ''] || '(not set)'}</span>
+              <span className="font-mono text-xs text-text-primary">{pct.toFixed(1)}%</span>
+            </div>
+          )
+        })}
+      </div>
+    </Card>
+  )
+}
+
+function ScatterWidget({ widget }: { widget: any }) {
+  return <TableWidget widget={widget} compact />
+}
+
+function TableWidget({ widget, compact = false }: { widget: any; compact?: boolean }) {
+  const config: Ga4WidgetConfig = widget.config
+  const rows = widget.current?.rows || []
+  const columns = [...(config.query.dimensions || []), ...(config.query.metrics || [])]
+  return (
+    <Card className={`overflow-hidden rounded-lg p-0 ${compact ? 'lg:col-span-6' : 'lg:col-span-7'}`}>
+      <div className="border-b border-border px-4 py-3">
+        <WidgetHeader icon={Table2} title={config.title} rows={rows.length} />
+      </div>
+      <div className="max-h-80 overflow-auto">
+        <table className="w-full min-w-[640px] text-sm">
+          <thead className="sticky top-0 bg-card">
+            <tr className="border-b border-border text-left font-mono text-[10px] uppercase tracking-wider text-text-dim">
+              {columns.map((column) => <th key={column} className="px-4 py-3">{column}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row: any, index: number) => (
+              <tr key={index} className="border-b border-border/70">
+                {columns.map((column) => (
+                  <td key={column} className="px-4 py-3 text-text-secondary">
+                    {typeof row[column] === 'number' ? formatMetric(row[column], column.toLowerCase().includes('rate') ? 'percent' : undefined) : row[column] || '(not set)'}
+                  </td>
                 ))}
-              </div>
-            </div>
-          )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  )
+}
 
-          {/* Intelligence Tab */}
-          {activeTab === 'intelligence' && (
-            <div className="space-y-6">
-              {/* Learned Patterns */}
-              <div className="bg-base-200 rounded-xl p-6">
-                <h3 className="font-medium mb-4 flex items-center gap-2">
-                  <Brain size={16} />
-                  Learned Patterns
-                </h3>
-                {learnedPatterns.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Activity size={48} className="mx-auto text-text-dim mb-3" />
-                    <p className="text-text-secondary">No patterns learned yet</p>
-                    <p className="text-xs text-text-dim mt-1">
-                      AI will identify patterns as you run more campaigns
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {learnedPatterns.map(pattern => (
-                      <div key={pattern.id} className="p-4 bg-base rounded-lg">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <p className="font-medium">{pattern.pattern}</p>
-                            <p className="text-sm text-text-secondary mt-1">{pattern.description}</p>
-                          </div>
-                          <span className={clsx(
-                            'text-xs px-2 py-0.5 rounded',
-                            pattern.confidence > 0.8 ? 'bg-accent-green/20 text-accent-green' :
-                            'bg-accent-yellow/20 text-accent-yellow'
-                          )}>
-                            {Math.round(pattern.confidence * 100)}% confidence
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+function WidgetHeader({ icon: Icon, title, rows }: { icon: React.ComponentType<{ size?: number; className?: string }>; title: string; rows: number }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center gap-2">
+        <Icon size={15} className="text-accent-blue" />
+        <h3 className="text-sm font-semibold text-text-primary">{title}</h3>
+      </div>
+      <Badge color="#4f8ef7" variant="outline">{rows} rows</Badge>
+    </div>
+  )
+}
 
-              {/* A/B Tests */}
-              <div className="bg-base-200 rounded-xl p-6">
-                <h3 className="font-medium mb-4">A/B Test Results</h3>
-                {abTests.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Target size={48} className="mx-auto text-text-dim mb-3" />
-                    <p className="text-text-secondary">No A/B tests recorded</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {abTests.map(test => (
-                      <div key={test.id} className="p-4 bg-base rounded-lg">
-                        <p className="font-medium">{test.name}</p>
-                        <p className="text-sm text-text-secondary">{test.hypothesis}</p>
-                        <div className="flex gap-4 mt-2">
-                          <span className={clsx(
-                            'text-sm font-medium',
-                            test.result === 'A_wins' ? 'text-accent-purple' : 'text-accent-blue'
-                          )}>
-                            Variant A: {test.variantA}
-                          </span>
-                          <span className="text-text-dim">vs</span>
-                          <span className="text-sm font-medium">
-                            Variant B: {test.variantB}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Recommendations */}
-              <div className="bg-base-200 rounded-xl p-6">
-                <h3 className="font-medium mb-4 flex items-center gap-2">
-                  <Zap size={16} />
-                  AI Recommendations
-                </h3>
-                <div className="space-y-3">
-                  <RecommendationCard
-                    title="Shift budget to Summer Sale campaign"
-                    reason="ROAS is 52% higher than brand awareness campaign"
-                    impact="+$2,400 estimated monthly revenue"
-                    confidence={85}
-                  />
-                  <RecommendationCard
-                    title="Schedule more posts on Tuesdays"
-                    reason="Engagement rates are 34% higher on Tuesdays across all campaigns"
-                    impact="+18% reach improvement"
-                    confidence={78}
-                  />
-                  <RecommendationCard
-                    title="Add more video content"
-                    reason="Video ads show 2.3x higher conversion rates"
-                    impact="+15% conversion rate improvement"
-                    confidence={72}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
+function ConnectGoogleState() {
+  return (
+    <ClientShell>
+      <div className="mx-auto flex min-h-[70vh] max-w-lg flex-col items-center justify-center px-6 text-center">
+        <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-lg border border-border bg-card shadow-[var(--shadow-card)]">
+          <BarChart3 size={28} className="text-accent-purple" />
+        </div>
+        <h1 className="font-heading text-2xl font-semibold text-text-primary">Google Analytics is not connected</h1>
+        <p className="mt-3 text-sm leading-relaxed text-text-secondary">
+          Connect Google in Settings so Mission Control can list your GA4 properties and read report data through the GA4 Data API.
+        </p>
+        <div className="mt-6 flex flex-wrap justify-center gap-2">
+          <Button variant="primary" onClick={() => (window.location.href = '/settings')}>
+            <ExternalLink size={15} />
+            Open Settings
+          </Button>
+          <Button variant="secondary" onClick={() => (window.location.href = '/api/auth/google')}>
+            Connect Google
+          </Button>
         </div>
       </div>
     </ClientShell>
   )
 }
 
-function MetricCard({ label, value, trend, trendUp, icon: Icon, color }: any) {
-  return (
-    <div className="bg-base-200 rounded-xl p-4">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-xs text-text-secondary">{label}</span>
-        <Icon size={16} style={{ color }} />
-      </div>
-      <p className="text-2xl font-bold">{value}</p>
-      <div className={clsx(
-        'flex items-center gap-1 text-xs mt-1',
-        trendUp ? 'text-accent-green' : 'text-accent-red'
-      )}>
-        {trendUp ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-        {trend}
-      </div>
-    </div>
-  )
-}
+export default function AnalyticsPage() {
+  const [properties, setProperties] = useState<Ga4Property[]>([])
+  const [selectedPropertyId, setSelectedPropertyId] = useState('')
+  const [presetId, setPresetId] = useState('traffic_source')
+  const [dateRange, setDateRange] = useState('last_28_days')
+  const [dashboard, setDashboard] = useState<DashboardPayload | null>(null)
+  const [accountEmail, setAccountEmail] = useState('')
+  const [loadingProperties, setLoadingProperties] = useState(false)
+  const [loadingDashboard, setLoadingDashboard] = useState(false)
+  const [notConnected, setNotConnected] = useState(false)
 
-function RecommendationCard({ title, reason, impact, confidence }: any) {
+  useEffect(() => {
+    async function loadProperties() {
+      setLoadingProperties(true)
+      try {
+        const token = await getAuthToken()
+        const response = await fetch('/api/integrations/google-analytics/properties', {
+          cache: 'no-store',
+          headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        })
+        const payload = await response.json()
+        if (response.status === 400 && payload.code === 'GOOGLE_ANALYTICS_NOT_CONNECTED') {
+          setNotConnected(true)
+          return
+        }
+        if (!response.ok) throw new Error(payload.error || 'Failed to load GA4 properties')
+        setProperties(payload.properties || [])
+        setAccountEmail(payload.accountEmail || '')
+        setSelectedPropertyId(payload.properties?.[0]?.propertyId || '')
+      } catch (error: any) {
+        toast.error(error.message || 'Failed to load Google Analytics properties')
+      } finally {
+        setLoadingProperties(false)
+      }
+    }
+    loadProperties()
+  }, [])
+
+  useEffect(() => {
+    const preset = GA4_PRESETS.find((item) => item.presetId === presetId)
+    if (preset) setDateRange(preset.dateRange.default)
+  }, [presetId])
+
+  async function loadDashboard() {
+    if (!selectedPropertyId) return
+    setLoadingDashboard(true)
+    try {
+      const token = await getAuthToken()
+      const response = await fetch(
+        `/api/integrations/google-analytics/dashboard?propertyId=${encodeURIComponent(selectedPropertyId)}&preset=${presetId}&dateRange=${dateRange}`,
+        {
+          cache: 'no-store',
+          headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        }
+      )
+      const payload = await response.json()
+      if (!response.ok) throw new Error(payload.error || 'Failed to load GA4 dashboard')
+      setDashboard(payload)
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to load Google Analytics dashboard')
+    } finally {
+      setLoadingDashboard(false)
+    }
+  }
+
+  useEffect(() => {
+    if (selectedPropertyId) loadDashboard()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPropertyId, presetId, dateRange])
+
+  const selectedProperty = useMemo(
+    () => properties.find((property) => property.propertyId === selectedPropertyId),
+    [properties, selectedPropertyId]
+  )
+
+  if (notConnected) return <ConnectGoogleState />
+
+  const kpiWidgets = dashboard?.preset.widgets.filter((widget) => widget.chartType === 'kpi') || []
+  const otherWidgets = dashboard?.preset.widgets.filter((widget) => widget.chartType !== 'kpi') || []
+
   return (
-    <div className="p-4 bg-base rounded-lg border-l-4 border-accent-purple">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="font-medium">{title}</p>
-          <p className="text-sm text-text-secondary mt-1">{reason}</p>
-          <p className="text-sm text-accent-green mt-1">{impact}</p>
+    <ClientShell>
+      <div className="mx-auto max-w-[1500px] px-5 py-6 lg:px-8">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-text-dim">GA4 command center</p>
+            <h1 className="mt-1 font-heading text-2xl font-semibold text-text-primary">Analytics & Intelligence</h1>
+            <p className="mt-1 text-sm text-text-secondary">
+              Live Google Analytics dashboards with preset views, rule insights, and property-level data freshness.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {accountEmail ? <Badge color="#18c7b6" variant="outline">{accountEmail}</Badge> : null}
+            <Button variant="secondary" onClick={loadDashboard} disabled={loadingDashboard || !selectedPropertyId}>
+              <RefreshCcw size={14} className={loadingDashboard ? 'animate-spin' : ''} />
+              Refresh
+            </Button>
+          </div>
         </div>
-        <span className="text-xs text-text-dim">{confidence}%</span>
+
+        <Card className="mb-5 rounded-lg p-4">
+          <div className="grid gap-3 lg:grid-cols-[minmax(280px,1.4fr)_220px_180px]">
+            <Select
+              label="GA4 Property"
+              value={selectedPropertyId}
+              onChange={(event) => setSelectedPropertyId(event.target.value)}
+              options={
+                properties.length
+                  ? properties.map((property) => ({ value: property.propertyId, label: `${property.propertyName} · ${property.account}` }))
+                  : [{ value: '', label: loadingProperties ? 'Loading properties...' : 'No GA4 properties found' }]
+              }
+            />
+            <Select
+              label="Dashboard Preset"
+              value={presetId}
+              onChange={(event) => setPresetId(event.target.value)}
+              options={GA4_PRESETS.map((preset) => ({ value: preset.presetId, label: preset.label }))}
+            />
+            <Select
+              label="Date Range"
+              value={dateRange}
+              onChange={(event) => setDateRange(event.target.value)}
+              options={GA4_DATE_RANGES.map((range) => ({ value: range.value, label: range.label }))}
+            />
+          </div>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+            <p className="text-xs text-text-secondary">{dashboard?.preset.description || 'Select a property to load live GA4 data.'}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              {selectedProperty ? <Badge color="#4f8ef7" variant="outline">Property {selectedProperty.propertyId}</Badge> : null}
+              {dashboard?.freshness ? (
+                <Badge color="#f4c84f" variant="outline">
+                  <Clock size={11} />
+                  {dashboard.freshness.label}
+                </Badge>
+              ) : null}
+            </div>
+          </div>
+        </Card>
+
+        {loadingDashboard ? (
+          <Card className="flex items-center gap-3 rounded-lg p-8 text-text-secondary">
+            <Loader2 size={18} className="animate-spin text-accent-blue" />
+            Loading GA4 report widgets...
+          </Card>
+        ) : dashboard ? (
+          <div className="space-y-5">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {kpiWidgets.map((widgetConfig) => (
+                <WidgetCard key={widgetConfig.id} widget={dashboard.widgets[widgetConfig.id]} />
+              ))}
+            </div>
+
+            {dashboard.insights?.length ? (
+              <Card className="rounded-lg p-4">
+                <div className="mb-3 flex items-center gap-2">
+                  <Sparkles size={16} className="text-accent-purple" />
+                  <h2 className="text-sm font-semibold text-text-primary">Rule-Based Insights</h2>
+                </div>
+                <div className="grid gap-3 lg:grid-cols-3">
+                  {dashboard.insights.map((insight, index) => (
+                    <div key={`${insight.title}-${index}`} className="rounded-lg border border-border bg-base/60 p-3">
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          {insight.type === 'risk' ? <AlertTriangle size={14} className="text-accent-red" /> : <CheckCircle2 size={14} className="text-accent-green" />}
+                          <p className="text-sm font-semibold text-text-primary">{insight.title}</p>
+                        </div>
+                        <Badge color={insight.severity === 'high' ? '#ff7f7f' : insight.severity === 'medium' ? '#f4c84f' : '#18c7b6'} variant="outline">
+                          {insight.severity}
+                        </Badge>
+                      </div>
+                      <p className="text-xs leading-relaxed text-text-secondary">{insight.evidence}</p>
+                      <p className="mt-2 text-xs leading-relaxed text-accent-cyan">{insight.action}</p>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            ) : null}
+
+            <div className="grid gap-5 lg:grid-cols-12">
+              {otherWidgets.map((widgetConfig) => (
+                <WidgetCard key={widgetConfig.id} widget={dashboard.widgets[widgetConfig.id]} />
+              ))}
+            </div>
+          </div>
+        ) : (
+          <Card className="rounded-lg p-10 text-center">
+            <p className="text-sm font-medium text-text-primary">Select a GA4 property to load live analytics.</p>
+            <p className="mt-1 text-xs text-text-secondary">The app reads aggregated report data through the GA4 Data API. Browser tokens are never used for GA4 calls.</p>
+          </Card>
+        )}
       </div>
-    </div>
+    </ClientShell>
   )
 }

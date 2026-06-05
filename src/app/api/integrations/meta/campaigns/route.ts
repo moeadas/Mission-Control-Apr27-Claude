@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     const datePreset = new URL(request.url).searchParams.get('datePreset') || 'last_30d'
 
     const fields = [
-      'id', 'name', 'status', 'objective', 'daily_budget', 'lifetime_budget',
+      'id', 'name', 'status', 'effective_status', 'configured_status', 'objective', 'daily_budget', 'lifetime_budget',
       'start_time', 'stop_time', 'created_time', 'updated_time',
     ].join(',')
 

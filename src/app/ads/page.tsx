@@ -50,6 +50,8 @@ interface MetaCampaign {
   name: string
   objective?: string
   status?: string
+  effective_status?: string
+  configured_status?: string
   daily_budget?: string
   lifetime_budget?: string
   start_time?: string
@@ -143,6 +145,7 @@ const STATUS_FILTERS = [
   { value: 'active', label: 'Active' },
   { value: 'paused', label: 'Paused' },
   { value: 'ended', label: 'Ended' },
+  { value: 'other', label: 'Other' },
 ]
 
 function num(value: unknown) {
@@ -187,8 +190,27 @@ function isEnded(campaign: MetaCampaign) {
 }
 
 function campaignStatus(campaign: MetaCampaign) {
-  if (isEnded(campaign)) return 'ended'
-  return (campaign.status || '').toLowerCase()
+  const effective = String(campaign.effective_status || '').toLowerCase()
+  const configured = String(campaign.configured_status || campaign.status || '').toLowerCase()
+  const raw = effective || configured
+  if (isEnded(campaign) || ['completed', 'ended'].includes(raw)) return 'ended'
+  if (raw === 'active') return 'active'
+  if (raw.includes('paused')) return 'paused'
+  if (['deleted', 'archived'].includes(raw)) return 'ended'
+  return raw || 'unknown'
+}
+
+function campaignStatusGroup(campaign: MetaCampaign) {
+  const status = campaignStatus(campaign)
+  if (status === 'active' || status === 'paused' || status === 'ended') return status
+  return 'other'
+}
+
+function statusBadgeColor(status: string) {
+  if (status === 'active') return '#2ecf91'
+  if (status === 'paused') return '#f4c84f'
+  if (status === 'ended') return '#93a1b5'
+  return '#8f72ff'
 }
 
 function priorityColor(priority: string) {
@@ -443,6 +465,8 @@ export default function AdsPage() {
   const [loadingDetails, setLoadingDetails] = useState(false)
   const [loadingOptimize, setLoadingOptimize] = useState(false)
   const [notConfigured, setNotConfigured] = useState(false)
+  const dataRequestRef = useRef(0)
+  const detailRequestRef = useRef(0)
 
   useEffect(() => {
     async function loadAccounts() {
@@ -475,6 +499,8 @@ export default function AdsPage() {
 
   const loadAccountData = useCallback(async () => {
     if (!selectedAccountId) return
+    const requestId = dataRequestRef.current + 1
+    dataRequestRef.current = requestId
     setLoadingData(true)
     setOptimization(null)
     try {
@@ -494,16 +520,22 @@ export default function AdsPage() {
       const insightPayload = await insightResponse.json()
       if (!campaignResponse.ok) throw new Error(campaignPayload.error || 'Failed to load campaigns')
       if (!insightResponse.ok) throw new Error(insightPayload.error || 'Failed to load insights')
-      setCampaigns(campaignPayload.campaigns || [])
+      if (requestId !== dataRequestRef.current) return
+      const nextCampaigns = campaignPayload.campaigns || []
+      setCampaigns(nextCampaigns)
       setInsights(insightPayload.insights || [])
       setSummary(insightPayload.summary || null)
-      if (!selectedCampaignId && campaignPayload.campaigns?.[0]?.id) setSelectedCampaignId(campaignPayload.campaigns[0].id)
+      setSelectedCampaignId((current) =>
+        current && nextCampaigns.some((campaign: MetaCampaign) => campaign.id === current)
+          ? current
+          : nextCampaigns[0]?.id || ''
+      )
     } catch (error: any) {
-      toast.error(error.message || 'Failed to load Meta data')
+      if (requestId === dataRequestRef.current) toast.error(error.message || 'Failed to load Meta data')
     } finally {
-      setLoadingData(false)
+      if (requestId === dataRequestRef.current) setLoadingData(false)
     }
-  }, [datePreset, selectedAccountId, selectedCampaignId])
+  }, [datePreset, selectedAccountId])
 
   useEffect(() => {
     if (selectedAccountId) loadAccountData()
@@ -529,7 +561,7 @@ export default function AdsPage() {
     const needle = searchTerm.trim().toLowerCase()
     return rows.filter(({ campaign }) => {
       const matchesSearch = !needle || campaign.name.toLowerCase().includes(needle)
-      const status = campaignStatus(campaign)
+      const status = campaignStatusGroup(campaign)
       const matchesStatus = statusFilter === 'all' || status === statusFilter
       return matchesSearch && matchesStatus
     })
@@ -546,6 +578,8 @@ export default function AdsPage() {
       return
     }
     async function loadDetails() {
+      const requestId = detailRequestRef.current + 1
+      detailRequestRef.current = requestId
       setLoadingDetails(true)
       try {
         const token = await getAuthToken()
@@ -558,11 +592,12 @@ export default function AdsPage() {
         )
         const payload = await response.json()
         if (!response.ok) throw new Error(payload.error || 'Failed to load campaign details')
+        if (requestId !== detailRequestRef.current) return
         setDetails(payload)
       } catch (error: any) {
-        toast.error(error.message || 'Failed to load campaign details')
+        if (requestId === detailRequestRef.current) toast.error(error.message || 'Failed to load campaign details')
       } finally {
-        setLoadingDetails(false)
+        if (requestId === detailRequestRef.current) setLoadingDetails(false)
       }
     }
     loadDetails()
@@ -778,7 +813,7 @@ export default function AdsPage() {
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="mb-2 flex flex-wrap items-center gap-2">
-                          <Badge color={campaignStatus(campaign) === 'active' ? '#2ecf91' : campaignStatus(campaign) === 'paused' ? '#f4c84f' : '#93a1b5'} variant="outline">
+                          <Badge color={statusBadgeColor(campaignStatusGroup(campaign))} variant="outline">
                             {campaignStatus(campaign) || 'unknown'}
                           </Badge>
                           <Badge color="#4f8ef7" variant="outline">{analysis.objectiveFamily}</Badge>
@@ -856,6 +891,65 @@ export default function AdsPage() {
                       <p className="mt-1 text-sm font-semibold text-text-primary">{selectedRow.analysis.score}/100</p>
                     </div>
                   </div>
+
+                  <div className="rounded-lg border border-border bg-base/60 p-3">
+                    <div className="mb-3 flex flex-wrap items-center gap-2">
+                      <Badge color={statusBadgeColor(campaignStatusGroup(details?.campaign || selectedRow.campaign))} variant="outline">
+                        {campaignStatus(details?.campaign || selectedRow.campaign)}
+                      </Badge>
+                      <Badge color="#4f8ef7" variant="outline">{datePreset.replaceAll('_', ' ')}</Badge>
+                      <Badge color="#18c7b6" variant="outline">{selectedRow.analysis.benchmark.country}</Badge>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <p className="font-mono uppercase tracking-wider text-text-dim">Configured</p>
+                        <p className="mt-1 text-text-primary">{details?.campaign?.configured_status || selectedRow.campaign.configured_status || selectedRow.campaign.status || 'Unknown'}</p>
+                      </div>
+                      <div>
+                        <p className="font-mono uppercase tracking-wider text-text-dim">Effective</p>
+                        <p className="mt-1 text-text-primary">{details?.campaign?.effective_status || selectedRow.campaign.effective_status || 'Unknown'}</p>
+                      </div>
+                      <div>
+                        <p className="font-mono uppercase tracking-wider text-text-dim">Daily Budget</p>
+                        <p className="mt-1 text-text-primary">{budget(details?.campaign?.daily_budget || selectedRow.campaign.daily_budget)}</p>
+                      </div>
+                      <div>
+                        <p className="font-mono uppercase tracking-wider text-text-dim">Lifetime</p>
+                        <p className="mt-1 text-text-primary">{budget(details?.campaign?.lifetime_budget || selectedRow.campaign.lifetime_budget)}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { label: 'Spend', value: fmtCurrency((details?.insight || selectedRow.insight)?.spend, accountCurrency) },
+                      { label: 'Impr.', value: fmt((details?.insight || selectedRow.insight)?.impressions) },
+                      { label: 'Reach', value: fmt((details?.insight || selectedRow.insight)?.reach) },
+                      { label: 'Clicks', value: fmt((details?.insight || selectedRow.insight)?.clicks) },
+                      { label: 'CTR', value: percent((details?.insight || selectedRow.insight)?.ctr) },
+                      { label: 'Freq.', value: fmt((details?.insight || selectedRow.insight)?.frequency, 2) },
+                    ].map((metric) => (
+                      <div key={metric.label} className="rounded-lg border border-border bg-base/60 p-2.5">
+                        <p className="text-[9px] font-mono uppercase tracking-wider text-text-dim">{metric.label}</p>
+                        <p className="mt-1 text-sm font-semibold text-text-primary">{metric.value}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="rounded-lg border border-border bg-base/60 p-3">
+                    <p className="mb-2 text-xs font-semibold text-text-primary">Objective KPIs</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {campaignKpiMetrics(details?.insight || selectedRow.insight, selectedRow.analysis.objectiveFamily, accountCurrency).slice(0, 6).map((metric) => (
+                        <div key={metric.key} className="rounded-md border border-border/70 bg-card/60 p-2">
+                          <div className="mb-1 h-1 w-8 rounded-full" style={{ backgroundColor: metric.color }} />
+                          <p className="text-[9px] font-mono uppercase tracking-wider text-text-dim">{metric.label}</p>
+                          <p className="mt-0.5 text-sm font-semibold text-text-primary">{metric.value}</p>
+                          {metric.sub ? <p className="mt-0.5 text-[10px] text-text-secondary">{metric.sub}</p> : null}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   <SuggestionList suggestions={selectedRow.analysis.suggestions} />
 
                   <div className="rounded-lg border border-border bg-base/60">

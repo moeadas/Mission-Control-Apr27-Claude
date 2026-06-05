@@ -28,7 +28,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ cam
     const datePreset = new URL(request.url).searchParams.get('datePreset') || 'last_30d'
 
     const campaign = await metaGraphRequest(`/${campaignId}`, token, {
-      fields: 'id,name,status,objective,daily_budget,lifetime_budget,start_time,stop_time,created_time,updated_time,buying_type',
+      fields: 'id,name,status,effective_status,configured_status,objective,daily_budget,lifetime_budget,start_time,stop_time,created_time,updated_time,buying_type',
     })
 
     const insightFields = [

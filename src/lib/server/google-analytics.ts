@@ -1,0 +1,241 @@
+import { google } from 'googleapis'
+
+import { getGa4DateRange, type Ga4WidgetConfig } from '@/lib/ga4-presets'
+import { getGoogleClientForUser } from '@/lib/google-integrations'
+
+type Ga4Row = Record<string, string | number>
+
+const dashboardCache = new Map<string, { expiresAt: number; data: any }>()
+const CACHE_TTL_MS = 60 * 60 * 1000
+
+function cacheKey(parts: unknown[]) {
+  return JSON.stringify(parts)
+}
+
+function readCache(key: string) {
+  const item = dashboardCache.get(key)
+  if (!item) return null
+  if (item.expiresAt < Date.now()) {
+    dashboardCache.delete(key)
+    return null
+  }
+  return item.data
+}
+
+function writeCache(key: string, data: any) {
+  dashboardCache.set(key, { expiresAt: Date.now() + CACHE_TTL_MS, data })
+}
+
+export async function getGa4ClientForUser(userId: string) {
+  return getGoogleClientForUser(userId)
+}
+
+export async function listGa4Properties(userId: string) {
+  const auth = await getGa4ClientForUser(userId)
+  if (!auth) return null
+  const admin = google.analyticsadmin({ version: 'v1beta', auth })
+  const response = await admin.accountSummaries.list()
+  const accounts = response.data.accountSummaries || []
+
+  return accounts.flatMap((account) =>
+    (account.propertySummaries || []).map((property) => ({
+      account: account.displayName || account.account || 'Google Analytics',
+      accountId: account.account,
+      propertyId: String(property.property || '').replace('properties/', ''),
+      propertyName: property.displayName || property.property || 'GA4 property',
+      propertyResource: property.property,
+    }))
+  )
+}
+
+function normalizeReportRows(response: any): Ga4Row[] {
+  const dimensionHeaders = response?.dimensionHeaders || []
+  const metricHeaders = response?.metricHeaders || []
+  return (response?.rows || []).map((row: any) => {
+    const item: Ga4Row = {}
+    dimensionHeaders.forEach((header: any, index: number) => {
+      item[header.name] = row.dimensionValues?.[index]?.value ?? ''
+    })
+    metricHeaders.forEach((header: any, index: number) => {
+      const raw = row.metricValues?.[index]?.value ?? '0'
+      const parsed = Number.parseFloat(raw)
+      item[header.name] = Number.isFinite(parsed) ? parsed : raw
+    })
+    return item
+  })
+}
+
+function orderBys(widget: Ga4WidgetConfig) {
+  return (widget.query.orderBys || []).map((order) => ({
+    metric: { metricName: order.metric },
+    desc: Boolean(order.desc),
+  }))
+}
+
+function metricFilterForEvents(events: string[]) {
+  return {
+    filter: {
+      fieldName: 'eventName',
+      inListFilter: { values: events },
+    },
+  }
+}
+
+export async function runGa4WidgetReport({
+  userId,
+  propertyId,
+  widget,
+  dateRangeId,
+  previous = false,
+}: {
+  userId: string
+  propertyId: string
+  widget: Ga4WidgetConfig
+  dateRangeId: string
+  previous?: boolean
+}) {
+  const auth = await getGa4ClientForUser(userId)
+  if (!auth) throw new Error('Google Analytics is not connected. Connect Google in Settings.')
+
+  const key = cacheKey(['ga4-widget', userId, propertyId, widget.id, dateRangeId, previous])
+  const cached = readCache(key)
+  if (cached) return cached
+
+  const data = google.analyticsdata({ version: 'v1beta', auth })
+  const dateRange = getGa4DateRange(dateRangeId)
+  const startDate = previous ? dateRange.previousStartDate : dateRange.startDate
+  const endDate = previous ? dateRange.previousEndDate : dateRange.endDate
+
+  if (widget.query.funnelEvents?.length) {
+    const response: any = await (data.properties.runReport as any)({
+      property: `properties/${propertyId}`,
+      requestBody: {
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: 'eventName' }],
+        metrics: [{ name: 'eventCount' }],
+        dimensionFilter: metricFilterForEvents(widget.query.funnelEvents),
+        limit: String(widget.query.funnelEvents.length),
+        returnPropertyQuota: true,
+      },
+    })
+    const rows = normalizeReportRows(response.data)
+    const indexed = new Map(rows.map((row) => [String(row.eventName), Number(row.eventCount || 0)]))
+    const result = {
+      rows: widget.query.funnelEvents.map((eventName, index) => {
+        const value = indexed.get(eventName) || 0
+        const previousValue = index > 0 ? indexed.get(widget.query.funnelEvents![index - 1]) || 0 : value
+        return {
+          eventName,
+          eventCount: value,
+          stepConversionRate: index === 0 || previousValue === 0 ? 100 : (value / previousValue) * 100,
+        }
+      }),
+      quota: response.data.propertyQuota || null,
+    }
+    writeCache(key, result)
+    return result
+  }
+
+  const response: any = await (data.properties.runReport as any)({
+    property: `properties/${propertyId}`,
+    requestBody: {
+      dateRanges: [{ startDate, endDate }],
+      dimensions: (widget.query.dimensions || []).map((name) => ({ name })),
+      metrics: (widget.query.metrics || []).map((name) => ({ name })),
+      orderBys: orderBys(widget),
+      limit: String(widget.query.limit || 25),
+      returnPropertyQuota: true,
+    },
+  })
+  const result = {
+    rows: normalizeReportRows(response.data),
+    totals: normalizeReportRows({
+      dimensionHeaders: [],
+      metricHeaders: response.data.metricHeaders,
+      rows: response.data.totals || [],
+    })[0] || null,
+    rowCount: response.data.rowCount || 0,
+    quota: response.data.propertyQuota || null,
+  }
+  writeCache(key, result)
+  return result
+}
+
+export async function runGa4Dashboard({
+  userId,
+  propertyId,
+  preset,
+  dateRangeId,
+}: {
+  userId: string
+  propertyId: string
+  preset: { widgets: Ga4WidgetConfig[] }
+  dateRangeId: string
+}) {
+  const widgets: Record<string, any> = {}
+  for (const widget of preset.widgets) {
+    const current = await runGa4WidgetReport({ userId, propertyId, widget, dateRangeId })
+    let previous: any = null
+    if (widget.viz?.compareToPrevious) {
+      previous = await runGa4WidgetReport({ userId, propertyId, widget, dateRangeId, previous: true }).catch(() => null)
+    }
+    widgets[widget.id] = { config: widget, current, previous }
+  }
+  return widgets
+}
+
+function firstMetric(widget: any) {
+  const metric = widget?.config?.query?.metrics?.[0]
+  return metric ? Number(widget?.current?.totals?.[metric] ?? widget?.current?.rows?.[0]?.[metric] ?? 0) : 0
+}
+
+function previousFirstMetric(widget: any) {
+  const metric = widget?.config?.query?.metrics?.[0]
+  return metric ? Number(widget?.previous?.totals?.[metric] ?? widget?.previous?.rows?.[0]?.[metric] ?? 0) : 0
+}
+
+export function buildGa4RuleInsights(widgets: Record<string, any>) {
+  const insights: Array<{ type: 'opportunity' | 'risk' | 'optimization'; title: string; evidence: string; severity: 'low' | 'medium' | 'high'; action: string }> = []
+
+  for (const widget of Object.values(widgets)) {
+    if (!widget?.config?.viz?.compareToPrevious) continue
+    const current = firstMetric(widget)
+    const previous = previousFirstMetric(widget)
+    if (!previous || !Number.isFinite(current) || !Number.isFinite(previous)) continue
+    const change = ((current - previous) / previous) * 100
+    if (change <= -15) {
+      insights.push({
+        type: 'risk',
+        severity: change <= -30 ? 'high' : 'medium',
+        title: `${widget.config.title} dropped ${Math.abs(change).toFixed(1)}%`,
+        evidence: `Current period: ${current.toLocaleString()}; previous comparable period: ${previous.toLocaleString()}.`,
+        action: 'Inspect channel, landing page, and campaign widgets for the source of the decline.',
+      })
+    } else if (change >= 20) {
+      insights.push({
+        type: 'opportunity',
+        severity: 'medium',
+        title: `${widget.config.title} increased ${change.toFixed(1)}%`,
+        evidence: `Current period: ${current.toLocaleString()}; previous comparable period: ${previous.toLocaleString()}.`,
+        action: 'Identify the strongest channel/page/source and consider scaling the same pattern.',
+      })
+    }
+  }
+
+  const engagementWidgets = Object.values(widgets).filter((widget: any) => widget?.current?.totals?.engagementRate !== undefined)
+  for (const widget of engagementWidgets) {
+    const rate = Number(widget.current.totals.engagementRate || 0)
+    if (rate > 0 && rate < 0.45) {
+      insights.push({
+        type: 'optimization',
+        severity: 'medium',
+        title: 'Engagement rate is weak',
+        evidence: `${widget.config.title} engagement rate is ${(rate * 100).toFixed(1)}%.`,
+        action: 'Review landing-page intent match, page load speed, above-the-fold clarity, and CTA relevance.',
+      })
+      break
+    }
+  }
+
+  return insights.slice(0, 8)
+}

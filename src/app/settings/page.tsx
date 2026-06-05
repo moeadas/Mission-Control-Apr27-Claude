@@ -176,6 +176,7 @@ export default function SettingsPage() {
     google_docs: false,
     google_sheets: false,
     google_ads: false,
+    google_analytics: false,
     meta_facebook: false,
     meta_instagram: false,
   })
@@ -1739,6 +1740,7 @@ export default function SettingsPage() {
                   {[
                     { key: 'google_docs', label: 'Google Docs', desc: 'Access documents and briefs' },
                     { key: 'google_sheets', label: 'Google Sheets', desc: 'Sync campaign data and reports' },
+                    { key: 'google_analytics', label: 'Google Analytics', desc: 'Read GA4 properties and dashboard reports' },
                     { key: 'google_ads', label: 'Google Ads', desc: 'Import campaign performance' },
                   ].map((item) => (
                     <div key={item.key} className="flex items-center justify-between p-3 rounded-xl bg-base border border-border">
@@ -1831,6 +1833,7 @@ export default function SettingsPage() {
                     {[
                       { label: 'Google Docs', service: 'google-docs' },
                       { label: 'Google Sheets', service: 'google-sheets' },
+                      { label: 'Google Analytics', service: 'google-analytics' },
                       { label: 'Google Ads', service: 'google-ads' },
                     ].map(({ label, service }) => (
                       <div key={service} className="flex items-center justify-between py-2 px-3 rounded-lg bg-base/60 border border-border">
