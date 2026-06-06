@@ -15,7 +15,7 @@ import { google } from 'googleapis'
 
 import { verifyToken } from '@/lib/auth/jwt'
 import { resolveGoogleOAuthConfig } from '@/lib/google-integrations'
-import { saveOAuthToken } from '@/lib/server/oauth-tokens'
+import { deleteOAuthToken, saveOAuthToken } from '@/lib/server/oauth-tokens'
 import { loadPersistedProviderSettings } from '@/lib/server/provider-secrets'
 
 function settingsUrl(origin: string, params: Record<string, string>) {
@@ -82,6 +82,10 @@ export async function GET(request: NextRequest) {
       console.warn('[google-oauth] failed to read userinfo:', err)
     }
 
+    // A reconnect is an explicit replacement of the Google grant. If the user
+    // changed OAuth Client ID/Secret, preserving an older refresh token can make
+    // later GA4 refreshes fail with Google's vague "Bad Request" response.
+    await deleteOAuthToken(payload.sub, 'google')
     await saveOAuthToken({
       userId: payload.sub,
       provider: 'google',

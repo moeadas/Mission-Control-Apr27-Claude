@@ -70,7 +70,12 @@ export async function refreshGoogleAccessTokenForUser(userId: string): Promise<I
   })
   const data = await response.json().catch(() => null)
   if (!response.ok || !data?.access_token) {
-    const reason = data?.error_description || data?.error || `Google token refresh failed with HTTP ${response.status}.`
+    const reasonParts = [
+      data?.error,
+      data?.error_description,
+      !data?.error && !data?.error_description ? `HTTP ${response.status}` : '',
+    ].filter(Boolean)
+    const reason = reasonParts.join(': ') || `Google token refresh failed with HTTP ${response.status}.`
     throw new Error(`Google connection needs to be reconnected: ${reason}`)
   }
 
