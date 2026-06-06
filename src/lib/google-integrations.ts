@@ -98,6 +98,16 @@ export async function refreshGoogleAccessTokenForUser(userId: string): Promise<I
   return client
 }
 
+export async function getGoogleAccessTokenForUser(userId: string): Promise<string | null> {
+  const token = await getOAuthToken(userId, 'google')
+  if (!token?.accessToken) return null
+  if (!isAccessTokenExpired(token)) return token.accessToken
+
+  const refreshed = await refreshGoogleAccessTokenForUser(userId)
+  const credentials = refreshed?.credentials
+  return credentials?.access_token || null
+}
+
 /**
  * Return an OAuth2 client with the user's stored credentials applied. Refreshes
  * the access token automatically if it has expired and we have a refresh

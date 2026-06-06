@@ -1,7 +1,5 @@
-import { google } from 'googleapis'
-
 import { getGa4DateRange, type Ga4WidgetConfig } from '@/lib/ga4-presets'
-import { getGoogleClientForUser, refreshGoogleAccessTokenForUser } from '@/lib/google-integrations'
+import { getGoogleAccessTokenForUser, refreshGoogleAccessTokenForUser } from '@/lib/google-integrations'
 
 type Ga4Row = Record<string, string | number>
 
@@ -26,8 +24,8 @@ function writeCache(key: string, data: any) {
   dashboardCache.set(key, { expiresAt: Date.now() + CACHE_TTL_MS, data })
 }
 
-export async function getGa4ClientForUser(userId: string) {
-  return getGoogleClientForUser(userId)
+export async function getGa4AccessTokenForUser(userId: string) {
+  return getGoogleAccessTokenForUser(userId)
 }
 
 function isGoogleAuthError(error: any) {
@@ -36,29 +34,52 @@ function isGoogleAuthError(error: any) {
   return status === 401 || /invalid authentication credentials|invalid credentials|expected oauth 2 access token|unauthorized/i.test(message)
 }
 
-async function withGoogleAuthRetry<T>(userId: string, run: (auth: any) => Promise<T>): Promise<T> {
-  const auth = await getGa4ClientForUser(userId)
-  if (!auth) throw new Error('Google Analytics is not connected. Connect Google in Settings.')
+async function withGoogleAuthRetry<T>(userId: string, run: (accessToken: string) => Promise<T>): Promise<T> {
+  const accessToken = await getGa4AccessTokenForUser(userId)
+  if (!accessToken) throw new Error('Google Analytics is not connected. Connect Google in Settings.')
   try {
-    return await run(auth)
+    return await run(accessToken)
   } catch (error) {
     if (!isGoogleAuthError(error)) throw error
     const refreshed = await refreshGoogleAccessTokenForUser(userId)
-    if (!refreshed) {
+    const refreshedToken = refreshed?.credentials?.access_token
+    if (!refreshedToken) {
       throw new Error('Google connection expired. Reconnect Google in Settings, then reload Analytics.')
     }
-    return run(refreshed)
+    return run(refreshedToken)
   }
 }
 
+async function googleJson<T>(url: string, accessToken: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: 'application/json',
+      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(init?.headers || {}),
+    },
+  })
+  const data = await response.json().catch(() => null)
+  if (!response.ok) {
+    const error: any = new Error(data?.error?.message || data?.error_description || `Google Analytics API returned HTTP ${response.status}.`)
+    error.status = response.status
+    error.response = { status: response.status, data }
+    throw error
+  }
+  return data as T
+}
+
 export async function listGa4Properties(userId: string) {
-  return withGoogleAuthRetry(userId, async (auth) => {
-    const admin = google.analyticsadmin({ version: 'v1beta', auth })
-    const response = await admin.accountSummaries.list()
-    const accounts = response.data.accountSummaries || []
+  return withGoogleAuthRetry(userId, async (accessToken) => {
+    const response = await googleJson<{ accountSummaries?: any[] }>(
+      'https://analyticsadmin.googleapis.com/v1beta/accountSummaries',
+      accessToken
+    )
+    const accounts = response.accountSummaries || []
 
     return accounts.flatMap((account) =>
-      (account.propertySummaries || []).map((property) => ({
+      (account.propertySummaries || []).map((property: any) => ({
         account: account.displayName || account.account || 'Google Analytics',
         accountId: account.account,
         propertyId: String(property.property || '').replace('properties/', ''),
@@ -125,21 +146,19 @@ export async function runGa4WidgetReport({
 
   const funnelEvents = widget.query.funnelEvents || []
   if (funnelEvents.length) {
-    const response: any = await withGoogleAuthRetry(userId, async (auth) => {
-      const data = google.analyticsdata({ version: 'v1beta', auth })
-      return (data.properties.runReport as any)({
-      property: `properties/${propertyId}`,
-      requestBody: {
+    const response: any = await withGoogleAuthRetry(userId, async (accessToken) =>
+      googleJson(`https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`, accessToken, {
+        method: 'POST',
+        body: JSON.stringify({
         dateRanges: [{ startDate, endDate }],
         dimensions: [{ name: 'eventName' }],
         metrics: [{ name: 'eventCount' }],
         dimensionFilter: metricFilterForEvents(funnelEvents),
         limit: String(funnelEvents.length),
         returnPropertyQuota: true,
-      },
-    })
-    })
-    const rows = normalizeReportRows(response.data)
+      }),
+    }))
+    const rows = normalizeReportRows(response)
     const indexed = new Map(rows.map((row) => [String(row.eventName), Number(row.eventCount || 0)]))
     const result = {
       rows: funnelEvents.map((eventName, index) => {
@@ -151,35 +170,33 @@ export async function runGa4WidgetReport({
           stepConversionRate: index === 0 || previousValue === 0 ? 100 : (value / previousValue) * 100,
         }
       }),
-      quota: response.data.propertyQuota || null,
+      quota: response.propertyQuota || null,
     }
     writeCache(key, result)
     return result
   }
 
-  const response: any = await withGoogleAuthRetry(userId, async (auth) => {
-    const data = google.analyticsdata({ version: 'v1beta', auth })
-    return (data.properties.runReport as any)({
-    property: `properties/${propertyId}`,
-    requestBody: {
+  const response: any = await withGoogleAuthRetry(userId, async (accessToken) =>
+    googleJson(`https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`, accessToken, {
+      method: 'POST',
+      body: JSON.stringify({
       dateRanges: [{ startDate, endDate }],
       dimensions: (widget.query.dimensions || []).map((name) => ({ name })),
       metrics: (widget.query.metrics || []).map((name) => ({ name })),
       orderBys: orderBys(widget),
       limit: String(widget.query.limit || 25),
       returnPropertyQuota: true,
-    },
-  })
-  })
+    }),
+  }))
   const result = {
-    rows: normalizeReportRows(response.data),
+    rows: normalizeReportRows(response),
     totals: normalizeReportRows({
       dimensionHeaders: [],
-      metricHeaders: response.data.metricHeaders,
-      rows: response.data.totals || [],
+      metricHeaders: response.metricHeaders,
+      rows: response.totals || [],
     })[0] || null,
-    rowCount: response.data.rowCount || 0,
-    quota: response.data.propertyQuota || null,
+    rowCount: response.rowCount || 0,
+    quota: response.propertyQuota || null,
   }
   writeCache(key, result)
   return result
