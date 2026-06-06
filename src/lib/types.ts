@@ -481,6 +481,16 @@ export interface SerperSearchSettings {
   testQuery?: string
 }
 
+export interface GoogleOAuthSettings {
+  enabled: boolean
+  verified: boolean
+  verifiedAt?: string
+  clientId: string
+  clientSecret: string
+  maskedClientSecret?: string
+  redirectUri?: string
+}
+
 export interface ProviderSettings {
   routing: ProviderRoutingSettings
   ollama: OllamaSettings
@@ -492,6 +502,7 @@ export interface ProviderSettings {
   meta?: MetaAdsSettings
   higgsfield?: HiggsFieldSettings
   serper?: SerperSearchSettings
+  google?: GoogleOAuthSettings
 }
 
 export interface AgencySettings {

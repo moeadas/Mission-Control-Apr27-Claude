@@ -166,6 +166,14 @@ export default function SettingsPage() {
   const [serperHealthMessage, setSerperHealthMessage] = useState<string>(
     providerSettings.serper?.verified ? 'Serper connected' : 'Serper API key not verified yet'
   )
+  const [googleClientIdInput, setGoogleClientIdInput] = useState(providerSettings.google?.clientId || '')
+  const [googleClientSecretInput, setGoogleClientSecretInput] = useState('')
+  const [googleRedirectUri, setGoogleRedirectUri] = useState(providerSettings.google?.redirectUri || '')
+  const [isVerifyingGoogleOAuth, setIsVerifyingGoogleOAuth] = useState(false)
+  const [googleOAuthHealth, setGoogleOAuthHealth] = useState<ProviderHealth>(providerSettings.google?.verified ? 'connected' : 'idle')
+  const [googleOAuthHealthMessage, setGoogleOAuthHealthMessage] = useState<string>(
+    providerSettings.google?.verified ? 'Google OAuth app connected' : 'Google OAuth app not verified yet'
+  )
   const [visualHealth, setVisualHealth] = useState<VisualHealth>(providerSettings.visual?.verified ? 'connected' : 'idle')
   const [visualHealthMessage, setVisualHealthMessage] = useState<string>(
     providerSettings.visual?.verified ? 'Visual generation connected' : 'Visual generation not verified yet'
@@ -246,6 +254,27 @@ export default function SettingsPage() {
     providerSettings.meta?.maskedToken,
     providerSettings.meta?.primaryMarket,
     providerSettings.meta?.verified,
+  ])
+
+  useEffect(() => {
+    setGoogleClientIdInput(providerSettings.google?.clientId || '')
+    setGoogleRedirectUri(
+      providerSettings.google?.redirectUri ||
+        (typeof window !== 'undefined' ? `${window.location.origin}/api/auth/google/callback` : '')
+    )
+    setGoogleOAuthHealth(providerSettings.google?.verified ? 'connected' : 'idle')
+    setGoogleOAuthHealthMessage(
+      providerSettings.google?.verified
+        ? 'Google OAuth app connected · ready for Analytics, Docs, Sheets, and Drive'
+        : providerSettings.google?.maskedClientSecret
+          ? 'Saved Google OAuth settings are not verified in this session'
+          : 'Add your OAuth Web App Client ID and Client Secret, then verify'
+    )
+  }, [
+    providerSettings.google?.clientId,
+    providerSettings.google?.maskedClientSecret,
+    providerSettings.google?.redirectUri,
+    providerSettings.google?.verified,
   ])
 
   useEffect(() => {
@@ -743,6 +772,74 @@ export default function SettingsPage() {
       toast.error(err.message || 'Could not verify Serper')
     } finally {
       setIsVerifyingSerper(false)
+    }
+  }
+
+  const saveGoogleOAuth = async () => {
+    const clientId = googleClientIdInput.trim()
+    const clientSecret = googleClientSecretInput.trim()
+    const existingSecret = providerSettings.google?.maskedClientSecret
+    const redirectUri = googleRedirectUri || (typeof window !== 'undefined' ? `${window.location.origin}/api/auth/google/callback` : '')
+
+    if (!clientId) {
+      toast.error('Paste the Google OAuth Client ID first')
+      return
+    }
+    if (!clientSecret && !existingSecret) {
+      toast.error('Paste the Google OAuth Client Secret first')
+      return
+    }
+
+    setIsVerifyingGoogleOAuth(true)
+    setGoogleOAuthHealth('testing')
+    setGoogleOAuthHealthMessage('Checking Google OAuth app settings…')
+    try {
+      const authToken = await getAuthToken()
+      const verifyRes = await fetch('/api/providers/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) },
+        body: JSON.stringify({
+          provider: 'google-oauth',
+          clientId,
+          clientSecret: clientSecret || providerSettings.google?.clientSecret || '',
+          redirectUri,
+        }),
+      })
+      const verifyData = await verifyRes.json().catch(() => null)
+      if (!verifyRes.ok || !verifyData?.ok) {
+        throw new Error(verifyData?.error || 'Google OAuth validation failed')
+      }
+
+      const nextGoogle = {
+        enabled: true,
+        verified: true,
+        verifiedAt: new Date().toISOString(),
+        clientId,
+        clientSecret: clientSecret || providerSettings.google?.clientSecret || '',
+        maskedClientSecret: clientSecret
+          ? `${clientSecret.slice(0, 6)}...${clientSecret.slice(-4)}`
+          : providerSettings.google?.maskedClientSecret || '',
+        redirectUri,
+      }
+      updateProviderSettings('google', nextGoogle as any)
+      const nextSettings = { ...providerSettings, google: nextGoogle }
+      const saveRes = await fetch('/api/providers/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) },
+        body: JSON.stringify({ providerSettings: nextSettings }),
+      })
+      if (!saveRes.ok) throw new Error('Google OAuth verified but settings could not be saved')
+      setGoogleOAuthHealth('connected')
+      setGoogleOAuthHealthMessage('Google OAuth app connected · you can now connect your Google account')
+      setGoogleClientSecretInput('')
+      toast.success('Google OAuth app settings verified and saved')
+    } catch (err: any) {
+      updateProviderSettings('google', { verified: false } as any)
+      setGoogleOAuthHealth('invalid')
+      setGoogleOAuthHealthMessage(err.message || 'Google OAuth validation failed')
+      toast.error(err.message || 'Could not verify Google OAuth settings')
+    } finally {
+      setIsVerifyingGoogleOAuth(false)
     }
   }
 
@@ -1735,6 +1832,84 @@ export default function SettingsPage() {
                       <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
                     </svg>
                     <span className="text-xs font-medium text-text-secondary">Google</span>
+                  </div>
+
+                  <div className="rounded-xl border border-border bg-base p-4 space-y-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium text-text-primary">Google OAuth App</p>
+                        <p className="text-[11px] text-text-secondary mt-1">
+                          Save your OAuth Web Application credentials before connecting Google Analytics, Docs, Sheets, or Drive.
+                        </p>
+                      </div>
+                      <Badge
+                        color={googleOAuthHealth === 'connected' ? '#00d4aa' : googleOAuthHealth === 'invalid' ? '#ff5b7f' : '#8b92a8'}
+                        variant="outline"
+                      >
+                        {googleOAuthHealth === 'connected' ? 'Verified' : googleOAuthHealth === 'testing' ? 'Testing' : 'Not verified'}
+                      </Badge>
+                    </div>
+
+                    <Input
+                      label="Google OAuth Client ID"
+                      value={googleClientIdInput}
+                      placeholder={providerSettings.google?.clientId || 'xxxxx.apps.googleusercontent.com'}
+                      onChange={(e) => {
+                        setGoogleClientIdInput(e.target.value)
+                        updateProviderSettings('google', {
+                          ...(providerSettings.google || {}),
+                          clientId: e.target.value,
+                          verified: false,
+                        } as any)
+                      }}
+                    />
+                    <Input
+                      label="Google OAuth Client Secret"
+                      type="password"
+                      value={googleClientSecretInput}
+                      placeholder={providerSettings.google?.maskedClientSecret || 'GOCSPX-...'}
+                      onChange={(e) => {
+                        setGoogleClientSecretInput(e.target.value)
+                        updateProviderSettings('google', {
+                          ...(providerSettings.google || {}),
+                          verified: false,
+                        } as any)
+                      }}
+                    />
+                    {providerSettings.google?.maskedClientSecret && (
+                      <p className="text-[11px] font-mono text-text-dim flex items-center gap-1.5">
+                        <KeyRound size={12} />
+                        Saved secret as {providerSettings.google.maskedClientSecret}
+                      </p>
+                    )}
+
+                    <div className="rounded-xl border border-border bg-surface px-3 py-2">
+                      <p className="text-[11px] font-mono uppercase text-text-dim">Authorized redirect URI</p>
+                      <p className="mt-1 break-all text-xs text-text-primary">
+                        {googleRedirectUri || providerSettings.google?.redirectUri || '/api/auth/google/callback'}
+                      </p>
+                      <p className="mt-1 text-[11px] text-text-secondary">
+                        Add this exact value in Google Cloud under Authorized redirect URIs. The origin should be this domain without the path.
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl border border-border bg-base px-3 py-2">
+                      <p className="text-[11px] font-mono uppercase text-text-dim">Status</p>
+                      <p className="mt-1 text-sm text-text-primary">{googleOAuthHealthMessage}</p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-3">
+                      <Button variant="secondary" onClick={saveGoogleOAuth} disabled={isVerifyingGoogleOAuth}>
+                        <Check size={14} />
+                        {isVerifyingGoogleOAuth ? 'Checking...' : 'Save & Verify OAuth App'}
+                      </Button>
+                      {providerSettings.google?.verified && (
+                        <Button variant="secondary" onClick={() => window.location.href = '/api/auth/google'}>
+                          <ExternalLink size={13} />
+                          Connect Google
+                        </Button>
+                      )}
+                    </div>
                   </div>
 
                   {[

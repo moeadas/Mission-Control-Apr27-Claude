@@ -9,8 +9,56 @@ type VerifyPayload =
   | { provider: 'openai'; apiKey: string; baseUrl?: string }
   | { provider: 'serper'; apiKey: string; testQuery?: string; country?: string; language?: string; resultCount?: number }
   | { provider: 'meta'; accessToken: string }
+  | { provider: 'google-oauth'; clientId: string; clientSecret?: string; redirectUri: string }
 
 export async function verifyProvider(payload: VerifyPayload) {
+  // ── Google OAuth App ────────────────────────────────────────────────────────
+  if (payload.provider === 'google-oauth') {
+    const clientId = payload.clientId?.trim()
+    const redirectUri = payload.redirectUri?.trim()
+    if (!clientId) throw new Error('Google OAuth Client ID is required.')
+    if (!redirectUri) throw new Error('Google OAuth redirect URI is required.')
+    if (!/\.apps\.googleusercontent\.com$/.test(clientId)) {
+      throw new Error('Google OAuth Client ID should end with .apps.googleusercontent.com.')
+    }
+    if (!/^https:\/\/[^/]+\/api\/auth\/google\/callback$/.test(redirectUri)) {
+      throw new Error('Redirect URI must be HTTPS and end with /api/auth/google/callback.')
+    }
+
+    const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth')
+    authUrl.searchParams.set('client_id', clientId)
+    authUrl.searchParams.set('redirect_uri', redirectUri)
+    authUrl.searchParams.set('response_type', 'code')
+    authUrl.searchParams.set('scope', 'openid email profile')
+    authUrl.searchParams.set('state', 'mission-control-validation')
+    authUrl.searchParams.set('access_type', 'offline')
+
+    const response = await fetch(authUrl, {
+      redirect: 'manual',
+      signal: AbortSignal.timeout(12000),
+    })
+    const text = await response.text().catch(() => '')
+    const location = response.headers.get('location') || ''
+    if (response.status >= 300 && response.status < 400) {
+      return {
+        ok: true,
+        redirectUri,
+        authEndpoint: location || 'Google OAuth accepted the authorization request.',
+      }
+    }
+    if (/redirect_uri_mismatch/i.test(text)) {
+      throw new Error(`Google rejected the redirect URI. Add this exact URI in Google Cloud: ${redirectUri}`)
+    }
+    if (/invalid_client|unauthorized_client/i.test(text)) {
+      throw new Error('Google rejected the Client ID. Check that you copied the OAuth Web Application Client ID.')
+    }
+    return {
+      ok: true,
+      redirectUri,
+      warning: `Google returned HTTP ${response.status}; settings format is valid, but complete Connect Google to confirm the secret.`,
+    }
+  }
+
   // ── Meta Ads ────────────────────────────────────────────────────────────────
   if (payload.provider === 'meta') {
     const accessToken = payload.accessToken?.trim()

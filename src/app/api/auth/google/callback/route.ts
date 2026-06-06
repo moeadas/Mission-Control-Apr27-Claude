@@ -14,7 +14,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { google } from 'googleapis'
 
 import { verifyToken } from '@/lib/auth/jwt'
+import { resolveGoogleOAuthConfig } from '@/lib/google-integrations'
 import { saveOAuthToken } from '@/lib/server/oauth-tokens'
+import { loadPersistedProviderSettings } from '@/lib/server/provider-secrets'
 
 function settingsUrl(origin: string, params: Record<string, string>) {
   const url = new URL('/settings', origin)
@@ -51,18 +53,22 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(settingsUrl(appOrigin, { google: 'invalid_state' }))
   }
 
-  const clientId = process.env.GOOGLE_CLIENT_ID
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET
-  const redirectUri =
-    process.env.GOOGLE_REDIRECT_URI ||
-    `${appOrigin}/api/auth/google/callback`
+  const providerSettings = await loadPersistedProviderSettings(payload.sub)
+  const googleConfig = resolveGoogleOAuthConfig({
+    providerSettings,
+    origin: appOrigin,
+  })
 
-  if (!clientId || !clientSecret) {
+  if (!googleConfig.clientId || !googleConfig.clientSecret) {
     return NextResponse.redirect(settingsUrl(appOrigin, { google: 'misconfigured' }))
   }
 
   try {
-    const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri)
+    const oauth2Client = new google.auth.OAuth2(
+      googleConfig.clientId,
+      googleConfig.clientSecret,
+      googleConfig.redirectUri
+    )
     const { tokens } = await oauth2Client.getToken(code)
     oauth2Client.setCredentials(tokens)
 

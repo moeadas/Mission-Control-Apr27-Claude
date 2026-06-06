@@ -12,19 +12,42 @@
 
 import { google } from 'googleapis'
 
+import { normalizeProviderSettings } from '@/lib/provider-settings'
 import { getOAuthToken, isAccessTokenExpired, saveOAuthToken } from '@/lib/server/oauth-tokens'
+import { loadPersistedProviderSettings } from '@/lib/server/provider-secrets'
+import type { ProviderSettings } from '@/lib/types'
+
+export function resolveGoogleOAuthConfig(input?: {
+  providerSettings?: Partial<ProviderSettings> | null
+  origin?: string
+}) {
+  const settings = normalizeProviderSettings(input?.providerSettings)
+  const saved = settings.google
+  const clientId = saved?.enabled && saved.clientId ? saved.clientId : process.env.GOOGLE_CLIENT_ID || ''
+  const clientSecret =
+    saved?.enabled && saved.clientSecret ? saved.clientSecret : process.env.GOOGLE_CLIENT_SECRET || ''
+  const redirectUri =
+    saved?.enabled && saved.redirectUri
+      ? saved.redirectUri
+      : process.env.GOOGLE_REDIRECT_URI ||
+        `${(input?.origin || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '')}/api/auth/google/callback`
+
+  return {
+    clientId: clientId.trim(),
+    clientSecret: clientSecret.trim(),
+    redirectUri: redirectUri.trim(),
+    source: saved?.enabled && saved.clientId && saved.clientSecret ? 'user' : 'env',
+  }
+}
 
 /** Build a fresh OAuth2 client (no credentials attached). Used by both the
  *  auth-flow routes and helpers below that load+refresh per-user tokens. */
-export function getGoogleOAuth2Client() {
-  const url =
-    process.env.GOOGLE_REDIRECT_URI ||
-    `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/auth/google/callback`
-  return new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    url
-  )
+export function getGoogleOAuth2Client(input?: {
+  providerSettings?: Partial<ProviderSettings> | null
+  origin?: string
+}) {
+  const config = resolveGoogleOAuthConfig(input)
+  return new google.auth.OAuth2(config.clientId, config.clientSecret, config.redirectUri)
 }
 
 /**
@@ -36,7 +59,8 @@ export async function getGoogleClientForUser(userId: string): Promise<InstanceTy
   const token = await getOAuthToken(userId, 'google')
   if (!token?.accessToken) return null
 
-  const client = getGoogleOAuth2Client()
+  const providerSettings = await loadPersistedProviderSettings(userId)
+  const client = getGoogleOAuth2Client({ providerSettings })
   client.setCredentials({
     access_token: token.accessToken,
     refresh_token: token.refreshToken ?? undefined,

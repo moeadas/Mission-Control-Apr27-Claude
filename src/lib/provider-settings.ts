@@ -1,4 +1,4 @@
-import { AIProvider, ProviderFallback, ProviderSettings, AnthropicSettings, OpenAISettings, MetaAdsSettings, HiggsFieldSettings, SerperSearchSettings } from '@/lib/types'
+import { AIProvider, ProviderFallback, ProviderSettings, AnthropicSettings, OpenAISettings, MetaAdsSettings, HiggsFieldSettings, SerperSearchSettings, GoogleOAuthSettings } from '@/lib/types'
 
 /**
  * Default per-provider model used for content-generation deliverables when
@@ -134,6 +134,14 @@ export const DEFAULT_PROVIDER_SETTINGS: ProviderSettings = {
     resultCount: 10,
     testQuery: 'content marketing strategy',
   },
+  google: {
+    enabled: false,
+    verified: false,
+    clientId: '',
+    clientSecret: '',
+    maskedClientSecret: '',
+    redirectUri: '',
+  },
 }
 
 export const THINKING_DELIVERABLE_TYPES = new Set([
@@ -250,6 +258,10 @@ export function normalizeProviderSettings(input?: Partial<ProviderSettings> | nu
     serper: {
       ...DEFAULT_PROVIDER_SETTINGS.serper!,
       ...(input?.serper || {}),
+    },
+    google: {
+      ...DEFAULT_PROVIDER_SETTINGS.google!,
+      ...(input?.google || {}),
     },
   }
 }
@@ -423,6 +435,9 @@ export function stripProviderSecrets(settings: ProviderSettings) {
       : undefined,
     serper: settings.serper
       ? { ...settings.serper, apiKey: '', maskedKey: settings.serper.maskedKey || '' }
+      : undefined,
+    google: settings.google
+      ? { ...settings.google, clientSecret: '', maskedClientSecret: settings.google.maskedClientSecret || '' }
       : undefined,
   }
 }

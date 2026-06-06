@@ -13,6 +13,7 @@ import { google } from 'googleapis'
 
 import { resolveAuthContextFromToken, getAuthTokenFromRequest } from '@/lib/auth/server'
 import { signToken } from '@/lib/auth/jwt'
+import { resolveGoogleOAuthConfig } from '@/lib/google-integrations'
 
 const DEFAULT_SCOPES = [
   'openid',
@@ -47,17 +48,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/login?next=' + encodeURIComponent('/settings?integrations=google'), publicOrigin(request)))
   }
 
-  const clientId = process.env.GOOGLE_CLIENT_ID
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET
-  const redirectUri =
-    process.env.GOOGLE_REDIRECT_URI ||
-    `${publicOrigin(request)}/api/auth/google/callback`
+  const googleConfig = resolveGoogleOAuthConfig({
+    providerSettings: auth.providerSettings,
+    origin: publicOrigin(request),
+  })
 
-  if (!clientId || !clientSecret) {
+  if (!googleConfig.clientId || !googleConfig.clientSecret) {
     return NextResponse.redirect(new URL('/settings?google=misconfigured', publicOrigin(request)))
   }
 
-  const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri)
+  const oauth2Client = new google.auth.OAuth2(
+    googleConfig.clientId,
+    googleConfig.clientSecret,
+    googleConfig.redirectUri
+  )
 
   // Sign a short-lived state token (5 min) so the callback can recover the
   // user id. Anything an attacker could replay is bound to a real account.

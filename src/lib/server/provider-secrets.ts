@@ -73,6 +73,12 @@ function mergeProviderSettings(primary?: Partial<ProviderSettings> | null, fallb
       apiKey: primary?.serper?.apiKey || fallback?.serper?.apiKey || '',
       maskedKey: primary?.serper?.maskedKey || fallback?.serper?.maskedKey || '',
     },
+    google: {
+      ...(fallback?.google || {}),
+      ...(primary?.google || {}),
+      clientSecret: primary?.google?.clientSecret || fallback?.google?.clientSecret || '',
+      maskedClientSecret: primary?.google?.maskedClientSecret || fallback?.google?.maskedClientSecret || '',
+    },
   } as Partial<ProviderSettings>)
 }
 
