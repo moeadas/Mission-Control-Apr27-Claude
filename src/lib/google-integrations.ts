@@ -50,6 +50,49 @@ export function getGoogleOAuth2Client(input?: {
   return new google.auth.OAuth2(config.clientId, config.clientSecret, config.redirectUri)
 }
 
+export async function refreshGoogleAccessTokenForUser(userId: string): Promise<InstanceType<typeof google.auth.OAuth2> | null> {
+  const token = await getOAuthToken(userId, 'google')
+  if (!token?.refreshToken) return null
+
+  const providerSettings = await loadPersistedProviderSettings(userId)
+  const config = resolveGoogleOAuthConfig({ providerSettings })
+  if (!config.clientId || !config.clientSecret) return null
+
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: config.clientId,
+      client_secret: config.clientSecret,
+      refresh_token: token.refreshToken,
+      grant_type: 'refresh_token',
+    }),
+  })
+  const data = await response.json().catch(() => null)
+  if (!response.ok || !data?.access_token) {
+    const reason = data?.error_description || data?.error || `Google token refresh failed with HTTP ${response.status}.`
+    throw new Error(`Google connection needs to be reconnected: ${reason}`)
+  }
+
+  await saveOAuthToken({
+    userId,
+    provider: 'google',
+    accountEmail: token.accountEmail,
+    scope: data.scope || token.scope,
+    accessToken: data.access_token,
+    refreshToken: token.refreshToken,
+    expiresAt: data.expires_in ? new Date(Date.now() + Number(data.expires_in) * 1000) : token.expiresAt,
+  })
+
+  const client = getGoogleOAuth2Client({ providerSettings })
+  client.setCredentials({
+    access_token: data.access_token,
+    refresh_token: token.refreshToken,
+    expiry_date: data.expires_in ? Date.now() + Number(data.expires_in) * 1000 : token.expiresAt?.getTime(),
+  })
+  return client
+}
+
 /**
  * Return an OAuth2 client with the user's stored credentials applied. Refreshes
  * the access token automatically if it has expired and we have a refresh
@@ -69,20 +112,7 @@ export async function getGoogleClientForUser(userId: string): Promise<InstanceTy
 
   if (isAccessTokenExpired(token) && token.refreshToken) {
     try {
-      const refreshed = await client.refreshAccessToken()
-      const credentials = refreshed.credentials
-      if (credentials.access_token) {
-        await saveOAuthToken({
-          userId,
-          provider: 'google',
-          accountEmail: token.accountEmail,
-          scope: token.scope,
-          accessToken: credentials.access_token,
-          refreshToken: credentials.refresh_token ?? token.refreshToken,
-          expiresAt: credentials.expiry_date ? new Date(credentials.expiry_date) : null,
-        })
-        client.setCredentials(credentials)
-      }
+      return await refreshGoogleAccessTokenForUser(userId)
     } catch (err) {
       console.warn('[google-integrations] refresh failed:', err)
     }

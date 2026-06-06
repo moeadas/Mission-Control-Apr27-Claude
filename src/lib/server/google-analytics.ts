@@ -1,7 +1,7 @@
 import { google } from 'googleapis'
 
 import { getGa4DateRange, type Ga4WidgetConfig } from '@/lib/ga4-presets'
-import { getGoogleClientForUser } from '@/lib/google-integrations'
+import { getGoogleClientForUser, refreshGoogleAccessTokenForUser } from '@/lib/google-integrations'
 
 type Ga4Row = Record<string, string | number>
 
@@ -30,22 +30,43 @@ export async function getGa4ClientForUser(userId: string) {
   return getGoogleClientForUser(userId)
 }
 
-export async function listGa4Properties(userId: string) {
-  const auth = await getGa4ClientForUser(userId)
-  if (!auth) return null
-  const admin = google.analyticsadmin({ version: 'v1beta', auth })
-  const response = await admin.accountSummaries.list()
-  const accounts = response.data.accountSummaries || []
+function isGoogleAuthError(error: any) {
+  const status = error?.code || error?.status || error?.response?.status
+  const message = String(error?.message || error?.errors?.[0]?.message || error?.response?.data?.error_description || '')
+  return status === 401 || /invalid authentication credentials|invalid credentials|expected oauth 2 access token|unauthorized/i.test(message)
+}
 
-  return accounts.flatMap((account) =>
-    (account.propertySummaries || []).map((property) => ({
-      account: account.displayName || account.account || 'Google Analytics',
-      accountId: account.account,
-      propertyId: String(property.property || '').replace('properties/', ''),
-      propertyName: property.displayName || property.property || 'GA4 property',
-      propertyResource: property.property,
-    }))
-  )
+async function withGoogleAuthRetry<T>(userId: string, run: (auth: any) => Promise<T>): Promise<T> {
+  const auth = await getGa4ClientForUser(userId)
+  if (!auth) throw new Error('Google Analytics is not connected. Connect Google in Settings.')
+  try {
+    return await run(auth)
+  } catch (error) {
+    if (!isGoogleAuthError(error)) throw error
+    const refreshed = await refreshGoogleAccessTokenForUser(userId)
+    if (!refreshed) {
+      throw new Error('Google connection expired. Reconnect Google in Settings, then reload Analytics.')
+    }
+    return run(refreshed)
+  }
+}
+
+export async function listGa4Properties(userId: string) {
+  return withGoogleAuthRetry(userId, async (auth) => {
+    const admin = google.analyticsadmin({ version: 'v1beta', auth })
+    const response = await admin.accountSummaries.list()
+    const accounts = response.data.accountSummaries || []
+
+    return accounts.flatMap((account) =>
+      (account.propertySummaries || []).map((property) => ({
+        account: account.displayName || account.account || 'Google Analytics',
+        accountId: account.account,
+        propertyId: String(property.property || '').replace('properties/', ''),
+        propertyName: property.displayName || property.property || 'GA4 property',
+        propertyResource: property.property,
+      }))
+    )
+  })
 }
 
 function normalizeReportRows(response: any): Ga4Row[] {
@@ -94,36 +115,36 @@ export async function runGa4WidgetReport({
   dateRangeId: string
   previous?: boolean
 }) {
-  const auth = await getGa4ClientForUser(userId)
-  if (!auth) throw new Error('Google Analytics is not connected. Connect Google in Settings.')
-
   const key = cacheKey(['ga4-widget', userId, propertyId, widget.id, dateRangeId, previous])
   const cached = readCache(key)
   if (cached) return cached
 
-  const data = google.analyticsdata({ version: 'v1beta', auth })
   const dateRange = getGa4DateRange(dateRangeId)
   const startDate = previous ? dateRange.previousStartDate : dateRange.startDate
   const endDate = previous ? dateRange.previousEndDate : dateRange.endDate
 
-  if (widget.query.funnelEvents?.length) {
-    const response: any = await (data.properties.runReport as any)({
+  const funnelEvents = widget.query.funnelEvents || []
+  if (funnelEvents.length) {
+    const response: any = await withGoogleAuthRetry(userId, async (auth) => {
+      const data = google.analyticsdata({ version: 'v1beta', auth })
+      return (data.properties.runReport as any)({
       property: `properties/${propertyId}`,
       requestBody: {
         dateRanges: [{ startDate, endDate }],
         dimensions: [{ name: 'eventName' }],
         metrics: [{ name: 'eventCount' }],
-        dimensionFilter: metricFilterForEvents(widget.query.funnelEvents),
-        limit: String(widget.query.funnelEvents.length),
+        dimensionFilter: metricFilterForEvents(funnelEvents),
+        limit: String(funnelEvents.length),
         returnPropertyQuota: true,
       },
+    })
     })
     const rows = normalizeReportRows(response.data)
     const indexed = new Map(rows.map((row) => [String(row.eventName), Number(row.eventCount || 0)]))
     const result = {
-      rows: widget.query.funnelEvents.map((eventName, index) => {
+      rows: funnelEvents.map((eventName, index) => {
         const value = indexed.get(eventName) || 0
-        const previousValue = index > 0 ? indexed.get(widget.query.funnelEvents![index - 1]) || 0 : value
+        const previousValue = index > 0 ? indexed.get(funnelEvents[index - 1]) || 0 : value
         return {
           eventName,
           eventCount: value,
@@ -136,7 +157,9 @@ export async function runGa4WidgetReport({
     return result
   }
 
-  const response: any = await (data.properties.runReport as any)({
+  const response: any = await withGoogleAuthRetry(userId, async (auth) => {
+    const data = google.analyticsdata({ version: 'v1beta', auth })
+    return (data.properties.runReport as any)({
     property: `properties/${propertyId}`,
     requestBody: {
       dateRanges: [{ startDate, endDate }],
@@ -146,6 +169,7 @@ export async function runGa4WidgetReport({
       limit: String(widget.query.limit || 25),
       returnPropertyQuota: true,
     },
+  })
   })
   const result = {
     rows: normalizeReportRows(response.data),

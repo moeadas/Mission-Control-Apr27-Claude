@@ -27,6 +27,12 @@ export async function GET(request: NextRequest) {
       properties: properties || [],
     })
   } catch (err: any) {
+    if (/reconnect google|connection expired|invalid authentication credentials|expected oauth 2 access token/i.test(err.message || '')) {
+      return NextResponse.json(
+        { error: err.message || 'Reconnect Google in Settings.', code: 'GOOGLE_ANALYTICS_RECONNECT_REQUIRED' },
+        { status: 400 }
+      )
+    }
     return NextResponse.json({ error: err.message || 'Failed to load GA4 properties' }, { status: 500 })
   }
 }

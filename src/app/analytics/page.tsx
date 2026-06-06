@@ -321,8 +321,14 @@ export default function AnalyticsPage() {
           headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         })
         const payload = await response.json()
-        if (response.status === 400 && payload.code === 'GOOGLE_ANALYTICS_NOT_CONNECTED') {
+        if (
+          response.status === 400 &&
+          (payload.code === 'GOOGLE_ANALYTICS_NOT_CONNECTED' || payload.code === 'GOOGLE_ANALYTICS_RECONNECT_REQUIRED')
+        ) {
           setNotConnected(true)
+          if (payload.code === 'GOOGLE_ANALYTICS_RECONNECT_REQUIRED') {
+            toast.error(payload.error || 'Reconnect Google in Settings.')
+          }
           return
         }
         if (!response.ok) throw new Error(payload.error || 'Failed to load GA4 properties')
