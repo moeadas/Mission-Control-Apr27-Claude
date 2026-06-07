@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
     const url = new URL(request.url)
     const propertyId = url.searchParams.get('propertyId')
-    const presetId = url.searchParams.get('preset') || 'traffic_source'
+    const presetId = url.searchParams.get('preset') || 'executive_overview'
     const preset = getGa4Preset(presetId)
     const dateRangeId = url.searchParams.get('dateRange') || preset.dateRange.default
     const dateRange = getGa4DateRange(dateRangeId)
@@ -30,7 +30,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       propertyId,
       preset,
-      presets: GA4_PRESETS.map(({ presetId, label, description }) => ({ presetId, label, description })),
+      presets: GA4_PRESETS.map(({ presetId, label, description, audience, cadence, storyQuestion }) => ({
+        presetId,
+        label,
+        description,
+        audience,
+        cadence,
+        storyQuestion,
+      })),
       dateRange,
       widgets,
       insights: buildGa4RuleInsights(widgets),

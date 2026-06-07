@@ -253,6 +253,16 @@ function firstMetric(widget: any) {
   return metric ? Number(widget?.current?.totals?.[metric] ?? widget?.current?.rows?.[0]?.[metric] ?? 0) : 0
 }
 
+function metricValue(widgets: Record<string, any>, metric: string) {
+  for (const widget of Object.values(widgets)) {
+    const totals = widget?.current?.totals || {}
+    if (totals[metric] !== undefined) return Number(totals[metric] || 0)
+    const rows = widget?.current?.rows || []
+    if (rows[0]?.[metric] !== undefined) return Number(rows[0][metric] || 0)
+  }
+  return 0
+}
+
 function previousFirstMetric(widget: any) {
   const metric = widget?.config?.query?.metrics?.[0]
   return metric ? Number(widget?.previous?.totals?.[metric] ?? widget?.previous?.rows?.[0]?.[metric] ?? 0) : 0
@@ -289,17 +299,52 @@ export function buildGa4RuleInsights(widgets: Record<string, any>) {
   const engagementWidgets = Object.values(widgets).filter((widget: any) => widget?.current?.totals?.engagementRate !== undefined)
   for (const widget of engagementWidgets) {
     const rate = Number(widget.current.totals.engagementRate || 0)
-    if (rate > 0 && rate < 0.45) {
+    if (rate > 0 && rate < 0.55) {
       insights.push({
         type: 'optimization',
-        severity: 'medium',
-        title: 'Engagement rate is weak',
+        severity: rate < 0.45 ? 'high' : 'medium',
+        title: 'Engagement rate is below the healthy range',
         evidence: `${widget.config.title} engagement rate is ${(rate * 100).toFixed(1)}%.`,
-        action: 'Review landing-page intent match, page load speed, above-the-fold clarity, and CTA relevance.',
+        action: 'Use the landing-page and channel widgets to find weak intent matches, then improve above-the-fold clarity, page speed, and CTA relevance.',
       })
       break
     }
   }
 
-  return insights.slice(0, 8)
+  const sessions = metricValue(widgets, 'sessions')
+  const keyEvents = metricValue(widgets, 'keyEvents')
+  const revenue = metricValue(widgets, 'totalRevenue')
+  const activeUsers = metricValue(widgets, 'activeUsers')
+
+  if (sessions > 100 && keyEvents === 0) {
+    insights.push({
+      type: 'risk',
+      severity: 'high',
+      title: 'Traffic is not producing tracked outcomes',
+      evidence: `${sessions.toLocaleString()} sessions were detected, but GA4 returned 0 key events for this view.`,
+      action: 'Confirm that the property has key events configured, then inspect landing pages and forms to ensure business actions are firing.',
+    })
+  }
+
+  if (activeUsers > 0 && sessions / activeUsers < 1.15) {
+    insights.push({
+      type: 'optimization',
+      severity: 'low',
+      title: 'Repeat engagement looks shallow',
+      evidence: `Sessions per active user is ${(sessions / activeUsers).toFixed(2)} based on the visible dashboard metrics.`,
+      action: 'Add stronger return paths: remarketing audiences, email capture, internal links, and next-step CTAs on high-traffic pages.',
+    })
+  }
+
+  if (sessions > 0 && revenue === 0 && Object.values(widgets).some((widget: any) => /revenue|e-?commerce|campaign/i.test(widget?.config?.title || ''))) {
+    insights.push({
+      type: 'optimization',
+      severity: 'medium',
+      title: 'Revenue is not visible in this story',
+      evidence: 'The dashboard returned no tracked revenue for the selected period.',
+      action: 'If this property should report revenue, verify purchase/revenue events. If not, judge performance by key events and qualified leads instead.',
+    })
+  }
+
+  return insights.slice(0, 10)
 }
