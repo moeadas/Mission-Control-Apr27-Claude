@@ -77,6 +77,7 @@ interface CampaignInsight {
   frequency?: string
   conversions?: string | number
   leads?: string | number
+  lead_action_type?: string | null
   purchases?: string | number
   add_to_cart?: string | number
   page_views?: string | number

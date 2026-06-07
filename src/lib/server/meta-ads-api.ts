@@ -128,10 +128,30 @@ export function buildMetaInsightsParams(datePreset = 'last_30d') {
 export function extractMetaActionMetrics(row: any) {
   const actions = Array.isArray(row?.actions) ? row.actions : []
   const costPerActions = Array.isArray(row?.cost_per_action_type) ? row.cost_per_action_type : []
+  const actionMap = new Map<string, number>()
+  for (const action of actions) {
+    const actionType = String(action.action_type || '')
+    const value = Number.parseInt(String(action.value || 0), 10) || 0
+    actionMap.set(actionType, (actionMap.get(actionType) || 0) + value)
+  }
+  const pickActionValue = (candidates: string[]) => {
+    for (const candidate of candidates) {
+      const value = actionMap.get(candidate)
+      if (value && value > 0) return { actionType: candidate, value }
+    }
+    return { actionType: null as string | null, value: 0 }
+  }
+  const leadResult = pickActionValue([
+    'lead',
+    'onsite_web_lead',
+    'offsite_conversion.fb_pixel_lead',
+    'offsite_lead_add_20_s_calls',
+  ])
   const metric = {
     conversions: 0,
     purchases: 0,
-    leads: 0,
+    leads: leadResult.value,
+    lead_action_type: leadResult.actionType,
     add_to_cart: 0,
     page_views: 0,
     post_engagements: 0,
@@ -148,9 +168,6 @@ export function extractMetaActionMetrics(row: any) {
     const value = Number.parseInt(String(action.value || 0), 10) || 0
     if (actionType.includes('purchase') || actionType.includes('complete_registration')) {
       metric.purchases += value
-      metric.conversions += value
-    } else if (actionType.includes('lead')) {
-      metric.leads += value
       metric.conversions += value
     } else if (actionType.includes('add_to_cart') || actionType.includes('initiate_checkout')) {
       metric.add_to_cart += value
@@ -173,12 +190,14 @@ export function extractMetaActionMetrics(row: any) {
       metric.video_views += value
     }
   }
+  metric.conversions += metric.leads
 
   const spend = Number.parseFloat(String(row?.spend || 0)) || 0
   const clicks = Number.parseInt(String(row?.clicks || 0), 10) || 0
   const impressions = Number.parseInt(String(row?.impressions || 0), 10) || 0
 
-  const costPerLead = costPerActions.find((item: any) => String(item.action_type || '').includes('lead'))?.value
+  const costPerLead = costPerActions.find((item: any) => String(item.action_type || '') === leadResult.actionType)?.value
+    || costPerActions.find((item: any) => String(item.action_type || '') === 'lead')?.value
   if (costPerLead) metric.meta_reported_cost_per_lead = String(Number.parseFloat(String(costPerLead)).toFixed(2))
   if (metric.leads > 0) metric.cost_per_lead = (spend / metric.leads).toFixed(2)
 
