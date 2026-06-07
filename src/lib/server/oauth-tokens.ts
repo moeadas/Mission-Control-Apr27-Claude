@@ -51,10 +51,15 @@ function envelopeOrNull(value: string | null | undefined) {
 
 function readEnvelope(value: any): string | null {
   if (!value) return null
+  if (typeof value === 'string') {
+    try {
+      return readEnvelope(JSON.parse(value))
+    } catch {
+      return value
+    }
+  }
   if (isEncryptedEnvelope(value)) return decryptString(value)
   if (typeof value === 'object' && typeof value.plaintext === 'string') return value.plaintext
-  // Defensive: if someone stored a raw string in the JSONB column, return it.
-  if (typeof value === 'string') return value
   return null
 }
 
