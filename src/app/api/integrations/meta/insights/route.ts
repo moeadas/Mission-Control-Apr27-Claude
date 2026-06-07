@@ -15,7 +15,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { resolveAuthContextFromToken, getAuthTokenFromRequest } from '@/lib/auth/server'
 import { normalizeProviderSettings } from '@/lib/provider-settings'
-import { enrichInsight, fetchAllMetaPages, metaGraphRequest, normalizeAdAccountId, resolveMetaToken } from '@/lib/server/meta-ads-api'
+import { buildMetaInsightsParams, enrichInsight, fetchAllMetaPages, metaGraphRequest, normalizeAdAccountId, resolveMetaToken } from '@/lib/server/meta-ads-api'
 
 function getBearerToken(r: NextRequest) {
   // Batch P.2: cookie OR bearer. Local wrapper kept so call sites don't change.
@@ -45,6 +45,7 @@ export async function GET(request: NextRequest) {
     if (!accountId) return NextResponse.json({ error: 'Ad account ID required' }, { status: 400 })
 
     const adAccount = normalizeAdAccountId(accountId)
+    const dateConfig = buildMetaInsightsParams(datePreset)
 
     const fields = [
       'campaign_name', 'campaign_id',
@@ -58,7 +59,7 @@ export async function GET(request: NextRequest) {
 
     const insights = await fetchAllMetaPages(`/${adAccount}/insights`, token, {
       fields,
-      date_preset: datePreset,
+      ...dateConfig.params,
       level,
       limit: 100,
     })
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
     // Account-level summary
     const summaryData = await metaGraphRequest<{ data?: any[] }>(`/${adAccount}/insights`, token, {
       fields,
-      date_preset: datePreset,
+      ...dateConfig.params,
       level: 'account',
     })
 
@@ -74,6 +75,7 @@ export async function GET(request: NextRequest) {
       insights: insights.map(enrichInsight),
       summary: summaryData.data?.[0] ? enrichInsight(summaryData.data[0]) : null,
       datePreset,
+      dateRange: dateConfig.range,
       level,
     })
   } catch (err: any) {

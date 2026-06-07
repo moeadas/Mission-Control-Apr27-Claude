@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { resolveAuthContextFromToken, getAuthTokenFromRequest } from '@/lib/auth/server'
 import { normalizeProviderSettings } from '@/lib/provider-settings'
-import { enrichInsight, fetchAllMetaPages, metaGraphRequest, resolveMetaToken } from '@/lib/server/meta-ads-api'
+import { buildMetaInsightsParams, enrichInsight, fetchAllMetaPages, metaGraphRequest, resolveMetaToken } from '@/lib/server/meta-ads-api'
 
 function getBearerToken(request: NextRequest) {
   return getAuthTokenFromRequest(request)
@@ -26,6 +26,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ cam
 
     const { campaignId } = await context.params
     const datePreset = new URL(request.url).searchParams.get('datePreset') || 'last_30d'
+    const dateConfig = buildMetaInsightsParams(datePreset)
 
     const campaign = await metaGraphRequest(`/${campaignId}`, token, {
       fields: 'id,name,status,effective_status,configured_status,objective,daily_budget,lifetime_budget,start_time,stop_time,created_time,updated_time,buying_type',
@@ -51,7 +52,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ cam
 
     const insightData = await metaGraphRequest<{ data?: any[] }>(`/${campaignId}/insights`, token, {
       fields: insightFields,
-      date_preset: datePreset,
+      ...dateConfig.params,
     }).catch(() => ({ data: [] }))
 
     const adsets = await fetchAllMetaPages(`/${campaignId}/adsets`, token, {
@@ -88,6 +89,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ cam
       ads,
       creatives: creatives.filter(Boolean),
       datePreset,
+      dateRange: dateConfig.range,
     })
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Failed to fetch campaign details' }, { status: 500 })

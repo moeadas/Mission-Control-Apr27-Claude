@@ -29,8 +29,6 @@ export async function GET(request: NextRequest) {
     if (!accountId) return NextResponse.json({ error: 'Ad account ID required' }, { status: 400 })
 
     const adAccount = normalizeAdAccountId(accountId)
-    const datePreset = new URL(request.url).searchParams.get('datePreset') || 'last_30d'
-
     const fields = [
       'id', 'name', 'status', 'effective_status', 'configured_status', 'objective', 'daily_budget', 'lifetime_budget',
       'start_time', 'stop_time', 'created_time', 'updated_time',
@@ -38,7 +36,6 @@ export async function GET(request: NextRequest) {
 
     const campaigns = await fetchAllMetaPages(`/${adAccount}/campaigns`, token, {
       fields,
-      date_preset: datePreset,
       limit: 100,
     })
 

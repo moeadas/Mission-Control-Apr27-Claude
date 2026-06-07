@@ -70,6 +70,10 @@ export async function GET(request: NextRequest) {
       googleConfig.redirectUri
     )
     const { tokens } = await oauth2Client.getToken(code)
+    if (!tokens.access_token) {
+      console.error('[google-oauth] token exchange returned no access token')
+      return NextResponse.redirect(settingsUrl(appOrigin, { google: 'no_access_token' }))
+    }
     oauth2Client.setCredentials(tokens)
 
     // Resolve the Google account email so the user can see which account they connected.
@@ -91,9 +95,16 @@ export async function GET(request: NextRequest) {
       provider: 'google',
       accountEmail,
       scope: tokens.scope ?? null,
-      accessToken: tokens.access_token || '',
+      accessToken: tokens.access_token,
       refreshToken: tokens.refresh_token ?? null,
       expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
+    })
+
+    console.log('[google-oauth] connected', {
+      userId: payload.sub,
+      accountEmail,
+      hasRefreshToken: Boolean(tokens.refresh_token),
+      expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null,
     })
 
     return NextResponse.redirect(settingsUrl(appOrigin, { google: 'connected' }))

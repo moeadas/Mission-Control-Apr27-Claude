@@ -189,17 +189,92 @@ export default function SettingsPage() {
     meta_instagram: false,
   })
 
+  const markGoogleConnected = (accountEmail?: string | null) => {
+    setOauthConnections(prev => ({
+      ...prev,
+      google_docs: true,
+      google_sheets: true,
+      google_ads: true,
+      google_analytics: true,
+    }))
+    setGoogleOAuthHealth('connected')
+    setGoogleOAuthHealthMessage(
+      accountEmail
+        ? `Google account connected · ${accountEmail}`
+        : 'Google account connected · Analytics, Docs, Sheets, and Drive are ready'
+    )
+  }
+
+  const markMetaConnected = (accountEmail?: string | null) => {
+    setOauthConnections(prev => ({
+      ...prev,
+      meta_facebook: true,
+      meta_instagram: true,
+    }))
+    if (accountEmail) setMetaHealthMessage(`Meta account connected · ${accountEmail}`)
+  }
+
   // Handle OAuth callback on page load
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const oauthSuccess = params.get('oauth')
     const oauthScope = params.get('scope')
+    const googleStatus = params.get('google')
+    const metaStatus = params.get('meta')
+    let handled = false
+
+    if (googleStatus === 'connected') {
+      markGoogleConnected()
+      toast.success('Google account connected')
+      handled = true
+    } else if (googleStatus) {
+      const googleMessages: Record<string, string> = {
+        denied: 'Google consent was cancelled.',
+        missing_params: 'Google did not return the expected OAuth parameters.',
+        invalid_state: 'Google connection expired before completion. Please try Connect Google again.',
+        misconfigured: 'Google OAuth app settings are missing or invalid.',
+        exchange_failed: 'Google returned the user to Mission Control, but token exchange failed.',
+        no_access_token: 'Google did not return an access token. Please try Connect Google again.',
+      }
+      toast.error(googleMessages[googleStatus] || `Google connection failed: ${googleStatus}`)
+      setGoogleOAuthHealth('invalid')
+      setGoogleOAuthHealthMessage(googleMessages[googleStatus] || `Google connection failed: ${googleStatus}`)
+      handled = true
+    }
+
+    if (metaStatus === 'connected') {
+      markMetaConnected()
+      toast.success('Meta account connected')
+      handled = true
+    }
+
     if (oauthSuccess === 'success' && oauthScope) {
       setOauthConnections(prev => ({ ...prev, [oauthScope]: true }))
       toast.success(`Successfully connected ${oauthScope.replace('_', ' ')}`)
+      handled = true
+    }
+
+    if (handled) {
       // Clean URL
       window.history.replaceState({}, '', window.location.pathname)
     }
+  }, [])
+
+  useEffect(() => {
+    const loadOAuthConnections = async () => {
+      const token = await getAuthToken()
+      if (!token) return
+      const response = await fetch('/api/auth/connections', {
+        cache: 'no-store',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!response.ok) return
+      const payload = await response.json().catch(() => null)
+      if (payload?.google?.connected) markGoogleConnected(payload.google.accountEmail)
+      if (payload?.meta?.connected) markMetaConnected(payload.meta.accountEmail)
+    }
+
+    loadOAuthConnections().catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -262,9 +337,12 @@ export default function SettingsPage() {
       providerSettings.google?.redirectUri ||
         (typeof window !== 'undefined' ? `${window.location.origin}/api/auth/google/callback` : '')
     )
-    setGoogleOAuthHealth(providerSettings.google?.verified ? 'connected' : 'idle')
+    const googleAccountConnected = oauthConnections.google_analytics
+    setGoogleOAuthHealth(providerSettings.google?.verified || googleAccountConnected ? 'connected' : 'idle')
     setGoogleOAuthHealthMessage(
-      providerSettings.google?.verified
+      googleAccountConnected
+        ? 'Google account connected · Analytics, Docs, Sheets, and Drive are ready'
+        : providerSettings.google?.verified
         ? 'Google OAuth app connected · ready for Analytics, Docs, Sheets, and Drive'
         : providerSettings.google?.maskedClientSecret
           ? 'Saved Google OAuth settings are not verified in this session'
@@ -275,6 +353,7 @@ export default function SettingsPage() {
     providerSettings.google?.maskedClientSecret,
     providerSettings.google?.redirectUri,
     providerSettings.google?.verified,
+    oauthConnections.google_analytics,
   ])
 
   useEffect(() => {
@@ -2006,24 +2085,29 @@ export default function SettingsPage() {
                   <h3 className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-3">Google</h3>
                   <div className="space-y-2">
                     {[
-                      { label: 'Google Docs', service: 'google-docs' },
-                      { label: 'Google Sheets', service: 'google-sheets' },
-                      { label: 'Google Analytics', service: 'google-analytics' },
-                      { label: 'Google Ads', service: 'google-ads' },
-                    ].map(({ label, service }) => (
-                      <div key={service} className="flex items-center justify-between py-2 px-3 rounded-lg bg-base/60 border border-border">
-                        <span className="text-sm text-text-primary">{label}</span>
-                        <div className="flex items-center gap-3">
-                          <Badge color="#6b7280" variant="outline">Disconnected</Badge>
-                          <Button
-                            variant="secondary"
-                            onClick={() => window.location.href = `/api/auth/google?service=${service}`}
-                          >
-                            Connect
-                          </Button>
+                      { label: 'Google Docs', service: 'google-docs', key: 'google_docs' },
+                      { label: 'Google Sheets', service: 'google-sheets', key: 'google_sheets' },
+                      { label: 'Google Analytics', service: 'google-analytics', key: 'google_analytics' },
+                      { label: 'Google Ads', service: 'google-ads', key: 'google_ads' },
+                    ].map(({ label, service, key }) => {
+                      const connected = oauthConnections[key as keyof typeof oauthConnections]
+                      return (
+                        <div key={service} className="flex items-center justify-between py-2 px-3 rounded-lg bg-base/60 border border-border">
+                          <span className="text-sm text-text-primary">{label}</span>
+                          <div className="flex items-center gap-3">
+                            <Badge color={connected ? '#00d4aa' : '#6b7280'} variant="outline">
+                              {connected ? 'Connected' : 'Disconnected'}
+                            </Badge>
+                            <Button
+                              variant="secondary"
+                              onClick={() => window.location.href = `/api/auth/google?service=${service}`}
+                            >
+                              {connected ? 'Reconnect' : 'Connect'}
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
 
@@ -2033,7 +2117,9 @@ export default function SettingsPage() {
                     <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-base/60 border border-border">
                       <span className="text-sm text-text-primary">Meta Ads</span>
                       <div className="flex items-center gap-3">
-                        <Badge color="#6b7280" variant="outline">Disconnected</Badge>
+                        <Badge color={oauthConnections.meta_facebook ? '#00d4aa' : '#6b7280'} variant="outline">
+                          {oauthConnections.meta_facebook ? 'Connected' : 'Disconnected'}
+                        </Badge>
                         <Button
                           variant="secondary"
                           onClick={() => window.location.href = '/api/auth/meta'}

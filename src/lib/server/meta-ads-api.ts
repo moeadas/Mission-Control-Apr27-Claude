@@ -4,6 +4,7 @@ import { getOAuthToken } from '@/lib/server/oauth-tokens'
 
 const META_GRAPH_VERSION = process.env.META_GRAPH_API_VERSION || 'v20.0'
 const META_GRAPH = `https://graph.facebook.com/${META_GRAPH_VERSION}`
+const MADRID_TIME_ZONE = 'Europe/Madrid'
 
 export function normalizeAdAccountId(accountId: string) {
   return accountId.startsWith('act_') ? accountId : `act_${accountId}`
@@ -60,6 +61,68 @@ export async function fetchAllMetaPages<T = any>(
   }
 
   return rows
+}
+
+const madridDateFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: MADRID_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
+
+function madridDate(offsetDays = 0) {
+  return madridDateFormatter.format(new Date(Date.now() + offsetDays * 24 * 60 * 60 * 1000))
+}
+
+function madridParts(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: MADRID_TIME_ZONE,
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+  }).formatToParts(date)
+  const get = (type: string) => Number(parts.find((part) => part.type === type)?.value || 0)
+  return { year: get('year'), month: get('month'), day: get('day') }
+}
+
+function ymd(year: number, month: number, day: number) {
+  return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+}
+
+export function resolveMetaInsightDateRange(datePreset = 'last_30d') {
+  const today = madridDate(0)
+  const yesterday = madridDate(-1)
+
+  if (datePreset === 'today') return { since: today, until: today }
+  if (datePreset === 'yesterday') return { since: yesterday, until: yesterday }
+  if (datePreset === 'last_7d') return { since: madridDate(-6), until: today }
+  if (datePreset === 'last_14d') return { since: madridDate(-13), until: today }
+  if (datePreset === 'last_30d') return { since: madridDate(-29), until: today }
+  if (datePreset === 'last_90d') return { since: madridDate(-89), until: today }
+
+  const { year, month } = madridParts()
+  if (datePreset === 'this_month') return { since: ymd(year, month, 1), until: today }
+
+  if (datePreset === 'last_month') {
+    const lastMonth = month === 1 ? 12 : month - 1
+    const lastMonthYear = month === 1 ? year - 1 : year
+    const lastDay = new Date(Date.UTC(lastMonthYear, lastMonth, 0)).getUTCDate()
+    return { since: ymd(lastMonthYear, lastMonth, 1), until: ymd(lastMonthYear, lastMonth, lastDay) }
+  }
+
+  return { since: madridDate(-29), until: today }
+}
+
+export function buildMetaInsightsParams(datePreset = 'last_30d') {
+  const range = resolveMetaInsightDateRange(datePreset)
+  return {
+    params: {
+      time_range: JSON.stringify(range),
+      time_increment: 'all_days',
+      action_report_time: 'impression',
+    },
+    range,
+  }
 }
 
 export function extractMetaActionMetrics(row: any) {
