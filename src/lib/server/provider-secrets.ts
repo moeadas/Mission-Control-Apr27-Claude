@@ -17,9 +17,19 @@ type ProviderSecretsStore = Record<
   string,
   {
     providerSettings: ProviderSettings
+    oauthTokens?: Partial<Record<string, PersistedOAuthToken>>
     updatedAt: string
   }
 >
+
+export interface PersistedOAuthToken {
+  provider: string
+  accountEmail: string | null
+  scope: string | null
+  accessToken: string
+  refreshToken: string | null
+  expiresAt: string | null
+}
 
 function mergeProviderSettings(primary?: Partial<ProviderSettings> | null, fallback?: Partial<ProviderSettings> | null) {
   return normalizeProviderSettings({
@@ -146,6 +156,7 @@ export async function savePersistedProviderSettings(userId: string, providerSett
   const existing = store[userId]?.providerSettings
   const merged = mergeProviderSettings(providerSettings, existing)
   store[userId] = {
+    ...(store[userId] || {}),
     providerSettings: merged,
     updatedAt: new Date().toISOString(),
   }
@@ -154,6 +165,41 @@ export async function savePersistedProviderSettings(userId: string, providerSett
   // it didn't work in Docker and leaked dev keys to every user. The
   // encrypted JSON store at `data/provider-secrets.json` is now the single
   // source of truth.)
+}
+
+export async function loadPersistedOAuthToken(userId: string, provider: string): Promise<PersistedOAuthToken | null> {
+  const store = await readSecretsStore()
+  const token = store[userId]?.oauthTokens?.[provider]
+  return token?.accessToken ? token : null
+}
+
+export async function savePersistedOAuthToken(userId: string, token: PersistedOAuthToken) {
+  const store = await readSecretsStore()
+  const existing = store[userId]
+  store[userId] = {
+    providerSettings: existing?.providerSettings || normalizeProviderSettings(null),
+    oauthTokens: {
+      ...(existing?.oauthTokens || {}),
+      [token.provider]: token,
+    },
+    updatedAt: new Date().toISOString(),
+  }
+  await writeSecretsStore(store)
+}
+
+export async function deletePersistedOAuthToken(userId: string, provider: string): Promise<boolean> {
+  const store = await readSecretsStore()
+  const existing = store[userId]
+  if (!existing?.oauthTokens?.[provider]) return false
+  const nextTokens = { ...existing.oauthTokens }
+  delete nextTokens[provider]
+  store[userId] = {
+    ...existing,
+    oauthTokens: nextTokens,
+    updatedAt: new Date().toISOString(),
+  }
+  await writeSecretsStore(store)
+  return true
 }
 
 export function mergePersistedProviderSettings(primary?: Partial<ProviderSettings> | null, fallback?: Partial<ProviderSettings> | null) {

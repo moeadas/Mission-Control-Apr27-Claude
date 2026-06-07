@@ -14,8 +14,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { google } from 'googleapis'
 
 import { verifyToken } from '@/lib/auth/jwt'
-import { resolveGoogleOAuthConfig } from '@/lib/google-integrations'
-import { deleteOAuthToken, getOAuthToken, saveOAuthToken } from '@/lib/server/oauth-tokens'
+import { getGoogleOAuthTokenForUser, resolveGoogleOAuthConfig, saveGoogleOAuthTokenBackup } from '@/lib/google-integrations'
+import { deleteOAuthToken, saveOAuthToken } from '@/lib/server/oauth-tokens'
 import { loadPersistedProviderSettings } from '@/lib/server/provider-secrets'
 
 function settingsUrl(origin: string, params: Record<string, string>) {
@@ -99,8 +99,16 @@ export async function GET(request: NextRequest) {
       refreshToken: tokens.refresh_token ?? null,
       expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
     })
+    await saveGoogleOAuthTokenBackup({
+      userId: payload.sub,
+      accountEmail,
+      scope: tokens.scope ?? null,
+      accessToken: tokens.access_token,
+      refreshToken: tokens.refresh_token ?? null,
+      expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
+    })
 
-    const persisted = await getOAuthToken(payload.sub, 'google')
+    const persisted = await getGoogleOAuthTokenForUser(payload.sub)
     if (!persisted?.accessToken) {
       console.error('[google-oauth] token save readback failed', {
         userId: payload.sub,

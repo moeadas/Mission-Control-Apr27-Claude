@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 import { resolveAuthContextFromToken, getAuthTokenFromRequest } from '@/lib/auth/server'
+import { getGoogleOAuthTokenForUser } from '@/lib/google-integrations'
 import { listGa4Properties } from '@/lib/server/google-analytics'
-import { getOAuthToken } from '@/lib/server/oauth-tokens'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     const auth = await resolveAuthContextFromToken(getAuthTokenFromRequest(request))
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const token = await getOAuthToken(auth.userId, 'google')
+    const token = await getGoogleOAuthTokenForUser(auth.userId)
     if (!token?.accessToken) {
       return NextResponse.json(
         { error: 'Google Analytics is not connected. Connect Google in Settings.', code: 'GOOGLE_ANALYTICS_NOT_CONNECTED' },

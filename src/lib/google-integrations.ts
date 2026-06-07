@@ -13,8 +13,8 @@
 import { google } from 'googleapis'
 
 import { normalizeProviderSettings } from '@/lib/provider-settings'
-import { deleteOAuthToken, getOAuthToken, isAccessTokenExpired, saveOAuthToken } from '@/lib/server/oauth-tokens'
-import { loadPersistedProviderSettings } from '@/lib/server/provider-secrets'
+import { deleteOAuthToken, getOAuthToken, isAccessTokenExpired, saveOAuthToken, type OAuthTokenRecord } from '@/lib/server/oauth-tokens'
+import { deletePersistedOAuthToken, loadPersistedOAuthToken, loadPersistedProviderSettings, savePersistedOAuthToken } from '@/lib/server/provider-secrets'
 import type { ProviderSettings } from '@/lib/types'
 
 export function resolveGoogleOAuthConfig(input?: {
@@ -50,8 +50,42 @@ export function getGoogleOAuth2Client(input?: {
   return new google.auth.OAuth2(config.clientId, config.clientSecret, config.redirectUri)
 }
 
+export async function getGoogleOAuthTokenForUser(userId: string): Promise<OAuthTokenRecord | null> {
+  const dbToken = await getOAuthToken(userId, 'google')
+  if (dbToken?.accessToken) return dbToken
+
+  const backup = await loadPersistedOAuthToken(userId, 'google')
+  if (!backup?.accessToken) return null
+  return {
+    provider: 'google',
+    accountEmail: backup.accountEmail,
+    scope: backup.scope,
+    accessToken: backup.accessToken,
+    refreshToken: backup.refreshToken,
+    expiresAt: backup.expiresAt ? new Date(backup.expiresAt) : null,
+  }
+}
+
+export async function saveGoogleOAuthTokenBackup(input: {
+  userId: string
+  accountEmail?: string | null
+  scope?: string | null
+  accessToken: string
+  refreshToken?: string | null
+  expiresAt?: Date | null
+}) {
+  await savePersistedOAuthToken(input.userId, {
+    provider: 'google',
+    accountEmail: input.accountEmail ?? null,
+    scope: input.scope ?? null,
+    accessToken: input.accessToken,
+    refreshToken: input.refreshToken ?? null,
+    expiresAt: input.expiresAt?.toISOString() || null,
+  })
+}
+
 export async function refreshGoogleAccessTokenForUser(userId: string): Promise<InstanceType<typeof google.auth.OAuth2> | null> {
-  const token = await getOAuthToken(userId, 'google')
+  const token = await getGoogleOAuthTokenForUser(userId)
   if (!token?.refreshToken) return null
 
   const providerSettings = await loadPersistedProviderSettings(userId)
@@ -71,7 +105,12 @@ export async function refreshGoogleAccessTokenForUser(userId: string): Promise<I
   const data = await response.json().catch(() => null)
   if (!response.ok || !data?.access_token) {
     if (data?.error === 'invalid_grant') {
+      console.warn('[google-oauth] refresh invalid_grant; clearing stored Google OAuth grant', {
+        userId,
+        accountEmail: token.accountEmail,
+      })
       await deleteOAuthToken(userId, 'google')
+      await deletePersistedOAuthToken(userId, 'google')
     }
     const reasonParts = [
       data?.error,
@@ -91,6 +130,14 @@ export async function refreshGoogleAccessTokenForUser(userId: string): Promise<I
     refreshToken: token.refreshToken,
     expiresAt: data.expires_in ? new Date(Date.now() + Number(data.expires_in) * 1000) : token.expiresAt,
   })
+  await saveGoogleOAuthTokenBackup({
+    userId,
+    accountEmail: token.accountEmail,
+    scope: data.scope || token.scope,
+    accessToken: data.access_token,
+    refreshToken: token.refreshToken,
+    expiresAt: data.expires_in ? new Date(Date.now() + Number(data.expires_in) * 1000) : token.expiresAt,
+  })
 
   const client = getGoogleOAuth2Client({ providerSettings })
   client.setCredentials({
@@ -102,7 +149,7 @@ export async function refreshGoogleAccessTokenForUser(userId: string): Promise<I
 }
 
 export async function getGoogleAccessTokenForUser(userId: string): Promise<string | null> {
-  const token = await getOAuthToken(userId, 'google')
+  const token = await getGoogleOAuthTokenForUser(userId)
   if (!token?.accessToken) return null
   if (!isAccessTokenExpired(token)) return token.accessToken
 
@@ -117,7 +164,7 @@ export async function getGoogleAccessTokenForUser(userId: string): Promise<strin
  * token. Returns null if the user has not connected Google yet.
  */
 export async function getGoogleClientForUser(userId: string): Promise<InstanceType<typeof google.auth.OAuth2> | null> {
-  const token = await getOAuthToken(userId, 'google')
+  const token = await getGoogleOAuthTokenForUser(userId)
   if (!token?.accessToken) return null
 
   const providerSettings = await loadPersistedProviderSettings(userId)
