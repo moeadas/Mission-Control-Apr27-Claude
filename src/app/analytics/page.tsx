@@ -66,6 +66,13 @@ type StoryPanel = {
   color: string
 }
 
+type ActionInsight = {
+  title: string
+  evidence: string
+  severity: 'low' | 'medium' | 'high'
+  action: string
+}
+
 function n(value: unknown) {
   const parsed = Number.parseFloat(String(value ?? 0))
   return Number.isFinite(parsed) ? parsed : 0
@@ -147,6 +154,103 @@ function rowsFromWidget(widget: any) {
   return widget?.current?.rows || []
 }
 
+function cleanLabel(value: unknown) {
+  const label = String(value || '').trim()
+  if (!label || label === '(not set)' || label === '(not provided)' || label === '/') return label || '(not set)'
+  return label.length > 72 ? `${label.slice(0, 69)}...` : label
+}
+
+function widgetWithDimension(dashboard: DashboardPayload | null, dimension: string) {
+  return Object.values(dashboard?.widgets || {}).find((widget: any) =>
+    widget?.config?.query?.dimensions?.includes(dimension)
+  )
+}
+
+function rowMetric(row: any, metric: string) {
+  return n(row?.[metric])
+}
+
+function totalMetric(rows: any[], metric: string) {
+  return rows.reduce((sum, row) => sum + rowMetric(row, metric), 0)
+}
+
+function topRowByMetric(widget: any, dimension: string, metric: string) {
+  const rows = rowsFromWidget(widget)
+    .filter((row: any) => cleanLabel(row?.[dimension]) !== '(not set)')
+    .sort((a: any, b: any) => rowMetric(b, metric) - rowMetric(a, metric))
+  const row = rows[0]
+  if (!row) return null
+  const total = totalMetric(rows, metric)
+  const value = rowMetric(row, metric)
+  return {
+    row,
+    label: cleanLabel(row[dimension]),
+    value,
+    total,
+    share: total ? (value / total) * 100 : 0,
+  }
+}
+
+function topOutcomeRow(widget: any, dimension: string) {
+  const rawRows = rowsFromWidget(widget)
+    .filter((row: any) => cleanLabel(row?.[dimension]) !== '(not set)')
+  const totalSessions = totalMetric(rawRows, 'sessions')
+  const rows = rawRows
+    .map((row: any) => ({
+      row,
+      label: cleanLabel(row[dimension]),
+      keyEvents: rowMetric(row, 'keyEvents'),
+      revenue: rowMetric(row, 'totalRevenue'),
+      sessions: rowMetric(row, 'sessions'),
+      engagementRate: rowMetric(row, 'engagementRate'),
+      share: totalSessions ? (rowMetric(row, 'sessions') / totalSessions) * 100 : 0,
+    }))
+    .sort((a: any, b: any) =>
+      (b.keyEvents * 1_000_000 + b.revenue * 1_000 + b.sessions) -
+      (a.keyEvents * 1_000_000 + a.revenue * 1_000 + a.sessions)
+    )
+  return rows[0] || null
+}
+
+function weakHighVolumeRow(widget: any, dimension: string) {
+  const rows = rowsFromWidget(widget).filter((row: any) => cleanLabel(row?.[dimension]) !== '(not set)')
+  if (!rows.length) return null
+  const avgEngagement = rows.reduce((sum: number, row: any) => sum + rowMetric(row, 'engagementRate'), 0) / rows.length
+  const sorted = rows
+    .map((row: any) => ({
+      row,
+      label: cleanLabel(row[dimension]),
+      sessions: rowMetric(row, 'sessions'),
+      engagementRate: rowMetric(row, 'engagementRate'),
+      keyEvents: rowMetric(row, 'keyEvents'),
+    }))
+    .filter((item: any) => item.sessions > 0 && (item.engagementRate === 0 || item.engagementRate < Math.max(0.35, avgEngagement * 0.75)))
+    .sort((a: any, b: any) => b.sessions - a.sessions)
+  return sorted[0] || null
+}
+
+function strongestKpiMovement(dashboard: DashboardPayload | null) {
+  const movements = Object.values(dashboard?.widgets || {})
+    .filter((widget: any) => widget?.config?.chartType === 'kpi')
+    .map((widget: any) => {
+      const change = delta(widget)
+      const metric = firstMetricName(widget)
+      return change === null ? null : {
+        label: widget.config.title,
+        metric,
+        change,
+        current: firstMetricValue(widget),
+        previous: previousMetricValue(widget),
+      }
+    })
+    .filter(Boolean) as Array<{ label: string; metric: string; change: number; current: number; previous: number }>
+  return movements.sort((a, b) => Math.abs(b.change) - Math.abs(a.change))[0] || null
+}
+
+function findPrimaryDimension(widget: any) {
+  return widget?.config?.query?.dimensions?.find((dimension: string) => dimension !== 'date') || widget?.config?.query?.dimensions?.[0] || ''
+}
+
 function spanClass(cols: number) {
   if (cols >= 12) return 'lg:col-span-12'
   if (cols >= 8) return 'lg:col-span-8'
@@ -173,49 +277,286 @@ function buildStoryPanels(dashboard: DashboardPayload | null): StoryPanel[] {
   const engagementRate = metricFromWidgets(dashboard, 'engagementRate')
   const keyEvents = metricFromWidgets(dashboard, 'keyEvents')
   const revenue = metricFromWidgets(dashboard, 'totalRevenue')
-  const topChannelWidget = Object.values(dashboard?.widgets || {}).find((widget: any) =>
-    widget?.config?.query?.dimensions?.includes('sessionDefaultChannelGroup')
-  )
-  const topChannel = rowsFromWidget(topChannelWidget)[0]?.sessionDefaultChannelGroup || 'top channels'
+  const channelWidget = widgetWithDimension(dashboard, 'sessionDefaultChannelGroup')
+  const sourceWidget = widgetWithDimension(dashboard, 'sessionSourceMedium')
+  const landingWidget = widgetWithDimension(dashboard, 'landingPage')
+  const pageWidget = widgetWithDimension(dashboard, 'pagePath')
+  const campaignWidget = widgetWithDimension(dashboard, 'sessionCampaignName')
+  const countryWidget = widgetWithDimension(dashboard, 'country')
+  const deviceWidget = widgetWithDimension(dashboard, 'deviceCategory')
+  const primaryWidget = channelWidget || sourceWidget || landingWidget || pageWidget || campaignWidget || countryWidget || deviceWidget
+  const primaryDimension = findPrimaryDimension(primaryWidget)
+  const topTraffic = primaryWidget && primaryDimension ? topRowByMetric(primaryWidget, primaryDimension, primaryWidget.config.query.metrics?.[0] || 'sessions') : null
+  const topOutcome =
+    (channelWidget && topOutcomeRow(channelWidget, 'sessionDefaultChannelGroup')) ||
+    (landingWidget && topOutcomeRow(landingWidget, 'landingPage')) ||
+    (campaignWidget && topOutcomeRow(campaignWidget, 'sessionCampaignName')) ||
+    null
+  const weakSegment =
+    (landingWidget && weakHighVolumeRow(landingWidget, 'landingPage')) ||
+    (sourceWidget && weakHighVolumeRow(sourceWidget, 'sessionSourceMedium')) ||
+    (channelWidget && weakHighVolumeRow(channelWidget, 'sessionDefaultChannelGroup')) ||
+    null
+  const kpiMovement = strongestKpiMovement(dashboard)
 
-  const issue = engagementRate && engagementRate < 0.55
-    ? `Engagement is below the 55% healthy benchmark at ${fmtPercent(engagementRate)}.`
+  const conversionRate = sessions > 0 ? (keyEvents / sessions) * 100 : 0
+  const userLabel = activeUsers || sessions
+  const topTrafficBody = topTraffic
+    ? `${topTraffic.label} is the leading visible segment with ${fmtNumber(topTraffic.value)} ${metricLabel(primaryWidget?.config?.query?.metrics?.[0] || 'sessions').toLowerCase()}, representing ${topTraffic.share.toFixed(1)}% of the ranked rows in this dashboard.`
+    : `${dashboard?.preset?.label || 'This dashboard'} has loaded summary KPIs, but no ranked segment row is available yet.`
+
+  const problemTitle = weakSegment
+    ? `${weakSegment.label} is absorbing traffic with weak engagement`
+    : engagementRate && engagementRate < 0.55
+      ? `Engagement is only ${fmtPercent(engagementRate)}`
+      : keyEvents === 0 && sessions > 0
+        ? `${fmtNumber(sessions)} sessions have no tracked key events`
+        : revenue === 0 && /ecommerce|campaign/i.test(dashboard?.preset?.presetId || '')
+          ? 'Revenue is not visible in this dashboard'
+          : kpiMovement?.change && kpiMovement.change < -10
+            ? `${kpiMovement.label} is down ${Math.abs(kpiMovement.change).toFixed(1)}%`
+            : topTraffic
+              ? `${topTraffic.label} is carrying the current story`
+              : 'No critical drop is visible in the loaded metrics'
+
+  const problemBody = weakSegment
+    ? `${weakSegment.label} has ${fmtNumber(weakSegment.sessions)} sessions, ${fmtPercent(weakSegment.engagementRate)} engagement, and ${fmtNumber(weakSegment.keyEvents)} key events. This is the clearest repair target because volume is already present.`
     : keyEvents === 0 && sessions > 0
-      ? 'Traffic is visible, but no key events are being reported in this view.'
-      : revenue === 0 && /ecommerce|campaign/i.test(dashboard?.preset?.presetId || '')
-        ? 'Revenue is not visible for the selected view, so campaign value needs a conversion proxy.'
-        : 'No severe quality drop is visible from the headline metrics.'
+      ? `GA4 returned ${fmtNumber(sessions)} sessions but 0 key events, so the dashboard cannot separate useful traffic from passive visits until conversion tracking is confirmed.`
+      : kpiMovement
+        ? `${kpiMovement.label} moved from ${formatMetric(kpiMovement.previous, undefined, kpiMovement.metric)} to ${formatMetric(kpiMovement.current, undefined, kpiMovement.metric)} versus the previous comparable period.`
+        : `${topTrafficBody}`
+
+  const answerTitle = topOutcome
+    ? `${topOutcome.label} is the best outcome segment`
+    : keyEvents > 0
+      ? `${fmtNumber(keyEvents)} key events captured`
+      : topTraffic
+        ? `Start with ${topTraffic.label}`
+        : 'Use the highest-volume evidence row first'
+
+  const answerBody = topOutcome
+    ? `${topOutcome.label} produced ${fmtNumber(topOutcome.keyEvents)} key events from ${fmtNumber(topOutcome.sessions)} sessions${topOutcome.revenue ? ` and ${fmtCurrency(topOutcome.revenue)} revenue` : ''}. Audit the landing path and messaging behind this segment, then reuse the pattern in the next campaign/content update.`
+    : topTraffic
+      ? `${topTraffic.label} is large enough to influence the selected period. Use it as the first segment for channel/page/campaign drilldown instead of optimizing the site average.`
+      : `The selected widgets show ${fmtNumber(userLabel)} users and ${fmtNumber(keyEvents)} key events. More ranked rows are needed for a segment-level recommendation.`
+
+  const impactTitle = topOutcome && sessions > 0
+    ? `${conversionRate.toFixed(2)}% key-event rate is the current benchmark`
+    : revenue > 0
+      ? `${fmtCurrency(revenue)} revenue is tied to this view`
+      : weakSegment
+        ? `Repairing ${weakSegment.label} is the fastest leverage point`
+        : 'Next action is ready once the strongest segment is confirmed'
+
+  const impactBody = weakSegment
+    ? `Bring ${weakSegment.label} closer to the dashboard average by improving the first screen, CTA relevance, and internal next step. Because it already has ${fmtNumber(weakSegment.sessions)} sessions, a small lift can matter quickly.`
+    : topOutcome
+      ? `Use ${topOutcome.label} as the benchmark segment. Any lower-performing channel, page, or campaign should be compared against its engagement and key-event pattern before budget or content is expanded.`
+      : `Prioritize measurement quality first, then scale the segment with the clearest combination of volume and tracked outcomes.`
 
   return [
     {
       label: 'Situation',
-      title: `${fmtNumber(activeUsers || sessions)} users in focus`,
-      body: `${dashboard?.dateRange?.label || 'Selected period'} performance is being read through ${dashboard?.preset?.label || 'the selected'} dashboard. ${topChannel} is the first channel signal to inspect.`,
+      title: `${fmtNumber(userLabel)} users in focus`,
+      body: topTrafficBody,
       icon: Users,
       color: '#4f8ef7',
     },
     {
       label: 'Problem',
-      title: issue,
-      body: 'The guide recommends every metric be interpreted with context: trend, benchmark, segment, and conversion impact.',
+      title: problemTitle,
+      body: problemBody,
       icon: AlertTriangle,
-      color: issue.startsWith('No severe') ? '#18c7b6' : '#f4c84f',
+      color: problemTitle.startsWith('No critical') ? '#18c7b6' : '#f4c84f',
     },
     {
       label: 'Answer',
-      title: `${fmtNumber(keyEvents)} key events${revenue ? ` and ${fmtCurrency(revenue)} revenue` : ''}`,
-      body: `Use the evidence widgets to connect who came, what they did, and whether they converted. Prioritize the segment with strong engagement plus measurable action.`,
+      title: answerTitle,
+      body: answerBody,
       icon: CheckCircle2,
       color: '#18c7b6',
     },
     {
       label: 'Impact',
-      title: 'Next action should be segment-specific',
-      body: 'Do not optimize the average. Find the channel, campaign, device, or page that explains the story, then scale or repair that segment first.',
+      title: impactTitle,
+      body: impactBody,
       icon: Target,
       color: '#8f72ff',
     },
   ]
+}
+
+function buildActionInsights(dashboard: DashboardPayload | null): ActionInsight[] {
+  if (!dashboard) return []
+
+  const insights: ActionInsight[] = []
+  const sessions = metricFromWidgets(dashboard, 'sessions')
+  const activeUsers = metricFromWidgets(dashboard, 'activeUsers')
+  const keyEvents = metricFromWidgets(dashboard, 'keyEvents')
+  const revenue = metricFromWidgets(dashboard, 'totalRevenue')
+  const engagementRate = metricFromWidgets(dashboard, 'engagementRate')
+  const conversionRate = sessions > 0 ? keyEvents / sessions : 0
+
+  const channelWidget = widgetWithDimension(dashboard, 'sessionDefaultChannelGroup')
+  const sourceWidget = widgetWithDimension(dashboard, 'sessionSourceMedium')
+  const landingWidget = widgetWithDimension(dashboard, 'landingPage')
+  const pageWidget = widgetWithDimension(dashboard, 'pagePath')
+  const campaignWidget = widgetWithDimension(dashboard, 'sessionCampaignName')
+  const countryWidget = widgetWithDimension(dashboard, 'country')
+  const deviceWidget = widgetWithDimension(dashboard, 'deviceCategory')
+
+  const topChannel = channelWidget ? topOutcomeRow(channelWidget, 'sessionDefaultChannelGroup') || topRowByMetric(channelWidget, 'sessionDefaultChannelGroup', 'sessions') : null
+  const topSource = sourceWidget ? topOutcomeRow(sourceWidget, 'sessionSourceMedium') || topRowByMetric(sourceWidget, 'sessionSourceMedium', 'sessions') : null
+  const topLanding = landingWidget ? topOutcomeRow(landingWidget, 'landingPage') || topRowByMetric(landingWidget, 'landingPage', 'sessions') : null
+  const topPage = pageWidget ? topRowByMetric(pageWidget, 'pagePath', 'screenPageViews') : null
+  const topCampaign = campaignWidget ? topOutcomeRow(campaignWidget, 'sessionCampaignName') || topRowByMetric(campaignWidget, 'sessionCampaignName', 'sessions') : null
+  const topCountry = countryWidget ? topRowByMetric(countryWidget, 'country', 'activeUsers') : null
+  const topDevice = deviceWidget ? topRowByMetric(deviceWidget, 'deviceCategory', 'activeUsers') : null
+  const weakLanding = landingWidget ? weakHighVolumeRow(landingWidget, 'landingPage') : null
+  const weakSource = sourceWidget ? weakHighVolumeRow(sourceWidget, 'sessionSourceMedium') : null
+  const weakChannel = channelWidget ? weakHighVolumeRow(channelWidget, 'sessionDefaultChannelGroup') : null
+  const kpiMovement = strongestKpiMovement(dashboard)
+  const visibleLeader = topChannel?.label || topSource?.label || topLanding?.label || topCampaign?.label || topPage?.label
+
+  if (topChannel?.label) {
+    const channelKeyEvents = n((topChannel as any).keyEvents ?? topChannel.row?.keyEvents)
+    const channelSessions = n((topChannel as any).sessions ?? topChannel.row?.sessions ?? topChannel.value)
+    insights.push({
+      severity: channelKeyEvents > 0 ? 'medium' : 'low',
+      title: `${topChannel.label} is the primary acquisition lever`,
+      evidence: `${topChannel.label} accounts for ${fmtNumber(channelSessions)} sessions${channelKeyEvents ? ` and ${fmtNumber(channelKeyEvents)} key events` : ''}${topChannel.share ? ` (${topChannel.share.toFixed(1)}% of ranked volume)` : ''}.`,
+      action: channelKeyEvents > 0
+        ? `Replicate the ${topChannel.label} path: review its top landing page, keep the same intent/message match, and build the next content or campaign around that pattern.`
+        : `Use ${topChannel.label} for reach, but pair it with a stronger conversion path because this dashboard is not showing meaningful key events from it.`,
+    })
+  }
+
+  if (topSource?.label) {
+    const sourceEvents = n((topSource as any).keyEvents ?? topSource.row?.keyEvents)
+    insights.push({
+      severity: sourceEvents > 0 ? 'medium' : 'low',
+      title: `${topSource.label} is the source/medium to inspect first`,
+      evidence: `${topSource.label} shows ${fmtNumber((topSource as any).sessions ?? topSource.row?.sessions ?? topSource.value)} sessions, ${fmtNumber(sourceEvents)} key events, and ${fmtPercent((topSource as any).engagementRate ?? topSource.row?.engagementRate)} engagement.`,
+      action: sourceEvents > 0
+        ? `Create a source-specific follow-up: send more qualified traffic from ${topSource.label} to the same high-intent offer and protect UTMs so this signal stays measurable.`
+        : `Audit ${topSource.label}'s landing-page promise. The source is visible, but the event signal is too weak to scale confidently.`,
+    })
+  }
+
+  if (topLanding?.label) {
+    const landingEvents = n((topLanding as any).keyEvents ?? topLanding.row?.keyEvents)
+    const landingSessions = n((topLanding as any).sessions ?? topLanding.row?.sessions ?? topLanding.value)
+    insights.push({
+      severity: landingEvents > 0 ? 'medium' : 'low',
+      title: `${topLanding.label} is the landing page with the most decision value`,
+      evidence: `${topLanding.label} has ${fmtNumber(landingSessions)} sessions, ${fmtPercent((topLanding as any).engagementRate ?? topLanding.row?.engagementRate)} engagement, and ${fmtNumber(landingEvents)} key events.`,
+      action: landingEvents > 0
+        ? `Use ${topLanding.label} as the conversion benchmark. Mirror its headline, CTA placement, and internal links on related pages.`
+        : `Improve ${topLanding.label}'s above-the-fold CTA and next-step links before sending more traffic to it.`,
+    })
+  } else if (topPage?.label) {
+    insights.push({
+      severity: 'medium',
+      title: `${topPage.label} is the content page getting the most attention`,
+      evidence: `${topPage.label} generated ${fmtNumber(topPage.value)} views in the selected period.`,
+      action: `Add a clear next step on ${topPage.label}: product link, lead form, consultation CTA, or related article path so high attention turns into measurable action.`,
+    })
+  }
+
+  const weak = weakLanding || weakSource || weakChannel
+  if (weak?.label) {
+    insights.push({
+      severity: weak.engagementRate < 0.35 ? 'high' : 'medium',
+      title: `Repair ${weak.label} before scaling traffic`,
+      evidence: `${weak.label} has ${fmtNumber(weak.sessions)} sessions but only ${fmtPercent(weak.engagementRate)} engagement and ${fmtNumber(weak.keyEvents)} key events.`,
+      action: `Run a focused CRO pass on ${weak.label}: align the first headline with visitor intent, move the primary CTA higher, and add one contextual internal link to the next best action.`,
+    })
+  }
+
+  if (topCampaign?.label && !/^\(not set\)$/i.test(topCampaign.label)) {
+    insights.push({
+      severity: n((topCampaign as any).keyEvents ?? topCampaign.row?.keyEvents) > 0 ? 'medium' : 'low',
+      title: `${topCampaign.label} is the campaign to brief around`,
+      evidence: `${topCampaign.label} returned ${fmtNumber((topCampaign as any).sessions ?? topCampaign.row?.sessions ?? topCampaign.value)} sessions, ${fmtPercent((topCampaign as any).engagementRate ?? topCampaign.row?.engagementRate)} engagement, and ${fmtNumber((topCampaign as any).keyEvents ?? topCampaign.row?.keyEvents)} key events.`,
+      action: `Use ${topCampaign.label} as the campaign review sample: compare ad promise, landing page, and tracked event path before changing budgets.`,
+    })
+  }
+
+  if (topCountry?.label) {
+    insights.push({
+      severity: 'low',
+      title: `${topCountry.label} is the audience market to prioritize`,
+      evidence: `${topCountry.label} represents ${fmtNumber(topCountry.value)} active users (${topCountry.share.toFixed(1)}% of ranked country users).`,
+      action: `Localize the next content/ad angle for ${topCountry.label}: use market-specific proof, currency/contact cues, and language that matches this audience segment.`,
+    })
+  }
+
+  if (topDevice?.label && topDevice.share >= 55) {
+    insights.push({
+      severity: 'medium',
+      title: `${topDevice.label} experience dominates the audience`,
+      evidence: `${topDevice.label} represents ${topDevice.share.toFixed(1)}% of ranked device users.`,
+      action: `Prioritize ${topDevice.label} QA before any campaign push: test first screen load, CTA visibility, form completion, and analytics event firing on that device class.`,
+    })
+  }
+
+  if (kpiMovement) {
+    insights.push({
+      severity: Math.abs(kpiMovement.change) >= 25 ? 'high' : 'medium',
+      title: `${kpiMovement.label} ${kpiMovement.change >= 0 ? 'rose' : 'fell'} ${Math.abs(kpiMovement.change).toFixed(1)}%`,
+      evidence: `${kpiMovement.label} moved from ${formatMetric(kpiMovement.previous, undefined, kpiMovement.metric)} to ${formatMetric(kpiMovement.current, undefined, kpiMovement.metric)} versus the previous comparable period.`,
+      action: kpiMovement.change >= 0
+        ? `Use ${visibleLeader || kpiMovement.label} as the follow-up experiment anchor and repeat the same source/page/campaign pattern in one controlled test.`
+        : `Start the recovery review with ${visibleLeader || kpiMovement.label}; compare its landing-page promise and event path before changing acquisition spend.`,
+    })
+  }
+
+  if (sessions > 100 && keyEvents === 0) {
+    insights.unshift({
+      severity: 'high',
+      title: 'Conversion tracking is blocking decision quality',
+      evidence: `${fmtNumber(sessions)} sessions are loaded, but GA4 returned 0 key events for this dashboard.`,
+      action: 'Verify GA4 key events for forms, calls, purchases, and lead actions before judging channel quality. Without this, the dashboard can rank traffic but not business impact.',
+    })
+  } else if (sessions > 0 && keyEvents > 0) {
+    insights.push({
+      severity: conversionRate >= 0.03 ? 'medium' : 'low',
+      title: `Current key-event rate is ${(conversionRate * 100).toFixed(2)}%`,
+      evidence: `${fmtNumber(keyEvents)} key events came from ${fmtNumber(sessions)} sessions${revenue ? ` with ${fmtCurrency(revenue)} tracked revenue` : ''}.`,
+      action: `Use ${(conversionRate * 100).toFixed(2)}% as the current benchmark. Segments below this rate need CTA/message fixes; segments above it deserve more traffic.`,
+    })
+  }
+
+  if (activeUsers > 0 && sessions > 0 && sessions / activeUsers < 1.15) {
+    insights.push({
+      severity: 'low',
+      title: 'Return behavior is shallow',
+      evidence: `Sessions per active user is ${(sessions / activeUsers).toFixed(2)}, which means most users are not returning within the selected window.`,
+      action: 'Add return paths on the top page: email capture, remarketing audience, related-content block, and a clear reason to come back.',
+    })
+  }
+
+  if (engagementRate > 0 && engagementRate < 0.55) {
+    insights.push({
+      severity: engagementRate < 0.45 ? 'high' : 'medium',
+      title: `Engagement is below target at ${fmtPercent(engagementRate)}`,
+      evidence: `The dashboard-level engagement rate is ${fmtPercent(engagementRate)} across the selected period.`,
+      action: weak?.label
+        ? `Start with ${weak.label}, because it combines traffic volume with weak engagement.`
+        : 'Review the top landing page and top traffic source together; the issue is usually message mismatch, slow first screen, or unclear next step.',
+    })
+  }
+
+  const seen = new Set<string>()
+  return insights
+    .filter((insight) => {
+      const key = `${insight.title}-${insight.evidence}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+    .slice(0, 7)
 }
 
 function ConnectGoogleState() {
@@ -477,9 +818,9 @@ function WidgetCard({ widget }: { widget: any }) {
   return <BarWidget widget={widget} />
 }
 
-function InsightRail({ dashboard, accountEmail }: { dashboard: DashboardPayload | null; accountEmail: string }) {
+function InsightRail({ dashboard, accountEmail, loading }: { dashboard: DashboardPayload | null; accountEmail: string; loading: boolean }) {
   const panels = buildStoryPanels(dashboard)
-  const insights = dashboard?.insights || []
+  const insights = buildActionInsights(dashboard)
   return (
     <aside className="space-y-4 lg:sticky lg:top-5 lg:self-start">
       <div className="rounded-lg border border-border bg-card p-4 shadow-[var(--shadow-card)]">
@@ -493,14 +834,24 @@ function InsightRail({ dashboard, accountEmail }: { dashboard: DashboardPayload 
           </div>
         </div>
         <p className="mt-3 text-xs leading-relaxed text-text-secondary">
-          Read as: who came, what they did, whether they converted, and what action should happen next.
+          {loading
+            ? 'Waiting for GA4 rows to finish loading before analysis is generated.'
+            : dashboard
+              ? `Analyzed ${Object.keys(dashboard.widgets || {}).length} live GA4 widgets for ${dashboard.dateRange.label}.`
+              : 'Select a GA4 property to generate live analysis.'}
         </p>
         {accountEmail ? <Badge color="#18c7b6" variant="outline" className="mt-3">{accountEmail}</Badge> : null}
       </div>
 
       <div className="rounded-lg border border-border bg-card p-3 shadow-[var(--shadow-soft)]">
-        <div className="space-y-2">
-          {panels.map((panel) => {
+        {loading ? (
+          <div className="flex items-center gap-3 rounded-md border border-border bg-base/50 p-4 text-sm text-text-secondary">
+            <Loader2 size={16} className="animate-spin text-accent-blue" />
+            Analyzing channels, pages, events, and trends...
+          </div>
+        ) : dashboard ? (
+          <div className="space-y-2">
+            {panels.map((panel) => {
             const Icon = panel.icon
             return (
               <div key={panel.label} className="rounded-md border border-border bg-base/50 p-3">
@@ -512,8 +863,13 @@ function InsightRail({ dashboard, accountEmail }: { dashboard: DashboardPayload 
                 <p className="mt-1 text-xs leading-relaxed text-text-secondary">{panel.body}</p>
               </div>
             )
-          })}
-        </div>
+            })}
+          </div>
+        ) : (
+          <p className="rounded-md border border-dashed border-border bg-base/50 p-4 text-xs leading-relaxed text-text-secondary">
+            The analysis rail will populate after a GA4 property and dashboard preset load.
+          </p>
+        )}
       </div>
 
       <div className="rounded-lg border border-border bg-card p-4 shadow-[var(--shadow-soft)]">
@@ -532,7 +888,9 @@ function InsightRail({ dashboard, accountEmail }: { dashboard: DashboardPayload 
               <p className="mt-1 text-xs leading-relaxed text-accent-cyan">{insight.action}</p>
             </div>
           )) : (
-            <p className="text-xs leading-relaxed text-text-secondary">No major risks detected from the currently loaded widgets. Use the tables to inspect segments before scaling.</p>
+            <p className="text-xs leading-relaxed text-text-secondary">
+              {loading ? 'Recommendations will appear after GA4 data finishes loading.' : 'No segment-level recommendation is available yet for the selected dashboard.'}
+            </p>
           )}
         </div>
       </div>
@@ -637,7 +995,7 @@ export default function AnalyticsPage() {
     <ClientShell>
       <div className="mx-auto max-w-[1680px] px-4 py-5 lg:px-6">
         <div className="grid gap-5 lg:grid-cols-[360px_minmax(0,1fr)]">
-          <InsightRail dashboard={dashboard} accountEmail={accountEmail} />
+          <InsightRail dashboard={dashboard} accountEmail={accountEmail} loading={loadingDashboard || loadingProperties} />
 
           <main className="min-w-0 space-y-5">
             <section className="rounded-lg border border-border bg-card p-5 shadow-[var(--shadow-card)]">
