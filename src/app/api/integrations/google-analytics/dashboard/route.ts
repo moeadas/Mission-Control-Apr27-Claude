@@ -40,6 +40,12 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (err: any) {
+    if (/needs to be reconnected|reconnect google|connection expired|invalid_grant|invalid authentication credentials|expected oauth 2 access token/i.test(err.message || '')) {
+      return NextResponse.json(
+        { error: err.message || 'Reconnect Google in Settings.', code: 'GOOGLE_ANALYTICS_RECONNECT_REQUIRED' },
+        { status: 400 }
+      )
+    }
     return NextResponse.json({ error: err.message || 'Failed to load GA4 dashboard' }, { status: 500 })
   }
 }

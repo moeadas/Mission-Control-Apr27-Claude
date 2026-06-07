@@ -13,7 +13,7 @@
 import { google } from 'googleapis'
 
 import { normalizeProviderSettings } from '@/lib/provider-settings'
-import { getOAuthToken, isAccessTokenExpired, saveOAuthToken } from '@/lib/server/oauth-tokens'
+import { deleteOAuthToken, getOAuthToken, isAccessTokenExpired, saveOAuthToken } from '@/lib/server/oauth-tokens'
 import { loadPersistedProviderSettings } from '@/lib/server/provider-secrets'
 import type { ProviderSettings } from '@/lib/types'
 
@@ -70,6 +70,9 @@ export async function refreshGoogleAccessTokenForUser(userId: string): Promise<I
   })
   const data = await response.json().catch(() => null)
   if (!response.ok || !data?.access_token) {
+    if (data?.error === 'invalid_grant') {
+      await deleteOAuthToken(userId, 'google')
+    }
     const reasonParts = [
       data?.error,
       data?.error_description,

@@ -75,7 +75,9 @@ export function extractMetaActionMetrics(row: any) {
     video_views: 0,
     link_clicks_action: 0,
     cost_per_lead: '0.00',
+    meta_reported_cost_per_lead: '0.00',
     cost_per_conversion: row?.cost_per_conversion || '0.00',
+    meta_reported_cost_per_conversion: row?.cost_per_conversion || '0.00',
   }
 
   for (const action of actions) {
@@ -114,8 +116,8 @@ export function extractMetaActionMetrics(row: any) {
   const impressions = Number.parseInt(String(row?.impressions || 0), 10) || 0
 
   const costPerLead = costPerActions.find((item: any) => String(item.action_type || '').includes('lead'))?.value
-  if (costPerLead) metric.cost_per_lead = String(Number.parseFloat(String(costPerLead)).toFixed(2))
-  else if (metric.leads > 0) metric.cost_per_lead = (spend / metric.leads).toFixed(2)
+  if (costPerLead) metric.meta_reported_cost_per_lead = String(Number.parseFloat(String(costPerLead)).toFixed(2))
+  if (metric.leads > 0) metric.cost_per_lead = (spend / metric.leads).toFixed(2)
 
   if (metric.conversions > 0) metric.cost_per_conversion = (spend / metric.conversions).toFixed(2)
 

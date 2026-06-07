@@ -362,6 +362,12 @@ export default function AnalyticsPage() {
         }
       )
       const payload = await response.json()
+      if (response.status === 400 && payload.code === 'GOOGLE_ANALYTICS_RECONNECT_REQUIRED') {
+        setNotConnected(true)
+        setDashboard(null)
+        toast.error(payload.error || 'Reconnect Google in Settings.')
+        return
+      }
       if (!response.ok) throw new Error(payload.error || 'Failed to load GA4 dashboard')
       setDashboard(payload)
     } catch (error: any) {

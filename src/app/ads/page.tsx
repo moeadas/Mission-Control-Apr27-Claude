@@ -180,6 +180,12 @@ function rate(numerator: unknown, denominator: unknown) {
   return bottom > 0 ? `${((top / bottom) * 100).toFixed(2)}%` : '0.00%'
 }
 
+function costPerAction(spend: unknown, actions: unknown, fallback?: unknown) {
+  const spendValue = num(spend)
+  const actionCount = num(actions)
+  return actionCount > 0 ? spendValue / actionCount : num(fallback)
+}
+
 function budget(value?: string) {
   if (!value) return 'Not set'
   return fmtCurrency(num(value) / 100)
@@ -250,10 +256,11 @@ function compactMetric({
 
 function objectiveResultMetric(insight: CampaignInsight | null | undefined, objectiveFamily: string, currency: string): CampaignMetric {
   if (objectiveFamily === 'leads') {
+    const costPerLead = costPerAction(insight?.spend, insight?.leads, insight?.cost_per_lead)
     return compactMetric({
       label: 'Leads',
       value: fmt(insight?.leads),
-      sub: `${fmtCurrency(insight?.cost_per_lead, currency, 2)} cost / lead`,
+      sub: `${fmtCurrency(costPerLead, currency, 2)} cost / lead`,
       color: '#18c7b6',
     })
   }
@@ -309,11 +316,12 @@ function campaignKpiMetrics(
   const purchases = num(insight?.purchases) || conversions
   const engagements = num(insight?.post_engagements)
   const videoViews = num(insight?.video_views)
+  const costPerLead = costPerAction(insight?.spend, leads, insight?.cost_per_lead)
 
   const byObjective: Record<string, CampaignMetric[]> = {
     leads: [
       objectiveResultMetric(insight, 'leads', currency),
-      compactMetric({ label: 'Cost / Lead', value: fmtCurrency(insight?.cost_per_lead, currency, 2), sub: 'Lead efficiency', color: '#2ecf91' }),
+      compactMetric({ label: 'Cost / Lead', value: fmtCurrency(costPerLead, currency, 2), sub: 'Spend divided by leads', color: '#2ecf91' }),
       compactMetric({ label: 'Lead Rate', value: rate(leads, clicks), sub: `${fmt(clicks)} clicks`, color: '#18c7b6' }),
       compactMetric({ label: 'Link Clicks', value: fmt(clicks), sub: percent(insight?.ctr), color: '#4f8ef7' }),
       compactMetric({ label: 'CPC', value: fmtCurrency(insight?.cpc, currency, 2), sub: 'Traffic cost', color: '#f4c84f' }),
