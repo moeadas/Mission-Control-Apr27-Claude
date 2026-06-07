@@ -15,7 +15,7 @@ import { google } from 'googleapis'
 
 import { verifyToken } from '@/lib/auth/jwt'
 import { resolveGoogleOAuthConfig } from '@/lib/google-integrations'
-import { deleteOAuthToken, saveOAuthToken } from '@/lib/server/oauth-tokens'
+import { deleteOAuthToken, getOAuthToken, saveOAuthToken } from '@/lib/server/oauth-tokens'
 import { loadPersistedProviderSettings } from '@/lib/server/provider-secrets'
 
 function settingsUrl(origin: string, params: Record<string, string>) {
@@ -100,11 +100,22 @@ export async function GET(request: NextRequest) {
       expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
     })
 
+    const persisted = await getOAuthToken(payload.sub, 'google')
+    if (!persisted?.accessToken) {
+      console.error('[google-oauth] token save readback failed', {
+        userId: payload.sub,
+        accountEmail,
+        hasAccessToken: Boolean(tokens.access_token),
+        hasRefreshToken: Boolean(tokens.refresh_token),
+      })
+      return NextResponse.redirect(settingsUrl(appOrigin, { google: 'save_failed' }))
+    }
+
     console.log('[google-oauth] connected', {
       userId: payload.sub,
-      accountEmail,
-      hasRefreshToken: Boolean(tokens.refresh_token),
-      expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null,
+      accountEmail: persisted.accountEmail,
+      hasRefreshToken: Boolean(persisted.refreshToken),
+      expiresAt: persisted.expiresAt?.toISOString() || null,
     })
 
     return NextResponse.redirect(settingsUrl(appOrigin, { google: 'connected' }))

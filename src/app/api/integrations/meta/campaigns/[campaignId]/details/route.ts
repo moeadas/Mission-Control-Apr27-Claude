@@ -55,6 +55,24 @@ export async function GET(request: NextRequest, context: { params: Promise<{ cam
       ...dateConfig.params,
     }).catch(() => ({ data: [] }))
 
+    const dailyData = await metaGraphRequest<{ data?: any[] }>(`/${campaignId}/insights`, token, {
+      fields: insightFields,
+      time_range: dateConfig.params.time_range,
+      time_increment: 1,
+      action_report_time: dateConfig.params.action_report_time,
+      limit: 100,
+    }).catch(() => ({ data: [] }))
+    const dailyBreakdown = (dailyData.data || []).map(enrichInsight)
+    const spendDays = dailyBreakdown.filter((row) => Number.parseFloat(String(row.spend || 0)) > 0)
+    const activeDelivery = spendDays.length
+      ? {
+          firstDate: spendDays[0]?.date_start || null,
+          lastDate: spendDays[spendDays.length - 1]?.date_stop || spendDays[spendDays.length - 1]?.date_start || null,
+          daysWithSpend: spendDays.length,
+          spend: spendDays.reduce((total, row) => total + (Number.parseFloat(String(row.spend || 0)) || 0), 0).toFixed(2),
+        }
+      : null
+
     const adsets = await fetchAllMetaPages(`/${campaignId}/adsets`, token, {
       fields: 'id,name,status,effective_status,daily_budget,lifetime_budget,bid_strategy,optimization_goal,billing_event,targeting,start_time,end_time,created_time,updated_time',
       limit: 100,
@@ -85,6 +103,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ cam
     return NextResponse.json({
       campaign,
       insight: insightData.data?.[0] ? enrichInsight(insightData.data[0]) : null,
+      dailyBreakdown,
+      activeDelivery,
       adsets,
       ads,
       creatives: creatives.filter(Boolean),

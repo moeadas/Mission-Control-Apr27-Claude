@@ -214,6 +214,17 @@ export default function SettingsPage() {
     if (accountEmail) setMetaHealthMessage(`Meta account connected · ${accountEmail}`)
   }
 
+  const resetOAuthConnections = () => {
+    setOauthConnections({
+      google_docs: false,
+      google_sheets: false,
+      google_ads: false,
+      google_analytics: false,
+      meta_facebook: false,
+      meta_instagram: false,
+    })
+  }
+
   // Handle OAuth callback on page load
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -224,8 +235,9 @@ export default function SettingsPage() {
     let handled = false
 
     if (googleStatus === 'connected') {
-      markGoogleConnected()
-      toast.success('Google account connected')
+      setGoogleOAuthHealth('testing')
+      setGoogleOAuthHealthMessage('Google returned successfully. Verifying the saved account connection...')
+      toast.success('Google returned successfully. Verifying connection...')
       handled = true
     } else if (googleStatus) {
       const googleMessages: Record<string, string> = {
@@ -235,6 +247,7 @@ export default function SettingsPage() {
         misconfigured: 'Google OAuth app settings are missing or invalid.',
         exchange_failed: 'Google returned the user to Mission Control, but token exchange failed.',
         no_access_token: 'Google did not return an access token. Please try Connect Google again.',
+        save_failed: 'Google returned tokens, but Mission Control could not save the connection. Please try again.',
       }
       toast.error(googleMessages[googleStatus] || `Google connection failed: ${googleStatus}`)
       setGoogleOAuthHealth('invalid')
@@ -270,7 +283,17 @@ export default function SettingsPage() {
       })
       if (!response.ok) return
       const payload = await response.json().catch(() => null)
-      if (payload?.google?.connected) markGoogleConnected(payload.google.accountEmail)
+      resetOAuthConnections()
+      if (payload?.google?.connected) {
+        markGoogleConnected(payload.google.accountEmail)
+      } else {
+        setGoogleOAuthHealth(providerSettings.google?.verified ? 'connected' : 'idle')
+        setGoogleOAuthHealthMessage(
+          providerSettings.google?.verified
+            ? 'Google OAuth app verified · connect a Google account to enable Analytics'
+            : 'Add your OAuth Web App Client ID and Client Secret, then verify'
+        )
+      }
       if (payload?.meta?.connected) markMetaConnected(payload.meta.accountEmail)
     }
 

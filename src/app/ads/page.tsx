@@ -64,6 +64,8 @@ interface MetaCampaign {
 interface CampaignInsight {
   campaign_id: string
   campaign_name: string
+  date_start?: string
+  date_stop?: string
   impressions?: string
   clicks?: string
   unique_clicks?: string
@@ -108,9 +110,17 @@ interface AccountSummary {
 interface CampaignDetails {
   campaign: MetaCampaign
   insight: CampaignInsight | null
+  dailyBreakdown?: CampaignInsight[]
+  activeDelivery?: {
+    firstDate: string | null
+    lastDate: string | null
+    daysWithSpend: number
+    spend: string
+  } | null
   adsets: Array<Record<string, any>>
   ads: Array<Record<string, any>>
   creatives: Array<Record<string, any>>
+  dateRange?: { since: string; until: string }
 }
 
 interface OptimizationRec {
@@ -189,6 +199,18 @@ function costPerAction(spend: unknown, actions: unknown, fallback?: unknown) {
 function budget(value?: string) {
   if (!value) return 'Not set'
   return fmtCurrency(num(value) / 100)
+}
+
+function shortDate(value?: string | null) {
+  if (!value) return 'Not set'
+  const date = new Date(`${value}T00:00:00`)
+  if (Number.isNaN(date.getTime())) return value
+  return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' }).format(date)
+}
+
+function dateRangeLabel(range?: { since?: string; until?: string } | null) {
+  if (!range?.since || !range?.until) return 'Selected period'
+  return `${shortDate(range.since)}-${shortDate(range.until)}`
 }
 
 function isEnded(campaign: MetaCampaign) {
@@ -462,6 +484,7 @@ export default function AdsPage() {
   const [campaigns, setCampaigns] = useState<MetaCampaign[]>([])
   const [insights, setInsights] = useState<CampaignInsight[]>([])
   const [summary, setSummary] = useState<AccountSummary | null>(null)
+  const [metaDateRange, setMetaDateRange] = useState<{ since: string; until: string } | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
@@ -533,6 +556,7 @@ export default function AdsPage() {
       setCampaigns(nextCampaigns)
       setInsights(insightPayload.insights || [])
       setSummary(insightPayload.summary || null)
+      setMetaDateRange(insightPayload.dateRange || null)
       setSelectedCampaignId((current) =>
         current && nextCampaigns.some((campaign: MetaCampaign) => campaign.id === current)
           ? current
@@ -743,6 +767,7 @@ export default function AdsPage() {
             </div>
             <div className="flex flex-wrap items-center gap-2 text-xs text-text-secondary">
               <Badge color="#4f8ef7" variant="outline">{filteredRows.length} of {rows.length} campaigns</Badge>
+              {metaDateRange ? <Badge color="#8f72ff" variant="outline">{dateRangeLabel(metaDateRange)}</Badge> : null}
               <Badge color="#18c7b6" variant="outline">{benchmark.country}</Badge>
               <span>{benchmark.marketContext}</span>
             </div>
@@ -751,7 +776,7 @@ export default function AdsPage() {
 
         {summary ? (
           <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
-            <KpiCard icon={DollarSign} label="Spend" value={fmtCurrency(summary.spend, accountCurrency)} sub="Selected period" color="#8f72ff" />
+            <KpiCard icon={DollarSign} label="Spend" value={fmtCurrency(summary.spend, accountCurrency)} sub={dateRangeLabel(metaDateRange)} color="#8f72ff" />
             <KpiCard icon={Eye} label="Reach" value={fmt(summary.reach)} sub={`${fmt(summary.impressions)} impressions`} color="#4f8ef7" />
             <KpiCard icon={MousePointerClick} label="Clicks" value={fmt(summary.clicks)} sub={`${percent(summary.ctr)} CTR`} color="#18c7b6" />
             <KpiCard icon={Target} label="CPC" value={fmtCurrency(summary.cpc, accountCurrency, 2)} sub="Traffic cost" color="#2ecf91" />
@@ -840,7 +865,7 @@ export default function AdsPage() {
 
                     <div className="mt-4 grid gap-3 md:grid-cols-3">
                       {[
-                        { label: 'Spend', value: fmtCurrency(insight?.spend, accountCurrency), sub: 'Selected period' },
+                        { label: 'Spend', value: fmtCurrency(insight?.spend, accountCurrency), sub: dateRangeLabel(metaDateRange) },
                         { label: 'Impressions', value: fmt(insight?.impressions), sub: `${fmtCurrency(insight?.cpm, accountCurrency, 2)} CPM` },
                         { label: 'Reach', value: fmt(insight?.reach), sub: `${fmt(insight?.frequency, 2)} frequency` },
                       ].map((metric) => (
@@ -906,6 +931,7 @@ export default function AdsPage() {
                         {campaignStatus(details?.campaign || selectedRow.campaign)}
                       </Badge>
                       <Badge color="#4f8ef7" variant="outline">{datePreset.replaceAll('_', ' ')}</Badge>
+                      <Badge color="#8f72ff" variant="outline">{dateRangeLabel(details?.dateRange || metaDateRange)}</Badge>
                       <Badge color="#18c7b6" variant="outline">{selectedRow.analysis.benchmark.country}</Badge>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-xs">
@@ -926,6 +952,21 @@ export default function AdsPage() {
                         <p className="mt-1 text-text-primary">{budget(details?.campaign?.lifetime_budget || selectedRow.campaign.lifetime_budget)}</p>
                       </div>
                     </div>
+                  </div>
+
+                  <div className="rounded-lg border border-border bg-base/60 p-3">
+                    <p className="text-[10px] font-mono uppercase tracking-wider text-text-dim">Delivery Evidence</p>
+                    <p className="mt-1 text-sm text-text-primary">
+                      {details?.activeDelivery
+                        ? `${details.activeDelivery.daysWithSpend} spend day${details.activeDelivery.daysWithSpend === 1 ? '' : 's'} · ${shortDate(details.activeDelivery.firstDate)}-${shortDate(details.activeDelivery.lastDate)}`
+                        : 'No spend detected inside the selected range'}
+                    </p>
+                    <p className="mt-1 text-[11px] text-text-secondary">
+                      Meta API range: {dateRangeLabel(details?.dateRange || metaDateRange)}
+                      {details?.activeDelivery
+                        ? ` · Delivered spend ${fmtCurrency(details.activeDelivery.spend, accountCurrency)}`
+                        : ''}
+                    </p>
                   </div>
 
                   <div className="grid grid-cols-3 gap-2">
