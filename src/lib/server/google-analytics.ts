@@ -1,5 +1,6 @@
 import { getGa4DateRange, type Ga4WidgetConfig } from '@/lib/ga4-presets'
-import { getGoogleAccessTokenForUser, refreshGoogleAccessTokenForUser } from '@/lib/google-integrations'
+import { getGoogleOAuthTokenForUser, refreshGoogleAccessTokenForUser } from '@/lib/google-integrations'
+import { isAccessTokenExpired } from '@/lib/server/oauth-tokens'
 
 type Ga4Row = Record<string, string | number>
 
@@ -25,7 +26,12 @@ function writeCache(key: string, data: any) {
 }
 
 export async function getGa4AccessTokenForUser(userId: string) {
-  return getGoogleAccessTokenForUser(userId)
+  const token = await getGoogleOAuthTokenForUser(userId)
+  if (!token?.accessToken) return null
+  if (!isAccessTokenExpired(token)) return token.accessToken
+
+  const refreshed = await refreshGoogleAccessTokenForUser(userId)
+  return refreshed?.credentials?.access_token || null
 }
 
 function isGoogleAuthError(error: any) {
@@ -35,12 +41,29 @@ function isGoogleAuthError(error: any) {
 }
 
 async function withGoogleAuthRetry<T>(userId: string, run: (accessToken: string) => Promise<T>): Promise<T> {
-  const accessToken = await getGa4AccessTokenForUser(userId)
+  const token = await getGoogleOAuthTokenForUser(userId)
+  if (!token?.accessToken) throw new Error('Google Analytics is not connected. Connect Google in Settings.')
+
+  const tokenExpired = isAccessTokenExpired(token)
+  const accessToken = tokenExpired ? await getGa4AccessTokenForUser(userId) : token.accessToken
   if (!accessToken) throw new Error('Google Analytics is not connected. Connect Google in Settings.')
+
   try {
     return await run(accessToken)
   } catch (error) {
     if (!isGoogleAuthError(error)) throw error
+
+    if (!tokenExpired) {
+      const status = (error as any)?.status || (error as any)?.response?.status || 'unknown'
+      console.warn('[google-analytics] fresh Google access token was rejected by GA API; preserving OAuth grant', {
+        userId,
+        accountEmail: token.accountEmail,
+        status,
+        expiresAt: token.expiresAt?.toISOString() || null,
+      })
+      throw new Error('Google Analytics API rejected the saved Google access token. Reconnect is not required yet; check that the Google account has GA4 access and the Analytics APIs are enabled.')
+    }
+
     const refreshed = await refreshGoogleAccessTokenForUser(userId)
     const refreshedToken = refreshed?.credentials?.access_token
     if (!refreshedToken) {
