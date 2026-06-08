@@ -226,7 +226,7 @@ function budget(value?: string) {
 
 function shortDate(value?: string | null) {
   if (!value) return 'Not set'
-  const date = new Date(`${value}T00:00:00`)
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T00:00:00`) : new Date(value)
   if (Number.isNaN(date.getTime())) return value
   return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' }).format(date)
 }
@@ -234,6 +234,27 @@ function shortDate(value?: string | null) {
 function dateRangeLabel(range?: { since?: string; until?: string } | null) {
   if (!range?.since || !range?.until) return 'Selected period'
   return `${shortDate(range.since)}-${shortDate(range.until)}`
+}
+
+function dateOnly(value?: string | null) {
+  if (!value) return null
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  return date.toISOString().slice(0, 10)
+}
+
+function campaignSpendPeriodLabel(campaign: MetaCampaign, range?: { since?: string; until?: string } | null) {
+  const label = dateRangeLabel(range)
+  const start = dateOnly(campaign.start_time || campaign.created_time)
+  const stop = dateOnly(campaign.stop_time)
+  if (range?.since && range?.until && start && start > range.since && start <= range.until) {
+    return `${label} · started ${shortDate(start)}`
+  }
+  if (range?.since && range?.until && stop && stop >= range.since && stop < range.until) {
+    return `${label} · ended ${shortDate(stop)}`
+  }
+  return label
 }
 
 function isEnded(campaign: MetaCampaign) {
@@ -397,7 +418,6 @@ function campaignKpiMetrics(
   const costPerLead = costPerAction(insight?.spend, leads, insight?.cost_per_lead)
   const costPerPurchase = costPerAction(insight?.spend, purchases, insight?.cost_per_conversion)
   const targetCpl = benchmark.costPerConversion.optimal * 0.5
-  const ctrValue = num(insight?.ctr)
   const cpcValue = num(insight?.cpc)
   const cpmValue = num(insight?.cpm)
 
@@ -415,7 +435,7 @@ function campaignKpiMetrics(
       compactMetric({ label: 'Cost / Engage', value: fmtCurrency(insight?.cost_per_engagement, currency, 2), sub: 'Engagement efficiency', tone: num(insight?.cost_per_engagement) > 0.2 ? 'watch' : engagements > 0 ? 'good' : 'neutral' }),
       compactMetric({ label: 'Engagement Rate', value: percent(insight?.engagement_rate), sub: `${fmt(engagements)} engagements`, tone: num(insight?.engagement_rate) >= 2 ? 'good' : engagements > 0 ? 'watch' : 'risk' }),
       compactMetric({ label: 'Video Views', value: fmt(videoViews), sub: `${fmtCurrency(insight?.cost_per_video_view, currency, 3)} cost / view`, tone: videoViews > 0 ? 'good' : 'neutral' }),
-      compactMetric({ label: 'CTR', value: percent(insight?.ctr), sub: `${fmt(clicks)} clicks`, tone: ctrValue >= benchmark.ctr.max ? 'good' : ctrValue < benchmark.ctr.min * 0.7 && num(insight?.impressions) > 1000 ? 'risk' : 'neutral' }),
+      compactMetric({ label: 'Messages', value: fmt(insight?.messages), sub: 'Conversation signal', tone: num(insight?.messages) > 0 ? 'good' : 'neutral' }),
       compactMetric({ label: 'Frequency', value: fmt(insight?.frequency, 2), sub: 'Fatigue signal', tone: num(insight?.frequency) > 3.5 ? 'risk' : num(insight?.frequency) > 2.8 ? 'watch' : 'neutral' }),
     ],
     traffic: [
@@ -430,7 +450,7 @@ function campaignKpiMetrics(
       objectiveResultMetric(insight, 'awareness', currency),
       compactMetric({ label: 'CPM', value: fmtCurrency(insight?.cpm, currency, 2), sub: 'Reach efficiency', tone: cpmValue <= benchmark.cpm.max ? 'good' : 'watch' }),
       compactMetric({ label: 'Frequency', value: fmt(insight?.frequency, 2), sub: 'Exposure depth', tone: num(insight?.frequency) > 3.5 ? 'risk' : num(insight?.frequency) >= 1.8 ? 'good' : 'neutral' }),
-      compactMetric({ label: 'CTR', value: percent(insight?.ctr), sub: 'Creative pull', tone: ctrValue >= benchmark.ctr.max ? 'good' : ctrValue < benchmark.ctr.min * 0.7 && num(insight?.impressions) > 1000 ? 'risk' : 'neutral' }),
+      compactMetric({ label: 'Impressions', value: fmt(insight?.impressions), sub: 'Delivery volume', tone: num(insight?.impressions) > 0 ? 'neutral' : 'watch' }),
       compactMetric({ label: 'Video Views', value: fmt(videoViews), sub: 'Attention signal', tone: videoViews > 0 ? 'good' : 'neutral' }),
       compactMetric({ label: 'Cost / View', value: fmtCurrency(insight?.cost_per_video_view, currency, 3), sub: 'Video efficiency', tone: num(insight?.cost_per_video_view) > 0.05 ? 'watch' : 'neutral' }),
     ],
@@ -1182,7 +1202,7 @@ export default function AdsPage() {
 
                     <div className="mt-4 grid gap-3 md:grid-cols-3">
                       {[
-                        { label: 'Spend', value: fmtCurrency(insight?.spend, accountCurrency), sub: dateRangeLabel(metaDateRange) },
+                        { label: 'Spend', value: fmtCurrency(insight?.spend, accountCurrency), sub: campaignSpendPeriodLabel(campaign, metaDateRange) },
                         { label: 'Impressions', value: fmt(insight?.impressions), sub: `${fmtCurrency(insight?.cpm, accountCurrency, 2)} CPM` },
                         { label: 'Reach', value: fmt(insight?.reach), sub: `${fmt(insight?.frequency, 2)} frequency` },
                       ].map((metric) => (

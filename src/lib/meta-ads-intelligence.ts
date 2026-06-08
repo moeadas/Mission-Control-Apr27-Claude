@@ -96,7 +96,7 @@ export const OBJECTIVE_KPI_MAP: Record<MetaObjectiveFamily, MetaObjectiveKpis> =
   awareness: {
     primary: ['reach', 'impressions', 'cpm', 'frequency'],
     secondary: ['video_views', 'thruplay_rate', 'hook_rate'],
-    diagnostic: ['ctr', 'engagement_rate'],
+    diagnostic: ['video_views', 'frequency', 'reach_ratio'],
     skipMetrics: ['conversions', 'cost_per_conversion', 'conversion_rate', 'roas', 'purchases'],
     skipAlerts: ['zero_conversions', 'low_conversion_rate', 'high_cost_per_conversion'],
   },
@@ -110,7 +110,7 @@ export const OBJECTIVE_KPI_MAP: Record<MetaObjectiveFamily, MetaObjectiveKpis> =
   engagement: {
     primary: ['post_engagements', 'cost_per_engagement', 'engagement_rate'],
     secondary: ['video_views', 'messages', 'cost_per_video_view'],
-    diagnostic: ['reach', 'impressions', 'frequency'],
+    diagnostic: ['reach', 'impressions', 'frequency', 'video_views'],
     skipMetrics: ['conversions', 'roas', 'purchases'],
     skipAlerts: ['zero_conversions', 'low_conversion_rate'],
   },
@@ -348,7 +348,9 @@ export function analyzeMetaCampaign(
     }
   }
 
-  if (impressions > 1000) {
+  const clickQualityObjective = ['traffic', 'leads', 'sales'].includes(objectiveFamily)
+
+  if (clickQualityObjective && impressions > 1000) {
     if (ctr < benchmark.ctr.min * 0.7) {
       push({
         type: 'error',
@@ -382,7 +384,7 @@ export function analyzeMetaCampaign(
     }
   }
 
-  if (clicks > 50) {
+  if (clickQualityObjective && clicks > 50) {
     if (cpc > benchmark.cpc.max * 1.25) {
       push({
         type: 'warning',

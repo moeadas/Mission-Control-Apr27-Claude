@@ -118,7 +118,6 @@ export function buildMetaInsightsParams(datePreset = 'last_30d') {
   return {
     params: {
       time_range: JSON.stringify(range),
-      time_increment: 'all_days',
       action_report_time: 'impression',
     },
     range,
