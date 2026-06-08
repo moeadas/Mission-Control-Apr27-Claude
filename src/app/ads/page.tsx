@@ -19,7 +19,6 @@ import {
   Target,
   TrendingUp,
   Video,
-  Wand2,
   Zap,
 } from 'lucide-react'
 
@@ -136,22 +135,6 @@ interface CampaignDetails {
   dateRange?: { since: string; until: string }
 }
 
-interface OptimizationRec {
-  priority: 'high' | 'medium' | 'low'
-  category: string
-  title: string
-  detail: string
-  estimatedImpact: string
-}
-
-interface OptimizationResult {
-  summary: string
-  recommendations: OptimizationRec[]
-  quickWins: string[]
-  watchOut: string[]
-  ruleFindings?: any[]
-}
-
 const DATE_PRESETS = [
   { value: 'today', label: 'Today' },
   { value: 'yesterday', label: 'Yesterday' },
@@ -220,6 +203,20 @@ function costPerAction(spend: unknown, actions: unknown, fallback?: unknown) {
   const spendValue = num(spend)
   const actionCount = num(actions)
   return actionCount > 0 ? spendValue / actionCount : num(fallback)
+}
+
+function benchmarkCostTone(value: number, target: number): MetricTone {
+  if (!value || !target) return 'neutral'
+  if (value <= target * 1.25) return 'good'
+  if (value <= target * 2) return 'watch'
+  return 'risk'
+}
+
+function benchmarkRateTone(value: number, good: number, watch: number): MetricTone {
+  if (!value) return 'risk'
+  if (value >= good) return 'good'
+  if (value >= watch) return 'watch'
+  return 'risk'
 }
 
 function budget(value?: string) {
@@ -384,8 +381,10 @@ function objectiveResultMetric(insight: CampaignInsight | null | undefined, obje
 function campaignKpiMetrics(
   insight: CampaignInsight | null | undefined,
   objectiveFamily: string,
-  currency: string
+  currency: string,
+  marketCode: MetaMarketCode
 ): CampaignMetric[] {
+  const benchmark = getMetaCountryBenchmark(marketCode)
   const clicks = num(insight?.inline_link_clicks) || num(insight?.link_clicks_action) || num(insight?.clicks)
   const leads = num(insight?.leads)
   const conversions = num(insight?.conversions)
@@ -397,37 +396,41 @@ function campaignKpiMetrics(
   const appInstalls = num(insight?.app_installs) || conversions
   const costPerLead = costPerAction(insight?.spend, leads, insight?.cost_per_lead)
   const costPerPurchase = costPerAction(insight?.spend, purchases, insight?.cost_per_conversion)
+  const targetCpl = benchmark.costPerConversion.optimal * 0.5
+  const ctrValue = num(insight?.ctr)
+  const cpcValue = num(insight?.cpc)
+  const cpmValue = num(insight?.cpm)
 
   const byObjective: Record<string, CampaignMetric[]> = {
     leads: [
-      objectiveResultMetric(insight, 'leads', currency),
-      compactMetric({ label: 'Cost / Lead', value: fmtCurrency(costPerLead, currency, 2), sub: 'Spend divided by leads', tone: leads > 0 && costPerLead > 0 ? 'good' : 'risk' }),
-      compactMetric({ label: 'Lead Rate', value: rate(leads, clicks), sub: `${fmt(clicks)} clicks`, tone: clicks > 0 && leads / clicks >= 0.05 ? 'good' : leads > 0 ? 'watch' : 'risk' }),
+      compactMetric({ label: 'Leads', value: fmt(leads), sub: `${fmtCurrency(costPerLead, currency, 2)} cost / lead`, tone: leads >= 50 ? 'good' : leads > 0 ? 'watch' : 'risk' }),
+      compactMetric({ label: 'Cost / Lead', value: fmtCurrency(costPerLead, currency, 2), sub: `Target ~${fmtCurrency(targetCpl, currency, 0)}`, tone: benchmarkCostTone(costPerLead, targetCpl) }),
+      compactMetric({ label: 'Lead Rate', value: rate(leads, clicks), sub: `${fmt(clicks)} clicks`, tone: benchmarkRateTone(clicks > 0 ? (leads / clicks) * 100 : 0, 5, 3) }),
       compactMetric({ label: 'Link Clicks', value: fmt(clicks), sub: percent(insight?.ctr), tone: clicks > 0 ? 'neutral' : 'watch' }),
-      compactMetric({ label: 'CPC', value: fmtCurrency(insight?.cpc, currency, 2), sub: 'Traffic cost', tone: num(insight?.cpc) > 1 ? 'watch' : 'neutral' }),
-      compactMetric({ label: 'CPM', value: fmtCurrency(insight?.cpm, currency, 2), sub: 'Auction cost', tone: 'neutral' }),
+      compactMetric({ label: 'CPC', value: fmtCurrency(cpcValue, currency, 2), sub: 'Traffic cost', tone: cpcValue > benchmark.cpc.max * 1.25 ? 'watch' : cpcValue > 0 && cpcValue <= benchmark.cpc.min * 1.2 ? 'good' : 'neutral' }),
+      compactMetric({ label: 'CPM', value: fmtCurrency(cpmValue, currency, 2), sub: 'Auction cost', tone: cpmValue > benchmark.cpm.max * 1.3 ? 'watch' : 'neutral' }),
     ],
     engagement: [
       objectiveResultMetric(insight, 'engagement', currency),
       compactMetric({ label: 'Cost / Engage', value: fmtCurrency(insight?.cost_per_engagement, currency, 2), sub: 'Engagement efficiency', tone: num(insight?.cost_per_engagement) > 0.2 ? 'watch' : engagements > 0 ? 'good' : 'neutral' }),
       compactMetric({ label: 'Engagement Rate', value: percent(insight?.engagement_rate), sub: `${fmt(engagements)} engagements`, tone: num(insight?.engagement_rate) >= 2 ? 'good' : engagements > 0 ? 'watch' : 'risk' }),
       compactMetric({ label: 'Video Views', value: fmt(videoViews), sub: `${fmtCurrency(insight?.cost_per_video_view, currency, 3)} cost / view`, tone: videoViews > 0 ? 'good' : 'neutral' }),
-      compactMetric({ label: 'CTR', value: percent(insight?.ctr), sub: `${fmt(clicks)} clicks`, tone: num(insight?.ctr) >= 2 ? 'good' : 'neutral' }),
+      compactMetric({ label: 'CTR', value: percent(insight?.ctr), sub: `${fmt(clicks)} clicks`, tone: ctrValue >= benchmark.ctr.max ? 'good' : ctrValue < benchmark.ctr.min * 0.7 && num(insight?.impressions) > 1000 ? 'risk' : 'neutral' }),
       compactMetric({ label: 'Frequency', value: fmt(insight?.frequency, 2), sub: 'Fatigue signal', tone: num(insight?.frequency) > 3.5 ? 'risk' : num(insight?.frequency) > 2.8 ? 'watch' : 'neutral' }),
     ],
     traffic: [
       objectiveResultMetric(insight, 'traffic', currency),
-      compactMetric({ label: 'Cost / Link Click', value: fmtCurrency(insight?.cost_per_inline_link_click || insight?.cpc, currency, 2), sub: 'Traffic efficiency', tone: num(insight?.cost_per_inline_link_click || insight?.cpc) <= 0.5 ? 'good' : 'watch' }),
-      compactMetric({ label: 'CTR', value: percent(insight?.inline_link_click_ctr || insight?.ctr), sub: 'Click quality', tone: num(insight?.inline_link_click_ctr || insight?.ctr) >= 2 ? 'good' : 'neutral' }),
+      compactMetric({ label: 'Cost / Link Click', value: fmtCurrency(insight?.cost_per_inline_link_click || insight?.cpc, currency, 2), sub: 'Traffic efficiency', tone: num(insight?.cost_per_inline_link_click || insight?.cpc) <= benchmark.cpc.min * 1.2 ? 'good' : num(insight?.cost_per_inline_link_click || insight?.cpc) > benchmark.cpc.max * 1.25 ? 'watch' : 'neutral' }),
+      compactMetric({ label: 'CTR', value: percent(insight?.inline_link_click_ctr || insight?.ctr), sub: 'Click quality', tone: num(insight?.inline_link_click_ctr || insight?.ctr) >= benchmark.ctr.max ? 'good' : num(insight?.inline_link_click_ctr || insight?.ctr) < benchmark.ctr.min * 0.7 && num(insight?.impressions) > 1000 ? 'risk' : 'neutral' }),
       compactMetric({ label: 'Landing Views', value: fmt(insight?.page_views), sub: 'Detected page views', tone: num(insight?.page_views) > 0 ? 'good' : 'watch' }),
       compactMetric({ label: 'CPC', value: fmtCurrency(insight?.cpc, currency, 2), sub: 'All clicks', tone: 'neutral' }),
       compactMetric({ label: 'CPM', value: fmtCurrency(insight?.cpm, currency, 2), sub: 'Auction cost', tone: 'neutral' }),
     ],
     awareness: [
       objectiveResultMetric(insight, 'awareness', currency),
-      compactMetric({ label: 'CPM', value: fmtCurrency(insight?.cpm, currency, 2), sub: 'Reach efficiency', tone: num(insight?.cpm) <= 7 ? 'good' : 'watch' }),
+      compactMetric({ label: 'CPM', value: fmtCurrency(insight?.cpm, currency, 2), sub: 'Reach efficiency', tone: cpmValue <= benchmark.cpm.max ? 'good' : 'watch' }),
       compactMetric({ label: 'Frequency', value: fmt(insight?.frequency, 2), sub: 'Exposure depth', tone: num(insight?.frequency) > 3.5 ? 'risk' : num(insight?.frequency) >= 1.8 ? 'good' : 'neutral' }),
-      compactMetric({ label: 'CTR', value: percent(insight?.ctr), sub: 'Creative pull', tone: num(insight?.ctr) >= 2 ? 'good' : 'neutral' }),
+      compactMetric({ label: 'CTR', value: percent(insight?.ctr), sub: 'Creative pull', tone: ctrValue >= benchmark.ctr.max ? 'good' : ctrValue < benchmark.ctr.min * 0.7 && num(insight?.impressions) > 1000 ? 'risk' : 'neutral' }),
       compactMetric({ label: 'Video Views', value: fmt(videoViews), sub: 'Attention signal', tone: videoViews > 0 ? 'good' : 'neutral' }),
       compactMetric({ label: 'Cost / View', value: fmtCurrency(insight?.cost_per_video_view, currency, 3), sub: 'Video efficiency', tone: num(insight?.cost_per_video_view) > 0.05 ? 'watch' : 'neutral' }),
     ],
@@ -443,7 +446,7 @@ function campaignKpiMetrics(
       objectiveResultMetric(insight, 'sales', currency),
       compactMetric({ label: 'ROAS', value: fmtRoas(roas), sub: purchaseValue ? `${fmtCurrency(purchaseValue, currency)} value` : 'Purchase value missing', tone: roas >= 2.5 ? 'good' : roas > 0 && roas < 1 ? 'risk' : roas > 0 ? 'watch' : 'risk' }),
       compactMetric({ label: 'Purchase Value', value: fmtCurrency(purchaseValue, currency), sub: `${fmt(purchases)} purchases`, tone: purchaseValue > 0 ? 'good' : purchases > 0 ? 'risk' : 'watch' }),
-      compactMetric({ label: 'Cost / Purchase', value: fmtCurrency(costPerPurchase, currency, 2), sub: 'Sales efficiency', tone: purchases > 0 ? 'good' : 'risk' }),
+      compactMetric({ label: 'Cost / Purchase', value: fmtCurrency(costPerPurchase, currency, 2), sub: 'Sales efficiency', tone: benchmarkCostTone(costPerPurchase, benchmark.costPerConversion.optimal) }),
       compactMetric({ label: 'Checkout Starts', value: fmt(insight?.checkout_initiations), sub: `${fmt(insight?.add_to_cart)} add to cart`, tone: num(insight?.checkout_initiations) > 0 ? 'neutral' : num(insight?.add_to_cart) > 0 ? 'watch' : 'neutral' }),
       compactMetric({ label: 'Purchase Rate', value: rate(purchases, clicks), sub: `${fmt(clicks)} clicks`, tone: clicks > 0 && purchases / clicks >= 0.02 ? 'good' : purchases > 0 ? 'watch' : 'risk' }),
     ],
@@ -510,10 +513,10 @@ function objectiveReadout(row: any, currency: string) {
   return `${spend} generated ${result} ${label}.`
 }
 
-function buildSelectedCampaignReadout(selectedRow: any, currency: string, rangeLabel: string): MetaCampaignReadout[] {
+function buildSelectedCampaignReadout(selectedRow: any, currency: string, rangeLabel: string, marketCode: MetaMarketCode): MetaCampaignReadout[] {
   if (!selectedRow) return []
 
-  const metrics = campaignKpiMetrics(selectedRow.insight, selectedRow.analysis.objectiveFamily, currency)
+  const metrics = campaignKpiMetrics(selectedRow.insight, selectedRow.analysis.objectiveFamily, currency, marketCode)
   const healthyMetrics = metrics.filter((metric) => metric.tone === 'good')
   const weakMetrics = metrics.filter((metric) => metric.tone === 'risk' || metric.tone === 'watch')
   const issues = selectedRow.analysis.suggestions.filter((item: MetaOptimizationSuggestion) => item.type !== 'success')
@@ -728,14 +731,16 @@ function MetaInsightRail({
   selectedRow,
   currency,
   rangeLabel,
+  market,
   loading,
 }: {
   selectedRow: any
   currency: string
   rangeLabel: string
+  market: MetaMarketCode
   loading: boolean
 }) {
-  const panels = buildSelectedCampaignReadout(selectedRow, currency, rangeLabel)
+  const panels = buildSelectedCampaignReadout(selectedRow, currency, rangeLabel, market)
   const actions = buildMetaActionInsights(selectedRow, currency)
 
   return (
@@ -827,11 +832,9 @@ export default function AdsPage() {
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
   const [selectedCampaignId, setSelectedCampaignId] = useState('')
   const [details, setDetails] = useState<CampaignDetails | null>(null)
-  const [optimization, setOptimization] = useState<OptimizationResult | null>(null)
   const [loadingAccounts, setLoadingAccounts] = useState(false)
   const [loadingData, setLoadingData] = useState(false)
   const [loadingDetails, setLoadingDetails] = useState(false)
-  const [loadingOptimize, setLoadingOptimize] = useState(false)
   const [notConfigured, setNotConfigured] = useState(false)
   const dataRequestRef = useRef(0)
   const detailRequestRef = useRef(0)
@@ -870,12 +873,17 @@ export default function AdsPage() {
     const requestId = dataRequestRef.current + 1
     dataRequestRef.current = requestId
     setLoadingData(true)
-    setOptimization(null)
+    setSelectedCampaignId('')
+    setDetails(null)
+    setCampaigns([])
+    setInsights([])
+    setSummary(null)
+    setMetaDateRange(null)
     try {
       const token = await getAuthToken()
       const headers = { ...(token ? { Authorization: `Bearer ${token}` } : {}) }
       const [campaignResponse, insightResponse] = await Promise.all([
-        fetch(`/api/integrations/meta/campaigns?accountId=${encodeURIComponent(selectedAccountId)}&datePreset=${datePreset}`, {
+        fetch(`/api/integrations/meta/campaigns?accountId=${encodeURIComponent(selectedAccountId)}`, {
           cache: 'no-store',
           headers,
         }),
@@ -894,17 +902,17 @@ export default function AdsPage() {
       setInsights(insightPayload.insights || [])
       setSummary(insightPayload.summary || null)
       setMetaDateRange(insightPayload.dateRange || null)
-      setSelectedCampaignId((current) =>
-        current && nextCampaigns.some((campaign: MetaCampaign) => campaign.id === current)
-          ? current
-          : nextCampaigns[0]?.id || ''
-      )
     } catch (error: any) {
       if (requestId === dataRequestRef.current) toast.error(error.message || 'Failed to load Meta data')
     } finally {
       if (requestId === dataRequestRef.current) setLoadingData(false)
     }
   }, [datePreset, selectedAccountId])
+
+  const selectCampaign = useCallback((campaignId: string) => {
+    setDetails(null)
+    setSelectedCampaignId(campaignId)
+  }, [])
 
   useEffect(() => {
     if (selectedAccountId) loadAccountData()
@@ -940,6 +948,23 @@ export default function AdsPage() {
   const selectedRow = rows.find((row) => row.campaign.id === selectedCampaignId)
   const benchmark = getMetaCountryBenchmark(market)
   const accountCurrency = selectedAccount?.currency || 'USD'
+  const selectedInsight = details?.insight || selectedRow?.insight || null
+  const selectedCampaign = (details?.campaign as MetaCampaign | undefined) || selectedRow?.campaign
+  const selectedAnalysisRow = selectedRow && selectedCampaign
+    ? {
+        ...selectedRow,
+        campaign: selectedCampaign,
+        insight: selectedInsight,
+        analysis: analyzeMetaCampaign(selectedInsight, selectedCampaign, market),
+      }
+    : null
+
+  useEffect(() => {
+    if (selectedCampaignId && filteredRows.length && !filteredRows.some((row) => row.campaign.id === selectedCampaignId)) {
+      setSelectedCampaignId('')
+      setDetails(null)
+    }
+  }, [filteredRows, selectedCampaignId])
 
   useEffect(() => {
     if (!selectedCampaignId) {
@@ -972,47 +997,6 @@ export default function AdsPage() {
     loadDetails()
   }, [datePreset, selectedCampaignId])
 
-  async function handleOptimize() {
-    if (!rows.length) {
-      toast.error('Load campaigns first')
-      return
-    }
-    setLoadingOptimize(true)
-    try {
-      const token = await getAuthToken()
-      const ruleFindings = rows.map((row) => ({
-        campaignId: row.campaign.id,
-        campaignName: row.campaign.name,
-        objective: row.campaign.objective,
-        objectiveFamily: row.analysis.objectiveFamily,
-        market: row.analysis.benchmark.country,
-        score: row.analysis.score,
-        suggestions: row.analysis.suggestions.slice(0, 5),
-      }))
-      const response = await fetch('/api/integrations/meta/optimize', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          campaigns,
-          insights,
-          summary,
-          market,
-          ruleFindings,
-        }),
-      })
-      const payload = await response.json()
-      if (!response.ok) throw new Error(payload.error || 'Optimization failed')
-      setOptimization(payload)
-    } catch (error: any) {
-      toast.error(error.message || 'Optimization failed')
-    } finally {
-      setLoadingOptimize(false)
-    }
-  }
-
   if (notConfigured) return <EmptyConnectState />
 
   return (
@@ -1030,10 +1014,6 @@ export default function AdsPage() {
             <Button variant="secondary" onClick={loadAccountData} disabled={loadingData || !selectedAccountId}>
               <RefreshCcw size={14} className={loadingData ? 'animate-spin' : ''} />
               Refresh
-            </Button>
-            <Button variant="primary" onClick={handleOptimize} disabled={loadingOptimize || !rows.length}>
-              {loadingOptimize ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-              AI Optimize
             </Button>
           </div>
         </div>
@@ -1148,7 +1128,7 @@ export default function AdsPage() {
                         <tr
                           key={campaign.id}
                           className="cursor-pointer border-b border-border/70 hover:bg-base/60"
-                          onClick={() => setSelectedCampaignId(campaign.id)}
+                          onClick={() => selectCampaign(campaign.id)}
                         >
                           <td className="px-4 py-3">
                             <p className="font-medium text-text-primary">{campaign.name}</p>
@@ -1171,13 +1151,13 @@ export default function AdsPage() {
               </Card>
             ) : filteredRows.length ? (
               filteredRows.map(({ campaign, insight, analysis }) => {
-                const objectiveKpis = campaignKpiMetrics(insight, analysis.objectiveFamily, accountCurrency)
+                const objectiveKpis = campaignKpiMetrics(insight, analysis.objectiveFamily, accountCurrency, market)
 
                 return (
                   <Card
                     key={campaign.id}
                     hover
-                    onClick={() => setSelectedCampaignId(campaign.id)}
+                    onClick={() => selectCampaign(campaign.id)}
                     className={`rounded-lg p-4 ${selectedCampaignId === campaign.id ? 'border-accent-blue shadow-[var(--shadow-glow-blue)]' : ''}`}
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -1241,59 +1221,65 @@ export default function AdsPage() {
 
           <aside className="space-y-4 xl:sticky xl:top-6 xl:self-start">
             <MetaInsightRail
-              selectedRow={selectedRow}
+              selectedRow={selectedAnalysisRow}
               currency={accountCurrency}
-              rangeLabel={dateRangeLabel(metaDateRange)}
-              loading={loadingData || loadingAccounts}
+              rangeLabel={dateRangeLabel(details?.dateRange || metaDateRange)}
+              market={market}
+              loading={loadingData || loadingAccounts || Boolean(selectedCampaignId && loadingDetails)}
             />
 
             <Card className="rounded-lg p-4">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
                   <p className="font-mono text-[11px] uppercase tracking-wider text-text-dim">Selected Campaign</p>
-                  <h2 className="mt-1 text-sm font-semibold text-text-primary">{selectedRow?.campaign.name || 'No campaign selected'}</h2>
+                  <h2 className="mt-1 text-sm font-semibold text-text-primary">{selectedAnalysisRow?.campaign.name || 'No campaign selected'}</h2>
                 </div>
                 {loadingDetails ? <Loader2 size={16} className="animate-spin text-accent-blue" /> : <Layers3 size={17} className="text-accent-blue" />}
               </div>
 
-              {selectedRow ? (
+              {selectedAnalysisRow && loadingDetails ? (
+                <div className="flex items-center gap-3 rounded-lg border border-border bg-base/60 p-4 text-sm text-text-secondary">
+                  <Loader2 size={16} className="animate-spin text-accent-blue" />
+                  Loading selected campaign data for {dateRangeLabel(metaDateRange)}...
+                </div>
+              ) : selectedAnalysisRow ? (
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-2">
                     <div className="rounded-lg border border-border bg-base/60 p-3">
                       <p className="text-[10px] font-mono uppercase text-text-dim">Objective</p>
-                      <p className="mt-1 text-sm font-semibold text-text-primary">{mapMetaObjectiveToFamily(selectedRow.campaign.objective)}</p>
+                      <p className="mt-1 text-sm font-semibold text-text-primary">{mapMetaObjectiveToFamily(selectedAnalysisRow.campaign.objective)}</p>
                     </div>
                     <div className="rounded-lg border border-border bg-base/60 p-3">
                       <p className="text-[10px] font-mono uppercase text-text-dim">Score</p>
-                      <p className="mt-1 text-sm font-semibold text-text-primary">{selectedRow.analysis.score}/100</p>
+                      <p className="mt-1 text-sm font-semibold text-text-primary">{selectedAnalysisRow.analysis.score}/100</p>
                     </div>
                   </div>
 
                   <div className="rounded-lg border border-border bg-base/60 p-3">
                     <div className="mb-3 flex flex-wrap items-center gap-2">
-                      <Badge color={statusBadgeColor(campaignStatusGroup(details?.campaign || selectedRow.campaign))} variant="outline">
-                        {campaignStatus(details?.campaign || selectedRow.campaign)}
+                      <Badge color={statusBadgeColor(campaignStatusGroup(selectedAnalysisRow.campaign))} variant="outline">
+                        {campaignStatus(selectedAnalysisRow.campaign)}
                       </Badge>
                       <Badge color="#4f8ef7" variant="outline">{datePreset.replaceAll('_', ' ')}</Badge>
                       <Badge color="#8f72ff" variant="outline">{dateRangeLabel(details?.dateRange || metaDateRange)}</Badge>
-                      <Badge color="#18c7b6" variant="outline">{selectedRow.analysis.benchmark.country}</Badge>
+                      <Badge color="#18c7b6" variant="outline">{selectedAnalysisRow.analysis.benchmark.country}</Badge>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div>
                         <p className="font-mono uppercase tracking-wider text-text-dim">Configured</p>
-                        <p className="mt-1 text-text-primary">{details?.campaign?.configured_status || selectedRow.campaign.configured_status || selectedRow.campaign.status || 'Unknown'}</p>
+                        <p className="mt-1 text-text-primary">{selectedAnalysisRow.campaign.configured_status || selectedAnalysisRow.campaign.status || 'Unknown'}</p>
                       </div>
                       <div>
                         <p className="font-mono uppercase tracking-wider text-text-dim">Effective</p>
-                        <p className="mt-1 text-text-primary">{details?.campaign?.effective_status || selectedRow.campaign.effective_status || 'Unknown'}</p>
+                        <p className="mt-1 text-text-primary">{selectedAnalysisRow.campaign.effective_status || 'Unknown'}</p>
                       </div>
                       <div>
                         <p className="font-mono uppercase tracking-wider text-text-dim">Daily Budget</p>
-                        <p className="mt-1 text-text-primary">{budget(details?.campaign?.daily_budget || selectedRow.campaign.daily_budget)}</p>
+                        <p className="mt-1 text-text-primary">{budget(selectedAnalysisRow.campaign.daily_budget)}</p>
                       </div>
                       <div>
                         <p className="font-mono uppercase tracking-wider text-text-dim">Lifetime</p>
-                        <p className="mt-1 text-text-primary">{budget(details?.campaign?.lifetime_budget || selectedRow.campaign.lifetime_budget)}</p>
+                        <p className="mt-1 text-text-primary">{budget(selectedAnalysisRow.campaign.lifetime_budget)}</p>
                       </div>
                     </div>
                   </div>
@@ -1315,12 +1301,12 @@ export default function AdsPage() {
 
                   <div className="grid grid-cols-3 gap-2">
                     {[
-                      { label: 'Spend', value: fmtCurrency((details?.insight || selectedRow.insight)?.spend, accountCurrency) },
-                      { label: 'Impr.', value: fmt((details?.insight || selectedRow.insight)?.impressions) },
-                      { label: 'Reach', value: fmt((details?.insight || selectedRow.insight)?.reach) },
-                      { label: 'Clicks', value: fmt((details?.insight || selectedRow.insight)?.clicks) },
-                      { label: 'CTR', value: percent((details?.insight || selectedRow.insight)?.ctr) },
-                      { label: 'Freq.', value: fmt((details?.insight || selectedRow.insight)?.frequency, 2) },
+                      { label: 'Spend', value: fmtCurrency(selectedAnalysisRow.insight?.spend, accountCurrency) },
+                      { label: 'Impr.', value: fmt(selectedAnalysisRow.insight?.impressions) },
+                      { label: 'Reach', value: fmt(selectedAnalysisRow.insight?.reach) },
+                      { label: 'Clicks', value: fmt(selectedAnalysisRow.insight?.clicks) },
+                      { label: 'CTR', value: percent(selectedAnalysisRow.insight?.ctr) },
+                      { label: 'Freq.', value: fmt(selectedAnalysisRow.insight?.frequency, 2) },
                     ].map((metric) => (
                       <div key={metric.label} className="rounded-lg border border-border bg-base/60 p-2.5">
                         <p className="text-[9px] font-mono uppercase tracking-wider text-text-dim">{metric.label}</p>
@@ -1332,7 +1318,7 @@ export default function AdsPage() {
                   <div className="rounded-lg border border-border bg-base/60 p-3">
                     <p className="mb-2 text-xs font-semibold text-text-primary">Objective KPIs</p>
                     <div className="grid grid-cols-2 gap-2">
-                      {campaignKpiMetrics(details?.insight || selectedRow.insight, selectedRow.analysis.objectiveFamily, accountCurrency).slice(0, 6).map((metric) => (
+                      {campaignKpiMetrics(selectedAnalysisRow.insight, selectedAnalysisRow.analysis.objectiveFamily, accountCurrency, market).slice(0, 6).map((metric) => (
                         <div key={metric.key} className="rounded-md border border-border/70 bg-card/60 p-2">
                           <div className="mb-1 h-1 w-8 rounded-full" style={{ backgroundColor: metric.color }} />
                           <p className="text-[9px] font-mono uppercase tracking-wider text-text-dim">{metric.label}</p>
@@ -1343,7 +1329,7 @@ export default function AdsPage() {
                     </div>
                   </div>
 
-                  <SuggestionList suggestions={selectedRow.analysis.suggestions} />
+                  <SuggestionList suggestions={selectedAnalysisRow.analysis.suggestions} />
 
                   <div className="rounded-lg border border-border bg-base/60">
                     <div className="flex items-center justify-between border-b border-border px-3 py-2">
@@ -1395,29 +1381,6 @@ export default function AdsPage() {
               )}
             </Card>
 
-            {optimization ? (
-              <Card className="rounded-lg p-4">
-                <div className="mb-3 flex items-center gap-2">
-                  <Wand2 size={16} className="text-accent-purple" />
-                  <h2 className="text-sm font-semibold text-text-primary">AI Optimization</h2>
-                </div>
-                <p className="text-xs leading-relaxed text-text-secondary">{optimization.summary}</p>
-                {optimization.recommendations?.length ? (
-                  <div className="mt-4 space-y-3">
-                    {optimization.recommendations.slice(0, 5).map((rec, index) => (
-                      <div key={`${rec.title}-${index}`} className="border-l-2 pl-3" style={{ borderColor: priorityColor(rec.priority) }}>
-                        <div className="flex items-center gap-2">
-                          <p className="text-xs font-semibold text-text-primary">{rec.title}</p>
-                          <Badge color={priorityColor(rec.priority)} variant="outline">{rec.priority}</Badge>
-                        </div>
-                        <p className="mt-1 text-[11px] leading-relaxed text-text-secondary">{rec.detail}</p>
-                        {rec.estimatedImpact ? <p className="mt-1 text-[11px] text-accent-cyan">{rec.estimatedImpact}</p> : null}
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-              </Card>
-            ) : null}
           </aside>
         </div>
 
