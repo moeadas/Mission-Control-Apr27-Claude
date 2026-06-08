@@ -291,11 +291,10 @@ type CampaignMetric = {
 
 type MetricTone = 'good' | 'watch' | 'risk' | 'neutral'
 
-type MetaStoryPanel = {
-  label: string
+type MetaCampaignReadout = {
   title: string
   body: string
-  color: string
+  tone: MetricTone
   icon: React.ComponentType<{ size?: number; className?: string; style?: React.CSSProperties }>
 }
 
@@ -471,156 +470,166 @@ function objectiveResultLabel(objectiveFamily: string) {
   return 'purchases'
 }
 
-function buildMetaStoryPanels({
-  rows,
-  filteredRows,
-  selectedRow,
-  summary,
-  currency,
-  rangeLabel,
-}: {
-  rows: any[]
-  filteredRows: any[]
-  selectedRow: any
-  summary: AccountSummary | null
-  currency: string
-  rangeLabel: string
-}): MetaStoryPanel[] {
-  const rowSet = filteredRows.length ? filteredRows : rows
-  const focus = selectedRow || rowSet[0]
-  const topSpend = [...rowSet].sort((a, b) => num(b.insight?.spend) - num(a.insight?.spend))[0]
-  const topResult = [...rowSet].sort((a, b) =>
-    objectiveResultCount(b.insight, b.analysis.objectiveFamily) - objectiveResultCount(a.insight, a.analysis.objectiveFamily)
-  )[0]
-  const risk = rowSet.find((row) => row.analysis.suggestions.some((item: MetaOptimizationSuggestion) => ['critical', 'high'].includes(item.priority)))
-  const best = rowSet.find((row) => row.analysis.suggestions.some((item: MetaOptimizationSuggestion) => item.type === 'success')) || topResult
+function objectiveReadout(row: any, currency: string) {
+  const insight = row.insight
+  const objective = row.analysis.objectiveFamily
+  const clicks = num(insight?.inline_link_clicks) || num(insight?.link_clicks_action) || num(insight?.clicks)
+  const spend = fmtCurrency(insight?.spend, currency)
+  const result = fmt(objectiveResultCount(insight, objective))
+  const label = objectiveResultLabel(objective)
 
-  if (!focus) {
-    return [
-      {
-        label: 'Situation',
-        title: 'No campaign data loaded yet',
-        body: 'Connect Meta, choose an account, and load a date range to generate campaign-level analysis.',
-        icon: BarChart3,
-        color: '#4f8ef7',
-      },
-      {
-        label: 'Problem',
-        title: 'No evidence available',
-        body: 'The analysis engine waits for spend, delivery, and action data before making recommendations.',
-        icon: AlertTriangle,
-        color: '#f4c84f',
-      },
-      {
-        label: 'Answer',
-        title: 'Load a valid campaign range',
-        body: 'Use a recent range with delivery data so objective-specific KPIs can be evaluated.',
-        icon: CheckCircle2,
-        color: '#18c7b6',
-      },
-      {
-        label: 'Impact',
-        title: 'Recommendations will become specific',
-        body: 'Once data is loaded, this area names the exact campaign, KPI, and next action.',
-        icon: Target,
-        color: '#8f72ff',
-      },
-    ]
+  if (objective === 'sales') {
+    const purchases = num(insight?.purchases) || num(insight?.conversions)
+    const roas = roasValue(insight)
+    const value = num(insight?.purchase_value)
+    return purchases > 0
+      ? `${spend} generated ${fmt(purchases)} purchases, ${fmtCurrency(value, currency)} purchase value, ${fmtRoas(roas)} ROAS, and ${fmtCurrency(costPerAction(insight?.spend, purchases, insight?.cost_per_conversion), currency, 2)} cost per purchase.`
+      : `${spend} has not produced a tracked purchase yet. Judge this campaign by purchase volume, ROAS, purchase value, and checkout progress before scaling.`
   }
 
-  const focusResult = objectiveResultCount(focus.insight, focus.analysis.objectiveFamily)
-  const focusResultLabel = objectiveResultLabel(focus.analysis.objectiveFamily)
-  const topIssue = focus.analysis.suggestions[0] || risk?.analysis.suggestions[0]
-  const topIssueRow = focus.analysis.suggestions[0] ? focus : risk
-  const roas = roasValue(focus.insight)
+  if (objective === 'leads') {
+    return `${spend} generated ${result} leads at ${fmtCurrency(costPerAction(insight?.spend, insight?.leads, insight?.cost_per_lead), currency, 2)} cost per lead from ${fmt(clicks)} clicks.`
+  }
 
-  return [
-    {
-      label: 'Situation',
-      title: `${rowSet.length} campaigns analyzed`,
-      body: `${rangeLabel}: ${fmtCurrency(summary?.spend, currency)} spend, ${fmt(summary?.impressions)} impressions, and ${fmt(summary?.reach)} reach. ${topSpend?.campaign?.name || focus.campaign.name} carries the highest spend at ${fmtCurrency(topSpend?.insight?.spend, currency)}.`,
-      icon: BarChart3,
-      color: '#4f8ef7',
-    },
-    {
-      label: 'Problem',
-      title: topIssue ? `${topIssueRow?.campaign?.name || focus.campaign.name}: ${topIssue.title}` : `${focus.campaign.name} has no severe alert`,
-      body: topIssue
-        ? `${topIssue.description} Current KPI: ${topIssue.currentValue || 'not available'}; target: ${topIssue.targetValue || 'improve quality'}.`
-        : `${focus.campaign.name} is within the current rule thresholds. Keep monitoring spend concentration, frequency, and result quality before scaling.`,
-      icon: AlertTriangle,
-      color: topIssue?.priority === 'critical' || topIssue?.priority === 'high' ? '#ff7f7f' : '#f4c84f',
-    },
-    {
-      label: 'Answer',
-      title: `${focus.campaign.name}: ${fmt(focusResult)} ${focusResultLabel}`,
-      body: focus.analysis.objectiveFamily === 'sales'
-        ? `Sales readout: ${fmt(focus.insight?.purchases)} purchases, ${fmtCurrency(focus.insight?.purchase_value, currency)} purchase value, ${fmtRoas(roas)} ROAS, and ${fmtCurrency(costPerAction(focus.insight?.spend, focus.insight?.purchases || focus.insight?.conversions, focus.insight?.cost_per_conversion), currency, 2)} cost per purchase.`
-        : `${focus.campaign.name} should be judged by ${focusResultLabel}, not generic clicks. Its current objective score is ${focus.analysis.score}/100 with ${fmtCurrency(focus.insight?.spend, currency)} spend.`,
-      icon: CheckCircle2,
-      color: '#18c7b6',
-    },
-    {
-      label: 'Impact',
-      title: best?.campaign?.name ? `Best pattern: ${best.campaign.name}` : 'Next action is objective-specific',
-      body: best?.campaign?.name
-        ? `${best.campaign.name} has the strongest visible pattern with ${fmt(objectiveResultCount(best.insight, best.analysis.objectiveFamily))} ${objectiveResultLabel(best.analysis.objectiveFamily)} and score ${best.analysis.score}/100. Use it as the benchmark before scaling weaker campaigns.`
-        : 'Prioritize the first high-priority alert, then scale only campaigns with clear objective results and clean tracking.',
-      icon: TrendingUp,
-      color: '#8f72ff',
-    },
-  ]
+  if (objective === 'engagement') {
+    return `${spend} generated ${result} engagements with ${percent(insight?.engagement_rate)} engagement rate, ${percent(insight?.ctr)} CTR, and ${fmtCurrency(insight?.cost_per_engagement, currency, 2)} cost per engagement.`
+  }
+
+  if (objective === 'traffic') {
+    return `${spend} generated ${result} link clicks at ${fmtCurrency(insight?.cost_per_inline_link_click || insight?.cpc, currency, 2)} cost per link click and ${percent(insight?.inline_link_click_ctr || insight?.ctr)} click-through rate.`
+  }
+
+  if (objective === 'awareness') {
+    return `${spend} reached ${fmt(insight?.reach)} people with ${fmt(insight?.frequency, 2)} frequency and ${fmtCurrency(insight?.cpm, currency, 2)} CPM.`
+  }
+
+  if (objective === 'app_promotion') {
+    return `${spend} generated ${result} app installs/events from ${fmt(clicks)} clicks at ${fmtCurrency(insight?.cost_per_conversion, currency, 2)} cost per app event.`
+  }
+
+  return `${spend} generated ${result} ${label}.`
 }
 
-function buildMetaActionInsights(rows: any[], selectedRow: any, currency: string): MetaActionInsight[] {
-  const rowSet = rows.length ? rows : []
-  const focus = selectedRow || rowSet[0]
+function buildSelectedCampaignReadout(selectedRow: any, currency: string, rangeLabel: string): MetaCampaignReadout[] {
+  if (!selectedRow) return []
+
+  const metrics = campaignKpiMetrics(selectedRow.insight, selectedRow.analysis.objectiveFamily, currency)
+  const healthyMetrics = metrics.filter((metric) => metric.tone === 'good')
+  const weakMetrics = metrics.filter((metric) => metric.tone === 'risk' || metric.tone === 'watch')
+  const issues = selectedRow.analysis.suggestions.filter((item: MetaOptimizationSuggestion) => item.type !== 'success')
+  const wins = selectedRow.analysis.suggestions.filter((item: MetaOptimizationSuggestion) => item.type === 'success')
+  const topIssue = issues[0]
+  const topWin = wins[0]
+  const score = selectedRow.analysis.score
+  const objectiveLabel = selectedRow.analysis.objectiveFamily.replace('_', ' ')
+
+  const readout: MetaCampaignReadout[] = [
+    {
+      title: `${selectedRow.campaign.name}`,
+      body: `${rangeLabel}. This is a ${objectiveLabel} campaign with a health score of ${score}/100. ${objectiveReadout(selectedRow, currency)}`,
+      icon: BarChart3,
+      tone: score >= 80 ? 'good' : score < 60 ? 'risk' : 'watch',
+    },
+  ]
+
+  if (topWin || healthyMetrics.length) {
+    const metricSummary = healthyMetrics.slice(0, 3).map((metric) => `${metric.label}: ${metric.value}`).join(', ')
+    readout.push({
+      title: topWin ? topWin.title : 'The campaign has healthy KPI signals',
+      body: topWin
+        ? `${topWin.description}${topWin.currentValue ? ` Current KPI: ${topWin.currentValue}.` : ''}${metricSummary ? ` Supporting metrics: ${metricSummary}.` : ''}`
+        : `${metricSummary}. These are the signals to protect if you scale or test new variants.`,
+      icon: CheckCircle2,
+      tone: 'good',
+    })
+  }
+
+  if (topIssue) {
+    readout.push({
+      title: topIssue.title,
+      body: `${topIssue.description}${topIssue.currentValue ? ` Current KPI: ${topIssue.currentValue}.` : ''}${topIssue.targetValue ? ` Target: ${topIssue.targetValue}.` : ''}`,
+      icon: AlertTriangle,
+      tone: topIssue.priority === 'critical' || topIssue.priority === 'high' ? 'risk' : 'watch',
+    })
+  } else {
+    const stable = weakMetrics.length
+      ? `Watch ${weakMetrics.slice(0, 2).map((metric) => `${metric.label}: ${metric.value}`).join(' and ')}, but there is no severe campaign-level alarm in the selected range.`
+      : 'The visible KPIs look healthy for this objective. Keep the current structure intact and use controlled tests rather than large edits.'
+    readout.push({
+      title: 'No major KPI risk is visible',
+      body: stable,
+      icon: TrendingUp,
+      tone: 'good',
+    })
+  }
+
+  return readout
+}
+
+function buildMetaActionInsights(selectedRow: any, currency: string): MetaActionInsight[] {
+  const focus = selectedRow
   if (!focus) return []
   const insights: MetaActionInsight[] = []
-  const selectedSuggestions = focus.analysis.suggestions.slice(0, 3)
+  const selectedSuggestions = focus.analysis.suggestions
+    .filter((suggestion: MetaOptimizationSuggestion) => suggestion.type !== 'success')
+    .slice(0, 3)
 
   selectedSuggestions.forEach((suggestion: MetaOptimizationSuggestion) => {
     insights.push({
-      title: `${focus.campaign.name}: ${suggestion.title}`,
+      title: suggestion.title,
       evidence: `${suggestion.description}${suggestion.currentValue ? ` Current: ${suggestion.currentValue}.` : ''}${suggestion.targetValue ? ` Target: ${suggestion.targetValue}.` : ''}`,
       action: suggestion.recommendations?.[0] || suggestion.impact || 'Prioritize this finding before scaling.',
       severity: suggestion.priority === 'critical' || suggestion.priority === 'high' ? 'high' : suggestion.priority === 'medium' ? 'medium' : 'low',
     })
   })
 
-  const topSpend = [...rowSet].sort((a, b) => num(b.insight?.spend) - num(a.insight?.spend))[0]
-  if (topSpend) {
-    const result = objectiveResultCount(topSpend.insight, topSpend.analysis.objectiveFamily)
+  if (focus.analysis.objectiveFamily === 'sales') {
+    const purchases = num(focus.insight?.purchases) || num(focus.insight?.conversions)
+    const roas = roasValue(focus.insight)
+    const purchaseValue = num(focus.insight?.purchase_value)
+    if (purchases > 0 && purchaseValue === 0) {
+      insights.push({
+        title: 'Purchase value tracking is incomplete',
+        evidence: `${fmt(purchases)} purchases are visible, but purchase value is ${fmtCurrency(purchaseValue, currency)}.`,
+        action: 'Pass value and currency with purchase events before making ROAS decisions.',
+        severity: 'high',
+      })
+    } else if (roas >= 2.5) {
+      insights.push({
+        title: 'Sales efficiency is strong enough for a controlled scale test',
+        evidence: `${fmtRoas(roas)} ROAS from ${fmtCurrency(purchaseValue, currency)} purchase value and ${fmtCurrency(focus.insight?.spend, currency)} spend.`,
+        action: 'Increase budget in controlled 10-20% steps or duplicate into one expansion test while protecting the original ad set.',
+        severity: 'low',
+      })
+    }
+  }
+
+  if (focus.analysis.objectiveFamily === 'leads' && num(focus.insight?.leads) > 0) {
     insights.push({
-      title: `${topSpend.campaign.name} controls the largest budget signal`,
-      evidence: `${fmtCurrency(topSpend.insight?.spend, currency)} spend produced ${fmt(result)} ${objectiveResultLabel(topSpend.analysis.objectiveFamily)} and score ${topSpend.analysis.score}/100.`,
-      action: topSpend.analysis.score >= 80
-        ? `Protect ${topSpend.campaign.name} and scale in small increments only while its cost/result stays stable.`
-        : `Do not scale ${topSpend.campaign.name} yet; fix the top alert before increasing budget.`,
-      severity: topSpend.analysis.score >= 80 ? 'low' : topSpend.analysis.score < 60 ? 'high' : 'medium',
+      title: 'Lead flow is measurable',
+      evidence: `${fmt(focus.insight?.leads)} leads at ${fmtCurrency(costPerAction(focus.insight?.spend, focus.insight?.leads, focus.insight?.cost_per_lead), currency, 2)} cost per lead.`,
+      action: 'Review lead quality before scaling; if quality is acceptable, test one budget increase and one new audience variant.',
+      severity: focus.analysis.score >= 75 ? 'low' : 'medium',
     })
   }
 
-  const salesRows = rowSet.filter((row) => row.analysis.objectiveFamily === 'sales')
-  const missingRoas = salesRows.find((row) => (num(row.insight?.purchases) || num(row.insight?.conversions)) > 0 && num(row.insight?.purchase_value) === 0)
-  if (missingRoas) {
+  if (focus.analysis.objectiveFamily === 'engagement' && num(focus.insight?.post_engagements) > 0) {
     insights.push({
-      title: `${missingRoas.campaign.name} needs value tracking`,
-      evidence: `${fmt(num(missingRoas.insight?.purchases) || num(missingRoas.insight?.conversions))} purchases are visible, but purchase value is ${fmtCurrency(missingRoas.insight?.purchase_value, currency)}.`,
-      action: 'Pass value and currency with purchase events before making ROAS decisions.',
-      severity: 'high',
+      title: 'Engagement signal is usable for retargeting',
+      evidence: `${fmt(focus.insight?.post_engagements)} engagements with ${percent(focus.insight?.engagement_rate)} engagement rate.`,
+      action: 'Build a warm audience from engagers and test a follow-up conversion or lead campaign with the same winning angle.',
+      severity: 'low',
     })
   }
 
-  const profitableSales = salesRows
-    .filter((row) => roasValue(row.insight) >= 2.5)
-    .sort((a, b) => roasValue(b.insight) - roasValue(a.insight))[0]
-  if (profitableSales) {
+  if (!insights.length) {
     insights.push({
-      title: `${profitableSales.campaign.name} is the sales scale candidate`,
-      evidence: `${fmtRoas(roasValue(profitableSales.insight))} ROAS with ${fmtCurrency(profitableSales.insight?.purchase_value, currency)} purchase value.`,
-      action: 'Create one controlled scale test and one creative variant; do not disturb the original ad set.',
-      severity: 'medium',
+      title: focus.analysis.score >= 80 ? 'Results look healthy' : 'Keep optimizing before scaling',
+      evidence: `${focus.campaign.name} is scoring ${focus.analysis.score}/100 for a ${focus.analysis.objectiveFamily.replace('_', ' ')} objective.`,
+      action: focus.analysis.score >= 80
+        ? 'Keep the current campaign structure stable, scale gradually, and use separate tests for creative or audience changes.'
+        : 'Improve the weakest KPI first, then reassess after the next meaningful delivery window.',
+      severity: focus.analysis.score >= 80 ? 'low' : 'medium',
     })
   }
 
@@ -716,24 +725,18 @@ function SuggestionList({ suggestions }: { suggestions: MetaOptimizationSuggesti
 }
 
 function MetaInsightRail({
-  rows,
-  filteredRows,
   selectedRow,
-  summary,
   currency,
   rangeLabel,
   loading,
 }: {
-  rows: any[]
-  filteredRows: any[]
   selectedRow: any
-  summary: AccountSummary | null
   currency: string
   rangeLabel: string
   loading: boolean
 }) {
-  const panels = buildMetaStoryPanels({ rows, filteredRows, selectedRow, summary, currency, rangeLabel })
-  const actions = buildMetaActionInsights(filteredRows.length ? filteredRows : rows, selectedRow, currency)
+  const panels = buildSelectedCampaignReadout(selectedRow, currency, rangeLabel)
+  const actions = buildMetaActionInsights(selectedRow, currency)
 
   return (
     <Card className="rounded-lg p-4">
@@ -744,26 +747,33 @@ function MetaInsightRail({
           </span>
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-dim">AI Meta analyst</p>
-            <h2 className="text-sm font-semibold text-text-primary">Campaign Storyline</h2>
+            <h2 className="text-sm font-semibold text-text-primary">Campaign Performance Readout</h2>
           </div>
         </div>
-        <Badge color="#8f72ff" variant="outline">{actions.length}</Badge>
+        {selectedRow ? <Badge color="#8f72ff" variant="outline">{actions.length}</Badge> : null}
       </div>
 
       {loading ? (
         <div className="flex items-center gap-3 rounded-lg border border-border bg-base/60 p-4 text-sm text-text-secondary">
           <Loader2 size={16} className="animate-spin text-accent-blue" />
-          Analyzing campaigns, objective KPIs, and alerts...
+          Loading Meta campaign data...
+        </div>
+      ) : !selectedRow ? (
+        <div className="rounded-lg border border-border bg-base/60 p-4">
+          <p className="text-sm font-semibold text-text-primary">Select a campaign to analyze it.</p>
+          <p className="mt-1 text-xs leading-relaxed text-text-secondary">
+            The analyst readout appears only after a campaign is selected so the insights stay campaign-specific and do not mix account-level or unrelated campaign signals.
+          </p>
         </div>
       ) : (
         <div className="space-y-2">
           {panels.map((panel) => {
             const Icon = panel.icon
             return (
-              <div key={panel.label} className="rounded-lg border border-border bg-base/60 p-3">
+              <div key={panel.title} className="rounded-lg border border-border bg-base/60 p-3">
                 <div className="mb-2 flex items-center gap-2">
-                  <Icon size={14} style={{ color: panel.color }} />
-                  <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">{panel.label}</p>
+                  <Icon size={14} style={{ color: toneColor(panel.tone) }} />
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: toneColor(panel.tone) }} />
                 </div>
                 <p className="text-sm font-semibold leading-snug text-text-primary">{panel.title}</p>
                 <p className="mt-1 text-xs leading-relaxed text-text-secondary">{panel.body}</p>
@@ -775,7 +785,7 @@ function MetaInsightRail({
 
       <div className="mt-4 border-t border-border pt-4">
         <div className="mb-3 flex items-center justify-between gap-3">
-          <h3 className="text-sm font-semibold text-text-primary">Actions</h3>
+          <h3 className="text-sm font-semibold text-text-primary">Recommended Actions</h3>
           <div className="flex items-center gap-2 text-[10px] text-text-dim">
             <span className="h-2 w-2 rounded-full" style={{ backgroundColor: toneColor('good') }} /> healthy
             <span className="h-2 w-2 rounded-full" style={{ backgroundColor: toneColor('watch') }} /> watch
@@ -794,7 +804,7 @@ function MetaInsightRail({
             </div>
           )) : (
             <p className="text-xs leading-relaxed text-text-secondary">
-              {loading ? 'Actions will appear after Meta data finishes loading.' : 'No action can be generated until campaigns have delivery data.'}
+              {selectedRow ? 'No campaign-specific action can be generated until this campaign has delivery data.' : 'Select a campaign to see campaign-specific recommendations.'}
             </p>
           )}
         </div>
@@ -1231,10 +1241,7 @@ export default function AdsPage() {
 
           <aside className="space-y-4 xl:sticky xl:top-6 xl:self-start">
             <MetaInsightRail
-              rows={rows}
-              filteredRows={filteredRows}
               selectedRow={selectedRow}
-              summary={summary}
               currency={accountCurrency}
               rangeLabel={dateRangeLabel(metaDateRange)}
               loading={loadingData || loadingAccounts}
