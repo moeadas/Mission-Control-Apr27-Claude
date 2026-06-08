@@ -36,11 +36,22 @@ export interface MetaInsightLike {
   cost_per_conversion?: string | number
   leads?: string | number
   cost_per_lead?: string | number
+  purchases?: string | number
+  purchase_value?: string | number
+  roas?: string | number
+  add_to_cart?: string | number
+  checkout_initiations?: string | number
   post_engagements?: string | number
   engagement_rate?: string | number
   video_views?: string | number
+  app_installs?: string | number
+  messages?: string | number
   inline_link_clicks?: string | number
   inline_link_click_ctr?: string | number
+  cost_per_inline_link_click?: string | number
+  page_views?: string | number
+  cost_per_engagement?: string | number
+  cost_per_video_view?: string | number
 }
 
 export interface MetaCampaignLike {
@@ -97,8 +108,8 @@ export const OBJECTIVE_KPI_MAP: Record<MetaObjectiveFamily, MetaObjectiveKpis> =
     skipAlerts: ['zero_conversions', 'low_roas'],
   },
   engagement: {
-    primary: ['post_engagements', 'engagement_rate', 'video_views'],
-    secondary: ['reactions', 'saves', 'cost_per_engagement'],
+    primary: ['post_engagements', 'cost_per_engagement', 'engagement_rate'],
+    secondary: ['video_views', 'messages', 'cost_per_video_view'],
     diagnostic: ['reach', 'impressions', 'frequency'],
     skipMetrics: ['conversions', 'roas', 'purchases'],
     skipAlerts: ['zero_conversions', 'low_conversion_rate'],
@@ -112,13 +123,13 @@ export const OBJECTIVE_KPI_MAP: Record<MetaObjectiveFamily, MetaObjectiveKpis> =
   },
   app_promotion: {
     primary: ['app_installs', 'cost_per_install', 'app_events'],
-    secondary: ['app_engagement', 'retention_rate'],
-    diagnostic: ['clicks', 'impressions'],
+    secondary: ['conversion_rate', 'cpc', 'ctr'],
+    diagnostic: ['clicks', 'impressions', 'frequency'],
     skipMetrics: ['roas'],
     skipAlerts: ['low_roas'],
   },
   sales: {
-    primary: ['conversions', 'roas', 'cost_per_conversion', 'purchase_value'],
+    primary: ['purchases', 'roas', 'purchase_value', 'cost_per_conversion'],
     secondary: ['add_to_cart', 'checkout_initiations', 'conversion_rate'],
     diagnostic: ['clicks', 'ctr', 'cpc'],
     skipMetrics: [],
@@ -275,12 +286,26 @@ export function analyzeMetaCampaign(
   const cpm = numeric(insight?.cpm)
   const conversions = integer(insight?.conversions)
   const leads = integer(insight?.leads) || (objectiveFamily === 'leads' ? conversions : 0)
+  const purchases = integer(insight?.purchases) || (objectiveFamily === 'sales' ? conversions : 0)
+  const purchaseValue = numeric(insight?.purchase_value)
+  const roas = numeric(insight?.roas) || (spend > 0 && purchaseValue > 0 ? purchaseValue / spend : 0)
+  const addToCart = integer(insight?.add_to_cart)
+  const checkoutInitiations = integer(insight?.checkout_initiations)
   const postEngagements = integer(insight?.post_engagements)
   const engagementRate = numeric(insight?.engagement_rate)
   const videoViews = integer(insight?.video_views)
+  const appInstalls = integer(insight?.app_installs)
+  const messages = integer(insight?.messages)
+  const linkClicks = integer(insight?.inline_link_clicks) || integer((insight as any)?.link_clicks_action) || clicks
+  const landingPageViews = integer(insight?.page_views)
   const conversionRate = clicks > 0 ? (conversions / clicks) * 100 : numeric(insight?.conversion_rate)
+  const purchaseRate = linkClicks > 0 ? (purchases / linkClicks) * 100 : conversionRate
+  const leadRate = linkClicks > 0 ? (leads / linkClicks) * 100 : 0
+  const landingPageViewRate = linkClicks > 0 ? (landingPageViews / linkClicks) * 100 : 0
+  const costPerPurchase = purchases > 0 ? spend / purchases : numeric(insight?.cost_per_conversion)
   const costPerConversion = conversions > 0 ? spend / conversions : numeric(insight?.cost_per_conversion)
   const costPerLead = leads > 0 ? spend / leads : numeric(insight?.cost_per_lead)
+  const costPerEngagement = postEngagements > 0 ? spend / postEngagements : numeric(insight?.cost_per_engagement)
 
   const push = (suggestion: MetaOptimizationSuggestion) => suggestions.push(suggestion)
 
@@ -301,20 +326,21 @@ export function analyzeMetaCampaign(
   }
 
   if (['sales', 'leads'].includes(objectiveFamily)) {
-    if (conversions < 50) {
+    const optimizationEvents = objectiveFamily === 'sales' ? purchases : leads
+    if (optimizationEvents < 50) {
       push({
-        type: conversions === 0 && clicks > 100 ? 'error' : 'warning',
-        priority: conversions === 0 && clicks > 100 ? 'critical' : 'high',
+        type: optimizationEvents === 0 && clicks > 100 ? 'error' : 'warning',
+        priority: optimizationEvents === 0 && clicks > 100 ? 'critical' : 'high',
         category: 'platform_rule',
         title: 'Meta learning phase risk',
-        description: `Meta conversion optimization generally needs around 50 optimization events per week. This campaign has ${conversions} detected events in the selected period.`,
+        description: `Meta conversion optimization generally needs around 50 optimization events per week. This campaign has ${optimizationEvents} ${objectiveFamily === 'sales' ? 'purchase' : 'lead'} events in the selected period.`,
         kpi: 'Optimization events',
-        currentValue: String(conversions),
+        currentValue: String(optimizationEvents),
         targetValue: '50/week',
         recommendations: [
-          `Generate ${Math.max(0, 50 - conversions)} more optimization events to stabilize delivery`,
-          'Increase budget carefully if CPA/CPL is acceptable',
-          'Broaden audience or optimize to a higher-volume event temporarily',
+          `Generate ${Math.max(0, 50 - optimizationEvents)} more ${objectiveFamily === 'sales' ? 'purchases' : 'leads'} before making heavy structural changes`,
+          objectiveFamily === 'sales' ? 'Use add-to-cart or checkout optimization temporarily if purchases are too sparse' : 'Use a higher-volume qualified lead event if final leads are too sparse',
+          'Broaden audience only if cost quality is still acceptable',
         ],
         impact: 'Campaign delivery may remain unstable while event volume is low.',
         source: 'meta_official',
@@ -438,45 +464,112 @@ export function analyzeMetaCampaign(
   }
 
   if (objectiveFamily === 'sales') {
-    if (clicks > 100 && conversions === 0) {
+    if (clicks > 100 && purchases === 0) {
       push({
         type: 'error',
         priority: 'critical',
         category: 'conversion',
-        title: 'Zero conversions despite traffic',
-        description: `This sales campaign has ${clicks} clicks but no detected conversions.`,
-        kpi: 'Conversions',
+        title: 'Zero purchases despite traffic',
+        description: `This sales campaign has ${clicks} clicks but no detected purchases.`,
+        kpi: 'Purchases',
         currentValue: '0',
         targetValue: `${Math.ceil(clicks * 0.02)}+`,
         recommendations: ['Verify pixel/event tracking', 'Test the landing page and checkout manually', 'Check message match from ad to page'],
         impact: 'This can waste budget quickly if tracking or funnel conversion is broken.',
       })
-    } else if (conversions > 0 && conversionRate < 1) {
+    } else if (purchases > 0 && purchaseRate < 1) {
       push({
         type: 'warning',
         priority: 'high',
         category: 'conversion',
-        title: 'Conversion rate needs work',
-        description: `Conversion rate is ${conversionRate.toFixed(2)}%, below a healthy paid traffic range.`,
-        kpi: 'Conversion rate',
-        currentValue: `${conversionRate.toFixed(2)}%`,
+        title: 'Purchase rate needs work',
+        description: `Purchase rate is ${purchaseRate.toFixed(2)}%, below a healthy paid traffic range.`,
+        kpi: 'Purchase rate',
+        currentValue: `${purchaseRate.toFixed(2)}%`,
         targetValue: '2-5%',
         recommendations: ['Improve landing page speed', 'Simplify conversion path', 'Strengthen offer and proof near CTA'],
         impact: 'Higher conversion rate directly lowers cost per acquisition.',
       })
-    } else if (conversions > 0 && costPerConversion > benchmark.costPerConversion.max) {
+    } else if (purchases > 0 && costPerPurchase > benchmark.costPerConversion.max) {
       push({
         type: 'warning',
         priority: 'high',
         category: 'country_benchmark',
-        title: `CPA is high for ${benchmark.country}`,
-        description: `Cost per conversion is ${money(costPerConversion)} versus ${benchmark.country}'s target range of ${money(benchmark.costPerConversion.min)}-${money(benchmark.costPerConversion.max)}.`,
-        kpi: 'CPA',
-        currentValue: money(costPerConversion),
+        title: `Cost per purchase is high for ${benchmark.country}`,
+        description: `Cost per purchase is ${money(costPerPurchase)} versus ${benchmark.country}'s target range of ${money(benchmark.costPerConversion.min)}-${money(benchmark.costPerConversion.max)}.`,
+        kpi: 'Cost per purchase',
+        currentValue: money(costPerPurchase),
         targetValue: money(benchmark.costPerConversion.optimal),
         recommendations: ['Audit conversion tracking', 'Improve offer quality', 'Test warmer audiences or retargeting'],
         impact: 'CPA reduction improves profitability before scaling.',
         country: benchmark.country,
+      })
+    }
+    if (roas > 0 && roas < 1) {
+      push({
+        type: 'error',
+        priority: 'critical',
+        category: 'profitability',
+        title: 'ROAS is below break-even',
+        description: `ROAS is ${roas.toFixed(2)}x from ${money(spend)} spend and ${money(purchaseValue)} tracked purchase value.`,
+        kpi: 'ROAS',
+        currentValue: `${roas.toFixed(2)}x`,
+        targetValue: '1.5x+ before scale',
+        recommendations: ['Pause scale until offer economics are fixed', 'Retarget warm add-to-cart users', 'Review pricing, shipping, and checkout friction'],
+        impact: 'Scaling below break-even amplifies loss.',
+      })
+    } else if (roas >= 2.5) {
+      push({
+        type: 'success',
+        priority: 'medium',
+        category: 'profitability',
+        title: 'ROAS is strong enough to test scale',
+        description: `ROAS is ${roas.toFixed(2)}x with ${money(purchaseValue)} tracked purchase value.`,
+        kpi: 'ROAS',
+        currentValue: `${roas.toFixed(2)}x`,
+        targetValue: 'Protect 2x+',
+        recommendations: ['Increase budget in controlled 10-20% steps', 'Duplicate the winning creative/audience into a scale test', 'Protect the existing ad set while testing expansion'],
+        impact: 'Profitable sales campaigns can scale if frequency and CPA stay stable.',
+      })
+    } else if (purchases > 0 && purchaseValue === 0) {
+      push({
+        type: 'warning',
+        priority: 'high',
+        category: 'measurement',
+        title: 'Purchase value is missing',
+        description: `${purchases} purchases are tracked, but Meta returned no purchase value, so ROAS cannot be trusted.`,
+        kpi: 'Purchase value',
+        currentValue: '$0',
+        targetValue: 'Value passed with purchase event',
+        recommendations: ['Pass value and currency with purchase events', 'Check Pixel/CAPI purchase payloads', 'Avoid ROAS decisions until value tracking is fixed'],
+        impact: 'Without value tracking, sales optimization becomes CPA-only.',
+      })
+    }
+    if (addToCart >= 20 && purchases === 0) {
+      push({
+        type: 'warning',
+        priority: 'high',
+        category: 'funnel',
+        title: 'Cart intent is not becoming purchases',
+        description: `${addToCart} add-to-cart actions were detected but 0 purchases were tracked.`,
+        kpi: 'Cart to purchase',
+        currentValue: '0 purchases',
+        targetValue: `${Math.ceil(addToCart * 0.1)}+ purchases`,
+        recommendations: ['Audit checkout and payment flow', 'Launch add-to-cart retargeting', 'Add urgency/proof near checkout CTA'],
+        impact: 'Fixing checkout leakage can unlock revenue without more traffic.',
+      })
+    } else if (checkoutInitiations >= 10 && purchases > 0 && purchases / checkoutInitiations < 0.25) {
+      push({
+        type: 'warning',
+        priority: 'medium',
+        category: 'funnel',
+        title: 'Checkout completion is weak',
+        description: `${checkoutInitiations} checkout starts produced ${purchases} purchases (${((purchases / checkoutInitiations) * 100).toFixed(1)}% completion).`,
+        kpi: 'Checkout completion',
+        currentValue: `${((purchases / checkoutInitiations) * 100).toFixed(1)}%`,
+        targetValue: '35%+',
+        recommendations: ['Reduce checkout steps', 'Clarify delivery/fees earlier', 'Retarget checkout starters with trust and incentive'],
+        impact: 'Checkout improvements directly increase ROAS.',
       })
     }
   }
@@ -511,6 +604,20 @@ export function analyzeMetaCampaign(
         country: benchmark.country,
       })
     }
+    if (leads > 0 && leadRate < 3) {
+      push({
+        type: 'warning',
+        priority: 'medium',
+        category: 'leads',
+        title: 'Lead rate is thin for the click volume',
+        description: `${linkClicks} link clicks produced ${leads} leads (${leadRate.toFixed(2)}%).`,
+        kpi: 'Lead rate',
+        currentValue: `${leadRate.toFixed(2)}%`,
+        targetValue: '5%+',
+        recommendations: ['Match the form promise to the ad hook', 'Reduce required fields', 'Add proof and response-time expectation beside the form'],
+        impact: 'Improving lead rate lowers CPL before increasing spend.',
+      })
+    }
   }
 
   if (objectiveFamily === 'engagement' && impressions > 1000) {
@@ -527,6 +634,51 @@ export function analyzeMetaCampaign(
         targetValue: '2-5%',
         recommendations: ['Use native-feeling content', 'Ask a question', 'Test short video or carousel formats'],
         impact: 'More engagement can improve social proof and retargeting pools.',
+      })
+    }
+    if (postEngagements > 0 && costPerEngagement > 0.2) {
+      push({
+        type: 'warning',
+        priority: 'medium',
+        category: 'engagement',
+        title: 'Cost per engagement is getting expensive',
+        description: `Cost per engagement is ${money(costPerEngagement)} from ${postEngagements.toLocaleString()} engagements.`,
+        kpi: 'Cost per engagement',
+        currentValue: money(costPerEngagement),
+        targetValue: '< $0.10-$0.20',
+        recommendations: ['Test more native creative', 'Use existing social proof posts', 'Avoid over-polished ad-looking assets'],
+        impact: 'Cheaper engagement builds larger warm audiences.',
+      })
+    }
+  }
+
+  if (objectiveFamily === 'traffic') {
+    if (linkClicks > 100 && landingPageViews > 0 && landingPageViewRate < 60) {
+      push({
+        type: 'warning',
+        priority: 'high',
+        category: 'traffic_quality',
+        title: 'Many clicks are not becoming landing-page views',
+        description: `${linkClicks} link clicks produced ${landingPageViews} landing-page views (${landingPageViewRate.toFixed(1)}%).`,
+        kpi: 'Landing-page view rate',
+        currentValue: `${landingPageViewRate.toFixed(1)}%`,
+        targetValue: '80%+',
+        recommendations: ['Check page load speed on mobile', 'Review click destination and redirects', 'Use landing-page-view optimization when available'],
+        impact: 'Improves useful traffic without increasing spend.',
+      })
+    }
+    if (ctr >= benchmark.ctr.max && cpc > 0 && cpc <= benchmark.cpc.max) {
+      push({
+        type: 'success',
+        priority: 'low',
+        category: 'traffic_quality',
+        title: 'Traffic quality is efficient',
+        description: `CTR is ${ctr.toFixed(2)}% and CPC is ${money(cpc)}, both healthy for ${benchmark.country}.`,
+        kpi: 'CTR + CPC',
+        currentValue: `${ctr.toFixed(2)}% / ${money(cpc)}`,
+        targetValue: 'Maintain',
+        recommendations: ['Build retargeting from clickers', 'Send the same audience to a stronger conversion page', 'Test one conversion-oriented follow-up campaign'],
+        impact: 'Efficient traffic can become a warm conversion pool.',
       })
     }
   }
@@ -546,7 +698,7 @@ export function analyzeMetaCampaign(
     })
   }
 
-  if (objectiveFamily === 'app_promotion' && clicks > 50 && conversions === 0) {
+  if (objectiveFamily === 'app_promotion' && clicks > 50 && appInstalls === 0 && conversions === 0) {
     push({
       type: 'info',
       priority: 'medium',
@@ -558,6 +710,20 @@ export function analyzeMetaCampaign(
       targetValue: 'Tracked install/event volume',
       recommendations: ['Check SDK/event setup', 'Use a higher-volume app event if installs are scarce', 'Review store page conversion quality'],
       impact: 'Reliable app event data is required for optimization.',
+    })
+  }
+  if (objectiveFamily === 'app_promotion' && appInstalls > 0) {
+    push({
+      type: 'success',
+      priority: 'low',
+      category: 'app_promotion',
+      title: 'App installs are being tracked',
+      description: `${appInstalls} installs/events were detected from ${clicks} clicks.`,
+      kpi: 'App installs',
+      currentValue: appInstalls.toLocaleString(),
+      targetValue: 'Scale with event quality',
+      recommendations: ['Add post-install event quality checks', 'Optimize toward a deeper event once volume allows', 'Segment iOS/Android performance'],
+      impact: 'Install volume is useful only if downstream quality is measured.',
     })
   }
 
@@ -573,6 +739,21 @@ export function analyzeMetaCampaign(
       targetValue: 'Build 25%+ viewer audience',
       recommendations: ['Create a retargeting audience from video viewers', 'Use a conversion-focused follow-up ad', 'Test shorter edits for higher completion'],
       impact: 'Warm retargeting can improve conversion efficiency.',
+    })
+  }
+
+  if (messages > 0) {
+    push({
+      type: 'success',
+      priority: 'low',
+      category: 'messages',
+      title: 'Messaging intent is visible',
+      description: `${messages.toLocaleString()} messaging actions were detected in this period.`,
+      kpi: 'Messages',
+      currentValue: messages.toLocaleString(),
+      targetValue: 'Qualify and respond fast',
+      recommendations: ['Track response time and qualified conversations', 'Create FAQ/offer scripts for the top questions', 'Retarget message openers who did not convert'],
+      impact: 'Message campaigns need speed-to-lead, not just cheap conversations.',
     })
   }
 

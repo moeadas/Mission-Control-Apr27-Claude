@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     const adAccount = normalizeAdAccountId(accountId)
     const dateConfig = buildMetaInsightsParams(datePreset)
 
-    const fields = [
+    const baseFields = [
       'campaign_name', 'campaign_id',
       'impressions', 'clicks', 'reach',
       'spend', 'cpm', 'cpc', 'ctr',
@@ -55,21 +55,29 @@ export async function GET(request: NextRequest) {
       'frequency', 'unique_clicks',
       'actions', 'action_values', 'cost_per_action_type',
       'inline_link_clicks', 'inline_link_click_ctr', 'cost_per_inline_link_click',
-    ].join(',')
+    ]
+    const fields = [...baseFields, 'purchase_roas', 'website_purchase_roas'].join(',')
+    const fallbackFields = [...baseFields, 'purchase_roas'].join(',')
 
-    const insights = await fetchAllMetaPages(`/${adAccount}/insights`, token, {
+    const insightParams = {
       fields,
       ...dateConfig.params,
       level,
       limit: 100,
-    })
+    }
+    const insights = await fetchAllMetaPages(`/${adAccount}/insights`, token, insightParams).catch(() =>
+      fetchAllMetaPages(`/${adAccount}/insights`, token, { ...insightParams, fields: fallbackFields })
+    )
 
     // Account-level summary
-    const summaryData = await metaGraphRequest<{ data?: any[] }>(`/${adAccount}/insights`, token, {
+    const summaryParams = {
       fields,
       ...dateConfig.params,
       level: 'account',
-    })
+    }
+    const summaryData = await metaGraphRequest<{ data?: any[] }>(`/${adAccount}/insights`, token, summaryParams).catch(() =>
+      metaGraphRequest<{ data?: any[] }>(`/${adAccount}/insights`, token, { ...summaryParams, fields: fallbackFields })
+    )
 
     return NextResponse.json({
       insights: insights.map(enrichInsight),

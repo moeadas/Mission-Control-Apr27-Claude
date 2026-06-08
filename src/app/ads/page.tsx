@@ -2,8 +2,10 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  AlertTriangle,
   BarChart3,
   ChevronRight,
+  CheckCircle2,
   DollarSign,
   Eye,
   Filter,
@@ -15,6 +17,7 @@ import {
   Settings,
   Sparkles,
   Target,
+  TrendingUp,
   Video,
   Wand2,
   Zap,
@@ -79,7 +82,13 @@ interface CampaignInsight {
   leads?: string | number
   lead_action_type?: string | null
   purchases?: string | number
+  purchase_value?: string | number
+  purchase_action_type?: string | null
+  roas?: string | number
   add_to_cart?: string | number
+  checkout_initiations?: string | number
+  app_installs?: string | number
+  messages?: string | number
   page_views?: string | number
   post_engagements?: string | number
   video_views?: string | number
@@ -106,6 +115,9 @@ interface AccountSummary {
   frequency?: string
   conversions?: string | number
   leads?: string | number
+  purchases?: string | number
+  purchase_value?: string | number
+  roas?: string | number
 }
 
 interface CampaignDetails {
@@ -185,6 +197,19 @@ function percent(value: unknown) {
   return `${num(value).toFixed(2)}%`
 }
 
+function roasValue(insight: CampaignInsight | null | undefined) {
+  const direct = num(insight?.roas)
+  if (direct > 0) return direct
+  const spend = num(insight?.spend)
+  const value = num(insight?.purchase_value)
+  return spend > 0 && value > 0 ? value / spend : 0
+}
+
+function fmtRoas(value: unknown) {
+  const parsed = num(value)
+  return parsed > 0 ? `${parsed.toFixed(2)}x` : 'Not tracked'
+}
+
 function rate(numerator: unknown, denominator: unknown) {
   const top = num(numerator)
   const bottom = num(denominator)
@@ -261,6 +286,31 @@ type CampaignMetric = {
   value: string
   sub?: string
   color: string
+  tone?: MetricTone
+}
+
+type MetricTone = 'good' | 'watch' | 'risk' | 'neutral'
+
+type MetaStoryPanel = {
+  label: string
+  title: string
+  body: string
+  color: string
+  icon: React.ComponentType<{ size?: number; className?: string; style?: React.CSSProperties }>
+}
+
+type MetaActionInsight = {
+  title: string
+  evidence: string
+  action: string
+  severity: 'low' | 'medium' | 'high'
+}
+
+function toneColor(tone: MetricTone = 'neutral') {
+  if (tone === 'good') return '#18c7b6'
+  if (tone === 'watch') return '#f4c84f'
+  if (tone === 'risk') return '#ff7f7f'
+  return '#4f8ef7'
 }
 
 function compactMetric({
@@ -268,13 +318,15 @@ function compactMetric({
   value,
   sub,
   color,
+  tone = 'neutral',
 }: {
   label: string
   value: string
   sub?: string
-  color: string
+  color?: string
+  tone?: MetricTone
 }) {
-  return { key: label, label, value, sub, color }
+  return { key: label, label, value, sub, color: color || toneColor(tone), tone }
 }
 
 function objectiveResultMetric(insight: CampaignInsight | null | undefined, objectiveFamily: string, currency: string): CampaignMetric {
@@ -284,7 +336,7 @@ function objectiveResultMetric(insight: CampaignInsight | null | undefined, obje
       label: 'Leads',
       value: fmt(insight?.leads),
       sub: `${fmtCurrency(costPerLead, currency, 2)} cost / lead`,
-      color: '#18c7b6',
+      tone: num(insight?.leads) > 0 ? 'good' : 'risk',
     })
   }
   if (objectiveFamily === 'engagement') {
@@ -292,7 +344,7 @@ function objectiveResultMetric(insight: CampaignInsight | null | undefined, obje
       label: 'Engagements',
       value: fmt(insight?.post_engagements),
       sub: `${fmtCurrency(insight?.cost_per_engagement, currency, 2)} cost / engagement`,
-      color: '#8f72ff',
+      tone: num(insight?.post_engagements) > 0 ? 'good' : 'watch',
     })
   }
   if (objectiveFamily === 'traffic') {
@@ -301,15 +353,16 @@ function objectiveResultMetric(insight: CampaignInsight | null | undefined, obje
       label: 'Link Clicks',
       value: fmt(linkClicks),
       sub: `${fmtCurrency(insight?.cost_per_inline_link_click || insight?.cpc, currency, 2)} cost / click`,
-      color: '#4f8ef7',
+      tone: linkClicks > 0 ? 'good' : 'watch',
     })
   }
   if (objectiveFamily === 'app_promotion') {
+    const appEvents = num(insight?.app_installs) || num(insight?.conversions) || num(insight?.purchases)
     return compactMetric({
-      label: 'App Events',
-      value: fmt(num(insight?.conversions) + num(insight?.purchases)),
+      label: 'App Installs',
+      value: fmt(appEvents),
       sub: `${fmtCurrency(insight?.cost_per_conversion, currency, 2)} cost / event`,
-      color: '#ff8a5b',
+      tone: appEvents > 0 ? 'good' : 'watch',
     })
   }
   if (objectiveFamily === 'awareness') {
@@ -317,14 +370,15 @@ function objectiveResultMetric(insight: CampaignInsight | null | undefined, obje
       label: 'Result Reach',
       value: fmt(insight?.reach),
       sub: `${fmtCurrency(insight?.cpm, currency, 2)} CPM`,
-      color: '#4f8ef7',
+      tone: num(insight?.reach) > 0 ? 'good' : 'neutral',
     })
   }
+  const purchases = num(insight?.purchases) || num(insight?.conversions)
   return compactMetric({
     label: 'Purchases',
-    value: fmt(num(insight?.purchases) || num(insight?.conversions)),
-    sub: `${fmtCurrency(insight?.cost_per_conversion, currency, 2)} cost / conversion`,
-    color: '#2ecf91',
+    value: fmt(purchases),
+    sub: `${fmtCurrency(costPerAction(insight?.spend, purchases, insight?.cost_per_conversion), currency, 2)} cost / purchase`,
+    tone: purchases > 0 ? 'good' : 'risk',
   })
 }
 
@@ -337,62 +391,246 @@ function campaignKpiMetrics(
   const leads = num(insight?.leads)
   const conversions = num(insight?.conversions)
   const purchases = num(insight?.purchases) || conversions
+  const purchaseValue = num(insight?.purchase_value)
+  const roas = roasValue(insight)
   const engagements = num(insight?.post_engagements)
   const videoViews = num(insight?.video_views)
+  const appInstalls = num(insight?.app_installs) || conversions
   const costPerLead = costPerAction(insight?.spend, leads, insight?.cost_per_lead)
+  const costPerPurchase = costPerAction(insight?.spend, purchases, insight?.cost_per_conversion)
 
   const byObjective: Record<string, CampaignMetric[]> = {
     leads: [
       objectiveResultMetric(insight, 'leads', currency),
-      compactMetric({ label: 'Cost / Lead', value: fmtCurrency(costPerLead, currency, 2), sub: 'Spend divided by leads', color: '#2ecf91' }),
-      compactMetric({ label: 'Lead Rate', value: rate(leads, clicks), sub: `${fmt(clicks)} clicks`, color: '#18c7b6' }),
-      compactMetric({ label: 'Link Clicks', value: fmt(clicks), sub: percent(insight?.ctr), color: '#4f8ef7' }),
-      compactMetric({ label: 'CPC', value: fmtCurrency(insight?.cpc, currency, 2), sub: 'Traffic cost', color: '#f4c84f' }),
-      compactMetric({ label: 'CPM', value: fmtCurrency(insight?.cpm, currency, 2), sub: 'Auction cost', color: '#ff8a5b' }),
+      compactMetric({ label: 'Cost / Lead', value: fmtCurrency(costPerLead, currency, 2), sub: 'Spend divided by leads', tone: leads > 0 && costPerLead > 0 ? 'good' : 'risk' }),
+      compactMetric({ label: 'Lead Rate', value: rate(leads, clicks), sub: `${fmt(clicks)} clicks`, tone: clicks > 0 && leads / clicks >= 0.05 ? 'good' : leads > 0 ? 'watch' : 'risk' }),
+      compactMetric({ label: 'Link Clicks', value: fmt(clicks), sub: percent(insight?.ctr), tone: clicks > 0 ? 'neutral' : 'watch' }),
+      compactMetric({ label: 'CPC', value: fmtCurrency(insight?.cpc, currency, 2), sub: 'Traffic cost', tone: num(insight?.cpc) > 1 ? 'watch' : 'neutral' }),
+      compactMetric({ label: 'CPM', value: fmtCurrency(insight?.cpm, currency, 2), sub: 'Auction cost', tone: 'neutral' }),
     ],
     engagement: [
       objectiveResultMetric(insight, 'engagement', currency),
-      compactMetric({ label: 'Cost / Engage', value: fmtCurrency(insight?.cost_per_engagement, currency, 2), sub: 'Engagement efficiency', color: '#2ecf91' }),
-      compactMetric({ label: 'Engagement Rate', value: percent(insight?.engagement_rate), sub: `${fmt(engagements)} engagements`, color: '#18c7b6' }),
-      compactMetric({ label: 'Video Views', value: fmt(videoViews), sub: `${fmtCurrency(insight?.cost_per_video_view, currency, 3)} cost / view`, color: '#4f8ef7' }),
-      compactMetric({ label: 'CTR', value: percent(insight?.ctr), sub: `${fmt(clicks)} clicks`, color: '#f4c84f' }),
-      compactMetric({ label: 'Frequency', value: fmt(insight?.frequency, 2), sub: 'Fatigue signal', color: '#ff8a5b' }),
+      compactMetric({ label: 'Cost / Engage', value: fmtCurrency(insight?.cost_per_engagement, currency, 2), sub: 'Engagement efficiency', tone: num(insight?.cost_per_engagement) > 0.2 ? 'watch' : engagements > 0 ? 'good' : 'neutral' }),
+      compactMetric({ label: 'Engagement Rate', value: percent(insight?.engagement_rate), sub: `${fmt(engagements)} engagements`, tone: num(insight?.engagement_rate) >= 2 ? 'good' : engagements > 0 ? 'watch' : 'risk' }),
+      compactMetric({ label: 'Video Views', value: fmt(videoViews), sub: `${fmtCurrency(insight?.cost_per_video_view, currency, 3)} cost / view`, tone: videoViews > 0 ? 'good' : 'neutral' }),
+      compactMetric({ label: 'CTR', value: percent(insight?.ctr), sub: `${fmt(clicks)} clicks`, tone: num(insight?.ctr) >= 2 ? 'good' : 'neutral' }),
+      compactMetric({ label: 'Frequency', value: fmt(insight?.frequency, 2), sub: 'Fatigue signal', tone: num(insight?.frequency) > 3.5 ? 'risk' : num(insight?.frequency) > 2.8 ? 'watch' : 'neutral' }),
     ],
     traffic: [
       objectiveResultMetric(insight, 'traffic', currency),
-      compactMetric({ label: 'Cost / Link Click', value: fmtCurrency(insight?.cost_per_inline_link_click || insight?.cpc, currency, 2), sub: 'Traffic efficiency', color: '#2ecf91' }),
-      compactMetric({ label: 'CTR', value: percent(insight?.inline_link_click_ctr || insight?.ctr), sub: 'Click quality', color: '#18c7b6' }),
-      compactMetric({ label: 'Landing Views', value: fmt(insight?.page_views), sub: 'Detected page views', color: '#4f8ef7' }),
-      compactMetric({ label: 'CPC', value: fmtCurrency(insight?.cpc, currency, 2), sub: 'All clicks', color: '#f4c84f' }),
-      compactMetric({ label: 'CPM', value: fmtCurrency(insight?.cpm, currency, 2), sub: 'Auction cost', color: '#ff8a5b' }),
+      compactMetric({ label: 'Cost / Link Click', value: fmtCurrency(insight?.cost_per_inline_link_click || insight?.cpc, currency, 2), sub: 'Traffic efficiency', tone: num(insight?.cost_per_inline_link_click || insight?.cpc) <= 0.5 ? 'good' : 'watch' }),
+      compactMetric({ label: 'CTR', value: percent(insight?.inline_link_click_ctr || insight?.ctr), sub: 'Click quality', tone: num(insight?.inline_link_click_ctr || insight?.ctr) >= 2 ? 'good' : 'neutral' }),
+      compactMetric({ label: 'Landing Views', value: fmt(insight?.page_views), sub: 'Detected page views', tone: num(insight?.page_views) > 0 ? 'good' : 'watch' }),
+      compactMetric({ label: 'CPC', value: fmtCurrency(insight?.cpc, currency, 2), sub: 'All clicks', tone: 'neutral' }),
+      compactMetric({ label: 'CPM', value: fmtCurrency(insight?.cpm, currency, 2), sub: 'Auction cost', tone: 'neutral' }),
     ],
     awareness: [
       objectiveResultMetric(insight, 'awareness', currency),
-      compactMetric({ label: 'CPM', value: fmtCurrency(insight?.cpm, currency, 2), sub: 'Reach efficiency', color: '#2ecf91' }),
-      compactMetric({ label: 'Frequency', value: fmt(insight?.frequency, 2), sub: 'Exposure depth', color: '#18c7b6' }),
-      compactMetric({ label: 'CTR', value: percent(insight?.ctr), sub: 'Creative pull', color: '#4f8ef7' }),
-      compactMetric({ label: 'Video Views', value: fmt(videoViews), sub: 'Attention signal', color: '#f4c84f' }),
-      compactMetric({ label: 'Cost / View', value: fmtCurrency(insight?.cost_per_video_view, currency, 3), sub: 'Video efficiency', color: '#ff8a5b' }),
+      compactMetric({ label: 'CPM', value: fmtCurrency(insight?.cpm, currency, 2), sub: 'Reach efficiency', tone: num(insight?.cpm) <= 7 ? 'good' : 'watch' }),
+      compactMetric({ label: 'Frequency', value: fmt(insight?.frequency, 2), sub: 'Exposure depth', tone: num(insight?.frequency) > 3.5 ? 'risk' : num(insight?.frequency) >= 1.8 ? 'good' : 'neutral' }),
+      compactMetric({ label: 'CTR', value: percent(insight?.ctr), sub: 'Creative pull', tone: num(insight?.ctr) >= 2 ? 'good' : 'neutral' }),
+      compactMetric({ label: 'Video Views', value: fmt(videoViews), sub: 'Attention signal', tone: videoViews > 0 ? 'good' : 'neutral' }),
+      compactMetric({ label: 'Cost / View', value: fmtCurrency(insight?.cost_per_video_view, currency, 3), sub: 'Video efficiency', tone: num(insight?.cost_per_video_view) > 0.05 ? 'watch' : 'neutral' }),
     ],
     app_promotion: [
       objectiveResultMetric(insight, 'app_promotion', currency),
-      compactMetric({ label: 'Cost / Event', value: fmtCurrency(insight?.cost_per_conversion, currency, 2), sub: 'Install/event proxy', color: '#2ecf91' }),
-      compactMetric({ label: 'Conversion Rate', value: percent(insight?.conversion_rate), sub: `${fmt(clicks)} clicks`, color: '#18c7b6' }),
-      compactMetric({ label: 'Link Clicks', value: fmt(clicks), sub: percent(insight?.ctr), color: '#4f8ef7' }),
-      compactMetric({ label: 'CPC', value: fmtCurrency(insight?.cpc, currency, 2), sub: 'Traffic cost', color: '#f4c84f' }),
-      compactMetric({ label: 'CPM', value: fmtCurrency(insight?.cpm, currency, 2), sub: 'Auction cost', color: '#ff8a5b' }),
+      compactMetric({ label: 'Cost / Install', value: fmtCurrency(insight?.cost_per_conversion, currency, 2), sub: 'Install/event proxy', tone: appInstalls > 0 ? 'good' : 'watch' }),
+      compactMetric({ label: 'Install Rate', value: rate(appInstalls, clicks), sub: `${fmt(clicks)} clicks`, tone: clicks > 0 && appInstalls / clicks >= 0.05 ? 'good' : appInstalls > 0 ? 'watch' : 'risk' }),
+      compactMetric({ label: 'Link Clicks', value: fmt(clicks), sub: percent(insight?.ctr), tone: clicks > 0 ? 'neutral' : 'watch' }),
+      compactMetric({ label: 'CPC', value: fmtCurrency(insight?.cpc, currency, 2), sub: 'Traffic cost', tone: 'neutral' }),
+      compactMetric({ label: 'CPM', value: fmtCurrency(insight?.cpm, currency, 2), sub: 'Auction cost', tone: 'neutral' }),
     ],
     sales: [
       objectiveResultMetric(insight, 'sales', currency),
-      compactMetric({ label: 'Cost / Conversion', value: fmtCurrency(insight?.cost_per_conversion, currency, 2), sub: 'Sales efficiency', color: '#2ecf91' }),
-      compactMetric({ label: 'Conversion Rate', value: percent(insight?.conversion_rate), sub: `${fmt(clicks)} clicks`, color: '#18c7b6' }),
-      compactMetric({ label: 'Add to Cart', value: fmt(insight?.add_to_cart), sub: 'Mid-funnel actions', color: '#4f8ef7' }),
-      compactMetric({ label: 'CTR', value: percent(insight?.ctr), sub: 'Creative pull', color: '#f4c84f' }),
-      compactMetric({ label: 'CPC', value: fmtCurrency(insight?.cpc, currency, 2), sub: 'Traffic cost', color: '#ff8a5b' }),
+      compactMetric({ label: 'ROAS', value: fmtRoas(roas), sub: purchaseValue ? `${fmtCurrency(purchaseValue, currency)} value` : 'Purchase value missing', tone: roas >= 2.5 ? 'good' : roas > 0 && roas < 1 ? 'risk' : roas > 0 ? 'watch' : 'risk' }),
+      compactMetric({ label: 'Purchase Value', value: fmtCurrency(purchaseValue, currency), sub: `${fmt(purchases)} purchases`, tone: purchaseValue > 0 ? 'good' : purchases > 0 ? 'risk' : 'watch' }),
+      compactMetric({ label: 'Cost / Purchase', value: fmtCurrency(costPerPurchase, currency, 2), sub: 'Sales efficiency', tone: purchases > 0 ? 'good' : 'risk' }),
+      compactMetric({ label: 'Checkout Starts', value: fmt(insight?.checkout_initiations), sub: `${fmt(insight?.add_to_cart)} add to cart`, tone: num(insight?.checkout_initiations) > 0 ? 'neutral' : num(insight?.add_to_cart) > 0 ? 'watch' : 'neutral' }),
+      compactMetric({ label: 'Purchase Rate', value: rate(purchases, clicks), sub: `${fmt(clicks)} clicks`, tone: clicks > 0 && purchases / clicks >= 0.02 ? 'good' : purchases > 0 ? 'watch' : 'risk' }),
     ],
   }
 
   return byObjective[objectiveFamily] || byObjective.sales
+}
+
+function objectiveResultCount(insight: CampaignInsight | null | undefined, objectiveFamily: string) {
+  if (objectiveFamily === 'leads') return num(insight?.leads)
+  if (objectiveFamily === 'engagement') return num(insight?.post_engagements)
+  if (objectiveFamily === 'traffic') return num(insight?.inline_link_clicks) || num(insight?.link_clicks_action) || num(insight?.clicks)
+  if (objectiveFamily === 'awareness') return num(insight?.reach)
+  if (objectiveFamily === 'app_promotion') return num(insight?.app_installs) || num(insight?.conversions)
+  return num(insight?.purchases) || num(insight?.conversions)
+}
+
+function objectiveResultLabel(objectiveFamily: string) {
+  if (objectiveFamily === 'leads') return 'leads'
+  if (objectiveFamily === 'engagement') return 'engagements'
+  if (objectiveFamily === 'traffic') return 'link clicks'
+  if (objectiveFamily === 'awareness') return 'reach'
+  if (objectiveFamily === 'app_promotion') return 'app installs/events'
+  return 'purchases'
+}
+
+function buildMetaStoryPanels({
+  rows,
+  filteredRows,
+  selectedRow,
+  summary,
+  currency,
+  rangeLabel,
+}: {
+  rows: any[]
+  filteredRows: any[]
+  selectedRow: any
+  summary: AccountSummary | null
+  currency: string
+  rangeLabel: string
+}): MetaStoryPanel[] {
+  const rowSet = filteredRows.length ? filteredRows : rows
+  const focus = selectedRow || rowSet[0]
+  const topSpend = [...rowSet].sort((a, b) => num(b.insight?.spend) - num(a.insight?.spend))[0]
+  const topResult = [...rowSet].sort((a, b) =>
+    objectiveResultCount(b.insight, b.analysis.objectiveFamily) - objectiveResultCount(a.insight, a.analysis.objectiveFamily)
+  )[0]
+  const risk = rowSet.find((row) => row.analysis.suggestions.some((item: MetaOptimizationSuggestion) => ['critical', 'high'].includes(item.priority)))
+  const best = rowSet.find((row) => row.analysis.suggestions.some((item: MetaOptimizationSuggestion) => item.type === 'success')) || topResult
+
+  if (!focus) {
+    return [
+      {
+        label: 'Situation',
+        title: 'No campaign data loaded yet',
+        body: 'Connect Meta, choose an account, and load a date range to generate campaign-level analysis.',
+        icon: BarChart3,
+        color: '#4f8ef7',
+      },
+      {
+        label: 'Problem',
+        title: 'No evidence available',
+        body: 'The analysis engine waits for spend, delivery, and action data before making recommendations.',
+        icon: AlertTriangle,
+        color: '#f4c84f',
+      },
+      {
+        label: 'Answer',
+        title: 'Load a valid campaign range',
+        body: 'Use a recent range with delivery data so objective-specific KPIs can be evaluated.',
+        icon: CheckCircle2,
+        color: '#18c7b6',
+      },
+      {
+        label: 'Impact',
+        title: 'Recommendations will become specific',
+        body: 'Once data is loaded, this area names the exact campaign, KPI, and next action.',
+        icon: Target,
+        color: '#8f72ff',
+      },
+    ]
+  }
+
+  const focusResult = objectiveResultCount(focus.insight, focus.analysis.objectiveFamily)
+  const focusResultLabel = objectiveResultLabel(focus.analysis.objectiveFamily)
+  const topIssue = focus.analysis.suggestions[0] || risk?.analysis.suggestions[0]
+  const topIssueRow = focus.analysis.suggestions[0] ? focus : risk
+  const roas = roasValue(focus.insight)
+
+  return [
+    {
+      label: 'Situation',
+      title: `${rowSet.length} campaigns analyzed`,
+      body: `${rangeLabel}: ${fmtCurrency(summary?.spend, currency)} spend, ${fmt(summary?.impressions)} impressions, and ${fmt(summary?.reach)} reach. ${topSpend?.campaign?.name || focus.campaign.name} carries the highest spend at ${fmtCurrency(topSpend?.insight?.spend, currency)}.`,
+      icon: BarChart3,
+      color: '#4f8ef7',
+    },
+    {
+      label: 'Problem',
+      title: topIssue ? `${topIssueRow?.campaign?.name || focus.campaign.name}: ${topIssue.title}` : `${focus.campaign.name} has no severe alert`,
+      body: topIssue
+        ? `${topIssue.description} Current KPI: ${topIssue.currentValue || 'not available'}; target: ${topIssue.targetValue || 'improve quality'}.`
+        : `${focus.campaign.name} is within the current rule thresholds. Keep monitoring spend concentration, frequency, and result quality before scaling.`,
+      icon: AlertTriangle,
+      color: topIssue?.priority === 'critical' || topIssue?.priority === 'high' ? '#ff7f7f' : '#f4c84f',
+    },
+    {
+      label: 'Answer',
+      title: `${focus.campaign.name}: ${fmt(focusResult)} ${focusResultLabel}`,
+      body: focus.analysis.objectiveFamily === 'sales'
+        ? `Sales readout: ${fmt(focus.insight?.purchases)} purchases, ${fmtCurrency(focus.insight?.purchase_value, currency)} purchase value, ${fmtRoas(roas)} ROAS, and ${fmtCurrency(costPerAction(focus.insight?.spend, focus.insight?.purchases || focus.insight?.conversions, focus.insight?.cost_per_conversion), currency, 2)} cost per purchase.`
+        : `${focus.campaign.name} should be judged by ${focusResultLabel}, not generic clicks. Its current objective score is ${focus.analysis.score}/100 with ${fmtCurrency(focus.insight?.spend, currency)} spend.`,
+      icon: CheckCircle2,
+      color: '#18c7b6',
+    },
+    {
+      label: 'Impact',
+      title: best?.campaign?.name ? `Best pattern: ${best.campaign.name}` : 'Next action is objective-specific',
+      body: best?.campaign?.name
+        ? `${best.campaign.name} has the strongest visible pattern with ${fmt(objectiveResultCount(best.insight, best.analysis.objectiveFamily))} ${objectiveResultLabel(best.analysis.objectiveFamily)} and score ${best.analysis.score}/100. Use it as the benchmark before scaling weaker campaigns.`
+        : 'Prioritize the first high-priority alert, then scale only campaigns with clear objective results and clean tracking.',
+      icon: TrendingUp,
+      color: '#8f72ff',
+    },
+  ]
+}
+
+function buildMetaActionInsights(rows: any[], selectedRow: any, currency: string): MetaActionInsight[] {
+  const rowSet = rows.length ? rows : []
+  const focus = selectedRow || rowSet[0]
+  if (!focus) return []
+  const insights: MetaActionInsight[] = []
+  const selectedSuggestions = focus.analysis.suggestions.slice(0, 3)
+
+  selectedSuggestions.forEach((suggestion: MetaOptimizationSuggestion) => {
+    insights.push({
+      title: `${focus.campaign.name}: ${suggestion.title}`,
+      evidence: `${suggestion.description}${suggestion.currentValue ? ` Current: ${suggestion.currentValue}.` : ''}${suggestion.targetValue ? ` Target: ${suggestion.targetValue}.` : ''}`,
+      action: suggestion.recommendations?.[0] || suggestion.impact || 'Prioritize this finding before scaling.',
+      severity: suggestion.priority === 'critical' || suggestion.priority === 'high' ? 'high' : suggestion.priority === 'medium' ? 'medium' : 'low',
+    })
+  })
+
+  const topSpend = [...rowSet].sort((a, b) => num(b.insight?.spend) - num(a.insight?.spend))[0]
+  if (topSpend) {
+    const result = objectiveResultCount(topSpend.insight, topSpend.analysis.objectiveFamily)
+    insights.push({
+      title: `${topSpend.campaign.name} controls the largest budget signal`,
+      evidence: `${fmtCurrency(topSpend.insight?.spend, currency)} spend produced ${fmt(result)} ${objectiveResultLabel(topSpend.analysis.objectiveFamily)} and score ${topSpend.analysis.score}/100.`,
+      action: topSpend.analysis.score >= 80
+        ? `Protect ${topSpend.campaign.name} and scale in small increments only while its cost/result stays stable.`
+        : `Do not scale ${topSpend.campaign.name} yet; fix the top alert before increasing budget.`,
+      severity: topSpend.analysis.score >= 80 ? 'low' : topSpend.analysis.score < 60 ? 'high' : 'medium',
+    })
+  }
+
+  const salesRows = rowSet.filter((row) => row.analysis.objectiveFamily === 'sales')
+  const missingRoas = salesRows.find((row) => (num(row.insight?.purchases) || num(row.insight?.conversions)) > 0 && num(row.insight?.purchase_value) === 0)
+  if (missingRoas) {
+    insights.push({
+      title: `${missingRoas.campaign.name} needs value tracking`,
+      evidence: `${fmt(num(missingRoas.insight?.purchases) || num(missingRoas.insight?.conversions))} purchases are visible, but purchase value is ${fmtCurrency(missingRoas.insight?.purchase_value, currency)}.`,
+      action: 'Pass value and currency with purchase events before making ROAS decisions.',
+      severity: 'high',
+    })
+  }
+
+  const profitableSales = salesRows
+    .filter((row) => roasValue(row.insight) >= 2.5)
+    .sort((a, b) => roasValue(b.insight) - roasValue(a.insight))[0]
+  if (profitableSales) {
+    insights.push({
+      title: `${profitableSales.campaign.name} is the sales scale candidate`,
+      evidence: `${fmtRoas(roasValue(profitableSales.insight))} ROAS with ${fmtCurrency(profitableSales.insight?.purchase_value, currency)} purchase value.`,
+      action: 'Create one controlled scale test and one creative variant; do not disturb the original ad set.',
+      severity: 'medium',
+    })
+  }
+
+  const seen = new Set<string>()
+  return insights.filter((item) => {
+    const key = `${item.title}-${item.evidence}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  }).slice(0, 6)
 }
 
 function KpiCard({
@@ -474,6 +712,94 @@ function SuggestionList({ suggestions }: { suggestions: MetaOptimizationSuggesti
         </div>
       ))}
     </div>
+  )
+}
+
+function MetaInsightRail({
+  rows,
+  filteredRows,
+  selectedRow,
+  summary,
+  currency,
+  rangeLabel,
+  loading,
+}: {
+  rows: any[]
+  filteredRows: any[]
+  selectedRow: any
+  summary: AccountSummary | null
+  currency: string
+  rangeLabel: string
+  loading: boolean
+}) {
+  const panels = buildMetaStoryPanels({ rows, filteredRows, selectedRow, summary, currency, rangeLabel })
+  const actions = buildMetaActionInsights(filteredRows.length ? filteredRows : rows, selectedRow, currency)
+
+  return (
+    <Card className="rounded-lg p-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="flex h-9 w-9 items-center justify-center rounded-md bg-accent-purple/15 text-accent-purple">
+            <Sparkles size={17} />
+          </span>
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-dim">AI Meta analyst</p>
+            <h2 className="text-sm font-semibold text-text-primary">Campaign Storyline</h2>
+          </div>
+        </div>
+        <Badge color="#8f72ff" variant="outline">{actions.length}</Badge>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center gap-3 rounded-lg border border-border bg-base/60 p-4 text-sm text-text-secondary">
+          <Loader2 size={16} className="animate-spin text-accent-blue" />
+          Analyzing campaigns, objective KPIs, and alerts...
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {panels.map((panel) => {
+            const Icon = panel.icon
+            return (
+              <div key={panel.label} className="rounded-lg border border-border bg-base/60 p-3">
+                <div className="mb-2 flex items-center gap-2">
+                  <Icon size={14} style={{ color: panel.color }} />
+                  <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">{panel.label}</p>
+                </div>
+                <p className="text-sm font-semibold leading-snug text-text-primary">{panel.title}</p>
+                <p className="mt-1 text-xs leading-relaxed text-text-secondary">{panel.body}</p>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      <div className="mt-4 border-t border-border pt-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h3 className="text-sm font-semibold text-text-primary">Actions</h3>
+          <div className="flex items-center gap-2 text-[10px] text-text-dim">
+            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: toneColor('good') }} /> healthy
+            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: toneColor('watch') }} /> watch
+            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: toneColor('risk') }} /> risk
+          </div>
+        </div>
+        <div className="space-y-3">
+          {actions.length ? actions.map((item) => (
+            <div key={`${item.title}-${item.evidence}`} className="border-l-2 pl-3" style={{ borderColor: priorityColor(item.severity === 'high' ? 'high' : item.severity === 'medium' ? 'medium' : 'low') }}>
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-text-primary">{item.title}</p>
+                <span className="font-mono text-[10px] uppercase tracking-wider text-text-dim">{item.severity}</span>
+              </div>
+              <p className="text-xs leading-relaxed text-text-secondary">{item.evidence}</p>
+              <p className="mt-1 text-xs leading-relaxed text-accent-cyan">{item.action}</p>
+            </div>
+          )) : (
+            <p className="text-xs leading-relaxed text-text-secondary">
+              {loading ? 'Actions will appear after Meta data finishes loading.' : 'No action can be generated until campaigns have delivery data.'}
+            </p>
+          )}
+        </div>
+      </div>
+    </Card>
   )
 }
 
@@ -802,7 +1128,7 @@ export default function AdsPage() {
                   <table className="w-full min-w-[920px] border-collapse text-sm">
                     <thead>
                       <tr className="border-b border-border text-left text-[11px] uppercase tracking-wider text-text-dim">
-                        {['Campaign', 'Objective', 'Score', 'Spend', 'CTR', 'CPC', 'CPM', 'Top Alert'].map((heading) => (
+                        {['Campaign', 'Objective', 'Score', 'Spend', 'Result', 'ROAS', 'CTR', 'Top Alert'].map((heading) => (
                           <th key={heading} className="px-4 py-3 font-mono">{heading}</th>
                         ))}
                       </tr>
@@ -823,9 +1149,9 @@ export default function AdsPage() {
                           </td>
                           <td className="px-4 py-3 font-semibold text-text-primary">{analysis.score}</td>
                           <td className="px-4 py-3">{fmtCurrency(insight?.spend, accountCurrency)}</td>
+                          <td className="px-4 py-3">{fmt(objectiveResultCount(insight, analysis.objectiveFamily))} {objectiveResultLabel(analysis.objectiveFamily)}</td>
+                          <td className="px-4 py-3">{analysis.objectiveFamily === 'sales' ? fmtRoas(roasValue(insight)) : 'N/A'}</td>
                           <td className="px-4 py-3">{percent(insight?.ctr)}</td>
-                          <td className="px-4 py-3">{fmtCurrency(insight?.cpc, accountCurrency, 2)}</td>
-                          <td className="px-4 py-3">{fmtCurrency(insight?.cpm, accountCurrency, 2)}</td>
                           <td className="px-4 py-3 text-text-secondary">{analysis.suggestions[0]?.title || 'Healthy'}</td>
                         </tr>
                       ))}
@@ -904,6 +1230,16 @@ export default function AdsPage() {
           </div>
 
           <aside className="space-y-4 xl:sticky xl:top-6 xl:self-start">
+            <MetaInsightRail
+              rows={rows}
+              filteredRows={filteredRows}
+              selectedRow={selectedRow}
+              summary={summary}
+              currency={accountCurrency}
+              rangeLabel={dateRangeLabel(metaDateRange)}
+              loading={loadingData || loadingAccounts}
+            />
+
             <Card className="rounded-lg p-4">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>

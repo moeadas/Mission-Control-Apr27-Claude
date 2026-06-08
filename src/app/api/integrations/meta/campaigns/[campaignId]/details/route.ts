@@ -32,7 +32,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ cam
       fields: 'id,name,status,effective_status,configured_status,objective,daily_budget,lifetime_budget,start_time,stop_time,created_time,updated_time,buying_type',
     })
 
-    const insightFields = [
+    const baseInsightFields = [
       'impressions',
       'clicks',
       'spend',
@@ -48,20 +48,28 @@ export async function GET(request: NextRequest, context: { params: Promise<{ cam
       'inline_link_clicks',
       'inline_link_click_ctr',
       'cost_per_inline_link_click',
-    ].join(',')
+    ]
+    const insightFields = [...baseInsightFields, 'purchase_roas', 'website_purchase_roas'].join(',')
+    const fallbackInsightFields = [...baseInsightFields, 'purchase_roas'].join(',')
 
-    const insightData = await metaGraphRequest<{ data?: any[] }>(`/${campaignId}/insights`, token, {
+    const insightParams = {
       fields: insightFields,
       ...dateConfig.params,
-    }).catch(() => ({ data: [] }))
+    }
+    const insightData = await metaGraphRequest<{ data?: any[] }>(`/${campaignId}/insights`, token, insightParams).catch(() =>
+      metaGraphRequest<{ data?: any[] }>(`/${campaignId}/insights`, token, { ...insightParams, fields: fallbackInsightFields }).catch(() => ({ data: [] }))
+    )
 
-    const dailyData = await metaGraphRequest<{ data?: any[] }>(`/${campaignId}/insights`, token, {
+    const dailyParams = {
       fields: insightFields,
       time_range: dateConfig.params.time_range,
       time_increment: 1,
       action_report_time: dateConfig.params.action_report_time,
       limit: 100,
-    }).catch(() => ({ data: [] }))
+    }
+    const dailyData = await metaGraphRequest<{ data?: any[] }>(`/${campaignId}/insights`, token, dailyParams).catch(() =>
+      metaGraphRequest<{ data?: any[] }>(`/${campaignId}/insights`, token, { ...dailyParams, fields: fallbackInsightFields }).catch(() => ({ data: [] }))
+    )
     const dailyBreakdown = (dailyData.data || []).map(enrichInsight)
     const spendDays = dailyBreakdown.filter((row) => Number.parseFloat(String(row.spend || 0)) > 0)
     const activeDelivery = spendDays.length

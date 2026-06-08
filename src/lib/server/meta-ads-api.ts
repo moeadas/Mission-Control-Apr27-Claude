@@ -127,16 +127,34 @@ export function buildMetaInsightsParams(datePreset = 'last_30d') {
 
 export function extractMetaActionMetrics(row: any) {
   const actions = Array.isArray(row?.actions) ? row.actions : []
+  const actionValues = Array.isArray(row?.action_values) ? row.action_values : []
   const costPerActions = Array.isArray(row?.cost_per_action_type) ? row.cost_per_action_type : []
+  const purchaseRoasRows = [
+    ...(Array.isArray(row?.purchase_roas) ? row.purchase_roas : []),
+    ...(Array.isArray(row?.website_purchase_roas) ? row.website_purchase_roas : []),
+  ]
   const actionMap = new Map<string, number>()
   for (const action of actions) {
     const actionType = String(action.action_type || '')
     const value = Number.parseInt(String(action.value || 0), 10) || 0
     actionMap.set(actionType, (actionMap.get(actionType) || 0) + value)
   }
+  const actionValueMap = new Map<string, number>()
+  for (const action of actionValues) {
+    const actionType = String(action.action_type || '')
+    const value = Number.parseFloat(String(action.value || 0)) || 0
+    actionValueMap.set(actionType, (actionValueMap.get(actionType) || 0) + value)
+  }
   const pickActionValue = (candidates: string[]) => {
     for (const candidate of candidates) {
       const value = actionMap.get(candidate)
+      if (value && value > 0) return { actionType: candidate, value }
+    }
+    return { actionType: null as string | null, value: 0 }
+  }
+  const pickMoneyValue = (candidates: string[]) => {
+    for (const candidate of candidates) {
+      const value = actionValueMap.get(candidate)
       if (value && value > 0) return { actionType: candidate, value }
     }
     return { actionType: null as string | null, value: 0 }
@@ -147,9 +165,32 @@ export function extractMetaActionMetrics(row: any) {
     'offsite_conversion.fb_pixel_lead',
     'offsite_lead_add_20_s_calls',
   ])
+  const purchaseResult = pickActionValue([
+    'purchase',
+    'omni_purchase',
+    'offsite_conversion.fb_pixel_purchase',
+    'onsite_conversion.purchase',
+  ])
+  const purchaseValueResult = pickMoneyValue([
+    'purchase',
+    'omni_purchase',
+    'offsite_conversion.fb_pixel_purchase',
+    'onsite_conversion.purchase',
+  ])
+  const roasValue = purchaseRoasRows.reduce((best, item: any) => {
+    const value = Number.parseFloat(String(item?.value || 0)) || 0
+    return value > best ? value : best
+  }, 0)
   const metric = {
     conversions: 0,
-    purchases: 0,
+    purchases: purchaseResult.value,
+    purchase_action_type: purchaseResult.actionType,
+    purchase_value: purchaseValueResult.value,
+    purchase_value_action_type: purchaseValueResult.actionType,
+    roas: roasValue,
+    checkout_initiations: 0,
+    app_installs: 0,
+    messages: 0,
     leads: leadResult.value,
     lead_action_type: leadResult.actionType,
     add_to_cart: 0,
@@ -167,12 +208,19 @@ export function extractMetaActionMetrics(row: any) {
     const actionType = String(action.action_type || '')
     const value = Number.parseInt(String(action.value || 0), 10) || 0
     if (actionType.includes('purchase') || actionType.includes('complete_registration')) {
-      metric.purchases += value
+      if (!purchaseResult.value) metric.purchases += value
       metric.conversions += value
-    } else if (actionType.includes('add_to_cart') || actionType.includes('initiate_checkout')) {
+    } else if (actionType.includes('add_to_cart')) {
       metric.add_to_cart += value
+    } else if (actionType.includes('initiate_checkout') || actionType.includes('checkout')) {
+      metric.checkout_initiations += value
     } else if (actionType === 'landing_page_view') {
       metric.page_views += value
+    } else if (actionType.includes('mobile_app_install') || actionType === 'app_install') {
+      metric.app_installs += value
+      metric.conversions += value
+    } else if (actionType.includes('messaging_conversation') || actionType.includes('onsite_conversion.messaging')) {
+      metric.messages += value
     } else if (actionType === 'link_click') {
       metric.link_clicks_action += value
     } else if (
@@ -195,6 +243,7 @@ export function extractMetaActionMetrics(row: any) {
   const spend = Number.parseFloat(String(row?.spend || 0)) || 0
   const clicks = Number.parseInt(String(row?.clicks || 0), 10) || 0
   const impressions = Number.parseInt(String(row?.impressions || 0), 10) || 0
+  if (!metric.roas && metric.purchase_value > 0 && spend > 0) metric.roas = metric.purchase_value / spend
 
   const costPerLead = costPerActions.find((item: any) => String(item.action_type || '') === leadResult.actionType)?.value
     || costPerActions.find((item: any) => String(item.action_type || '') === 'lead')?.value
