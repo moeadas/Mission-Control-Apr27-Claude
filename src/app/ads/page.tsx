@@ -101,6 +101,10 @@ interface CampaignInsight {
   inline_link_click_ctr?: string
   cost_per_inline_link_click?: string
   link_clicks_action?: string | number
+  daily_verified?: boolean
+  active_first_date?: string | null
+  active_last_date?: string | null
+  active_spend_days?: string | number
 }
 
 interface AccountSummary {
@@ -244,8 +248,18 @@ function dateOnly(value?: string | null) {
   return date.toISOString().slice(0, 10)
 }
 
-function campaignSpendPeriodLabel(campaign: MetaCampaign, range?: { since?: string; until?: string } | null) {
+function campaignSpendPeriodLabel(
+  campaign: MetaCampaign,
+  insight: CampaignInsight | null | undefined,
+  range?: { since?: string; until?: string } | null
+) {
   const label = dateRangeLabel(range)
+  if (insight?.daily_verified && num(insight.active_spend_days) > 0 && insight.active_first_date && insight.active_last_date) {
+    const activeLabel = insight.active_first_date === insight.active_last_date
+      ? shortDate(insight.active_first_date)
+      : `${shortDate(insight.active_first_date)}-${shortDate(insight.active_last_date)}`
+    return `${label} · delivered ${activeLabel}`
+  }
   const start = dateOnly(campaign.start_time || campaign.created_time)
   const stop = dateOnly(campaign.stop_time)
   if (range?.since && range?.until && start && start > range.since && start <= range.until) {
@@ -1202,7 +1216,7 @@ export default function AdsPage() {
 
                     <div className="mt-4 grid gap-3 md:grid-cols-3">
                       {[
-                        { label: 'Spend', value: fmtCurrency(insight?.spend, accountCurrency), sub: campaignSpendPeriodLabel(campaign, metaDateRange) },
+                        { label: 'Spend', value: fmtCurrency(insight?.spend, accountCurrency), sub: campaignSpendPeriodLabel(campaign, insight, metaDateRange) },
                         { label: 'Impressions', value: fmt(insight?.impressions), sub: `${fmtCurrency(insight?.cpm, accountCurrency, 2)} CPM` },
                         { label: 'Reach', value: fmt(insight?.reach), sub: `${fmt(insight?.frequency, 2)} frequency` },
                       ].map((metric) => (

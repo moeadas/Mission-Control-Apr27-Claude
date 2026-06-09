@@ -45,7 +45,8 @@ export async function metaGraphRequest<T = any>(
 export async function fetchAllMetaPages<T = any>(
   path: string,
   accessToken: string,
-  params: Record<string, string | number | undefined | null>
+  params: Record<string, string | number | undefined | null>,
+  options?: { maxPages?: number }
 ) {
   const rows: T[] = []
   let response = await metaGraphRequest<{ data?: T[]; paging?: { next?: string } }>(path, accessToken, params)
@@ -53,7 +54,8 @@ export async function fetchAllMetaPages<T = any>(
 
   let next = response.paging?.next
   let guard = 0
-  while (next && guard < 20) {
+  const maxPages = options?.maxPages ?? 20
+  while (next && guard < maxPages) {
     response = await metaGraphRequest<{ data?: T[]; paging?: { next?: string } }>(next, accessToken)
     rows.push(...(response.data || []))
     next = response.paging?.next
