@@ -10,6 +10,34 @@ function getBearerToken(request: NextRequest) {
 
 export const dynamic = 'force-dynamic'
 
+function pushUnique(target: string[], value: unknown) {
+  const normalized = String(value || '').trim()
+  if (normalized && !target.includes(normalized)) target.push(normalized)
+}
+
+function summarizeAdsetContext(adsets: any[]) {
+  const context = {
+    destinationTypes: [] as string[],
+    optimizationGoals: [] as string[],
+    billingEvents: [] as string[],
+    promotedObjectEventTypes: [] as string[],
+    promotedObjectPixelIds: [] as string[],
+    promotedObjectPageIds: [] as string[],
+    promotedObjectApplicationIds: [] as string[],
+    adsetCount: adsets.length,
+  }
+  for (const adset of adsets) {
+    pushUnique(context.destinationTypes, adset.destination_type)
+    pushUnique(context.optimizationGoals, adset.optimization_goal)
+    pushUnique(context.billingEvents, adset.billing_event)
+    pushUnique(context.promotedObjectEventTypes, adset.promoted_object?.custom_event_type)
+    pushUnique(context.promotedObjectPixelIds, adset.promoted_object?.pixel_id)
+    pushUnique(context.promotedObjectPageIds, adset.promoted_object?.page_id)
+    pushUnique(context.promotedObjectApplicationIds, adset.promoted_object?.application_id)
+  }
+  return context
+}
+
 export async function GET(request: NextRequest, context: { params: Promise<{ campaignId: string }> }) {
   try {
     const auth = await resolveAuthContextFromToken(getBearerToken(request))
@@ -82,7 +110,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ cam
       : null
 
     const adsets = await fetchAllMetaPages(`/${campaignId}/adsets`, token, {
-      fields: 'id,name,status,effective_status,daily_budget,lifetime_budget,bid_strategy,optimization_goal,billing_event,targeting,start_time,end_time,created_time,updated_time',
+      fields: 'id,name,status,effective_status,daily_budget,lifetime_budget,bid_strategy,optimization_goal,billing_event,destination_type,promoted_object,targeting,start_time,end_time,created_time,updated_time',
       limit: 100,
     }).catch(() => [])
 
@@ -109,7 +137,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ cam
     )
 
     return NextResponse.json({
-      campaign,
+      campaign: { ...(campaign as any), conversion_context: summarizeAdsetContext(adsets) },
       insight: insightData.data?.[0] ? enrichInsight(insightData.data[0]) : null,
       dailyBreakdown,
       activeDelivery,

@@ -11,6 +11,50 @@ function getBearerToken(r: NextRequest) {
 
 export const dynamic = 'force-dynamic'
 
+function pushUnique(target: string[], value: unknown) {
+  const normalized = String(value || '').trim()
+  if (normalized && !target.includes(normalized)) target.push(normalized)
+}
+
+function summarizeCampaignAdsetContext(adsets: any[]) {
+  const byCampaign = new Map<string, {
+    destinationTypes: string[]
+    optimizationGoals: string[]
+    billingEvents: string[]
+    promotedObjectEventTypes: string[]
+    promotedObjectPixelIds: string[]
+    promotedObjectPageIds: string[]
+    promotedObjectApplicationIds: string[]
+    adsetCount: number
+  }>()
+
+  for (const adset of adsets) {
+    const campaignId = String(adset?.campaign_id || '')
+    if (!campaignId) continue
+    const current = byCampaign.get(campaignId) || {
+      destinationTypes: [],
+      optimizationGoals: [],
+      billingEvents: [],
+      promotedObjectEventTypes: [],
+      promotedObjectPixelIds: [],
+      promotedObjectPageIds: [],
+      promotedObjectApplicationIds: [],
+      adsetCount: 0,
+    }
+    current.adsetCount += 1
+    pushUnique(current.destinationTypes, adset.destination_type)
+    pushUnique(current.optimizationGoals, adset.optimization_goal)
+    pushUnique(current.billingEvents, adset.billing_event)
+    pushUnique(current.promotedObjectEventTypes, adset.promoted_object?.custom_event_type)
+    pushUnique(current.promotedObjectPixelIds, adset.promoted_object?.pixel_id)
+    pushUnique(current.promotedObjectPageIds, adset.promoted_object?.page_id)
+    pushUnique(current.promotedObjectApplicationIds, adset.promoted_object?.application_id)
+    byCampaign.set(campaignId, current)
+  }
+
+  return byCampaign
+}
+
 export async function GET(request: NextRequest) {
   try {
     const auth = await resolveAuthContextFromToken(getBearerToken(request))
@@ -38,8 +82,17 @@ export async function GET(request: NextRequest) {
       fields,
       limit: 100,
     })
+    const adsets = await fetchAllMetaPages(`/${adAccount}/adsets`, token, {
+      fields: 'id,campaign_id,destination_type,optimization_goal,billing_event,promoted_object,status,effective_status',
+      limit: 500,
+    }, { maxPages: 250 }).catch(() => [])
+    const adsetContextByCampaign = summarizeCampaignAdsetContext(adsets)
+    const campaignsWithContext = campaigns.map((campaign: any) => ({
+      ...campaign,
+      conversion_context: adsetContextByCampaign.get(String(campaign.id)) || null,
+    }))
 
-    return NextResponse.json({ campaigns, count: campaigns.length })
+    return NextResponse.json({ campaigns: campaignsWithContext, count: campaignsWithContext.length })
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Failed to fetch campaigns' }, { status: 500 })
   }

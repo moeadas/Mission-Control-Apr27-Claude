@@ -46,12 +46,27 @@ export interface MetaInsightLike {
   video_views?: string | number
   app_installs?: string | number
   messages?: string | number
+  message_action_type?: string | null
+  cost_per_message?: string | number
+  calls?: string | number
+  cost_per_call?: string | number
   inline_link_clicks?: string | number
   inline_link_click_ctr?: string | number
   cost_per_inline_link_click?: string | number
   page_views?: string | number
   cost_per_engagement?: string | number
   cost_per_video_view?: string | number
+}
+
+export interface MetaConversionContext {
+  destinationTypes?: string[]
+  optimizationGoals?: string[]
+  billingEvents?: string[]
+  promotedObjectEventTypes?: string[]
+  promotedObjectPixelIds?: string[]
+  promotedObjectPageIds?: string[]
+  promotedObjectApplicationIds?: string[]
+  adsetCount?: number
 }
 
 export interface MetaCampaignLike {
@@ -63,6 +78,7 @@ export interface MetaCampaignLike {
   lifetime_budget?: string | number
   country_code?: string
   targeting_country?: string
+  conversion_context?: MetaConversionContext | null
 }
 
 export interface MetaOptimizationSuggestion {
@@ -244,6 +260,171 @@ function money(value: number) {
   return `$${value.toFixed(value >= 10 ? 0 : 2)}`
 }
 
+function contextValues(campaign: MetaCampaignLike) {
+  const context = campaign.conversion_context
+  return [
+    campaign.objective,
+    ...(context?.destinationTypes || []),
+    ...(context?.optimizationGoals || []),
+    ...(context?.billingEvents || []),
+    ...(context?.promotedObjectEventTypes || []),
+    ...(context?.promotedObjectPixelIds || []).map(() => 'pixel'),
+    ...(context?.promotedObjectApplicationIds || []).map(() => 'app'),
+  ].join(' ').toLowerCase()
+}
+
+export function getMetaConversionLocation(campaign: MetaCampaignLike) {
+  const text = contextValues(campaign)
+  if (/(whatsapp|messenger|instagram_direct|direct|messaging|conversation|messages)/.test(text)) return 'messaging'
+  if (/(phone|call)/.test(text)) return 'calls'
+  if (/(instant_form|lead_generation|leadgen|on_ad|onsite_lead|quality_lead)/.test(text)) return 'instant_form'
+  if (/(app|mobile_app|application)/.test(text)) return 'app'
+  if (/(shop|catalog|product_catalog)/.test(text)) return 'shop'
+  if (/(website|pixel|offsite|landing_page|purchase|complete_registration|add_to_cart|initiate_checkout)/.test(text)) return 'website'
+  return 'unknown'
+}
+
+export function getMetaConversionLocationLabel(campaign: MetaCampaignLike) {
+  const location = getMetaConversionLocation(campaign)
+  if (location === 'messaging') return 'Messaging'
+  if (location === 'calls') return 'Calls'
+  if (location === 'instant_form') return 'Instant Form'
+  if (location === 'app') return 'App'
+  if (location === 'shop') return 'Shop/Catalog'
+  if (location === 'website') return 'Website'
+  return 'Not set'
+}
+
+export function resolveMetaResultMetric(
+  insight: MetaInsightLike | null | undefined,
+  campaign: MetaCampaignLike,
+  objectiveFamily = mapMetaObjectiveToFamily(campaign.objective)
+) {
+  const location = getMetaConversionLocation(campaign)
+  const spend = numeric(insight?.spend)
+  const clicks = integer(insight?.inline_link_clicks) || integer((insight as any)?.link_clicks_action) || integer(insight?.clicks)
+  const messages = integer(insight?.messages)
+  const calls = integer(insight?.calls)
+  const leads = integer(insight?.leads)
+  const conversions = integer(insight?.conversions)
+  const purchases = integer(insight?.purchases) || (objectiveFamily === 'sales' ? conversions : 0)
+  const appInstalls = integer(insight?.app_installs) || (objectiveFamily === 'app_promotion' ? conversions : 0)
+  const engagements = integer(insight?.post_engagements)
+  const landingPageViews = integer(insight?.page_views)
+  const reach = integer(insight?.reach)
+  const videoViews = integer(insight?.video_views)
+
+  if (location === 'messaging' && (objectiveFamily === 'leads' || objectiveFamily === 'engagement' || messages > 0)) {
+    return {
+      kind: 'messages',
+      label: 'Messaging Conversations',
+      shortLabel: 'messages',
+      count: messages,
+      cost: messages > 0 ? spend / messages : numeric(insight?.cost_per_message),
+      costLabel: 'Cost / Conversation',
+      rate: clicks > 0 ? (messages / clicks) * 100 : 0,
+      rateLabel: 'Conversation Rate',
+      location,
+    }
+  }
+
+  if (location === 'calls' && (objectiveFamily === 'leads' || calls > 0)) {
+    return {
+      kind: 'calls',
+      label: 'Calls',
+      shortLabel: 'calls',
+      count: calls,
+      cost: calls > 0 ? spend / calls : numeric(insight?.cost_per_call),
+      costLabel: 'Cost / Call',
+      rate: clicks > 0 ? (calls / clicks) * 100 : 0,
+      rateLabel: 'Call Rate',
+      location,
+    }
+  }
+
+  if (objectiveFamily === 'sales' || location === 'shop') {
+    return {
+      kind: 'purchases',
+      label: 'Purchases',
+      shortLabel: 'purchases',
+      count: purchases,
+      cost: purchases > 0 ? spend / purchases : numeric(insight?.cost_per_conversion),
+      costLabel: 'Cost / Purchase',
+      rate: clicks > 0 ? (purchases / clicks) * 100 : numeric(insight?.conversion_rate),
+      rateLabel: 'Purchase Rate',
+      location,
+    }
+  }
+
+  if (objectiveFamily === 'app_promotion' || location === 'app') {
+    return {
+      kind: 'app_installs',
+      label: 'App Installs',
+      shortLabel: 'app installs/events',
+      count: appInstalls,
+      cost: appInstalls > 0 ? spend / appInstalls : numeric(insight?.cost_per_conversion),
+      costLabel: 'Cost / Install',
+      rate: clicks > 0 ? (appInstalls / clicks) * 100 : 0,
+      rateLabel: 'Install Rate',
+      location,
+    }
+  }
+
+  if (objectiveFamily === 'leads') {
+    return {
+      kind: 'leads',
+      label: 'Leads',
+      shortLabel: 'leads',
+      count: leads || conversions,
+      cost: (leads || conversions) > 0 ? spend / (leads || conversions) : numeric(insight?.cost_per_lead || insight?.cost_per_conversion),
+      costLabel: 'Cost / Lead',
+      rate: clicks > 0 ? ((leads || conversions) / clicks) * 100 : 0,
+      rateLabel: 'Lead Rate',
+      location,
+    }
+  }
+
+  if (objectiveFamily === 'engagement') {
+    return {
+      kind: 'engagements',
+      label: 'Engagements',
+      shortLabel: 'engagements',
+      count: engagements,
+      cost: engagements > 0 ? spend / engagements : numeric(insight?.cost_per_engagement),
+      costLabel: 'Cost / Engage',
+      rate: numeric(insight?.engagement_rate),
+      rateLabel: 'Engagement Rate',
+      location,
+    }
+  }
+
+  if (objectiveFamily === 'awareness') {
+    return {
+      kind: 'reach',
+      label: 'Result Reach',
+      shortLabel: 'reach',
+      count: reach,
+      cost: reach > 0 ? (spend / reach) * 1000 : numeric(insight?.cpm),
+      costLabel: 'CPM',
+      rate: numeric(insight?.frequency),
+      rateLabel: 'Frequency',
+      location,
+    }
+  }
+
+  return {
+    kind: landingPageViews > 0 ? 'landing_page_views' : 'link_clicks',
+    label: landingPageViews > 0 ? 'Landing Views' : 'Link Clicks',
+    shortLabel: landingPageViews > 0 ? 'landing views' : 'link clicks',
+    count: landingPageViews || clicks,
+    cost: landingPageViews > 0 ? spend / landingPageViews : numeric(insight?.cost_per_inline_link_click || insight?.cpc),
+    costLabel: landingPageViews > 0 ? 'Cost / Landing View' : 'Cost / Link Click',
+    rate: numeric(insight?.inline_link_click_ctr || insight?.ctr),
+    rateLabel: 'CTR',
+    location,
+  }
+}
+
 export function mapMetaObjectiveToFamily(objective?: string): MetaObjectiveFamily {
   const value = (objective || '').toLowerCase()
   if (/(awareness|reach|brand)/.test(value)) return 'awareness'
@@ -275,6 +456,7 @@ export function analyzeMetaCampaign(
   const kpis = OBJECTIVE_KPI_MAP[objectiveFamily]
   const benchmark = getMetaCountryBenchmark(campaign.country_code || campaign.targeting_country || marketCode)
   const suggestions: MetaOptimizationSuggestion[] = []
+  const resultMetric = resolveMetaResultMetric(insight, campaign, objectiveFamily)
 
   const impressions = integer(insight?.impressions)
   const clicks = integer(insight?.clicks)
@@ -296,6 +478,7 @@ export function analyzeMetaCampaign(
   const videoViews = integer(insight?.video_views)
   const appInstalls = integer(insight?.app_installs)
   const messages = integer(insight?.messages)
+  const calls = integer(insight?.calls)
   const linkClicks = integer(insight?.inline_link_clicks) || integer((insight as any)?.link_clicks_action) || clicks
   const landingPageViews = integer(insight?.page_views)
   const conversionRate = clicks > 0 ? (conversions / clicks) * 100 : numeric(insight?.conversion_rate)
@@ -306,6 +489,8 @@ export function analyzeMetaCampaign(
   const costPerConversion = conversions > 0 ? spend / conversions : numeric(insight?.cost_per_conversion)
   const costPerLead = leads > 0 ? spend / leads : numeric(insight?.cost_per_lead)
   const costPerEngagement = postEngagements > 0 ? spend / postEngagements : numeric(insight?.cost_per_engagement)
+  const costPerMessage = messages > 0 ? spend / messages : numeric(insight?.cost_per_message)
+  const costPerCall = calls > 0 ? spend / calls : numeric(insight?.cost_per_call)
 
   const push = (suggestion: MetaOptimizationSuggestion) => suggestions.push(suggestion)
 
@@ -326,19 +511,21 @@ export function analyzeMetaCampaign(
   }
 
   if (['sales', 'leads'].includes(objectiveFamily)) {
-    const optimizationEvents = objectiveFamily === 'sales' ? purchases : leads
+    const optimizationEvents = resultMetric.kind === 'messages' || resultMetric.kind === 'calls'
+      ? resultMetric.count
+      : objectiveFamily === 'sales' ? purchases : leads
     if (optimizationEvents < 50) {
       push({
         type: optimizationEvents === 0 && clicks > 100 ? 'error' : 'warning',
         priority: optimizationEvents === 0 && clicks > 100 ? 'critical' : 'high',
         category: 'platform_rule',
         title: 'Meta learning phase risk',
-        description: `Meta conversion optimization generally needs around 50 optimization events per week. This campaign has ${optimizationEvents} ${objectiveFamily === 'sales' ? 'purchase' : 'lead'} events in the selected period.`,
+        description: `Meta conversion optimization generally needs around 50 optimization events per week. This campaign has ${optimizationEvents} ${resultMetric.shortLabel} in the selected period.`,
         kpi: 'Optimization events',
         currentValue: String(optimizationEvents),
         targetValue: '50/week',
         recommendations: [
-          `Generate ${Math.max(0, 50 - optimizationEvents)} more ${objectiveFamily === 'sales' ? 'purchases' : 'leads'} before making heavy structural changes`,
+          `Generate ${Math.max(0, 50 - optimizationEvents)} more ${resultMetric.shortLabel} before making heavy structural changes`,
           objectiveFamily === 'sales' ? 'Use add-to-cart or checkout optimization temporarily if purchases are too sparse' : 'Use a higher-volume qualified lead event if final leads are too sparse',
           'Broaden audience only if cost quality is still acceptable',
         ],
@@ -578,7 +765,80 @@ export function analyzeMetaCampaign(
 
   if (objectiveFamily === 'leads') {
     const targetCpl = benchmark.costPerConversion.optimal * 0.5
-    if (clicks > 50 && leads === 0) {
+    if (resultMetric.kind === 'messages') {
+      const targetCost = Math.max(benchmark.cpc.optimal * 3, targetCpl * 0.4)
+      if (clicks > 50 && messages === 0) {
+        push({
+          type: 'error',
+          priority: 'critical',
+          category: 'messages',
+          title: 'No WhatsApp conversations despite traffic',
+          description: `This lead campaign is using a messaging conversion location, but ${clicks} clicks produced 0 detected messaging conversations.`,
+          kpi: 'Messaging conversations',
+          currentValue: '0',
+          targetValue: `${Math.ceil(clicks * 0.04)}+`,
+          recommendations: ['Check the WhatsApp destination and click-to-message setup', 'Make the ad CTA explicitly promise a WhatsApp response', 'Review response automation and opening question friction'],
+          impact: 'For WhatsApp lead campaigns, conversations are the real result, not form leads.',
+        })
+      } else if (messages > 0 && costPerMessage > targetCost * 2) {
+        push({
+          type: 'warning',
+          priority: 'high',
+          category: 'messages',
+          title: `Cost per WhatsApp conversation is high for ${benchmark.country}`,
+          description: `Cost per messaging conversation is ${money(costPerMessage)}, above an efficient local target of about ${money(targetCost)}.`,
+          kpi: 'Cost per conversation',
+          currentValue: money(costPerMessage),
+          targetValue: `~${money(targetCost)}`,
+          recommendations: ['Strengthen the WhatsApp CTA promise', 'Test a more direct offer in the first line', 'Use quick replies or automation to reduce drop-off after click'],
+          impact: 'Lower conversation cost increases qualified WhatsApp lead volume at the same budget.',
+          country: benchmark.country,
+        })
+      }
+      if (messages > 0 && resultMetric.rate < 3) {
+        push({
+          type: 'warning',
+          priority: 'medium',
+          category: 'messages',
+          title: 'Conversation rate is thin for the click volume',
+          description: `${linkClicks} link clicks produced ${messages} messaging conversations (${resultMetric.rate.toFixed(2)}%).`,
+          kpi: 'Conversation rate',
+          currentValue: `${resultMetric.rate.toFixed(2)}%`,
+          targetValue: '4%+',
+          recommendations: ['Match the ad promise to the WhatsApp first message', 'Use click-to-WhatsApp creative with a clear reason to chat now', 'Test a stronger pre-filled message'],
+          impact: 'Improving conversation rate lowers cost per WhatsApp lead before spend increases.',
+        })
+      }
+    } else if (resultMetric.kind === 'calls') {
+      if (clicks > 50 && calls === 0) {
+        push({
+          type: 'error',
+          priority: 'critical',
+          category: 'calls',
+          title: 'No calls despite traffic',
+          description: `This lead campaign is using a call conversion location, but ${clicks} clicks produced 0 detected calls.`,
+          kpi: 'Calls',
+          currentValue: '0',
+          targetValue: `${Math.ceil(clicks * 0.03)}+`,
+          recommendations: ['Check the call destination and business hours', 'Make the call CTA explicit', 'Use call extensions or simpler tap-to-call flow'],
+          impact: 'For call campaigns, calls are the real result, not form leads.',
+        })
+      } else if (calls > 0 && costPerCall > targetCpl * 2) {
+        push({
+          type: 'warning',
+          priority: 'high',
+          category: 'calls',
+          title: `Cost per call is high for ${benchmark.country}`,
+          description: `Cost per call is ${money(costPerCall)}, above an efficient local target of about ${money(targetCpl)}.`,
+          kpi: 'Cost per call',
+          currentValue: money(costPerCall),
+          targetValue: `~${money(targetCpl)}`,
+          recommendations: ['Clarify the call benefit in the creative', 'Run call ads during staffed hours', 'Test a stronger urgency/qualification angle'],
+          impact: 'Lower call cost improves lead intake without changing the campaign objective.',
+          country: benchmark.country,
+        })
+      }
+    } else if (clicks > 50 && leads === 0) {
       push({
         type: 'error',
         priority: 'critical',

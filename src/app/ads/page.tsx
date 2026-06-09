@@ -32,8 +32,11 @@ import { getAuthToken } from '@/lib/auth/browser'
 import {
   META_MARKET_OPTIONS,
   analyzeMetaCampaign,
+  getMetaConversionLocationLabel,
   getMetaCountryBenchmark,
   mapMetaObjectiveToFamily,
+  resolveMetaResultMetric,
+  type MetaObjectiveFamily,
   type MetaMarketCode,
   type MetaOptimizationSuggestion,
 } from '@/lib/meta-ads-intelligence'
@@ -61,6 +64,16 @@ interface MetaCampaign {
   created_time?: string
   updated_time?: string
   buying_type?: string
+  conversion_context?: {
+    destinationTypes?: string[]
+    optimizationGoals?: string[]
+    billingEvents?: string[]
+    promotedObjectEventTypes?: string[]
+    promotedObjectPixelIds?: string[]
+    promotedObjectPageIds?: string[]
+    promotedObjectApplicationIds?: string[]
+    adsetCount?: number
+  } | null
 }
 
 interface CampaignInsight {
@@ -88,6 +101,10 @@ interface CampaignInsight {
   checkout_initiations?: string | number
   app_installs?: string | number
   messages?: string | number
+  message_action_type?: string | null
+  cost_per_message?: string | number
+  calls?: string | number
+  cost_per_call?: string | number
   page_views?: string | number
   post_engagements?: string | number
   video_views?: string | number
@@ -360,7 +377,21 @@ function compactMetric({
   return { key: label, label, value, sub, color: color || toneColor(tone), tone }
 }
 
-function objectiveResultMetric(insight: CampaignInsight | null | undefined, objectiveFamily: string, currency: string): CampaignMetric {
+function objectiveResultMetric(
+  insight: CampaignInsight | null | undefined,
+  campaign: MetaCampaign,
+  objectiveFamily: MetaObjectiveFamily,
+  currency: string
+): CampaignMetric {
+  const result = resolveMetaResultMetric(insight, campaign, objectiveFamily)
+  if (result.kind === 'messages' || result.kind === 'calls') {
+    return compactMetric({
+      label: result.label,
+      value: fmt(result.count),
+      sub: `${fmtCurrency(result.cost, currency, 2)} ${result.costLabel.toLowerCase()}`,
+      tone: result.count > 0 ? 'good' : 'risk',
+    })
+  }
   if (objectiveFamily === 'leads') {
     const costPerLead = costPerAction(insight?.spend, insight?.leads, insight?.cost_per_lead)
     return compactMetric({
@@ -415,11 +446,13 @@ function objectiveResultMetric(insight: CampaignInsight | null | undefined, obje
 
 function campaignKpiMetrics(
   insight: CampaignInsight | null | undefined,
-  objectiveFamily: string,
+  campaign: MetaCampaign,
+  objectiveFamily: MetaObjectiveFamily,
   currency: string,
   marketCode: MetaMarketCode
 ): CampaignMetric[] {
   const benchmark = getMetaCountryBenchmark(marketCode)
+  const result = resolveMetaResultMetric(insight, campaign, objectiveFamily)
   const clicks = num(insight?.inline_link_clicks) || num(insight?.link_clicks_action) || num(insight?.clicks)
   const leads = num(insight?.leads)
   const conversions = num(insight?.conversions)
@@ -437,15 +470,15 @@ function campaignKpiMetrics(
 
   const byObjective: Record<string, CampaignMetric[]> = {
     leads: [
-      compactMetric({ label: 'Leads', value: fmt(leads), sub: `${fmtCurrency(costPerLead, currency, 2)} cost / lead`, tone: leads >= 50 ? 'good' : leads > 0 ? 'watch' : 'risk' }),
-      compactMetric({ label: 'Cost / Lead', value: fmtCurrency(costPerLead, currency, 2), sub: `Target ~${fmtCurrency(targetCpl, currency, 0)}`, tone: benchmarkCostTone(costPerLead, targetCpl) }),
-      compactMetric({ label: 'Lead Rate', value: rate(leads, clicks), sub: `${fmt(clicks)} clicks`, tone: benchmarkRateTone(clicks > 0 ? (leads / clicks) * 100 : 0, 5, 3) }),
+      objectiveResultMetric(insight, campaign, 'leads', currency),
+      compactMetric({ label: result.costLabel, value: fmtCurrency(result.cost, currency, 2), sub: result.kind === 'messages' ? 'Messaging efficiency' : result.kind === 'calls' ? 'Call efficiency' : `Target ~${fmtCurrency(targetCpl, currency, 0)}`, tone: benchmarkCostTone(result.cost, result.kind === 'messages' ? Math.max(benchmark.cpc.optimal * 3, targetCpl * 0.4) : targetCpl) }),
+      compactMetric({ label: result.rateLabel, value: `${num(result.rate).toFixed(2)}%`, sub: `${fmt(clicks)} clicks`, tone: benchmarkRateTone(num(result.rate), result.kind === 'messages' ? 4 : 5, 3) }),
       compactMetric({ label: 'Link Clicks', value: fmt(clicks), sub: percent(insight?.ctr), tone: clicks > 0 ? 'neutral' : 'watch' }),
       compactMetric({ label: 'CPC', value: fmtCurrency(cpcValue, currency, 2), sub: 'Traffic cost', tone: cpcValue > benchmark.cpc.max * 1.25 ? 'watch' : cpcValue > 0 && cpcValue <= benchmark.cpc.min * 1.2 ? 'good' : 'neutral' }),
       compactMetric({ label: 'CPM', value: fmtCurrency(cpmValue, currency, 2), sub: 'Auction cost', tone: cpmValue > benchmark.cpm.max * 1.3 ? 'watch' : 'neutral' }),
     ],
     engagement: [
-      objectiveResultMetric(insight, 'engagement', currency),
+      objectiveResultMetric(insight, campaign, 'engagement', currency),
       compactMetric({ label: 'Cost / Engage', value: fmtCurrency(insight?.cost_per_engagement, currency, 2), sub: 'Engagement efficiency', tone: num(insight?.cost_per_engagement) > 0.2 ? 'watch' : engagements > 0 ? 'good' : 'neutral' }),
       compactMetric({ label: 'Engagement Rate', value: percent(insight?.engagement_rate), sub: `${fmt(engagements)} engagements`, tone: num(insight?.engagement_rate) >= 2 ? 'good' : engagements > 0 ? 'watch' : 'risk' }),
       compactMetric({ label: 'Video Views', value: fmt(videoViews), sub: `${fmtCurrency(insight?.cost_per_video_view, currency, 3)} cost / view`, tone: videoViews > 0 ? 'good' : 'neutral' }),
@@ -453,7 +486,7 @@ function campaignKpiMetrics(
       compactMetric({ label: 'Frequency', value: fmt(insight?.frequency, 2), sub: 'Fatigue signal', tone: num(insight?.frequency) > 3.5 ? 'risk' : num(insight?.frequency) > 2.8 ? 'watch' : 'neutral' }),
     ],
     traffic: [
-      objectiveResultMetric(insight, 'traffic', currency),
+      objectiveResultMetric(insight, campaign, 'traffic', currency),
       compactMetric({ label: 'Cost / Link Click', value: fmtCurrency(insight?.cost_per_inline_link_click || insight?.cpc, currency, 2), sub: 'Traffic efficiency', tone: num(insight?.cost_per_inline_link_click || insight?.cpc) <= benchmark.cpc.min * 1.2 ? 'good' : num(insight?.cost_per_inline_link_click || insight?.cpc) > benchmark.cpc.max * 1.25 ? 'watch' : 'neutral' }),
       compactMetric({ label: 'CTR', value: percent(insight?.inline_link_click_ctr || insight?.ctr), sub: 'Click quality', tone: num(insight?.inline_link_click_ctr || insight?.ctr) >= benchmark.ctr.max ? 'good' : num(insight?.inline_link_click_ctr || insight?.ctr) < benchmark.ctr.min * 0.7 && num(insight?.impressions) > 1000 ? 'risk' : 'neutral' }),
       compactMetric({ label: 'Landing Views', value: fmt(insight?.page_views), sub: 'Detected page views', tone: num(insight?.page_views) > 0 ? 'good' : 'watch' }),
@@ -461,7 +494,7 @@ function campaignKpiMetrics(
       compactMetric({ label: 'CPM', value: fmtCurrency(insight?.cpm, currency, 2), sub: 'Auction cost', tone: 'neutral' }),
     ],
     awareness: [
-      objectiveResultMetric(insight, 'awareness', currency),
+      objectiveResultMetric(insight, campaign, 'awareness', currency),
       compactMetric({ label: 'CPM', value: fmtCurrency(insight?.cpm, currency, 2), sub: 'Reach efficiency', tone: cpmValue <= benchmark.cpm.max ? 'good' : 'watch' }),
       compactMetric({ label: 'Frequency', value: fmt(insight?.frequency, 2), sub: 'Exposure depth', tone: num(insight?.frequency) > 3.5 ? 'risk' : num(insight?.frequency) >= 1.8 ? 'good' : 'neutral' }),
       compactMetric({ label: 'Impressions', value: fmt(insight?.impressions), sub: 'Delivery volume', tone: num(insight?.impressions) > 0 ? 'neutral' : 'watch' }),
@@ -469,7 +502,7 @@ function campaignKpiMetrics(
       compactMetric({ label: 'Cost / View', value: fmtCurrency(insight?.cost_per_video_view, currency, 3), sub: 'Video efficiency', tone: num(insight?.cost_per_video_view) > 0.05 ? 'watch' : 'neutral' }),
     ],
     app_promotion: [
-      objectiveResultMetric(insight, 'app_promotion', currency),
+      objectiveResultMetric(insight, campaign, 'app_promotion', currency),
       compactMetric({ label: 'Cost / Install', value: fmtCurrency(insight?.cost_per_conversion, currency, 2), sub: 'Install/event proxy', tone: appInstalls > 0 ? 'good' : 'watch' }),
       compactMetric({ label: 'Install Rate', value: rate(appInstalls, clicks), sub: `${fmt(clicks)} clicks`, tone: clicks > 0 && appInstalls / clicks >= 0.05 ? 'good' : appInstalls > 0 ? 'watch' : 'risk' }),
       compactMetric({ label: 'Link Clicks', value: fmt(clicks), sub: percent(insight?.ctr), tone: clicks > 0 ? 'neutral' : 'watch' }),
@@ -477,7 +510,7 @@ function campaignKpiMetrics(
       compactMetric({ label: 'CPM', value: fmtCurrency(insight?.cpm, currency, 2), sub: 'Auction cost', tone: 'neutral' }),
     ],
     sales: [
-      objectiveResultMetric(insight, 'sales', currency),
+      objectiveResultMetric(insight, campaign, 'sales', currency),
       compactMetric({ label: 'ROAS', value: fmtRoas(roas), sub: purchaseValue ? `${fmtCurrency(purchaseValue, currency)} value` : 'Purchase value missing', tone: roas >= 2.5 ? 'good' : roas > 0 && roas < 1 ? 'risk' : roas > 0 ? 'watch' : 'risk' }),
       compactMetric({ label: 'Purchase Value', value: fmtCurrency(purchaseValue, currency), sub: `${fmt(purchases)} purchases`, tone: purchaseValue > 0 ? 'good' : purchases > 0 ? 'risk' : 'watch' }),
       compactMetric({ label: 'Cost / Purchase', value: fmtCurrency(costPerPurchase, currency, 2), sub: 'Sales efficiency', tone: benchmarkCostTone(costPerPurchase, benchmark.costPerConversion.optimal) }),
@@ -489,7 +522,9 @@ function campaignKpiMetrics(
   return byObjective[objectiveFamily] || byObjective.sales
 }
 
-function objectiveResultCount(insight: CampaignInsight | null | undefined, objectiveFamily: string) {
+function objectiveResultCount(insight: CampaignInsight | null | undefined, campaign: MetaCampaign, objectiveFamily: MetaObjectiveFamily) {
+  const result = resolveMetaResultMetric(insight, campaign, objectiveFamily)
+  if (result.kind === 'messages' || result.kind === 'calls' || result.kind === 'landing_page_views') return result.count
   if (objectiveFamily === 'leads') return num(insight?.leads)
   if (objectiveFamily === 'engagement') return num(insight?.post_engagements)
   if (objectiveFamily === 'traffic') return num(insight?.inline_link_clicks) || num(insight?.link_clicks_action) || num(insight?.clicks)
@@ -498,7 +533,9 @@ function objectiveResultCount(insight: CampaignInsight | null | undefined, objec
   return num(insight?.purchases) || num(insight?.conversions)
 }
 
-function objectiveResultLabel(objectiveFamily: string) {
+function objectiveResultLabel(campaign: MetaCampaign, objectiveFamily: MetaObjectiveFamily) {
+  const result = resolveMetaResultMetric(null, campaign, objectiveFamily)
+  if (result.kind === 'messages' || result.kind === 'calls') return result.shortLabel
   if (objectiveFamily === 'leads') return 'leads'
   if (objectiveFamily === 'engagement') return 'engagements'
   if (objectiveFamily === 'traffic') return 'link clicks'
@@ -510,10 +547,11 @@ function objectiveResultLabel(objectiveFamily: string) {
 function objectiveReadout(row: any, currency: string) {
   const insight = row.insight
   const objective = row.analysis.objectiveFamily
+  const result = resolveMetaResultMetric(insight, row.campaign, objective)
   const clicks = num(insight?.inline_link_clicks) || num(insight?.link_clicks_action) || num(insight?.clicks)
   const spend = fmtCurrency(insight?.spend, currency)
-  const result = fmt(objectiveResultCount(insight, objective))
-  const label = objectiveResultLabel(objective)
+  const resultCount = fmt(objectiveResultCount(insight, row.campaign, objective))
+  const label = objectiveResultLabel(row.campaign, objective)
 
   if (objective === 'sales') {
     const purchases = num(insight?.purchases) || num(insight?.conversions)
@@ -525,15 +563,15 @@ function objectiveReadout(row: any, currency: string) {
   }
 
   if (objective === 'leads') {
-    return `${spend} generated ${result} leads at ${fmtCurrency(costPerAction(insight?.spend, insight?.leads, insight?.cost_per_lead), currency, 2)} cost per lead from ${fmt(clicks)} clicks.`
+    return `${spend} generated ${resultCount} ${label} at ${fmtCurrency(result.cost, currency, 2)} ${result.costLabel.toLowerCase()} from ${fmt(clicks)} clicks.`
   }
 
   if (objective === 'engagement') {
-    return `${spend} generated ${result} engagements with ${percent(insight?.engagement_rate)} engagement rate, ${percent(insight?.ctr)} CTR, and ${fmtCurrency(insight?.cost_per_engagement, currency, 2)} cost per engagement.`
+    return `${spend} generated ${resultCount} engagements with ${percent(insight?.engagement_rate)} engagement rate, ${percent(insight?.ctr)} CTR, and ${fmtCurrency(insight?.cost_per_engagement, currency, 2)} cost per engagement.`
   }
 
   if (objective === 'traffic') {
-    return `${spend} generated ${result} link clicks at ${fmtCurrency(insight?.cost_per_inline_link_click || insight?.cpc, currency, 2)} cost per link click and ${percent(insight?.inline_link_click_ctr || insight?.ctr)} click-through rate.`
+    return `${spend} generated ${resultCount} ${label} at ${fmtCurrency(result.cost, currency, 2)} ${result.costLabel.toLowerCase()} and ${percent(insight?.inline_link_click_ctr || insight?.ctr)} click-through rate.`
   }
 
   if (objective === 'awareness') {
@@ -541,16 +579,16 @@ function objectiveReadout(row: any, currency: string) {
   }
 
   if (objective === 'app_promotion') {
-    return `${spend} generated ${result} app installs/events from ${fmt(clicks)} clicks at ${fmtCurrency(insight?.cost_per_conversion, currency, 2)} cost per app event.`
+    return `${spend} generated ${resultCount} app installs/events from ${fmt(clicks)} clicks at ${fmtCurrency(insight?.cost_per_conversion, currency, 2)} cost per app event.`
   }
 
-  return `${spend} generated ${result} ${label}.`
+  return `${spend} generated ${resultCount} ${label}.`
 }
 
 function buildSelectedCampaignReadout(selectedRow: any, currency: string, rangeLabel: string, marketCode: MetaMarketCode): MetaCampaignReadout[] {
   if (!selectedRow) return []
 
-  const metrics = campaignKpiMetrics(selectedRow.insight, selectedRow.analysis.objectiveFamily, currency, marketCode)
+  const metrics = campaignKpiMetrics(selectedRow.insight, selectedRow.campaign, selectedRow.analysis.objectiveFamily, currency, marketCode)
   const healthyMetrics = metrics.filter((metric) => metric.tone === 'good')
   const weakMetrics = metrics.filter((metric) => metric.tone === 'risk' || metric.tone === 'watch')
   const issues = selectedRow.analysis.suggestions.filter((item: MetaOptimizationSuggestion) => item.type !== 'success')
@@ -1173,7 +1211,7 @@ export default function AdsPage() {
                           </td>
                           <td className="px-4 py-3 font-semibold text-text-primary">{analysis.score}</td>
                           <td className="px-4 py-3">{fmtCurrency(insight?.spend, accountCurrency)}</td>
-                          <td className="px-4 py-3">{fmt(objectiveResultCount(insight, analysis.objectiveFamily))} {objectiveResultLabel(analysis.objectiveFamily)}</td>
+                          <td className="px-4 py-3">{fmt(objectiveResultCount(insight, campaign, analysis.objectiveFamily))} {objectiveResultLabel(campaign, analysis.objectiveFamily)}</td>
                           <td className="px-4 py-3">{analysis.objectiveFamily === 'sales' ? fmtRoas(roasValue(insight)) : 'N/A'}</td>
                           <td className="px-4 py-3">{percent(insight?.ctr)}</td>
                           <td className="px-4 py-3 text-text-secondary">{analysis.suggestions[0]?.title || 'Healthy'}</td>
@@ -1185,7 +1223,7 @@ export default function AdsPage() {
               </Card>
             ) : filteredRows.length ? (
               filteredRows.map(({ campaign, insight, analysis }) => {
-                const objectiveKpis = campaignKpiMetrics(insight, analysis.objectiveFamily, accountCurrency, market)
+                const objectiveKpis = campaignKpiMetrics(insight, campaign, analysis.objectiveFamily, accountCurrency, market)
 
                 return (
                   <Card
@@ -1205,7 +1243,7 @@ export default function AdsPage() {
                         </div>
                         <h2 className="truncate font-heading text-lg font-semibold text-text-primary">{campaign.name}</h2>
                         <p className="mt-1 text-xs text-text-secondary">
-                          {campaign.objective || 'No objective'} · Daily {budget(campaign.daily_budget)} · Lifetime {budget(campaign.lifetime_budget)}
+                          {campaign.objective || 'No objective'} · {getMetaConversionLocationLabel(campaign)} location · Daily {budget(campaign.daily_budget)} · Lifetime {budget(campaign.lifetime_budget)}
                         </p>
                       </div>
                       <div className="text-right">
@@ -1278,16 +1316,20 @@ export default function AdsPage() {
                 </div>
               ) : selectedAnalysisRow ? (
                 <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="rounded-lg border border-border bg-base/60 p-3">
-                      <p className="text-[10px] font-mono uppercase text-text-dim">Objective</p>
-                      <p className="mt-1 text-sm font-semibold text-text-primary">{mapMetaObjectiveToFamily(selectedAnalysisRow.campaign.objective)}</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="rounded-lg border border-border bg-base/60 p-3">
+                        <p className="text-[10px] font-mono uppercase text-text-dim">Objective</p>
+                        <p className="mt-1 text-sm font-semibold text-text-primary">{mapMetaObjectiveToFamily(selectedAnalysisRow.campaign.objective)}</p>
+                      </div>
+                      <div className="rounded-lg border border-border bg-base/60 p-3">
+                        <p className="text-[10px] font-mono uppercase text-text-dim">Location</p>
+                        <p className="mt-1 text-sm font-semibold text-text-primary">{getMetaConversionLocationLabel(selectedAnalysisRow.campaign)}</p>
+                      </div>
+                      <div className="rounded-lg border border-border bg-base/60 p-3">
+                        <p className="text-[10px] font-mono uppercase text-text-dim">Score</p>
+                        <p className="mt-1 text-sm font-semibold text-text-primary">{selectedAnalysisRow.analysis.score}/100</p>
+                      </div>
                     </div>
-                    <div className="rounded-lg border border-border bg-base/60 p-3">
-                      <p className="text-[10px] font-mono uppercase text-text-dim">Score</p>
-                      <p className="mt-1 text-sm font-semibold text-text-primary">{selectedAnalysisRow.analysis.score}/100</p>
-                    </div>
-                  </div>
 
                   <div className="rounded-lg border border-border bg-base/60 p-3">
                     <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -1352,7 +1394,7 @@ export default function AdsPage() {
                   <div className="rounded-lg border border-border bg-base/60 p-3">
                     <p className="mb-2 text-xs font-semibold text-text-primary">Objective KPIs</p>
                     <div className="grid grid-cols-2 gap-2">
-                      {campaignKpiMetrics(selectedAnalysisRow.insight, selectedAnalysisRow.analysis.objectiveFamily, accountCurrency, market).slice(0, 6).map((metric) => (
+                      {campaignKpiMetrics(selectedAnalysisRow.insight, selectedAnalysisRow.campaign, selectedAnalysisRow.analysis.objectiveFamily, accountCurrency, market).slice(0, 6).map((metric) => (
                         <div key={metric.key} className="rounded-md border border-border/70 bg-card/60 p-2">
                           <div className="mb-1 h-1 w-8 rounded-full" style={{ backgroundColor: metric.color }} />
                           <p className="text-[9px] font-mono uppercase tracking-wider text-text-dim">{metric.label}</p>

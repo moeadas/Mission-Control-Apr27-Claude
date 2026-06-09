@@ -166,6 +166,15 @@ export function extractMetaActionMetrics(row: any) {
     'offsite_conversion.fb_pixel_lead',
     'offsite_lead_add_20_s_calls',
   ])
+  const messageResult = pickActionValue([
+    'onsite_conversion.messaging_conversation_started_7d',
+    'onsite_conversion.messaging_conversation_started',
+    'onsite_conversion.total_messaging_connection',
+    'onsite_conversion.messaging_first_reply',
+    'onsite_conversion.messaging_conversation_replied_7d',
+    'messaging_conversation_started_7d',
+    'messaging_conversation_started',
+  ])
   const purchaseResult = pickActionValue([
     'purchase',
     'omni_purchase',
@@ -192,6 +201,8 @@ export function extractMetaActionMetrics(row: any) {
     checkout_initiations: 0,
     app_installs: 0,
     messages: 0,
+    message_action_type: messageResult.actionType,
+    calls: 0,
     leads: leadResult.value,
     lead_action_type: leadResult.actionType,
     add_to_cart: 0,
@@ -200,7 +211,10 @@ export function extractMetaActionMetrics(row: any) {
     video_views: 0,
     link_clicks_action: 0,
     cost_per_lead: '0.00',
+    cost_per_message: '0.00',
+    cost_per_call: '0.00',
     meta_reported_cost_per_lead: '0.00',
+    meta_reported_cost_per_message: '0.00',
     cost_per_conversion: row?.cost_per_conversion || '0.00',
     meta_reported_cost_per_conversion: row?.cost_per_conversion || '0.00',
   }
@@ -220,8 +234,14 @@ export function extractMetaActionMetrics(row: any) {
     } else if (actionType.includes('mobile_app_install') || actionType === 'app_install') {
       metric.app_installs += value
       metric.conversions += value
-    } else if (actionType.includes('messaging_conversation') || actionType.includes('onsite_conversion.messaging')) {
-      metric.messages += value
+    } else if (
+      actionType.includes('messaging') ||
+      actionType.includes('whatsapp') ||
+      actionType.includes('messenger')
+    ) {
+      if (!messageResult.value || actionType !== messageResult.actionType) metric.messages += value
+    } else if (actionType.includes('phone_call') || actionType.includes('call_confirm') || actionType.includes('lead_call')) {
+      metric.calls += value
     } else if (actionType === 'link_click') {
       metric.link_clicks_action += value
     } else if (
@@ -250,6 +270,14 @@ export function extractMetaActionMetrics(row: any) {
     || costPerActions.find((item: any) => String(item.action_type || '') === 'lead')?.value
   if (costPerLead) metric.meta_reported_cost_per_lead = String(Number.parseFloat(String(costPerLead)).toFixed(2))
   if (metric.leads > 0) metric.cost_per_lead = (spend / metric.leads).toFixed(2)
+
+  const costPerMessage = costPerActions.find((item: any) => String(item.action_type || '') === messageResult.actionType)?.value
+    || costPerActions.find((item: any) => String(item.action_type || '').includes('messaging_conversation_started'))?.value
+    || costPerActions.find((item: any) => String(item.action_type || '').includes('messaging'))?.value
+  if (messageResult.value && metric.messages < messageResult.value) metric.messages = messageResult.value
+  if (costPerMessage) metric.meta_reported_cost_per_message = String(Number.parseFloat(String(costPerMessage)).toFixed(2))
+  if (metric.messages > 0) metric.cost_per_message = (spend / metric.messages).toFixed(2)
+  if (metric.calls > 0) metric.cost_per_call = (spend / metric.calls).toFixed(2)
 
   if (metric.conversions > 0) metric.cost_per_conversion = (spend / metric.conversions).toFixed(2)
 

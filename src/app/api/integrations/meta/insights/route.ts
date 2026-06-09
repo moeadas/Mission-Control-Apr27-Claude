@@ -40,6 +40,7 @@ const ADDITIVE_KEYS = [
   'checkout_initiations',
   'app_installs',
   'messages',
+  'calls',
   'page_views',
   'post_engagements',
   'video_views',
@@ -75,6 +76,8 @@ function rebuildDerivedMetrics(row: Record<string, any>) {
   const purchaseValue = numberValue(row.purchase_value)
   const postEngagements = numberValue(row.post_engagements)
   const videoViews = numberValue(row.video_views)
+  const messages = numberValue(row.messages)
+  const calls = numberValue(row.calls)
 
   return {
     ...row,
@@ -84,6 +87,8 @@ function rebuildDerivedMetrics(row: Record<string, any>) {
     inline_link_click_ctr: impressions > 0 ? fixedRate((inlineLinkClicks / impressions) * 100) : '0.00',
     cost_per_inline_link_click: inlineLinkClicks > 0 ? fixedMoney(spend / inlineLinkClicks) : '0.00',
     cost_per_lead: leads > 0 ? fixedMoney(spend / leads) : '0.00',
+    cost_per_message: messages > 0 ? fixedMoney(spend / messages) : '0.00',
+    cost_per_call: calls > 0 ? fixedMoney(spend / calls) : '0.00',
     cost_per_conversion: conversions > 0 ? fixedMoney(spend / conversions) : '0.00',
     conversion_rate: clicks > 0 ? fixedRate((conversions / clicks) * 100) : '0.00',
     engagement_rate: impressions > 0 ? fixedRate((postEngagements / impressions) * 100) : '0.00',
