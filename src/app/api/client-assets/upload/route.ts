@@ -158,8 +158,8 @@ export async function POST(request: NextRequest) {
     const bytes = Buffer.from(await file.arrayBuffer())
     await writeFile(destination, bytes)
 
-    // Static URL served by Next.js (via mc_uploads docker volume on VPS)
-    const url = `/uploads/client-assets/${safeClientId}/${safeType}/${fileName}`
+    const storagePath = `/uploads/client-assets/${safeClientId}/${safeType}/${fileName}`
+    const url = `/api/client-assets/file/${encodeURIComponent(fileName)}`
 
     // For documents: extract text so the AI can use it
     let extractedText: string | undefined
@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       fileName,
       url,
-      path: destination,
+      path: storagePath,
       contentType: file.type,
       size: file.size,
       ...(isDocument && {

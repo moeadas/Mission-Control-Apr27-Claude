@@ -30,19 +30,11 @@ function getBearerToken(request: NextRequest) {
   return getAuthTokenFromRequest(request)
 }
 
-// Auth tokens come in as Bearer header for fetch() calls but the <img> tag
-// can't set headers. Allow the JWT in a `?token=` query param as a fallback
-// so authenticated <img src> works for the user's own tenant.
-function getQueryToken(request: NextRequest) {
-  const t = new URL(request.url).searchParams.get('token')
-  return t ? t.trim() : null
-}
-
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ filename: string }> }
 ) {
-  const token = getBearerToken(request) || getQueryToken(request)
+  const token = getBearerToken(request)
   const auth = await resolveAuthContextFromToken(token)
   if (!auth || !auth.tenantId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

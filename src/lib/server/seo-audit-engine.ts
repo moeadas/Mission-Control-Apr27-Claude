@@ -1,6 +1,7 @@
 import { ArtifactExecutionStep } from '@/lib/types'
 import { validateDeliverableQuality } from '@/lib/output-quality'
 import { escapeHtml, truncate } from '@/lib/server/text-utils'
+import { readResponseTextWithLimit, safeFetchUrl } from '@/lib/server/safe-fetch'
 
 type ClientProfileMap = Record<string, string>
 
@@ -321,16 +322,14 @@ function weightedPsiScore(mobile?: number, desktop?: number) {
 
 async function fetchText(url: string, timeoutMs = 12000) {
   const started = Date.now()
-  const response = await fetch(url, {
-    redirect: 'follow',
+  const { response, finalUrl, redirected } = await safeFetchUrl(url, {
     headers: {
       'User-Agent': 'MissionControlWebsiteAuditor/1.0',
       Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
     },
-    signal: AbortSignal.timeout(timeoutMs),
-  })
-  const text = await response.text()
-  return { response, text, responseMs: Date.now() - started }
+  }, { timeoutMs })
+  const text = await readResponseTextWithLimit(response, 1_500_000)
+  return { response, text, responseMs: Date.now() - started, finalUrl, redirected }
 }
 
 function normalizeCrawlUrl(rawHref: string, baseUrl: string) {
@@ -392,9 +391,11 @@ async function fetchSitemapUrls(origin: string, robotsText = '', limit = 40): Pr
     if (seen.has(sitemapUrl) || results.length >= limit || depth > 1) return
     seen.add(sitemapUrl)
     try {
-      const response = await fetch(sitemapUrl, { signal: AbortSignal.timeout(7000), headers: { Accept: 'application/xml,text/xml,*/*' } })
+      const { response } = await safeFetchUrl(sitemapUrl, {
+        headers: { Accept: 'application/xml,text/xml,*/*' },
+      }, { timeoutMs: 7000 })
       if (!response.ok) return
-      const xml = await response.text()
+      const xml = await readResponseTextWithLimit(response, 800_000)
       const nested = Array.from(xml.matchAll(/<sitemap>[\s\S]*?<loc>([\s\S]*?)<\/loc>[\s\S]*?<\/sitemap>/gi))
         .map((match) => match[1].trim())
       if (nested.length) {
@@ -435,17 +436,15 @@ async function checkInternalLinks(pages: PageEvidence[], origin: string, limit =
 
   return Promise.all(checks.map(async (item) => {
     try {
-      const response = await fetch(item.url, {
+      const { response, finalUrl, redirected } = await safeFetchUrl(item.url, {
         method: 'HEAD',
-        redirect: 'follow',
-        signal: AbortSignal.timeout(6000),
         headers: { 'User-Agent': 'MissionControlWebsiteAuditor/1.0' },
-      })
+      }, { timeoutMs: 6000 })
       return {
         ...item,
         status: response.status,
-        finalUrl: response.url || item.url,
-        redirected: response.url ? response.url !== item.url : false,
+        finalUrl,
+        redirected,
         broken: response.status >= 400,
       }
     } catch (error: any) {
@@ -511,8 +510,7 @@ async function collectEvidence(url: string, options?: { includePageSpeed?: boole
   }
 
   try {
-    const { response, text: html, responseMs } = await fetchText(url)
-    const finalUrl = response.url || url
+    const { response, text: html, responseMs, finalUrl } = await fetchText(url)
     const base = new URL(finalUrl)
     const pageSpeed = options?.includePageSpeed === false ? emptyPageSpeedEvidence() : await fetchPageSpeedEvidence(finalUrl)
     const lower = html.toLowerCase()
@@ -547,8 +545,8 @@ async function collectEvidence(url: string, options?: { includePageSpeed?: boole
     }
 
     const [robotsResult, sitemapResult] = await Promise.all([
-      fetch(`${base.origin}/robots.txt`, { signal: AbortSignal.timeout(5000) }).then((res) => res.ok).catch(() => false),
-      fetch(`${base.origin}/sitemap.xml`, { signal: AbortSignal.timeout(5000) }).then((res) => res.ok).catch(() => false),
+      safeFetchUrl(`${base.origin}/robots.txt`, {}, { timeoutMs: 5000 }).then(({ response }) => response.ok).catch(() => false),
+      safeFetchUrl(`${base.origin}/sitemap.xml`, {}, { timeoutMs: 5000 }).then(({ response }) => response.ok).catch(() => false),
     ])
 
     return {
@@ -599,7 +597,9 @@ async function collectEvidence(url: string, options?: { includePageSpeed?: boole
 async function collectSiteEvidence(seedUrl: string): Promise<SiteCrawlEvidence> {
   const seed = await collectEvidence(seedUrl, { includePageSpeed: true, source: 'seed' })
   const origin = new URL(seed.finalUrl || seedUrl).origin
-  const robotsText = await fetch(`${origin}/robots.txt`, { signal: AbortSignal.timeout(5000) }).then((res) => res.ok ? res.text() : '').catch(() => '')
+  const robotsText = await safeFetchUrl(`${origin}/robots.txt`, {}, { timeoutMs: 5000 })
+    .then(async ({ response }) => response.ok ? readResponseTextWithLimit(response, 250_000) : '')
+    .catch(() => '')
   const sitemapUrls = await fetchSitemapUrls(origin, robotsText)
   const seedInternalUrls = seed.links
     .map((link) => normalizeCrawlUrl(link.href, seed.finalUrl || seed.url))

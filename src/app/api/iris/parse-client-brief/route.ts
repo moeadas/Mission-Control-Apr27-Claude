@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { generateText, getFriendlyProviderError, ProviderError } from '@/lib/server/ai'
 import { resolveAuthContextFromToken, getAuthTokenFromRequest } from '@/lib/auth/server'
 import { normalizeProviderSettings, resolveTaskRuntime } from '@/lib/provider-settings'
+import { readResponseTextWithLimit, safeFetchUrl } from '@/lib/server/safe-fetch'
 import type { AIProvider } from '@/lib/types'
 
 function getBearerToken(request: NextRequest) {
@@ -79,18 +80,17 @@ async function fetchWebsiteContext(website?: string | null): Promise<string> {
   if (!url) return ''
 
   try {
-    const response = await fetch(url, {
+    const { response } = await safeFetchUrl(url, {
       cache: 'no-store',
-      signal: AbortSignal.timeout(8000),
       headers: {
         'User-Agent': 'MissionControlClientBriefBot/1.0',
         Accept: 'text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.8',
       },
-    })
+    }, { timeoutMs: 8000 })
     if (!response.ok) return ''
     const contentType = response.headers.get('content-type') || ''
     if (!contentType.includes('text/html') && !contentType.includes('text/plain')) return ''
-    const html = await response.text()
+    const html = await readResponseTextWithLimit(response, 250_000)
     return html
       .replace(/<script[\s\S]*?<\/script>/gi, ' ')
       .replace(/<style[\s\S]*?<\/style>/gi, ' ')

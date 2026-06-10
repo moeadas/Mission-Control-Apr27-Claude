@@ -22,6 +22,29 @@ function normalizeRow(row: any): StateRow {
   }
 }
 
+async function recordRelationalSyncFailure(input: {
+  tenantId?: string | null
+  operation: 'snapshot' | 'delta'
+  error: unknown
+}) {
+  if (!input.tenantId) return
+  const db = getDb()
+  const message = input.error instanceof Error ? input.error.message : String(input.error)
+  try {
+    await db`
+      INSERT INTO audit_events (tenant_id, action, entity_type, after_state)
+      VALUES (
+        ${input.tenantId}::uuid,
+        'relational_sync_failed',
+        'mission_control_state',
+        ${db.json({ operation: input.operation, message: message.slice(0, 1000) } as any)}
+      )
+    `
+  } catch (auditErr) {
+    console.error('[app-state] failed to record relational sync failure:', auditErr)
+  }
+}
+
 export async function loadSharedAppState(agencyId = DEFAULT_AGENCY_ID): Promise<StateRow | null> {
   const db = getDb()
   const rows = await db`
@@ -56,6 +79,7 @@ export async function saveSharedAppState(
       await syncSnapshotToRelationalTables(state, tenantId)
     } catch (syncErr) {
       console.error('[app-state] relational sync failed (non-fatal):', syncErr)
+      await recordRelationalSyncFailure({ tenantId, operation: 'snapshot', error: syncErr })
     }
   }
   return row ? normalizeRow(row) : null
@@ -120,6 +144,7 @@ export async function saveSharedAppStateDelta(
     }
   } catch (syncErr) {
     console.error('[app-state] relational sync failed (non-fatal):', syncErr)
+    await recordRelationalSyncFailure({ tenantId, operation: 'delta', error: syncErr })
   }
 
   return row ? normalizeRow(row) : null
