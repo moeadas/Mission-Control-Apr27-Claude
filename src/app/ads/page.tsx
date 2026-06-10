@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertTriangle,
   BarChart3,
+  ChevronDown,
   ChevronRight,
   CheckCircle2,
   DollarSign,
@@ -243,6 +244,18 @@ function benchmarkRateTone(value: number, good: number, watch: number): MetricTo
 function budget(value?: string) {
   if (!value) return 'Not set'
   return fmtCurrency(num(value) / 100)
+}
+
+function accountLabel(account: AdAccount) {
+  return `${account.name} (${account.currency || 'Meta'})`
+}
+
+function sortAdAccounts(accounts: AdAccount[]) {
+  return [...accounts].sort((a, b) => {
+    const nameCompare = (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true })
+    if (nameCompare !== 0) return nameCompare
+    return (a.account_id || a.id || '').localeCompare(b.account_id || b.id || '', undefined, { sensitivity: 'base', numeric: true })
+  })
 }
 
 function shortDate(value?: string | null) {
@@ -746,6 +759,115 @@ function KpiCard({
   )
 }
 
+function AccountCombobox({
+  accounts,
+  selectedAccountId,
+  loading,
+  onSelect,
+}: {
+  accounts: AdAccount[]
+  selectedAccountId: string
+  loading: boolean
+  onSelect: (accountId: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const wrapperRef = useRef<HTMLDivElement | null>(null)
+  const selectedAccount = accounts.find((account) => account.id === selectedAccountId)
+  const selectedLabel = selectedAccount ? accountLabel(selectedAccount) : ''
+  const filteredAccounts = useMemo(() => {
+    const needle = query.trim().toLowerCase()
+    if (!needle) return accounts
+    return accounts.filter((account) => {
+      const haystack = `${account.name} ${account.currency || ''} ${account.account_id || ''} ${account.id}`.toLowerCase()
+      return haystack.includes(needle)
+    })
+  }, [accounts, query])
+
+  useEffect(() => {
+    function handlePointerDown(event: MouseEvent) {
+      if (!wrapperRef.current?.contains(event.target as Node)) {
+        setOpen(false)
+        setQuery('')
+      }
+    }
+    document.addEventListener('mousedown', handlePointerDown)
+    return () => document.removeEventListener('mousedown', handlePointerDown)
+  }, [])
+
+  const chooseAccount = (accountId: string) => {
+    onSelect(accountId)
+    setOpen(false)
+    setQuery('')
+  }
+
+  return (
+    <div className="relative flex flex-col gap-1.5" ref={wrapperRef}>
+      <label className="text-xs font-mono uppercase tracking-wider text-text-secondary">Ad Account</label>
+      <div className="relative">
+        <input
+          value={open ? query : selectedLabel}
+          onFocus={() => {
+            setOpen(true)
+            setQuery('')
+          }}
+          onChange={(event) => {
+            setQuery(event.target.value)
+            setOpen(true)
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              setOpen(false)
+              setQuery('')
+            }
+            if (event.key === 'Enter' && open && filteredAccounts[0]) {
+              event.preventDefault()
+              chooseAccount(filteredAccounts[0].id)
+            }
+          }}
+          className="w-full rounded-lg border border-border bg-base py-2 pl-3 pr-9 text-sm text-text-primary outline-none transition-colors placeholder:text-text-dim focus:border-accent-blue focus:ring-1 focus:ring-accent-blue/30"
+          placeholder={loading ? 'Loading accounts...' : accounts.length ? 'Search ad accounts...' : 'No accounts found'}
+          disabled={loading && !accounts.length}
+        />
+        <button
+          type="button"
+          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-text-dim transition hover:bg-card hover:text-text-primary"
+          onClick={() => {
+            setOpen((current) => !current)
+            setQuery('')
+          }}
+          aria-label="Toggle ad account list"
+        >
+          <ChevronDown size={15} />
+        </button>
+      </div>
+      {open ? (
+        <div className="absolute left-0 right-0 top-full z-40 mt-1 max-h-72 overflow-auto rounded-lg border border-border bg-card p-1 shadow-[var(--shadow-card)]">
+          {filteredAccounts.length ? filteredAccounts.map((account) => (
+            <button
+              key={account.id}
+              type="button"
+              className={`block w-full rounded-md px-3 py-2 text-left text-sm transition ${
+                account.id === selectedAccountId
+                  ? 'bg-accent-blue/15 text-accent-blue'
+                  : 'text-text-secondary hover:bg-base hover:text-text-primary'
+              }`}
+              onClick={() => chooseAccount(account.id)}
+            >
+              <span className="block truncate font-medium">{account.name}</span>
+              <span className="block truncate text-[11px] opacity-75">
+                {account.currency || 'Meta'} · {account.account_id || account.id}
+              </span>
+            </button>
+          )) : (
+            <div className="px-3 py-4 text-sm text-text-secondary">No matching ad accounts.</div>
+          )}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 function EmptyConnectState() {
   return (
     <ClientShell>
@@ -926,7 +1048,7 @@ export default function AdsPage() {
           return
         }
         if (!response.ok) throw new Error(payload.error || 'Failed to load Meta accounts')
-        const nextAccounts = payload.accounts || []
+        const nextAccounts = sortAdAccounts(payload.accounts || [])
         setAccounts(nextAccounts)
         setMarket((payload.primaryMarket || 'JO') as MetaMarketCode)
         const defaultAccount = payload.defaultAccountId || nextAccounts[0]?.id || ''
@@ -1092,15 +1214,11 @@ export default function AdsPage() {
 
         <Card className="mb-5 rounded-lg p-4">
           <div className="grid gap-3 lg:grid-cols-[minmax(260px,1.4fr)_160px_170px_1fr_auto]">
-            <Select
-              label="Ad Account"
-              value={selectedAccountId}
-              onChange={(event) => setSelectedAccountId(event.target.value)}
-              options={
-                accounts.length
-                  ? accounts.map((account) => ({ value: account.id, label: `${account.name} (${account.currency || 'Meta'})` }))
-                  : [{ value: '', label: loadingAccounts ? 'Loading accounts...' : 'No accounts found' }]
-              }
+            <AccountCombobox
+              accounts={accounts}
+              selectedAccountId={selectedAccountId}
+              loading={loadingAccounts}
+              onSelect={setSelectedAccountId}
             />
             <Select
               label="Date Range"
