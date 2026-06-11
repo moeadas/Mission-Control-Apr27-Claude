@@ -8,6 +8,7 @@ import { OfficeLayout, PlacedTile, DEFAULT_LAYOUT, OfficeOrgStructure, levelFrom
 import { getStoredToken } from '@/lib/auth/browser'
 import { useAgentsStore } from '@/lib/agents-store'
 // Batch W: presence + org + gamification
+import { AgentBot } from '@/components/agents/AgentBot'
 import { AgentLayer } from '@/components/office/AgentLayer'
 import { OrgChart } from '@/components/office/OrgChart'
 import { QuestsPanel } from '@/components/office/QuestsPanel'
@@ -155,12 +156,21 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
       const agentSnapshots = agents.map((a: any) => ({
         id: a.id,
         name: a.name,
+        avatar: a.avatar,
+        photoUrl: a.photoUrl,
+        role: a.role,
+        specialty: a.specialty,
+        division: a.division,
         color: a.color,
+        accentColor: a.accentColor,
         metadata: a.metadata,
       }))
       const missionSnapshots = missions.map((m: any) => ({
         id: m.id,
         status: m.status,
+        title: m.title,
+        summary: m.summary,
+        deliverableType: m.deliverableType,
         leadAgentId: m.leadAgentId,
         collaboratorAgentIds: m.collaboratorAgentIds,
         liveMessage: m.handoffNotes || null,
@@ -1146,21 +1156,25 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
                         selectedAgentId === p.agentId ? 'bg-white/10' : 'hover:bg-white/5'
                       }`}
                     >
-                      <span
-                        className="h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0"
-                        style={{ background: p.color }}
-                      >
-                        {p.initial}
-                      </span>
+                      <AgentBot
+                        name={p.agentName}
+                        avatar={p.avatar || p.initial}
+                        color={p.color}
+                        photoUrl={p.photoUrl}
+                        variant="office"
+                        animation={p.status === 'working' ? 'working' : 'idle'}
+                        status={p.status === 'working' ? 'active' : 'idle'}
+                        size={24}
+                        className="shrink-0"
+                      />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs text-white truncate">{p.agentName}</p>
                         <p className="text-[10px] text-white/40 truncate">
                           {p.status === 'working' ? (
-                            <span className="text-emerald-400">● Working</span>
+                            <span className="text-emerald-400">● {p.activity?.label || 'Working'}</span>
                           ) : (
                             <span>○ {p.activity?.label || 'Idle'}</span>
                           )}
-                          {p.message ? ` · ${p.message.slice(0, 32)}${p.message.length > 32 ? '…' : ''}` : ''}
                         </p>
                         {p.status === 'working' && typeof p.progress === 'number' && (
                           <div className="mt-1 h-1 overflow-hidden rounded-full bg-white/10">

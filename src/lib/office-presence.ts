@@ -47,6 +47,10 @@ export interface AgentActivity {
 export interface AgentPresence {
   agentId: string
   agentName: string
+  /** Avatar key used by the shared AgentBot renderer. */
+  avatar?: string
+  /** Uploaded/custom agent portrait, if one exists. */
+  photoUrl?: string
   /** Current grid position (fractional during interpolation). */
   x: number
   y: number
@@ -84,6 +88,9 @@ export interface AgentPresence {
 interface MissionSnapshot {
   id: string
   status: string
+  title?: string | null
+  summary?: string | null
+  deliverableType?: string | null
   leadAgentId?: string | null
   collaboratorAgentIds?: string[] | null
   liveMessage?: string | null
@@ -92,6 +99,11 @@ interface MissionSnapshot {
 interface AgentSnapshot {
   id: string
   name: string
+  avatar?: string | null
+  photoUrl?: string | null
+  role?: string | null
+  specialty?: string | null
+  division?: string | null
   color?: string | null
   accentColor?: string | null
   metadata?: any
@@ -334,22 +346,22 @@ function activityForAsset(tile: PlacedTile): AgentActivity | null {
   const name = asset.name.toLowerCase()
 
   if (asset.category === 'kitchen' || id.includes('coffee') || name.includes('coffee')) {
-    return { kind: 'coffee', label: 'Coffee break', targetTileId: tile.id }
+    return { kind: 'coffee', label: 'Drinking tea', targetTileId: tile.id }
   }
   if (asset.category === 'wellness' || id.includes('plant') || id.includes('beanbag') || id.includes('yoga')) {
-    return { kind: 'recharge', label: id.includes('plant') ? 'Plant recharge' : 'Resetting energy', targetTileId: tile.id }
+    return { kind: 'recharge', label: id.includes('plant') ? 'Watering plants' : 'Taking a breather', targetTileId: tile.id }
   }
   if (asset.category === 'tables' || id.includes('meeting') || id.includes('huddle')) {
-    return { kind: 'sync', label: 'Quick sync', targetTileId: tile.id }
+    return { kind: 'sync', label: 'Chatting strategy', targetTileId: tile.id }
   }
   if (asset.category === 'seating' || id.includes('sofa') || id.includes('chair')) {
-    return { kind: 'lounge', label: 'Team chat', targetTileId: tile.id }
+    return { kind: 'lounge', label: 'Calling friends', targetTileId: tile.id }
   }
   if (asset.category === 'it' || id.includes('printer') || id.includes('server') || id.includes('switch')) {
-    return { kind: 'systems', label: 'Checking systems', targetTileId: tile.id }
+    return { kind: 'systems', label: 'Replying to messages', targetTileId: tile.id }
   }
   if (asset.category === 'decor' || id.includes('window') || id.includes('art')) {
-    return { kind: 'focus', label: 'Thinking', targetTileId: tile.id }
+    return { kind: 'focus', label: 'Daydreaming', targetTileId: tile.id }
   }
   return null
 }
@@ -384,7 +396,70 @@ function chooseActivityTarget(
   }
 
   const target = chooseRoamTarget(agentId, openTiles, anchor)
-  return { target, activity: { kind: 'roam', label: 'Walking the floor' } }
+  return { target, activity: { kind: 'roam', label: 'Stretching legs' } }
+}
+
+function workLabelForMission(agent: AgentSnapshot, mission: MissionSnapshot): string {
+  const haystack = [
+    mission.deliverableType,
+    mission.title,
+    mission.summary,
+    agent.role,
+    agent.specialty,
+    agent.division,
+  ].filter(Boolean).join(' ').toLowerCase()
+
+  if (/\b(blog|article|copy|content|caption|calendar|email|script|website)\b/.test(haystack)) {
+    if (agent.specialty === 'strategy' || agent.specialty === 'brand') return 'Studying audience'
+    if (agent.specialty === 'research') return 'Researching'
+    if (agent.specialty === 'data-analytics' || agent.specialty === 'seo') return 'Analyzing data'
+    if (agent.specialty === 'media-planning' || agent.specialty === 'performance') return 'Planning distribution'
+    if (agent.specialty === 'creative' || agent.specialty === 'design' || agent.specialty === 'ux-design') return 'Shaping creative'
+    return 'Drafting content'
+  }
+  if (/\b(seo|audit|analytics|analysis|kpi|forecast|report|data)\b/.test(haystack)) {
+    return 'Analyzing data'
+  }
+  if (/\b(research|brief|market|competitor|insight)\b/.test(haystack)) {
+    return 'Researching'
+  }
+  if (/\b(strategy|campaign|plan|media|ads|performance)\b/.test(haystack)) {
+    return agent.specialty === 'media-planning' || agent.specialty === 'performance'
+      ? 'Optimizing campaigns'
+      : 'Planning strategy'
+  }
+  if (/\b(creative|design|brand|ui|ux|visual)\b/.test(haystack)) {
+    return 'Shaping creative'
+  }
+  if (/\b(client|onboard|profile)\b/.test(haystack)) {
+    return 'Reading client context'
+  }
+
+  switch (agent.specialty) {
+    case 'copy':
+    case 'content-production':
+      return 'Drafting content'
+    case 'research':
+      return 'Researching'
+    case 'data-analytics':
+    case 'seo':
+      return 'Analyzing data'
+    case 'strategy':
+    case 'brand':
+      return 'Studying audience'
+    case 'media-planning':
+    case 'performance':
+      return 'Optimizing campaigns'
+    case 'creative':
+    case 'design':
+    case 'ux-design':
+      return 'Shaping creative'
+    case 'client-services':
+    case 'client':
+      return 'Reading client context'
+    default:
+      return 'Working on the task'
+  }
 }
 
 function progressForMission(missionId: string, now: number): number {
@@ -463,7 +538,7 @@ export function computeAgentPresence(input: {
         targetY = f.y + 0.5
       }
       status = 'working'
-      activity = { kind: 'work', label: activeMission.liveMessage || 'Working on a task', targetTileId: deskTileId }
+      activity = { kind: 'work', label: workLabelForMission(agent, activeMission), targetTileId: deskTileId }
       const previous = roamCache.get(agent.id)
       const start = previous ? { x: previous.targetX - 0.5, y: previous.targetY - 0.5 } : { x: targetX - 0.5, y: targetY - 0.5 }
       path = findPath(input.layout, blocked, start, { x: targetX - 0.5, y: targetY - 0.5 })
@@ -512,6 +587,8 @@ export function computeAgentPresence(input: {
     result.push({
       agentId: agent.id,
       agentName: agent.name,
+      avatar: agent.avatar || undefined,
+      photoUrl: agent.photoUrl || undefined,
       x: targetX, // initial = target; the renderer tweens visually
       y: targetY,
       targetX,
@@ -519,7 +596,7 @@ export function computeAgentPresence(input: {
       status,
       deskTileId,
       activeMissionId: activeMission?.id,
-      message: activeMission?.liveMessage || undefined,
+      message: activity?.label,
       color,
       initial,
       departmentId: dept?.id,

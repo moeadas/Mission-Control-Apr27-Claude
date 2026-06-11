@@ -11,8 +11,10 @@
 
 import React, { useEffect, useRef } from 'react'
 
+import { AgentBot } from '@/components/agents/AgentBot'
 import type { AgentPresence } from '@/lib/office-presence'
 import { WALK_MS } from '@/lib/office-presence'
+import type { BotAnimation } from '@/lib/types'
 
 interface Props {
   presences: AgentPresence[]
@@ -22,8 +24,8 @@ interface Props {
   selectedAgentId?: string | null
 }
 
-const SPRITE_W = 42
-const SPRITE_H = 54
+const SPRITE_W = 50
+const SPRITE_H = 64
 
 interface MotionState {
   x: number
@@ -119,7 +121,7 @@ export function AgentLayer({ presences, tilePx, onAgentClick, selectedAgentId }:
       {presences.map((presence) => {
         const selected = selectedAgentId === presence.agentId
         const working = presence.status === 'working'
-        const activityLabel = presence.message || presence.activity?.label
+        const activityLabel = presence.activity?.label || presence.message
 
         return (
           <div
@@ -158,19 +160,16 @@ export function AgentLayer({ presences, tilePx, onAgentClick, selectedAgentId }:
 
             <div className="office-agent-shadow" />
             <div className="office-agent-body">
-              <div className="office-agent-antenna" />
-              <div className="office-agent-head">
-                <span className="office-agent-eye office-agent-eye-left" />
-                <span className="office-agent-eye office-agent-eye-right" />
-                <span className="office-agent-mouth" />
-              </div>
-              <div className="office-agent-torso">
-                <span>{presence.initial}</span>
-              </div>
-              <div className="office-agent-feet">
-                <span />
-                <span />
-              </div>
+              <AgentBot
+                name={presence.agentName}
+                avatar={presence.avatar || presence.initial}
+                color={presence.color}
+                photoUrl={presence.photoUrl}
+                variant="office"
+                animation={animationForPresence(presence)}
+                status={presence.status === 'working' ? 'active' : 'idle'}
+                size={44}
+              />
             </div>
 
             <div className="office-agent-name">{presence.agentName}</div>
@@ -183,16 +182,16 @@ export function AgentLayer({ presences, tilePx, onAgentClick, selectedAgentId }:
 
 function ProgressRing({ value, color }: { value: number; color: string }) {
   const safeValue = Math.max(0, Math.min(1, value))
-  const radius = 16
+  const radius = 18
   const circumference = 2 * Math.PI * radius
   const offset = circumference * (1 - safeValue)
 
   return (
-    <svg className="office-agent-progress" width="42" height="42" viewBox="0 0 42 42" aria-hidden="true">
-      <circle cx="21" cy="21" r={radius} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="3" />
+    <svg className="office-agent-progress" width="50" height="50" viewBox="0 0 50 50" aria-hidden="true">
+      <circle cx="25" cy="25" r={radius} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="3" />
       <circle
-        cx="21"
-        cy="21"
+        cx="25"
+        cy="25"
         r={radius}
         fill="none"
         stroke={color}
@@ -200,10 +199,17 @@ function ProgressRing({ value, color }: { value: number; color: string }) {
         strokeLinecap="round"
         strokeDasharray={circumference}
         strokeDashoffset={offset}
-        transform="rotate(-90 21 21)"
+        transform="rotate(-90 25 25)"
       />
     </svg>
   )
+}
+
+function animationForPresence(presence: AgentPresence): BotAnimation {
+  if (presence.status === 'working') return 'working'
+  if (presence.pose === 'performing' || presence.activity?.kind === 'focus') return 'thinking'
+  if (presence.activity?.kind === 'coffee' || presence.activity?.kind === 'lounge' || presence.activity?.kind === 'recharge') return 'resting'
+  return 'idle'
 }
 
 function truncate(value: string, max: number): string {
@@ -219,16 +225,16 @@ const AGENT_LAYER_CSS = `
 
   .office-agent-body {
     position: absolute;
-    left: 4px;
-    top: 10px;
-    width: 34px;
-    height: 40px;
+    left: 3px;
+    top: 9px;
+    width: 44px;
+    height: 44px;
     filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.34));
     transition: transform 180ms ease;
   }
 
   .office-agent[data-facing="left"] .office-agent-body {
-    transform: scaleX(-1);
+    transform: none;
   }
 
   .office-agent[data-moving="true"] .office-agent-body {
@@ -240,7 +246,7 @@ const AGENT_LAYER_CSS = `
   }
 
   .office-agent[data-facing="left"][data-pose="sitting"] .office-agent-body {
-    transform: translateY(5px) scaleX(-1);
+    transform: translateY(5px);
   }
 
   .office-agent[data-pose="performing"] .office-agent-body {
@@ -250,133 +256,21 @@ const AGENT_LAYER_CSS = `
   .office-agent[data-selected="true"] .office-agent-body::before {
     content: "";
     position: absolute;
-    inset: -7px -6px -3px;
+    inset: -5px;
     border: 2px solid var(--agent-ring);
-    border-radius: 18px;
+    border-radius: 14px;
     box-shadow: 0 0 18px var(--agent-color-soft);
   }
 
   .office-agent-shadow {
     position: absolute;
-    left: 7px;
+    left: 9px;
     bottom: 0;
-    width: 28px;
+    width: 32px;
     height: 8px;
     border-radius: 999px;
     background: rgba(0, 0, 0, 0.28);
     filter: blur(1px);
-  }
-
-  .office-agent-antenna {
-    position: absolute;
-    left: 16px;
-    top: -6px;
-    width: 3px;
-    height: 8px;
-    border-radius: 999px;
-    background: var(--agent-color);
-  }
-
-  .office-agent-antenna::after {
-    content: "";
-    position: absolute;
-    left: -3px;
-    top: -5px;
-    width: 9px;
-    height: 9px;
-    border-radius: 999px;
-    background: #f8fafc;
-    box-shadow: 0 0 10px var(--agent-color);
-  }
-
-  .office-agent-head {
-    position: absolute;
-    left: 3px;
-    top: 0;
-    width: 28px;
-    height: 24px;
-    border: 2px solid rgba(255,255,255,0.58);
-    border-radius: 10px;
-    background: linear-gradient(145deg, var(--agent-color), #1f2937);
-  }
-
-  .office-agent-head::before,
-  .office-agent-head::after {
-    content: "";
-    position: absolute;
-    top: 8px;
-    width: 4px;
-    height: 8px;
-    border-radius: 4px;
-    background: var(--agent-color);
-    opacity: 0.8;
-  }
-
-  .office-agent-head::before { left: -6px; }
-  .office-agent-head::after { right: -6px; }
-
-  .office-agent-eye {
-    position: absolute;
-    top: 8px;
-    width: 5px;
-    height: 5px;
-    border-radius: 999px;
-    background: #e0f2fe;
-    box-shadow: 0 0 8px #67e8f9;
-  }
-
-  .office-agent-eye-left { left: 7px; }
-  .office-agent-eye-right { right: 7px; }
-
-  .office-agent-mouth {
-    position: absolute;
-    left: 10px;
-    bottom: 5px;
-    width: 8px;
-    height: 3px;
-    border-radius: 0 0 8px 8px;
-    border-bottom: 2px solid rgba(255,255,255,0.72);
-  }
-
-  .office-agent-torso {
-    position: absolute;
-    left: 8px;
-    top: 24px;
-    width: 18px;
-    height: 15px;
-    border-radius: 6px 6px 7px 7px;
-    background: linear-gradient(180deg, #f8fafc, #cbd5e1);
-    color: #0f172a;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 9px;
-    font-weight: 800;
-    box-shadow: inset 0 -3px 0 rgba(15,23,42,0.16);
-  }
-
-  .office-agent-feet {
-    position: absolute;
-    left: 8px;
-    top: 38px;
-    width: 18px;
-    display: flex;
-    justify-content: space-between;
-  }
-
-  .office-agent-feet span {
-    width: 7px;
-    height: 5px;
-    border-radius: 2px;
-    background: var(--agent-color);
-  }
-
-  .office-agent[data-moving="true"] .office-agent-feet span:first-child {
-    animation: office-agent-foot-a 420ms ease-in-out infinite;
-  }
-
-  .office-agent[data-moving="true"] .office-agent-feet span:last-child {
-    animation: office-agent-foot-b 420ms ease-in-out infinite;
   }
 
   .office-agent-bubble {
@@ -402,7 +296,7 @@ const AGENT_LAYER_CSS = `
   .office-agent-progress {
     position: absolute;
     left: 0;
-    top: 7px;
+    top: 6px;
     opacity: 0.95;
     filter: drop-shadow(0 0 8px var(--agent-color-soft));
   }
@@ -410,7 +304,7 @@ const AGENT_LAYER_CSS = `
   .office-agent-name {
     position: absolute;
     left: 50%;
-    top: 53px;
+    top: 58px;
     transform: translateX(-50%);
     max-width: 110px;
     padding: 2px 6px;
@@ -437,24 +331,13 @@ const AGENT_LAYER_CSS = `
     50% { translate: 0 -3px; }
   }
 
-  @keyframes office-agent-foot-a {
-    0%, 100% { transform: translateX(-1px); }
-    50% { transform: translateX(2px); }
-  }
-
-  @keyframes office-agent-foot-b {
-    0%, 100% { transform: translateX(2px); }
-    50% { transform: translateX(-1px); }
-  }
-
   @keyframes office-agent-perform {
     0%, 100% { translate: 0 0; }
     50% { translate: 0 -2px; }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .office-agent-body,
-    .office-agent-feet span {
+    .office-agent-body {
       animation: none !important;
     }
   }
