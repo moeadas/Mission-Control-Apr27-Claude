@@ -84,7 +84,7 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
   const missions = useAgentsStore(s => s.missions)
 
   // Batch W: top-level mode (Edit / Live / Org / Quests).
-  const [mode, setMode] = useState<OfficeMode>('edit')
+  const [mode, setMode] = useState<OfficeMode>('live')
 
   // Batch W: agent presence — recomputed on every PRESENCE_TICK_MS for roam target rolls.
   const [presences, setPresences] = useState<AgentPresence[]>([])
@@ -742,54 +742,78 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
       <div className="flex flex-col overflow-hidden min-w-0">
 
         {/* Toolbar */}
-        <div className="flex items-center gap-1 px-3 py-2 border-b border-white/10 bg-[#151922] shrink-0 flex-wrap">
-          <button onClick={undo} disabled={!canUndo} title="Undo (⌘Z)"
-            className="px-2 py-1 rounded text-xs text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-30 transition-colors">↩ Undo</button>
-          <button onClick={redo} disabled={!canRedo} title="Redo (⌘⇧Z)"
-            className="px-2 py-1 rounded text-xs text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-30 transition-colors">↪ Redo</button>
+        {mode === 'live' ? (
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-white/10 bg-[#151922] shrink-0 flex-wrap">
+            <div className="flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1.5">
+              <span className="h-2 w-2 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,0.85)]" />
+              <span className="text-xs font-semibold text-emerald-100">Live Office active</span>
+            </div>
+            <span className="hidden md:inline text-xs text-white/45">
+              Agents walk to desks, route around furniture, and use nearby amenities.
+            </span>
+            <div className="flex-1" />
+            <span className="text-xs text-white/30 tabular-nums">{Math.round(zoom * 100)}%</span>
+            <button onClick={() => { setZoom(INIT_ZOOM); setPan({ x: 20, y: 20 }) }}
+              className="px-2 py-1 rounded text-xs text-white/40 hover:text-white hover:bg-white/10 transition-colors">Reset view</button>
+            <button onClick={() => setMode('edit')}
+              className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-xs font-medium text-white/75 hover:bg-white/10 hover:text-white transition-colors">
+              Edit layout
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1 px-3 py-2 border-b border-white/10 bg-[#151922] shrink-0 flex-wrap">
+            <button onClick={undo} disabled={!canUndo} title="Undo (⌘Z)"
+              className="px-2 py-1 rounded text-xs text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-30 transition-colors">↩ Undo</button>
+            <button onClick={redo} disabled={!canRedo} title="Redo (⌘⇧Z)"
+              className="px-2 py-1 rounded text-xs text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-30 transition-colors">↪ Redo</button>
 
-          <div className="h-4 w-px bg-white/10 mx-0.5" />
+            <div className="h-4 w-px bg-white/10 mx-0.5" />
 
-          {sel.size > 0 && (
-            <>
-              <span className="text-xs text-indigo-300 font-medium px-1">{sel.size} selected</span>
-              {sel.size === 1 && (
-                <button onClick={() => selTile && updateTile(selTile.id, { rotation: (selTile.rotation + 90) % 360 })}
-                  title="Rotate 90° (R)"
-                  className="px-2 py-1 rounded text-xs text-white/60 hover:text-white hover:bg-white/10 transition-colors">⟳ Rotate</button>
-              )}
-              <button onClick={deleteSelected} title="Delete selection (Del)"
-                className="px-2 py-1 rounded text-xs text-red-400 hover:text-red-300 hover:bg-red-900/20 transition-colors">
-                🗑 Delete{sel.size > 1 ? ` (${sel.size})` : ''}
-              </button>
-              <div className="h-4 w-px bg-white/10 mx-0.5" />
-            </>
-          )}
+            {sel.size > 0 && (
+              <>
+                <span className="text-xs text-indigo-300 font-medium px-1">{sel.size} selected</span>
+                {sel.size === 1 && (
+                  <button onClick={() => selTile && updateTile(selTile.id, { rotation: (selTile.rotation + 90) % 360 })}
+                    title="Rotate 90° (R)"
+                    className="px-2 py-1 rounded text-xs text-white/60 hover:text-white hover:bg-white/10 transition-colors">⟳ Rotate</button>
+                )}
+                <button onClick={deleteSelected} title="Delete selection (Del)"
+                  className="px-2 py-1 rounded text-xs text-red-400 hover:text-red-300 hover:bg-red-900/20 transition-colors">
+                  🗑 Delete{sel.size > 1 ? ` (${sel.size})` : ''}
+                </button>
+                <div className="h-4 w-px bg-white/10 mx-0.5" />
+              </>
+            )}
 
-          <button onClick={() => setSel(new Set(layout.tiles.map(t => t.id)))}
-            disabled={layout.tiles.length === 0}
-            className="px-2 py-1 rounded text-xs text-white/40 hover:text-white hover:bg-white/10 disabled:opacity-30 transition-colors">
-            Select All
-          </button>
-          <button onClick={() => setSel(new Set())} disabled={sel.size === 0}
-            className="px-2 py-1 rounded text-xs text-white/40 hover:text-white hover:bg-white/10 disabled:opacity-30 transition-colors">
-            Deselect
-          </button>
+            <button onClick={() => setSel(new Set(layout.tiles.map(t => t.id)))}
+              disabled={layout.tiles.length === 0}
+              className="px-2 py-1 rounded text-xs text-white/40 hover:text-white hover:bg-white/10 disabled:opacity-30 transition-colors">
+              Select All
+            </button>
+            <button onClick={() => setSel(new Set())} disabled={sel.size === 0}
+              className="px-2 py-1 rounded text-xs text-white/40 hover:text-white hover:bg-white/10 disabled:opacity-30 transition-colors">
+              Deselect
+            </button>
 
-          <div className="h-4 w-px bg-white/10 mx-0.5" />
-          <span className="text-xs text-white/30 tabular-nums">{Math.round(zoom * 100)}%</span>
-          <button onClick={() => { setZoom(INIT_ZOOM); setPan({ x: 20, y: 20 }) }}
-            className="px-2 py-1 rounded text-xs text-white/40 hover:text-white hover:bg-white/10 transition-colors">Reset view</button>
+            <div className="h-4 w-px bg-white/10 mx-0.5" />
+            <span className="text-xs text-white/30 tabular-nums">{Math.round(zoom * 100)}%</span>
+            <button onClick={() => { setZoom(INIT_ZOOM); setPan({ x: 20, y: 20 }) }}
+              className="px-2 py-1 rounded text-xs text-white/40 hover:text-white hover:bg-white/10 transition-colors">Reset view</button>
 
-          <div className="flex-1" />
-          <span className="text-[10px] text-white/15 hidden lg:block mr-2">Space+drag pan  •  Scroll zoom  •  Drag canvas to multi-select</span>
-          <button onClick={exportJSON} className="px-2 py-1 rounded text-xs text-white/40 hover:text-white hover:bg-white/10">⬇ Export</button>
-          <button onClick={importJSON} className="px-2 py-1 rounded text-xs text-white/40 hover:text-white hover:bg-white/10">⬆ Import</button>
-          <button onClick={save} disabled={saving}
-            className="px-3 py-1 rounded text-xs bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-medium transition-colors">
-            {saving ? 'Saving…' : saveMsg || 'Save'}
-          </button>
-        </div>
+            <div className="flex-1" />
+            <button onClick={() => setMode('live')}
+              className="px-3 py-1.5 rounded-lg border border-emerald-400/30 bg-emerald-400/10 text-xs font-semibold text-emerald-100 hover:bg-emerald-400/15 transition-colors">
+              Preview Live Office
+            </button>
+            <span className="text-[10px] text-white/15 hidden lg:block mr-2">Space+drag pan  •  Scroll zoom  •  Drag canvas to multi-select</span>
+            <button onClick={exportJSON} className="px-2 py-1 rounded text-xs text-white/40 hover:text-white hover:bg-white/10">⬇ Export</button>
+            <button onClick={importJSON} className="px-2 py-1 rounded text-xs text-white/40 hover:text-white hover:bg-white/10">⬆ Import</button>
+            <button onClick={save} disabled={saving}
+              className="px-3 py-1 rounded text-xs bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-medium transition-colors">
+              {saving ? 'Saving…' : saveMsg || 'Save'}
+            </button>
+          </div>
+        )}
 
         {/* Canvas viewport */}
         <div
