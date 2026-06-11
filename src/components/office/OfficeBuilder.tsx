@@ -588,6 +588,14 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
     [layout, agentCount, completedToday]
   )
   const xpInfo = useMemo(() => levelFromXp(layout.gamification?.xp || 0), [layout.gamification?.xp])
+  const xpProgress = Math.min(100, Math.round(((xpInfo.intoLevelXp || 0) / Math.max(1, xpInfo.nextLevelXp || 1)) * 100))
+  const dayPhase = useMemo(() => {
+    const hour = new Date().getHours()
+    if (hour < 6 || hour >= 21) return { label: 'Night shift', tint: 'rgba(30, 41, 59, 0.20)' }
+    if (hour >= 17) return { label: 'Evening focus', tint: 'rgba(245, 158, 11, 0.10)' }
+    if (hour < 10) return { label: 'Morning setup', tint: 'rgba(56, 189, 248, 0.08)' }
+    return { label: 'Workday flow', tint: 'rgba(255, 255, 255, 0.00)' }
+  }, [])
 
   const tabs: Array<{ id: OfficeMode; label: string; icon: string }> = [
     { id: 'edit',   label: 'Edit',         icon: '✎' },
@@ -623,6 +631,12 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
           </span>
           <span className="text-white/40">
             Level <span className="text-white">{xpInfo.level}</span>
+          </span>
+          <span className="text-white/40">
+            XP <span className="text-white">{xpProgress}</span><span className="text-white/30">%</span>
+          </span>
+          <span className="text-white/40">
+            MC <span className="text-white">{layout.mcCredits || 0}</span>
           </span>
           <span className="text-white/40">
             Agents <span className="text-white">{agentCount}</span>
@@ -799,6 +813,17 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
           }}>
             {/* Floor */}
             <div style={{ position: 'absolute', inset: 0, background: '#1e2435' }} />
+            {mode === 'live' && dayPhase.tint !== 'rgba(255, 255, 255, 0.00)' && (
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  pointerEvents: 'none',
+                  background: dayPhase.tint,
+                  zIndex: 0,
+                }}
+              />
+            )}
 
             {/* Grid (SVG stays crisp under any zoom) */}
             <svg style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} width={WW} height={WH}>
@@ -940,6 +965,29 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
               </div>
             </div>
           )}
+
+          {mode === 'live' && (
+            <div className="pointer-events-none absolute left-4 top-4 z-30 flex max-w-[560px] flex-wrap items-center gap-2">
+              <div className="rounded-xl border border-white/10 bg-[#0d1018]/82 px-3 py-2 shadow-2xl backdrop-blur">
+                <p className="text-[9px] font-mono uppercase tracking-[0.22em] text-white/35">Mood</p>
+                <p className="text-sm font-semibold text-white">{officeScore.label}</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-[#0d1018]/82 px-3 py-2 shadow-2xl backdrop-blur">
+                <p className="text-[9px] font-mono uppercase tracking-[0.22em] text-white/35">Level {xpInfo.level}</p>
+                <div className="mt-1 h-1.5 w-24 overflow-hidden rounded-full bg-white/10">
+                  <span className="block h-full rounded-full bg-indigo-400" style={{ width: `${xpProgress}%` }} />
+                </div>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-[#0d1018]/82 px-3 py-2 shadow-2xl backdrop-blur">
+                <p className="text-[9px] font-mono uppercase tracking-[0.22em] text-white/35">Credits</p>
+                <p className="text-sm font-semibold text-white">{layout.mcCredits || 0} MC</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-[#0d1018]/82 px-3 py-2 shadow-2xl backdrop-blur">
+                <p className="text-[9px] font-mono uppercase tracking-[0.22em] text-white/35">Phase</p>
+                <p className="text-sm font-semibold text-white">{dayPhase.label}</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Batch N: persistent status bar — gives users a stable line of
@@ -1045,7 +1093,7 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
             </p>
             <p className="text-xs text-white/35 mt-1">
               {mode === 'live'
-                ? 'Working agents anchor to their assigned desks. Idle agents roam the open floor.'
+                ? 'Agents path around furniture, work at desks, and use nearby office amenities.'
                 : 'Click a placed item on the floor to edit it.'}
             </p>
           </div>
@@ -1086,10 +1134,18 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
                           {p.status === 'working' ? (
                             <span className="text-emerald-400">● Working</span>
                           ) : (
-                            <span>○ Idle</span>
+                            <span>○ {p.activity?.label || 'Idle'}</span>
                           )}
                           {p.message ? ` · ${p.message.slice(0, 32)}${p.message.length > 32 ? '…' : ''}` : ''}
                         </p>
+                        {p.status === 'working' && typeof p.progress === 'number' && (
+                          <div className="mt-1 h-1 overflow-hidden rounded-full bg-white/10">
+                            <span
+                              className="block h-full rounded-full bg-emerald-400"
+                              style={{ width: `${Math.max(8, Math.round(p.progress * 100))}%` }}
+                            />
+                          </div>
+                        )}
                       </div>
                     </li>
                   ))}
@@ -1161,7 +1217,7 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
               <button
                 onClick={() => {
                   if (confirm('Remove all placed items? This can be undone with ⌘Z.')) {
-                    setLayout((prev) => ({ ...prev, tiles: [] }))
+                    pushHistory({ ...layoutRef.current, tiles: [] })
                   }
                 }}
                 className="w-full text-left rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 px-3 py-2.5 transition-colors">
@@ -1218,7 +1274,7 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
             <div className="mb-5">
               <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-white/30 mb-2">Start Fresh</p>
               <button onClick={() => {
-                pushHistory({ version: 2, gridWidth: 30, gridHeight: 20, floorAssetId: 'floor-hardwood', tiles: [], zones: [], mcCredits: 0, ownedAssets: [] })
+                pushHistory({ ...DEFAULT_LAYOUT })
                 setShowTpl(false); setSel(new Set())
               }} className="w-full flex items-center gap-4 p-3 rounded-lg border border-dashed border-white/20 hover:border-indigo-500/50 hover:bg-indigo-950/30 transition-all text-left group">
                 <div className="w-[120px] h-[40px] rounded bg-[#1e2435] border border-white/10 flex items-center justify-center shrink-0 overflow-hidden">
