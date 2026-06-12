@@ -11,6 +11,22 @@ export type AssetCategory =
   | 'structural' | 'floors'
 
 export type AssetTier = 'free' | 'premium'
+export type Traversal = 'blocked' | 'walkable' | 'usable'
+export type AssetUseKind = 'sit' | 'lounge' | 'stand'
+export type AssetFacing = 'up' | 'right' | 'down' | 'left'
+
+export interface AssetUseSpot {
+  /** Tile-relative center point in the asset's unrotated local coordinates. */
+  dx: number
+  dy: number
+  facing: AssetFacing
+}
+
+export interface AssetUse {
+  kind: AssetUseKind
+  spots: AssetUseSpot[]
+  capacity?: number
+}
 
 export interface OfficeFurnitureAsset {
   id: string
@@ -24,6 +40,8 @@ export interface OfficeFurnitureAsset {
   svg: string
   assignable?: boolean
   placement?: 'wall' | 'floor' | 'ceiling'
+  traversal?: Traversal
+  use?: AssetUse
 }
 
 export const ASSET_CATEGORIES: { id: AssetCategory; label: string; icon: string }[] = [
@@ -203,6 +221,85 @@ export const OFFICE_ASSETS: OfficeFurnitureAsset[] = [
 
 export function getAssetById(id: string): OfficeFurnitureAsset | undefined {
   return OFFICE_ASSETS.find(a => a.id === id)
+}
+
+export function resolveTraversal(asset: OfficeFurnitureAsset): Traversal {
+  if (asset.traversal) return asset.traversal
+  if (asset.category === 'floors') return 'walkable'
+  if (asset.placement === 'wall' || asset.placement === 'ceiling') return 'walkable'
+  if (asset.category === 'decor' && /rug|mat|poster|frame|art|sign/i.test(asset.id)) return 'walkable'
+  if (resolveUse(asset)) return 'usable'
+  return 'blocked'
+}
+
+function distributeSeats(width: number, depth: number, count: number): AssetUseSpot[] {
+  return Array.from({ length: count }, (_, index) => ({
+    dx: ((index + 1) * width) / (count + 1),
+    dy: Math.max(0.5, depth * 0.58),
+    facing: 'down' as AssetFacing,
+  }))
+}
+
+function edgeStandSpots(width: number, depth: number): AssetUseSpot[] {
+  const middleX = width / 2
+  const middleY = depth / 2
+  return [
+    { dx: middleX, dy: depth + 0.5, facing: 'up' },
+    { dx: middleX, dy: -0.5, facing: 'down' },
+    { dx: -0.5, dy: middleY, facing: 'right' },
+    { dx: width + 0.5, dy: middleY, facing: 'left' },
+  ]
+}
+
+export function resolveUse(asset: OfficeFurnitureAsset): AssetUse | undefined {
+  if (asset.use) return asset.use
+  const [width, depth] = asset.size
+
+  if (asset.category === 'desks') {
+    if (asset.id === 'desk-bench') {
+      return {
+        kind: 'stand',
+        capacity: 2,
+        spots: [
+          { dx: width * 0.3, dy: depth + 0.5, facing: 'up' },
+          { dx: width * 0.7, dy: depth + 0.5, facing: 'up' },
+        ],
+      }
+    }
+    if (asset.id === 'desk-pod') {
+      return { kind: 'stand', capacity: 4, spots: edgeStandSpots(width, depth) }
+    }
+    return { kind: 'stand', capacity: 1, spots: [{ dx: width / 2, dy: depth + 0.5, facing: 'up' }] }
+  }
+
+  if (asset.category === 'seating') {
+    if (asset.id === 'sofa-double') return { kind: 'lounge', capacity: 2, spots: distributeSeats(width, depth, 2) }
+    if (asset.id === 'sofa-triple') return { kind: 'lounge', capacity: 3, spots: distributeSeats(width, depth, 3) }
+    if (/sofa|beanbag|phone-booth/i.test(asset.id)) return { kind: 'lounge', capacity: 1, spots: distributeSeats(width, depth, 1) }
+    return { kind: 'sit', capacity: 1, spots: [{ dx: width / 2, dy: depth / 2, facing: 'down' }] }
+  }
+
+  if (asset.category === 'tables') {
+    const sideSpots = asset.id === 'table-coffee'
+      ? [{ dx: width / 2, dy: depth + 0.5, facing: 'up' as AssetFacing }]
+      : edgeStandSpots(width, depth)
+    return { kind: 'stand', capacity: sideSpots.length, spots: sideSpots }
+  }
+
+  if (asset.category === 'kitchen') {
+    return { kind: 'stand', capacity: 1, spots: [{ dx: width / 2, dy: depth + 0.5, facing: 'up' }] }
+  }
+
+  if (asset.category === 'it' || asset.category === 'storage') {
+    return { kind: 'stand', capacity: 1, spots: [{ dx: width / 2, dy: depth + 0.5, facing: 'up' }] }
+  }
+
+  if (asset.category === 'wellness') {
+    if (/yoga|nap|bean/i.test(asset.id)) return { kind: 'lounge', capacity: 1, spots: distributeSeats(width, depth, 1) }
+    return { kind: 'stand', capacity: 1, spots: [{ dx: width / 2, dy: depth + 0.5, facing: 'up' }] }
+  }
+
+  return undefined
 }
 
 export function isAssetUnlocked(

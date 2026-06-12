@@ -6,6 +6,10 @@
  * persistence. All new fields are optional so legacy layouts continue to load.
  */
 
+import { resolveUse, type AssetFacing, type AssetUseKind, type OfficeFurnitureAsset } from '@/lib/office-assets'
+
+export type OfficeFacing = AssetFacing
+
 export interface PlacedTile {
   id: string               // unique instance UUID
   assetId: string          // references OfficeFurnitureAsset.id
@@ -136,3 +140,75 @@ export function levelFromXp(xp: number): { level: number; nextLevelXp: number; i
 }
 
 export const DAILY_QUEST_REFRESH_MS = 24 * 60 * 60 * 1000
+
+export function normalizeRotation(rotation = 0): 0 | 90 | 180 | 270 {
+  const normalized = ((Math.round(rotation / 90) * 90) % 360 + 360) % 360
+  return (normalized === 90 || normalized === 180 || normalized === 270 ? normalized : 0) as 0 | 90 | 180 | 270
+}
+
+export function rotatedSize(asset: Pick<OfficeFurnitureAsset, 'size'>, rotation = 0): [number, number] {
+  const [width, height] = asset.size
+  const normalized = normalizeRotation(rotation)
+  return normalized === 90 || normalized === 270 ? [height, width] : [width, height]
+}
+
+export function footprintTiles(tile: PlacedTile, asset?: Pick<OfficeFurnitureAsset, 'size'>): Array<{ x: number; y: number }> {
+  const [width, height] = asset ? rotatedSize(asset, tile.rotation) : [1, 1]
+  const cells: Array<{ x: number; y: number }> = []
+  for (let dy = 0; dy < height; dy += 1) {
+    for (let dx = 0; dx < width; dx += 1) {
+      cells.push({ x: tile.x + dx, y: tile.y + dy })
+    }
+  }
+  return cells
+}
+
+function rotateLocalPoint(dx: number, dy: number, width: number, height: number, rotation = 0): { x: number; y: number } {
+  switch (normalizeRotation(rotation)) {
+    case 90:
+      return { x: height - dy, y: dx }
+    case 180:
+      return { x: width - dx, y: height - dy }
+    case 270:
+      return { x: dy, y: width - dx }
+    default:
+      return { x: dx, y: dy }
+  }
+}
+
+export function rotateFacing(facing: OfficeFacing, rotation = 0): OfficeFacing {
+  const order: OfficeFacing[] = ['up', 'right', 'down', 'left']
+  const turns = normalizeRotation(rotation) / 90
+  const index = order.indexOf(facing)
+  return order[(index + turns + order.length) % order.length]
+}
+
+export interface OfficeUseSpot {
+  x: number
+  y: number
+  tileX: number
+  tileY: number
+  facing: OfficeFacing
+  kind: AssetUseKind
+  capacity: number
+}
+
+export function useSpots(tile: PlacedTile, asset: OfficeFurnitureAsset): OfficeUseSpot[] {
+  const usage = resolveUse(asset)
+  if (!usage) return []
+  const [width, height] = asset.size
+  return usage.spots.map((spot) => {
+    const rotated = rotateLocalPoint(spot.dx, spot.dy, width, height, tile.rotation)
+    const x = tile.x + rotated.x
+    const y = tile.y + rotated.y
+    return {
+      x,
+      y,
+      tileX: Math.floor(x),
+      tileY: Math.floor(y),
+      facing: rotateFacing(spot.facing, tile.rotation),
+      kind: usage.kind,
+      capacity: usage.capacity || usage.spots.length,
+    }
+  })
+}

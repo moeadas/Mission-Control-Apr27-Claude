@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { v4 as uuidv4 } from 'uuid'
-import { OFFICE_ASSETS, ASSET_CATEGORIES, tintSvg, OfficeFurnitureAsset } from '@/lib/office-assets'
+import { OFFICE_ASSETS, ASSET_CATEGORIES, tintSvg, resolveTraversal, OfficeFurnitureAsset } from '@/lib/office-assets'
 import { OFFICE_TEMPLATES, getTemplateLayout } from '@/lib/office-templates'
-import { OfficeLayout, PlacedTile, DEFAULT_LAYOUT, OfficeOrgStructure, levelFromXp } from '@/lib/office-types'
+import { OfficeLayout, PlacedTile, DEFAULT_LAYOUT, OfficeOrgStructure, levelFromXp, footprintTiles, rotatedSize } from '@/lib/office-types'
 import { getStoredToken } from '@/lib/auth/browser'
 import { useAgentsStore } from '@/lib/agents-store'
 // Batch W: presence + org + gamification
@@ -45,6 +45,99 @@ const COLOR_PRESETS = [
   '#8B5CF6','#EC4899','#14B8A6','#F97316',
 ]
 
+function isCollidable(asset?: OfficeFurnitureAsset): boolean {
+  return Boolean(asset && resolveTraversal(asset) !== 'walkable')
+}
+
+function clampPlacedTile(tile: PlacedTile, assetMap: Map<string, OfficeFurnitureAsset>): PlacedTile {
+  const asset = assetMap.get(tile.assetId)
+  const [width, height] = asset ? rotatedSize(asset, tile.rotation) : [1, 1]
+  return {
+    ...tile,
+    x: Math.max(0, Math.min(GRID_W - width, tile.x)),
+    y: Math.max(0, Math.min(GRID_H - height, tile.y)),
+  }
+}
+
+function tileFootprintKeys(tile: PlacedTile, assetMap: Map<string, OfficeFurnitureAsset>): string[] {
+  const asset = assetMap.get(tile.assetId)
+  if (!asset) return [`${tile.x}:${tile.y}`]
+  return footprintTiles(tile, asset).map((cell) => `${cell.x}:${cell.y}`)
+}
+
+function placementIsValid(
+  layout: OfficeLayout,
+  candidate: PlacedTile,
+  assetMap: Map<string, OfficeFurnitureAsset>,
+  ignoreIds = new Set<string>(),
+): boolean {
+  const asset = assetMap.get(candidate.assetId)
+  const clamped = clampPlacedTile(candidate, assetMap)
+  if (clamped.x !== candidate.x || clamped.y !== candidate.y) return false
+  const cells = tileFootprintKeys(candidate, assetMap)
+  if (cells.some((cell) => {
+    const [x, y] = cell.split(':').map(Number)
+    return x < 0 || y < 0 || x >= GRID_W || y >= GRID_H
+  })) return false
+  if (!isCollidable(asset)) return true
+
+  const occupied = new Set<string>()
+  for (const tile of layout.tiles) {
+    if (tile.id === candidate.id || ignoreIds.has(tile.id)) continue
+    if (!isCollidable(assetMap.get(tile.assetId))) continue
+    for (const cell of tileFootprintKeys(tile, assetMap)) occupied.add(cell)
+  }
+  return cells.every((cell) => !occupied.has(cell))
+}
+
+function layoutIsValid(layout: OfficeLayout, assetMap: Map<string, OfficeFurnitureAsset>): boolean {
+  const occupied = new Set<string>()
+  for (const rawTile of layout.tiles) {
+    const tile = clampPlacedTile(rawTile, assetMap)
+    if (tile.x !== rawTile.x || tile.y !== rawTile.y) return false
+    const cells = tileFootprintKeys(tile, assetMap)
+    if (cells.some((cell) => {
+      const [x, y] = cell.split(':').map(Number)
+      return x < 0 || y < 0 || x >= GRID_W || y >= GRID_H
+    })) return false
+    if (!isCollidable(assetMap.get(tile.assetId))) continue
+    for (const cell of cells) {
+      if (occupied.has(cell)) return false
+      occupied.add(cell)
+    }
+  }
+  return true
+}
+
+function repairLayout(layout: OfficeLayout, assetMap: Map<string, OfficeFurnitureAsset>): OfficeLayout {
+  const repaired: PlacedTile[] = []
+  const draft: OfficeLayout = { ...layout, gridWidth: GRID_W, gridHeight: GRID_H, tiles: repaired }
+
+  for (const source of layout.tiles || []) {
+    const clamped = clampPlacedTile(source, assetMap)
+    if (placementIsValid(draft, clamped, assetMap)) {
+      repaired.push(clamped)
+      continue
+    }
+
+    const asset = assetMap.get(source.assetId)
+    const [width, height] = asset ? rotatedSize(asset, source.rotation) : [1, 1]
+    let placed: PlacedTile | null = null
+    for (let y = 0; y <= GRID_H - height && !placed; y += 1) {
+      for (let x = 0; x <= GRID_W - width; x += 1) {
+        const candidate = { ...clamped, x, y }
+        if (placementIsValid(draft, candidate, assetMap)) {
+          placed = candidate
+          break
+        }
+      }
+    }
+    repaired.push(placed || clamped)
+  }
+
+  return { ...layout, gridWidth: GRID_W, gridHeight: GRID_H, tiles: repaired }
+}
+
 // ─── Mini template preview ────────────────────────────────────────────────────
 function TemplateMiniPreview({ layout, width = 260, height = 87 }: { layout: OfficeLayout; width?: number; height?: number }) {
   const sx = width / (layout.gridWidth || 30)
@@ -58,7 +151,8 @@ function TemplateMiniPreview({ layout, width = 260, height = 87 }: { layout: Off
       {layout.tiles.map(t => {
         const a = OFFICE_ASSETS.find(a => a.id === t.assetId)
         if (!a) return null
-        return <rect key={t.id} x={t.x*sx+0.5} y={t.y*sy+0.5} width={Math.max(1.5,a.size[0]*sx-1)} height={Math.max(1.5,a.size[1]*sy-1)} fill={t.primaryColor ?? a.defaultColor} rx={0.8} opacity={0.9} />
+        const [rw, rh] = rotatedSize(a, t.rotation)
+        return <rect key={t.id} x={t.x*sx+0.5} y={t.y*sy+0.5} width={Math.max(1.5,rw*sx-1)} height={Math.max(1.5,rh*sy-1)} fill={t.primaryColor ?? a.defaultColor} rx={0.8} opacity={0.9} />
       })}
     </svg>
   )
@@ -114,7 +208,7 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
 
   // Placing
   const [placing, setPlacing] = useState<OfficeFurnitureAsset | null>(null)
-  const [ghost, setGhost]     = useState<{ x: number; y: number } | null>(null)
+  const [ghost, setGhost]     = useState<{ x: number; y: number; valid: boolean } | null>(null)
 
   // Live drag positions (world px, fractional) — ref to avoid re-render on every mousemove
   const livePosRef = useRef<Map<string, { x: number; y: number }>>(new Map())
@@ -264,7 +358,12 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
     if (raw) {
       try {
         const p = JSON.parse(raw) as OfficeLayout
-        if (p?.version === 2) { setLayout(p); histRef.current = [p]; histIdx.current = 0; return }
+        if (p?.version === 2) {
+          const repaired = repairLayout(p, assetMap)
+          setLayout(repaired); histRef.current = [repaired]; histIdx.current = 0
+          localStorage.setItem(LS_KEY, JSON.stringify(repaired))
+          return
+        }
       } catch {}
     }
     const token = getStoredToken()
@@ -273,11 +372,12 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
       .then(r => r.ok ? r.json() : null)
       .then(d => {
         if (d?.layout?.version === 2) {
-          setLayout(d.layout); histRef.current = [d.layout]; histIdx.current = 0
-          localStorage.setItem(LS_KEY, JSON.stringify(d.layout))
+          const repaired = repairLayout(d.layout, assetMap)
+          setLayout(repaired); histRef.current = [repaired]; histIdx.current = 0
+          localStorage.setItem(LS_KEY, JSON.stringify(repaired))
         }
       }).catch(() => {})
-  }, [])
+  }, [assetMap])
 
   // ── Coordinate helpers ────────────────────────────────────────────────────
   const toWorld = useCallback((clientX: number, clientY: number) => {
@@ -314,19 +414,22 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
       if (curSel.size === 1 && (e.key === 'r' || e.key === 'R')) {
         e.preventDefault()
         const id = [...curSel][0]
-        pushHistory({ ...layoutRef.current, tiles: layoutRef.current.tiles.map(t =>
-          t.id === id ? { ...t, rotation: (t.rotation + 90) % 360 } : t) })
+        const nextTiles = layoutRef.current.tiles.map(t =>
+          t.id === id ? clampPlacedTile({ ...t, rotation: (t.rotation + 90) % 360 }, assetMap) : t)
+        const nextLayout = { ...layoutRef.current, tiles: nextTiles }
+        if (layoutIsValid(nextLayout, assetMap)) pushHistory(nextLayout)
         return
       }
       if (curSel.size > 0 && ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) {
         e.preventDefault()
         const dx = e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowRight' ? 1 : 0
         const dy = e.key === 'ArrowUp'   ? -1 : e.key === 'ArrowDown'  ? 1 : 0
-        pushHistory({ ...layoutRef.current, tiles: layoutRef.current.tiles.map(t =>
+        const nextLayout = { ...layoutRef.current, tiles: layoutRef.current.tiles.map(t =>
           curSel.has(t.id)
-            ? { ...t, x: Math.max(0, Math.min(GRID_W-1, t.x+dx)), y: Math.max(0, Math.min(GRID_H-1, t.y+dy)) }
+            ? clampPlacedTile({ ...t, x: t.x + dx, y: t.y + dy }, assetMap)
             : t
-        )})
+        )}
+        if (layoutIsValid(nextLayout, assetMap)) pushHistory(nextLayout)
       }
     }
     const ku = (e: KeyboardEvent) => {
@@ -335,7 +438,7 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
     window.addEventListener('keydown', kd)
     window.addEventListener('keyup', ku)
     return () => { window.removeEventListener('keydown', kd); window.removeEventListener('keyup', ku) }
-  }, [undo, redo, pushHistory])
+  }, [undo, redo, pushHistory, assetMap])
 
   // ── Pointer down ──────────────────────────────────────────────────────────
   const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
@@ -351,10 +454,15 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
     // Placing mode: click to place
     if (placing) {
       const wp = toWorld(e.clientX, e.clientY)
-      const [aw, ah] = placing.size
+      const [aw, ah] = rotatedSize(placing, 0)
       const gx = Math.max(0, Math.min(GRID_W - aw, Math.floor(wp.x / TILE_PX)))
       const gy = Math.max(0, Math.min(GRID_H - ah, Math.floor(wp.y / TILE_PX)))
       const newTile: PlacedTile = { id: uuidv4(), assetId: placing.id, x: gx, y: gy, rotation: 0 }
+      if (!placementIsValid(layoutRef.current, newTile, assetMap)) {
+        setSaveMsg('✗ Space occupied')
+        setTimeout(() => setSaveMsg(''), 1800)
+        return
+      }
       pushHistory({ ...layoutRef.current, tiles: [...layoutRef.current.tiles, newTile] })
       return
     }
@@ -409,7 +517,7 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
       bandWx: wp.x, bandWy: wp.y,
     }
     setBand(null)
-  }, [placing, toWorld, pushHistory])
+  }, [placing, toWorld, pushHistory, assetMap])
 
   // ── Pointer move ──────────────────────────────────────────────────────────
   const onPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
@@ -418,10 +526,13 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
     // Ghost preview for placing
     if (placing) {
       const wp = toWorld(e.clientX, e.clientY)
-      const [aw, ah] = placing.size
+      const [aw, ah] = rotatedSize(placing, 0)
+      const gx = Math.max(0, Math.min(GRID_W - aw, Math.floor(wp.x / TILE_PX)))
+      const gy = Math.max(0, Math.min(GRID_H - ah, Math.floor(wp.y / TILE_PX)))
       setGhost({
-        x: Math.max(0, Math.min(GRID_W - aw, Math.floor(wp.x / TILE_PX))),
-        y: Math.max(0, Math.min(GRID_H - ah, Math.floor(wp.y / TILE_PX))),
+        x: gx,
+        y: gy,
+        valid: placementIsValid(layoutRef.current, { id: '__ghost__', assetId: placing.id, x: gx, y: gy, rotation: 0 }, assetMap),
       })
     } else {
       setGhost(null)
@@ -460,7 +571,7 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
         const newSel = new Set<string>()
         layoutRef.current.tiles.forEach(t => {
           const a = assetMap.get(t.assetId)
-          const [aw, ah] = a?.size ?? [1, 1]
+          const [aw, ah] = a ? rotatedSize(a, t.rotation) : [1, 1]
           const tx = t.x * TILE_PX, ty = t.y * TILE_PX
           if (tx < x2 && tx + aw * TILE_PX > x1 && ty < y2 && ty + ah * TILE_PX > y1) newSel.add(t.id)
         })
@@ -480,7 +591,7 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
         const live = livePosRef.current.get(t.id)
         if (!live) return t
         const a = assetMap.get(t.assetId)
-        const [aw, ah] = a?.size ?? [1, 1]
+        const [aw, ah] = a ? rotatedSize(a, t.rotation) : [1, 1]
         return {
           ...t,
           x: Math.max(0, Math.min(GRID_W - aw, Math.round(live.x / TILE_PX))),
@@ -489,7 +600,13 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
       })
       livePosRef.current = new Map()
       setLivePosVersion(v => v + 1)
-      pushHistory({ ...layoutRef.current, tiles: newTiles })
+      const nextLayout = { ...layoutRef.current, tiles: newTiles }
+      if (layoutIsValid(nextLayout, assetMap)) {
+        pushHistory(nextLayout)
+      } else {
+        setSaveMsg('✗ Space occupied')
+        setTimeout(() => setSaveMsg(''), 1800)
+      }
     } else if (d.mode === 'move') {
       livePosRef.current = new Map()
     }
@@ -517,8 +634,16 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
 
   // ── Tile updates ──────────────────────────────────────────────────────────
   const updateTile = useCallback((id: string, patch: Partial<PlacedTile>) => {
-    pushHistory({ ...layoutRef.current, tiles: layoutRef.current.tiles.map(t => t.id === id ? { ...t, ...patch } : t) })
-  }, [pushHistory])
+    const nextTiles = layoutRef.current.tiles.map(t => t.id === id ? clampPlacedTile({ ...t, ...patch }, assetMap) : t)
+    const nextLayout = { ...layoutRef.current, tiles: nextTiles }
+    const changesGeometry = 'x' in patch || 'y' in patch || 'rotation' in patch || 'assetId' in patch
+    if (!changesGeometry || layoutIsValid(nextLayout, assetMap)) {
+      pushHistory(nextLayout)
+    } else {
+      setSaveMsg('✗ Space occupied')
+      setTimeout(() => setSaveMsg(''), 1800)
+    }
+  }, [pushHistory, assetMap])
 
   const deleteSelected = useCallback(() => {
     const curSel = selRef.current
@@ -547,9 +672,9 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
   const confirmTemplate = useCallback(() => {
     if (!pendingTpl) return
     const tl = getTemplateLayout(pendingTpl)
-    if (tl) { pushHistory(tl); setSel(new Set()) }
+    if (tl) { pushHistory(repairLayout(tl, assetMap)); setSel(new Set()) }
     setPendingTpl(null); setShowTpl(false)
-  }, [pendingTpl, pushHistory])
+  }, [pendingTpl, pushHistory, assetMap])
 
   // ── Filtered assets ───────────────────────────────────────────────────────
   const filteredAssets = useMemo(() => {
@@ -572,7 +697,10 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
       const f = input.files?.[0]; if (!f) return
       const r = new FileReader()
       r.onload = () => {
-        try { const p = JSON.parse(r.result as string) as OfficeLayout; if (p.version === 2) { pushHistory(p); setSel(new Set()) } } catch {}
+        try {
+          const p = JSON.parse(r.result as string) as OfficeLayout
+          if (p.version === 2) { pushHistory(repairLayout(p, assetMap)); setSel(new Set()) }
+        } catch {}
       }
       r.readAsText(f)
     }
@@ -884,9 +1012,9 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
               <div style={{
                 position: 'absolute', pointerEvents: 'none', zIndex: 10,
                 left: ghost.x * TILE_PX, top: ghost.y * TILE_PX,
-                width: placing.size[0] * TILE_PX, height: placing.size[1] * TILE_PX,
-                background: placing.defaultColor + '44',
-                border: `2px dashed ${placing.defaultColor}`,
+                width: rotatedSize(placing, 0)[0] * TILE_PX, height: rotatedSize(placing, 0)[1] * TILE_PX,
+                background: ghost.valid ? placing.defaultColor + '44' : 'rgba(248,113,113,0.18)',
+                border: `2px dashed ${ghost.valid ? placing.defaultColor : '#f87171'}`,
                 borderRadius: 4,
               }} />
             )}
@@ -896,6 +1024,7 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
               const a = assetMap.get(t.assetId)
               if (!a) return null
               const [aw, ah] = a.size
+              const [rw, rh] = rotatedSize(a, t.rotation)
               const live = livePosRef.current.get(t.id)
               const px = live ? live.x : t.x * TILE_PX
               const py = live ? live.y : t.y * TILE_PX
@@ -907,9 +1036,7 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
                   style={{
                     position: 'absolute',
                     left: px, top: py,
-                    width: aw * TILE_PX, height: ah * TILE_PX,
-                    transform: t.rotation ? `rotate(${t.rotation}deg)` : undefined,
-                    transformOrigin: 'center center',
+                    width: rw * TILE_PX, height: rh * TILE_PX,
                     cursor: placing ? 'copy' : 'grab',
                     zIndex: isSelected ? 3 : 1,
                     outline: isSelected ? '2.5px solid #3B82F6' : '2px solid transparent',
@@ -924,7 +1051,17 @@ export function OfficeBuilder({ isSuperAdmin }: Props) {
                     src={assetDataUrl(a, t.primaryColor)}
                     alt={a.name}
                     draggable={false}
-                    style={{ width: '100%', height: '100%', display: 'block', pointerEvents: 'none' }}
+                    style={{
+                      position: 'absolute',
+                      left: ((rw - aw) * TILE_PX) / 2,
+                      top: ((rh - ah) * TILE_PX) / 2,
+                      width: aw * TILE_PX,
+                      height: ah * TILE_PX,
+                      display: 'block',
+                      pointerEvents: 'none',
+                      transform: t.rotation ? `rotate(${t.rotation}deg)` : undefined,
+                      transformOrigin: 'center center',
+                    }}
                   />
                   {t.label && (
                     <div style={{
