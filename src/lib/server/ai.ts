@@ -10,6 +10,7 @@ type VerifyPayload =
   | { provider: 'serper'; apiKey: string; testQuery?: string; country?: string; language?: string; resultCount?: number }
   | { provider: 'meta'; accessToken: string }
   | { provider: 'google-oauth'; clientId: string; clientSecret?: string; redirectUri: string }
+  | { provider: 'google-ads'; developerToken: string; accessToken?: string; managerCustomerId?: string }
 
 export async function verifyProvider(payload: VerifyPayload) {
   // ── Google OAuth App ────────────────────────────────────────────────────────
@@ -56,6 +57,45 @@ export async function verifyProvider(payload: VerifyPayload) {
       ok: true,
       redirectUri,
       warning: `Google returned HTTP ${response.status}; settings format is valid, but complete Connect Google to confirm the secret.`,
+    }
+  }
+
+  // ── Google Ads ──────────────────────────────────────────────────────────────
+  if (payload.provider === 'google-ads') {
+    const developerToken = payload.developerToken?.trim()
+    if (!developerToken) throw new Error('Google Ads developer token is required.')
+
+    // Google Ads can only be fully verified once a user has completed Google
+    // OAuth with the adwords scope. Without an access token we still validate
+    // the local setting shape so the secret can be saved safely.
+    if (!payload.accessToken) {
+      return {
+        ok: true,
+        warning: 'Developer token saved. Reconnect Google to verify accessible Google Ads accounts.',
+      }
+    }
+
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${payload.accessToken}`,
+      'developer-token': developerToken,
+      Accept: 'application/json',
+    }
+    const loginCustomerId = payload.managerCustomerId?.replace(/\D/g, '')
+    if (loginCustomerId) headers['login-customer-id'] = loginCustomerId
+
+    const response = await fetch('https://googleads.googleapis.com/v24/customers:listAccessibleCustomers', {
+      headers,
+      signal: AbortSignal.timeout(12000),
+    })
+    const data = await response.json().catch(() => null)
+    if (!response.ok) {
+      throw new Error(data?.error?.message || `Google Ads returned HTTP ${response.status}.`)
+    }
+    const resourceNames = Array.isArray(data?.resourceNames) ? data.resourceNames : []
+    return {
+      ok: true,
+      count: resourceNames.length,
+      resourceNames,
     }
   }
 

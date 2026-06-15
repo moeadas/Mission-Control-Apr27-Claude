@@ -1,4 +1,4 @@
-import { AIProvider, ProviderFallback, ProviderSettings, AnthropicSettings, OpenAISettings, MetaAdsSettings, HiggsFieldSettings, SerperSearchSettings, GoogleOAuthSettings } from '@/lib/types'
+import { AIProvider, ProviderFallback, ProviderSettings, AnthropicSettings, OpenAISettings, MetaAdsSettings, HiggsFieldSettings, SerperSearchSettings, GoogleOAuthSettings, GoogleAdsSettings } from '@/lib/types'
 
 /**
  * Default per-provider model used for content-generation deliverables when
@@ -142,6 +142,15 @@ export const DEFAULT_PROVIDER_SETTINGS: ProviderSettings = {
     maskedClientSecret: '',
     redirectUri: '',
   },
+  googleAds: {
+    enabled: false,
+    verified: false,
+    developerToken: '',
+    maskedDeveloperToken: '',
+    managerCustomerId: '',
+    defaultCustomerId: '',
+    primaryMarket: 'JO',
+  },
 }
 
 export const THINKING_DELIVERABLE_TYPES = new Set([
@@ -262,6 +271,10 @@ export function normalizeProviderSettings(input?: Partial<ProviderSettings> | nu
     google: {
       ...DEFAULT_PROVIDER_SETTINGS.google!,
       ...(input?.google || {}),
+    },
+    googleAds: {
+      ...DEFAULT_PROVIDER_SETTINGS.googleAds!,
+      ...(input?.googleAds || {}),
     },
   }
 }
@@ -438,6 +451,13 @@ export function stripProviderSecrets(settings: ProviderSettings) {
       : undefined,
     google: settings.google
       ? { ...settings.google, clientSecret: '', maskedClientSecret: settings.google.maskedClientSecret || '' }
+      : undefined,
+    googleAds: settings.googleAds
+      ? {
+          ...settings.googleAds,
+          developerToken: '',
+          maskedDeveloperToken: settings.googleAds.maskedDeveloperToken || '',
+        }
       : undefined,
   }
 }

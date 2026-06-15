@@ -491,6 +491,17 @@ export interface GoogleOAuthSettings {
   redirectUri?: string
 }
 
+export interface GoogleAdsSettings {
+  enabled: boolean
+  verified: boolean
+  verifiedAt?: string
+  developerToken: string
+  maskedDeveloperToken?: string
+  managerCustomerId?: string
+  defaultCustomerId?: string
+  primaryMarket?: string
+}
+
 export interface ProviderSettings {
   routing: ProviderRoutingSettings
   ollama: OllamaSettings
@@ -503,6 +514,7 @@ export interface ProviderSettings {
   higgsfield?: HiggsFieldSettings
   serper?: SerperSearchSettings
   google?: GoogleOAuthSettings
+  googleAds?: GoogleAdsSettings
 }
 
 export interface AgencySettings {

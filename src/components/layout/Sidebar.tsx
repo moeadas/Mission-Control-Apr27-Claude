@@ -36,6 +36,7 @@ const PRIMARY_NAV = [
   { id: 'tasks', label: 'Tasks', icon: ListTodo, href: '/tasks', color: '#fb923c' },
   { id: 'analytics', label: 'Analytics', icon: BarChart3, href: '/analytics', color: '#a78bfa' },
   { id: 'ads', label: 'Meta Ads', icon: Megaphone, href: '/ads', color: '#3b82f6' },
+  { id: 'google-ads', label: 'Google Ads', icon: Megaphone, href: '/google-ads', color: '#34a853' },
   { id: 'outputs', label: 'Output', icon: FileText, href: '/outputs', color: '#60a5fa' },
 ]
 

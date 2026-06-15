@@ -89,6 +89,12 @@ function mergeProviderSettings(primary?: Partial<ProviderSettings> | null, fallb
       clientSecret: primary?.google?.clientSecret || fallback?.google?.clientSecret || '',
       maskedClientSecret: primary?.google?.maskedClientSecret || fallback?.google?.maskedClientSecret || '',
     },
+    googleAds: {
+      ...(fallback?.googleAds || {}),
+      ...(primary?.googleAds || {}),
+      developerToken: primary?.googleAds?.developerToken || fallback?.googleAds?.developerToken || '',
+      maskedDeveloperToken: primary?.googleAds?.maskedDeveloperToken || fallback?.googleAds?.maskedDeveloperToken || '',
+    },
   } as Partial<ProviderSettings>)
 }
 

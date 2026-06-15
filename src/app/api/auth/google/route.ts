@@ -23,6 +23,7 @@ const DEFAULT_SCOPES = [
   'https://www.googleapis.com/auth/spreadsheets',
   'https://www.googleapis.com/auth/drive.file',
   'https://www.googleapis.com/auth/analytics.readonly',
+  'https://www.googleapis.com/auth/adwords',
 ]
 
 function getBearerToken(request: NextRequest) {

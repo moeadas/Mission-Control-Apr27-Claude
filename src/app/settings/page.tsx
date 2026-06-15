@@ -12,6 +12,7 @@ import { useAgentsStore } from '@/lib/agents-store'
 import { getProviderModels, MODEL_OPTIONS, PROVIDER_OPTIONS } from '@/lib/providers'
 import { ProviderFallback, ThemeMode } from '@/lib/types'
 import { META_MARKET_OPTIONS } from '@/lib/meta-ads-intelligence'
+import { GOOGLE_ADS_MARKET_OPTIONS } from '@/lib/google-ads-intelligence'
 import { getAuthToken } from '@/lib/auth/browser'
 import { Lock } from 'lucide-react'
 import Link from 'next/link'
@@ -174,6 +175,15 @@ export default function SettingsPage() {
   const [googleOAuthHealthMessage, setGoogleOAuthHealthMessage] = useState<string>(
     providerSettings.google?.verified ? 'Google OAuth app connected' : 'Google OAuth app not verified yet'
   )
+  const [googleAdsDeveloperTokenInput, setGoogleAdsDeveloperTokenInput] = useState('')
+  const [googleAdsManagerCustomerInput, setGoogleAdsManagerCustomerInput] = useState(providerSettings.googleAds?.managerCustomerId || '')
+  const [googleAdsDefaultCustomerInput, setGoogleAdsDefaultCustomerInput] = useState(providerSettings.googleAds?.defaultCustomerId || '')
+  const [googleAdsPrimaryMarketInput, setGoogleAdsPrimaryMarketInput] = useState(providerSettings.googleAds?.primaryMarket || 'JO')
+  const [isVerifyingGoogleAds, setIsVerifyingGoogleAds] = useState(false)
+  const [googleAdsHealth, setGoogleAdsHealth] = useState<ProviderHealth>(providerSettings.googleAds?.verified ? 'connected' : 'idle')
+  const [googleAdsHealthMessage, setGoogleAdsHealthMessage] = useState<string>(
+    providerSettings.googleAds?.verified ? 'Google Ads API settings connected' : 'Google Ads developer token not verified yet'
+  )
   const [visualHealth, setVisualHealth] = useState<VisualHealth>(providerSettings.visual?.verified ? 'connected' : 'idle')
   const [visualHealthMessage, setVisualHealthMessage] = useState<string>(
     providerSettings.visual?.verified ? 'Visual generation connected' : 'Visual generation not verified yet'
@@ -201,7 +211,7 @@ export default function SettingsPage() {
     setGoogleOAuthHealthMessage(
       accountEmail
         ? `Google account connected · ${accountEmail}`
-        : 'Google account connected · Analytics, Docs, Sheets, and Drive are ready'
+        : 'Google account connected · Analytics, Ads, Docs, Sheets, and Drive are ready'
     )
   }
 
@@ -364,9 +374,9 @@ export default function SettingsPage() {
     setGoogleOAuthHealth(providerSettings.google?.verified || googleAccountConnected ? 'connected' : 'idle')
     setGoogleOAuthHealthMessage(
       googleAccountConnected
-        ? 'Google account connected · Analytics, Docs, Sheets, and Drive are ready'
+        ? 'Google account connected · Analytics, Ads, Docs, Sheets, and Drive are ready'
         : providerSettings.google?.verified
-        ? 'Google OAuth app connected · ready for Analytics, Docs, Sheets, and Drive'
+        ? 'Google OAuth app connected · ready for Analytics, Ads, Docs, Sheets, and Drive'
         : providerSettings.google?.maskedClientSecret
           ? 'Saved Google OAuth settings are not verified in this session'
           : 'Add your OAuth Web App Client ID and Client Secret, then verify'
@@ -377,6 +387,26 @@ export default function SettingsPage() {
     providerSettings.google?.redirectUri,
     providerSettings.google?.verified,
     oauthConnections.google_analytics,
+  ])
+
+  useEffect(() => {
+    setGoogleAdsManagerCustomerInput(providerSettings.googleAds?.managerCustomerId || '')
+    setGoogleAdsDefaultCustomerInput(providerSettings.googleAds?.defaultCustomerId || '')
+    setGoogleAdsPrimaryMarketInput(providerSettings.googleAds?.primaryMarket || 'JO')
+    setGoogleAdsHealth(providerSettings.googleAds?.verified ? 'connected' : 'idle')
+    setGoogleAdsHealthMessage(
+      providerSettings.googleAds?.verified
+        ? `Google Ads connected · ${providerSettings.googleAds?.primaryMarket || 'JO'} benchmark market`
+        : providerSettings.googleAds?.maskedDeveloperToken
+          ? 'Saved Google Ads developer token is not verified in this session'
+          : 'Google Ads developer token not verified yet'
+    )
+  }, [
+    providerSettings.googleAds?.defaultCustomerId,
+    providerSettings.googleAds?.managerCustomerId,
+    providerSettings.googleAds?.maskedDeveloperToken,
+    providerSettings.googleAds?.primaryMarket,
+    providerSettings.googleAds?.verified,
   ])
 
   useEffect(() => {
@@ -942,6 +972,75 @@ export default function SettingsPage() {
       toast.error(err.message || 'Could not verify Google OAuth settings')
     } finally {
       setIsVerifyingGoogleOAuth(false)
+    }
+  }
+
+  const saveGoogleAds = async () => {
+    const developerToken = googleAdsDeveloperTokenInput.trim()
+    const existingToken = providerSettings.googleAds?.maskedDeveloperToken
+    const managerCustomerId = googleAdsManagerCustomerInput.replace(/\D/g, '')
+    const defaultCustomerId = googleAdsDefaultCustomerInput.replace(/\D/g, '')
+    const primaryMarket = googleAdsPrimaryMarketInput || 'JO'
+
+    if (!developerToken && !existingToken) {
+      toast.error('Paste the Google Ads developer token first')
+      return
+    }
+
+    setIsVerifyingGoogleAds(true)
+    setGoogleAdsHealth('testing')
+    setGoogleAdsHealthMessage('Checking Google Ads API settings…')
+    try {
+      const authToken = await getAuthToken()
+      const verifyRes = await fetch('/api/providers/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) },
+        body: JSON.stringify({
+          provider: 'google-ads',
+          developerToken: developerToken || providerSettings.googleAds?.developerToken || '',
+          managerCustomerId,
+        }),
+      })
+      const verifyData = await verifyRes.json().catch(() => null)
+      if (!verifyRes.ok || !verifyData?.ok) {
+        throw new Error(verifyData?.error || 'Google Ads verification failed')
+      }
+
+      const nextGoogleAds = {
+        enabled: true,
+        verified: true,
+        verifiedAt: new Date().toISOString(),
+        developerToken: developerToken || providerSettings.googleAds?.developerToken || '',
+        maskedDeveloperToken: developerToken
+          ? `${developerToken.slice(0, 6)}...${developerToken.slice(-4)}`
+          : providerSettings.googleAds?.maskedDeveloperToken || '',
+        managerCustomerId,
+        defaultCustomerId,
+        primaryMarket,
+      }
+      updateProviderSettings('googleAds' as any, nextGoogleAds as any)
+      const nextSettings = { ...providerSettings, googleAds: nextGoogleAds }
+      const saveRes = await fetch('/api/providers/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) },
+        body: JSON.stringify({ providerSettings: nextSettings }),
+      })
+      if (!saveRes.ok) throw new Error('Google Ads verified but settings could not be saved')
+      setGoogleAdsHealth('connected')
+      setGoogleAdsHealthMessage(
+        verifyData.count !== undefined
+          ? `Google Ads connected · ${verifyData.count} accessible customer(s) · ${primaryMarket} benchmark market`
+          : `Google Ads settings saved · reconnect Google to verify accounts · ${primaryMarket} benchmark market`
+      )
+      setGoogleAdsDeveloperTokenInput('')
+      toast.success('Google Ads settings saved')
+    } catch (err: any) {
+      updateProviderSettings('googleAds' as any, { verified: false } as any)
+      setGoogleAdsHealth('invalid')
+      setGoogleAdsHealthMessage(err.message || 'Google Ads verification failed')
+      toast.error(err.message || 'Could not verify Google Ads settings')
+    } finally {
+      setIsVerifyingGoogleAds(false)
     }
   }
 
@@ -2011,6 +2110,79 @@ export default function SettingsPage() {
                           Connect Google
                         </Button>
                       )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-border bg-base p-4 space-y-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium text-text-primary">Google Ads API</p>
+                        <p className="text-[11px] text-text-secondary mt-1">
+                          Add the Google Ads developer token. Use the same Google OAuth connection above for account access.
+                        </p>
+                      </div>
+                      <Badge
+                        color={googleAdsHealth === 'connected' ? '#00d4aa' : googleAdsHealth === 'invalid' ? '#ff5b7f' : '#8b92a8'}
+                        variant="outline"
+                      >
+                        {googleAdsHealth === 'connected' ? 'Ready' : googleAdsHealth === 'testing' ? 'Testing' : 'Not ready'}
+                      </Badge>
+                    </div>
+
+                    <Input
+                      label="Google Ads Developer Token"
+                      type="password"
+                      value={googleAdsDeveloperTokenInput}
+                      placeholder={providerSettings.googleAds?.maskedDeveloperToken || 'Developer token from Google Ads API Center'}
+                      onChange={(e) => {
+                        setGoogleAdsDeveloperTokenInput(e.target.value)
+                        updateProviderSettings('googleAds' as any, {
+                          ...(providerSettings.googleAds || {}),
+                          verified: false,
+                        } as any)
+                      }}
+                    />
+                    {providerSettings.googleAds?.maskedDeveloperToken && (
+                      <p className="text-[11px] font-mono text-text-dim flex items-center gap-1.5">
+                        <KeyRound size={12} />
+                        Saved token as {providerSettings.googleAds.maskedDeveloperToken}
+                      </p>
+                    )}
+                    <div className="grid md:grid-cols-2 gap-3">
+                      <Input
+                        label="Manager Customer ID"
+                        value={googleAdsManagerCustomerInput}
+                        placeholder="Optional MCC ID, numbers only"
+                        onChange={(e) => setGoogleAdsManagerCustomerInput(e.target.value)}
+                      />
+                      <Input
+                        label="Default Customer ID"
+                        value={googleAdsDefaultCustomerInput}
+                        placeholder="Optional account ID"
+                        onChange={(e) => setGoogleAdsDefaultCustomerInput(e.target.value)}
+                      />
+                    </div>
+                    <Select
+                      label="Benchmark Market"
+                      value={googleAdsPrimaryMarketInput}
+                      onChange={(e) => setGoogleAdsPrimaryMarketInput(e.target.value)}
+                      options={GOOGLE_ADS_MARKET_OPTIONS}
+                    />
+                    <div className="rounded-xl border border-border bg-surface px-3 py-2">
+                      <p className="text-[11px] font-mono uppercase text-text-dim">Status</p>
+                      <p className="mt-1 text-sm text-text-primary">{googleAdsHealthMessage}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                      <Button variant="secondary" onClick={saveGoogleAds} disabled={isVerifyingGoogleAds}>
+                        <Check size={14} />
+                        {isVerifyingGoogleAds ? 'Checking...' : 'Save Google Ads Settings'}
+                      </Button>
+                      <Link href="/google-ads">
+                        <Button variant="secondary">
+                          <ExternalLink size={13} />
+                          Open Google Ads
+                        </Button>
+                      </Link>
                     </div>
                   </div>
 
