@@ -144,6 +144,11 @@ function extractGoogleAdsErrorCode(errorPayload: any) {
   return errorPayload?.status || ''
 }
 
+function extractGoogleAdsErrorPayload(data: any) {
+  if (Array.isArray(data)) return data.find((item) => item?.error)?.error || data[0]?.error || {}
+  return data?.error || {}
+}
+
 function googleAdsActionableMessage(payload: any, status: number, rawBody = '') {
   const trimmedBody = rawBody.trim()
   const baseMessage = payload?.message || (
@@ -213,7 +218,7 @@ export async function googleAdsRequest<T = any>(
     data = null
   }
   if (!response.ok) {
-    const googleError = data?.error || {}
+    const googleError = extractGoogleAdsErrorPayload(data)
     const googleCode = extractGoogleAdsErrorCode(googleError)
     const message = googleAdsActionableMessage(googleError, response.status, rawBody)
     console.warn('[google-ads] API request failed', {
@@ -281,7 +286,7 @@ export async function describeGoogleAdsCustomer(
       FROM customer
       LIMIT 1
     `
-  ).catch(() => [])
+  )
   const customer = rows[0]?.customer || {}
   return {
     id: normalizeCustomerId(customer.id || customerId),
@@ -291,6 +296,18 @@ export async function describeGoogleAdsCustomer(
     timeZone: customer.timeZone || customer.time_zone || '',
     manager: Boolean(customer.manager),
     status: customer.status || '',
+  }
+}
+
+export async function tryDescribeGoogleAdsCustomer(
+  customerId: string,
+  auth: { accessToken: string; developerToken: string; managerCustomerId?: string | null }
+) {
+  try {
+    return { account: await describeGoogleAdsCustomer(customerId, auth), error: null as GoogleAdsApiError | null }
+  } catch (error) {
+    if (error instanceof GoogleAdsApiError) return { account: null, error }
+    throw error
   }
 }
 
