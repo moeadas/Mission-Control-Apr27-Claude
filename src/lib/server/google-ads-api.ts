@@ -14,6 +14,7 @@ export class GoogleAdsApiError extends Error {
   googleCode?: string
   requestId?: string | null
   details?: unknown
+  rawBody?: string
 
   constructor(message: string, options: {
     status: number
@@ -21,6 +22,7 @@ export class GoogleAdsApiError extends Error {
     googleCode?: string
     requestId?: string | null
     details?: unknown
+    rawBody?: string
   }) {
     super(message)
     this.name = 'GoogleAdsApiError'
@@ -29,6 +31,7 @@ export class GoogleAdsApiError extends Error {
     this.googleCode = options.googleCode
     this.requestId = options.requestId
     this.details = options.details
+    this.rawBody = options.rawBody
   }
 }
 
@@ -141,8 +144,13 @@ function extractGoogleAdsErrorCode(errorPayload: any) {
   return errorPayload?.status || ''
 }
 
-function googleAdsActionableMessage(payload: any, status: number) {
-  const baseMessage = payload?.message || `Google Ads API returned HTTP ${status}.`
+function googleAdsActionableMessage(payload: any, status: number, rawBody = '') {
+  const trimmedBody = rawBody.trim()
+  const baseMessage = payload?.message || (
+    trimmedBody
+      ? `Google Ads API returned HTTP ${status}: ${trimmedBody.slice(0, 500)}`
+      : `Google Ads API returned HTTP ${status}. Google did not return a JSON error body, so check that the Google Ads API is enabled in the OAuth project, the developer token is approved for the account type, and the connected Google account has access to at least one Google Ads customer.`
+  )
   const code = extractGoogleAdsErrorCode(payload)
 
   if (code.includes('DEVELOPER_TOKEN_NOT_APPROVED')) {
@@ -173,6 +181,7 @@ export function googleAdsErrorResponse(error: unknown) {
         googleStatus: error.googleStatus,
         googleCode: error.googleCode,
         requestId: error.requestId,
+        rawBody: error.rawBody?.slice(0, 500),
       },
     }
   }
@@ -196,16 +205,33 @@ export async function googleAdsRequest<T = any>(
     },
     cache: 'no-store',
   })
-  const data = await response.json().catch(() => null)
+  const rawBody = await response.text().catch(() => '')
+  let data: any = null
+  try {
+    data = rawBody ? JSON.parse(rawBody) : null
+  } catch {
+    data = null
+  }
   if (!response.ok) {
     const googleError = data?.error || {}
     const googleCode = extractGoogleAdsErrorCode(googleError)
-    throw new GoogleAdsApiError(googleAdsActionableMessage(googleError, response.status), {
+    const message = googleAdsActionableMessage(googleError, response.status, rawBody)
+    console.warn('[google-ads] API request failed', {
+      path,
+      status: response.status,
+      googleStatus: googleError.status,
+      googleCode,
+      requestId: response.headers.get('request-id') || response.headers.get('x-request-id'),
+      message,
+      rawBody: rawBody.slice(0, 500),
+    })
+    throw new GoogleAdsApiError(message, {
       status: response.status,
       googleStatus: googleError.status,
       googleCode,
       requestId: response.headers.get('request-id') || response.headers.get('x-request-id'),
       details: googleError.details,
+      rawBody,
     })
   }
   return data as T

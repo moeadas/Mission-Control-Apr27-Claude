@@ -80,16 +80,20 @@ export async function verifyProvider(payload: VerifyPayload) {
       'developer-token': developerToken,
       Accept: 'application/json',
     }
-    const loginCustomerId = payload.managerCustomerId?.replace(/\D/g, '')
-    if (loginCustomerId) headers['login-customer-id'] = loginCustomerId
-
     const response = await fetch('https://googleads.googleapis.com/v24/customers:listAccessibleCustomers', {
       headers,
       signal: AbortSignal.timeout(12000),
     })
-    const data = await response.json().catch(() => null)
+    const rawBody = await response.text().catch(() => '')
+    let data: any = null
+    try {
+      data = rawBody ? JSON.parse(rawBody) : null
+    } catch {
+      data = null
+    }
     if (!response.ok) {
-      throw new Error(data?.error?.message || `Google Ads returned HTTP ${response.status}.`)
+      const message = data?.error?.message || rawBody.slice(0, 500) || `Google Ads returned HTTP ${response.status}.`
+      throw new Error(`${message} Check that the Google Ads API is enabled, the developer token is approved, and the connected Google account has Google Ads access.`)
     }
     const resourceNames = Array.isArray(data?.resourceNames) ? data.resourceNames : []
     return {

@@ -97,6 +97,17 @@ interface CampaignDetails {
   dateRange?: { since: string; until: string }
 }
 
+function buildGoogleAdsErrorMessage(payload: any, fallback: string) {
+  const message = payload?.error || fallback
+  const details = [
+    payload?.googleCode ? `Code: ${payload.googleCode}` : '',
+    payload?.googleStatus ? `Status: ${payload.googleStatus}` : '',
+    payload?.requestId ? `Request ID: ${payload.requestId}` : '',
+    payload?.rawBody && !String(message).includes(payload.rawBody) ? `Google response: ${payload.rawBody}` : '',
+  ].filter(Boolean)
+  return [message, ...details].join(' · ')
+}
+
 const DATE_PRESETS = [
   { value: 'today', label: 'Today' },
   { value: 'yesterday', label: 'Yesterday' },
@@ -535,7 +546,7 @@ export default function GoogleAdsPage() {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       })
       const payload = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(payload?.error || 'Failed to load Google Ads accounts')
+      if (!response.ok) throw new Error(buildGoogleAdsErrorMessage(payload, 'Failed to load Google Ads accounts'))
       setAccounts(payload.accounts || [])
       setSelectedAccountId((current) => current || payload.defaultCustomerId || payload.accounts?.[0]?.id || '')
       setMarketCode((payload.primaryMarket || 'JO') as GoogleAdsMarketCode)
@@ -558,7 +569,7 @@ export default function GoogleAdsPage() {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       })
       const payload = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(payload?.error || 'Failed to load campaigns')
+      if (!response.ok) throw new Error(buildGoogleAdsErrorMessage(payload, 'Failed to load campaigns'))
       setCampaigns(payload.campaigns || [])
       setSummary(payload.summary || null)
       setDateRange(payload.dateRange || null)
@@ -586,7 +597,7 @@ export default function GoogleAdsPage() {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       })
       const payload = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(payload?.error || 'Failed to load campaign details')
+      if (!response.ok) throw new Error(buildGoogleAdsErrorMessage(payload, 'Failed to load campaign details'))
       setDetails(payload)
     } catch (err: any) {
       setDetails(null)
@@ -624,8 +635,6 @@ export default function GoogleAdsPage() {
   }, [campaignSearch, campaigns, statusFilter])
 
   const totalRows = filteredCampaigns.length
-
-  if (!loadingAccounts && error && !accounts.length) return <GoogleAdsConnectState />
 
   return (
     <ClientShell>
