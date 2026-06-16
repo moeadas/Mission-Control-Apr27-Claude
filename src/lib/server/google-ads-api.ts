@@ -8,6 +8,30 @@ const MADRID_TIME_ZONE = 'Europe/Madrid'
 
 export type GoogleAdsDateRange = { since: string; until: string }
 
+export class GoogleAdsApiError extends Error {
+  status: number
+  googleStatus?: string
+  googleCode?: string
+  requestId?: string | null
+  details?: unknown
+
+  constructor(message: string, options: {
+    status: number
+    googleStatus?: string
+    googleCode?: string
+    requestId?: string | null
+    details?: unknown
+  }) {
+    super(message)
+    this.name = 'GoogleAdsApiError'
+    this.status = options.status
+    this.googleStatus = options.googleStatus
+    this.googleCode = options.googleCode
+    this.requestId = options.requestId
+    this.details = options.details
+  }
+}
+
 const madridDateFormatter = new Intl.DateTimeFormat('en-CA', {
   timeZone: MADRID_TIME_ZONE,
   year: 'numeric',
@@ -92,6 +116,7 @@ function googleAdsHeaders(input: {
   accessToken: string
   developerToken: string
   managerCustomerId?: string | null
+  includeLoginCustomerId?: boolean
 }) {
   const headers: Record<string, string> = {
     Authorization: `Bearer ${input.accessToken}`,
@@ -100,26 +125,88 @@ function googleAdsHeaders(input: {
     'Content-Type': 'application/json',
   }
   const managerCustomerId = normalizeCustomerId(input.managerCustomerId)
-  if (managerCustomerId) headers['login-customer-id'] = managerCustomerId
+  if (input.includeLoginCustomerId !== false && managerCustomerId) headers['login-customer-id'] = managerCustomerId
   return headers
+}
+
+function extractGoogleAdsErrorCode(errorPayload: any) {
+  const detailErrors = Array.isArray(errorPayload?.details)
+    ? errorPayload.details.flatMap((detail: any) => Array.isArray(detail?.errors) ? detail.errors : [])
+    : []
+  for (const detailError of detailErrors) {
+    const errorCode = detailError?.errorCode || detailError?.error_code || {}
+    const [family, code] = Object.entries(errorCode).find(([, value]) => Boolean(value)) || []
+    if (family && code) return `${family}.${String(code)}`
+  }
+  return errorPayload?.status || ''
+}
+
+function googleAdsActionableMessage(payload: any, status: number) {
+  const baseMessage = payload?.message || `Google Ads API returned HTTP ${status}.`
+  const code = extractGoogleAdsErrorCode(payload)
+
+  if (code.includes('DEVELOPER_TOKEN_NOT_APPROVED')) {
+    return `${baseMessage} Your Google Ads developer token is not approved for this account type yet. Apply for Basic or Standard access in the Google Ads API Center, or use a test account with a test developer token.`
+  }
+  if (code.includes('DEVELOPER_TOKEN_PROHIBITED') || code.includes('DEVELOPER_TOKEN_INVALID')) {
+    return `${baseMessage} The saved Google Ads developer token is invalid or not allowed. Check the token in Settings.`
+  }
+  if (code.includes('USER_PERMISSION_DENIED')) {
+    return `${baseMessage} The connected Google account does not have access to this Google Ads customer, or the Manager Customer ID in Settings is not linked to it.`
+  }
+  if (code.includes('CUSTOMER_NOT_ENABLED') || code.includes('CUSTOMER_NOT_FOUND')) {
+    return `${baseMessage} The selected Google Ads customer is unavailable. Check the account ID and manager access.`
+  }
+  if (code.includes('ACCESS_TOKEN_SCOPE_INSUFFICIENT') || code.includes('PERMISSION_DENIED')) {
+    return `${baseMessage} Reconnect Google in Settings and make sure the Google Ads permission is granted.`
+  }
+
+  return baseMessage
+}
+
+export function googleAdsErrorResponse(error: unknown) {
+  if (error instanceof GoogleAdsApiError) {
+    return {
+      status: error.status,
+      body: {
+        error: error.message,
+        googleStatus: error.googleStatus,
+        googleCode: error.googleCode,
+        requestId: error.requestId,
+      },
+    }
+  }
+  return {
+    status: 500,
+    body: { error: error instanceof Error ? error.message : 'Google Ads request failed' },
+  }
 }
 
 export async function googleAdsRequest<T = any>(
   path: string,
   auth: { accessToken: string; developerToken: string; managerCustomerId?: string | null },
-  init?: RequestInit
+  init?: RequestInit & { includeLoginCustomerId?: boolean }
 ): Promise<T> {
+  const { includeLoginCustomerId, ...requestInit } = init || {}
   const response = await fetch(`${GOOGLE_ADS_BASE}${path}`, {
-    ...init,
+    ...requestInit,
     headers: {
-      ...googleAdsHeaders(auth),
+      ...googleAdsHeaders({ ...auth, includeLoginCustomerId }),
       ...(init?.headers || {}),
     },
     cache: 'no-store',
   })
   const data = await response.json().catch(() => null)
   if (!response.ok) {
-    throw new Error(data?.error?.message || `Google Ads API returned HTTP ${response.status}.`)
+    const googleError = data?.error || {}
+    const googleCode = extractGoogleAdsErrorCode(googleError)
+    throw new GoogleAdsApiError(googleAdsActionableMessage(googleError, response.status), {
+      status: response.status,
+      googleStatus: googleError.status,
+      googleCode,
+      requestId: response.headers.get('request-id') || response.headers.get('x-request-id'),
+      details: googleError.details,
+    })
   }
   return data as T
 }
@@ -142,7 +229,9 @@ export async function googleAdsSearchStream<T = any>(
 export async function listAccessibleGoogleAdsCustomers(
   auth: { accessToken: string; developerToken: string; managerCustomerId?: string | null }
 ) {
-  const data = await googleAdsRequest<{ resourceNames?: string[] }>('/customers:listAccessibleCustomers', auth)
+  const data = await googleAdsRequest<{ resourceNames?: string[] }>('/customers:listAccessibleCustomers', auth, {
+    includeLoginCustomerId: false,
+  })
   return (data.resourceNames || [])
     .map((resourceName) => normalizeCustomerId(resourceName))
     .filter(Boolean)

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAuthTokenFromRequest, resolveAuthContextFromToken } from '@/lib/auth/server'
 import {
   describeGoogleAdsCustomer,
+  googleAdsErrorResponse,
   listAccessibleGoogleAdsCustomers,
   resolveGoogleAdsAuth,
 } from '@/lib/server/google-ads-api'
@@ -34,6 +35,7 @@ export async function GET(request: NextRequest) {
       primaryMarket: adsAuth.primaryMarket,
     })
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to load Google Ads accounts' }, { status: 500 })
+    const response = googleAdsErrorResponse(error)
+    return NextResponse.json(response.body, { status: response.status })
   }
 }

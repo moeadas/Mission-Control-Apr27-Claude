@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { getAuthTokenFromRequest, resolveAuthContextFromToken } from '@/lib/auth/server'
 import {
+  googleAdsErrorResponse,
   googleAdsSearchStream,
   microsToCurrency,
   numeric,
@@ -201,6 +202,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ cam
       primaryMarket: adsAuth.primaryMarket,
     })
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to load Google Ads campaign details' }, { status: 500 })
+    const response = googleAdsErrorResponse(error)
+    return NextResponse.json(response.body, { status: response.status })
   }
 }
