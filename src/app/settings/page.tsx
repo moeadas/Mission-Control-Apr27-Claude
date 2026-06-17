@@ -10,7 +10,7 @@ import { Download, KeyRound, RefreshCcw, Settings, Sparkles, SunMedium, Upload, 
 import { toast } from '@/components/ui/Toast'
 import { useAgentsStore } from '@/lib/agents-store'
 import { getProviderModels, MODEL_OPTIONS, PROVIDER_OPTIONS } from '@/lib/providers'
-import { ProviderFallback, ThemeMode } from '@/lib/types'
+import { AIProvider, ProviderFallback, ThemeMode } from '@/lib/types'
 import { META_MARKET_OPTIONS } from '@/lib/meta-ads-intelligence'
 import { GOOGLE_ADS_MARKET_OPTIONS } from '@/lib/google-ads-intelligence'
 import { getAuthToken } from '@/lib/auth/browser'
@@ -453,10 +453,48 @@ export default function SettingsPage() {
     loadProviderSettings().catch(() => {})
   }, [hydrateAppState])
 
-  const modelOptions = useMemo(
-    () => getProviderModels(agencySettings.defaultProvider).map((option) => ({ value: option.id, label: option.label })),
-    [agencySettings.defaultProvider]
-  )
+  const modelOptionsByProvider = useMemo(() => {
+    const providerLabel = (provider: AIProvider) =>
+      PROVIDER_OPTIONS.find((option) => option.value === provider)?.label || provider
+
+    const labelForModel = (provider: AIProvider, id: string) => {
+      const knownModel = MODEL_OPTIONS.find((option) => option.provider === provider && option.id === id)
+      return knownModel?.label || `${id} (${providerLabel(provider)})`
+    }
+
+    const savedModelIds = (provider: AIProvider) => {
+      const settings = providerSettings[provider]
+      const savedIds = settings?.availableModels || []
+      return [settings?.model, ...savedIds].filter((id): id is string => Boolean(id?.trim()))
+    }
+
+    const buildOptions = (provider: AIProvider) => {
+      const staticIds = getProviderModels(provider).map((option) => option.id)
+      const ids = [...savedModelIds(provider), ...staticIds]
+      return Array.from(new Set(ids)).map((id) => ({
+        value: id,
+        label: labelForModel(provider, id),
+      }))
+    }
+
+    return {
+      ollama: buildOptions('ollama'),
+      gemini: buildOptions('gemini'),
+      anthropic: buildOptions('anthropic'),
+      openai: buildOptions('openai'),
+    } satisfies Record<AIProvider, { value: string; label: string }[]>
+  }, [providerSettings])
+
+  const modelOptions = useMemo(() => {
+    const options = modelOptionsByProvider[agencySettings.defaultProvider] || []
+    if (!agencySettings.defaultModel || options.some((option) => option.value === agencySettings.defaultModel)) {
+      return options
+    }
+    return [
+      { value: agencySettings.defaultModel, label: `${agencySettings.defaultModel} (Current selection)` },
+      ...options,
+    ]
+  }, [agencySettings.defaultModel, agencySettings.defaultProvider, modelOptionsByProvider])
 
   // Sort models from most capable to least capable based on param count + tier keywords
   const sortModelsByCapability = (models: string[]): string[] => {
@@ -1367,12 +1405,13 @@ export default function SettingsPage() {
                   label="Default Provider"
                   options={PROVIDER_OPTIONS}
                   value={agencySettings.defaultProvider}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const nextProvider = e.target.value as AIProvider
                     updateAgencySettings({
-                      defaultProvider: e.target.value as typeof agencySettings.defaultProvider,
-                      defaultModel: getProviderModels(e.target.value as typeof agencySettings.defaultProvider)[0]?.id || agencySettings.defaultModel,
+                      defaultProvider: nextProvider,
+                      defaultModel: (modelOptionsByProvider[nextProvider]?.[0]?.value || agencySettings.defaultModel) as typeof agencySettings.defaultModel,
                     })
-                  }
+                  }}
                 />
                 <Select
                   label="Default Model"
@@ -1389,7 +1428,7 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h2 className="text-sm font-heading font-semibold text-text-primary">Provider Connections</h2>
-                  <p className="text-xs text-text-secondary mt-1">Each user keeps their own Ollama and Gemini runtime settings.</p>
+                  <p className="text-xs text-text-secondary mt-1">Each user keeps their own provider runtime settings and verified model inventory.</p>
                 </div>
                 <span className="text-[11px] font-mono text-text-dim">
                   {[providerSettings.ollama, providerSettings.gemini, providerSettings.anthropic, providerSettings.openai].filter((s) => s?.verified).length} verified
@@ -2005,7 +2044,7 @@ export default function SettingsPage() {
                 <div className="rounded-xl border border-border bg-base p-4">
                   <p className="text-xs font-mono text-text-dim uppercase mb-1">Model registry</p>
                   <p className="text-sm text-text-primary">
-                    {MODEL_OPTIONS.length} configured model options across Ollama and Gemini
+                    {MODEL_OPTIONS.length} built-in model options plus verified provider inventory
                   </p>
                 </div>
               </div>
