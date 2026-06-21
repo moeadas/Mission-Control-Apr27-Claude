@@ -4,7 +4,6 @@ import React, { useEffect, useMemo, useState } from 'react'
 import {
   Activity,
   AlertTriangle,
-  ArrowRight,
   BarChart3,
   CheckCircle2,
   Clock,
@@ -216,6 +215,8 @@ function weakHighVolumeRow(widget: any, dimension: string) {
   const rows = rowsFromWidget(widget).filter((row: any) => cleanLabel(row?.[dimension]) !== '(not set)')
   if (!rows.length) return null
   const avgEngagement = rows.reduce((sum: number, row: any) => sum + rowMetric(row, 'engagementRate'), 0) / rows.length
+  const totalSessions = totalMetric(rows, 'sessions')
+  const minimumMeaningfulSessions = Math.max(25, Math.min(250, totalSessions * 0.05))
   const sorted = rows
     .map((row: any) => ({
       row,
@@ -224,7 +225,7 @@ function weakHighVolumeRow(widget: any, dimension: string) {
       engagementRate: rowMetric(row, 'engagementRate'),
       keyEvents: rowMetric(row, 'keyEvents'),
     }))
-    .filter((item: any) => item.sessions > 0 && (item.engagementRate === 0 || item.engagementRate < Math.max(0.35, avgEngagement * 0.75)))
+    .filter((item: any) => item.sessions >= minimumMeaningfulSessions && (item.engagementRate === 0 || item.engagementRate < Math.max(0.35, avgEngagement * 0.75)))
     .sort((a: any, b: any) => b.sessions - a.sessions)
   return sorted[0] || null
 }
@@ -271,7 +272,16 @@ function dashboardIcon(presetId: string) {
   return BarChart3
 }
 
-function buildStoryPanels(dashboard: DashboardPayload | null): StoryPanel[] {
+function outcomeDensityLabel(keyEvents: number, sessions: number) {
+  if (!sessions) return 'no session base'
+  const density = keyEvents / sessions
+  if (density >= 1) return `${density.toFixed(2)} key events per session`
+  return `${(density * 100).toFixed(1)} key-event sessions proxy`
+}
+
+function buildKeyFindings(dashboard: DashboardPayload | null): StoryPanel[] {
+  if (!dashboard) return []
+
   const sessions = metricFromWidgets(dashboard, 'sessions')
   const activeUsers = metricFromWidgets(dashboard, 'activeUsers')
   const engagementRate = metricFromWidgets(dashboard, 'engagementRate')
@@ -298,93 +308,97 @@ function buildStoryPanels(dashboard: DashboardPayload | null): StoryPanel[] {
     (channelWidget && weakHighVolumeRow(channelWidget, 'sessionDefaultChannelGroup')) ||
     null
   const kpiMovement = strongestKpiMovement(dashboard)
-
-  const conversionRate = sessions > 0 ? (keyEvents / sessions) * 100 : 0
   const userLabel = activeUsers || sessions
-  const topTrafficBody = topTraffic
-    ? `${topTraffic.label} is the leading visible segment with ${fmtNumber(topTraffic.value)} ${metricLabel(primaryWidget?.config?.query?.metrics?.[0] || 'sessions').toLowerCase()}, representing ${topTraffic.share.toFixed(1)}% of the ranked rows in this dashboard.`
-    : `${dashboard?.preset?.label || 'This dashboard'} has loaded summary KPIs, but no ranked segment row is available yet.`
 
-  const problemTitle = weakSegment
-    ? `${weakSegment.label} is absorbing traffic with weak engagement`
-    : engagementRate && engagementRate < 0.55
-      ? `Engagement is only ${fmtPercent(engagementRate)}`
-      : keyEvents === 0 && sessions > 0
-        ? `${fmtNumber(sessions)} sessions have no tracked key events`
-        : revenue === 0 && /ecommerce|campaign/i.test(dashboard?.preset?.presetId || '')
-          ? 'Revenue is not visible in this dashboard'
-          : kpiMovement?.change && kpiMovement.change < -10
-            ? `${kpiMovement.label} is down ${Math.abs(kpiMovement.change).toFixed(1)}%`
-            : topTraffic
-              ? `${topTraffic.label} is carrying the current story`
-              : 'No critical drop is visible in the loaded metrics'
+  const findings: StoryPanel[] = []
 
-  const problemBody = weakSegment
-    ? `${weakSegment.label} has ${fmtNumber(weakSegment.sessions)} sessions, ${fmtPercent(weakSegment.engagementRate)} engagement, and ${fmtNumber(weakSegment.keyEvents)} key events. This is the clearest repair target because volume is already present.`
-    : keyEvents === 0 && sessions > 0
-      ? `GA4 returned ${fmtNumber(sessions)} sessions but 0 key events, so the dashboard cannot separate useful traffic from passive visits until conversion tracking is confirmed.`
-      : kpiMovement
-        ? `${kpiMovement.label} moved from ${formatMetric(kpiMovement.previous, undefined, kpiMovement.metric)} to ${formatMetric(kpiMovement.current, undefined, kpiMovement.metric)} versus the previous comparable period.`
-        : `${topTrafficBody}`
+  if (sessions > 100 && keyEvents === 0) {
+    findings.push({
+      label: 'Tracking risk',
+      title: 'Traffic is visible, but business outcomes are not',
+      body: `${fmtNumber(sessions)} sessions loaded for ${dashboard.dateRange.label}, but GA4 returned 0 key events. Before judging channel quality, confirm that lead, form, call, purchase, or other business events are marked as key events.`,
+      icon: AlertTriangle,
+      color: '#ff7f7f',
+    })
+  }
 
-  const answerTitle = topOutcome
-    ? `${topOutcome.label} is the best outcome segment`
-    : keyEvents > 0
-      ? `${fmtNumber(keyEvents)} key events captured`
-      : topTraffic
-        ? `Start with ${topTraffic.label}`
-        : 'Use the highest-volume evidence row first'
-
-  const answerBody = topOutcome
-    ? `${topOutcome.label} produced ${fmtNumber(topOutcome.keyEvents)} key events from ${fmtNumber(topOutcome.sessions)} sessions${topOutcome.revenue ? ` and ${fmtCurrency(topOutcome.revenue)} revenue` : ''}. Audit the landing path and messaging behind this segment, then reuse the pattern in the next campaign/content update.`
-    : topTraffic
-      ? `${topTraffic.label} is large enough to influence the selected period. Use it as the first segment for channel/page/campaign drilldown instead of optimizing the site average.`
-      : `The selected widgets show ${fmtNumber(userLabel)} users and ${fmtNumber(keyEvents)} key events. More ranked rows are needed for a segment-level recommendation.`
-
-  const impactTitle = topOutcome && sessions > 0
-    ? `${conversionRate.toFixed(2)}% key-event rate is the current benchmark`
-    : revenue > 0
-      ? `${fmtCurrency(revenue)} revenue is tied to this view`
-      : weakSegment
-        ? `Repairing ${weakSegment.label} is the fastest leverage point`
-        : 'Next action is ready once the strongest segment is confirmed'
-
-  const impactBody = weakSegment
-    ? `Bring ${weakSegment.label} closer to the dashboard average by improving the first screen, CTA relevance, and internal next step. Because it already has ${fmtNumber(weakSegment.sessions)} sessions, a small lift can matter quickly.`
-    : topOutcome
-      ? `Use ${topOutcome.label} as the benchmark segment. Any lower-performing channel, page, or campaign should be compared against its engagement and key-event pattern before budget or content is expanded.`
-      : `Prioritize measurement quality first, then scale the segment with the clearest combination of volume and tracked outcomes.`
-
-  return [
-    {
-      label: 'Situation',
-      title: `${fmtNumber(userLabel)} users in focus`,
-      body: topTrafficBody,
+  if (topTraffic) {
+    findings.push({
+      label: 'Traffic leader',
+      title: `${topTraffic.label} is driving the most visible demand`,
+      body: `${topTraffic.label} contributed ${fmtNumber(topTraffic.value)} ${metricLabel(primaryWidget?.config?.query?.metrics?.[0] || 'sessions').toLowerCase()} (${topTraffic.share.toFixed(1)}% of ranked rows). Treat this as the first place to inspect audience intent, landing message, and next step.`,
       icon: Users,
       color: '#4f8ef7',
-    },
-    {
-      label: 'Problem',
-      title: problemTitle,
-      body: problemBody,
-      icon: AlertTriangle,
-      color: problemTitle.startsWith('No critical') ? '#18c7b6' : '#f4c84f',
-    },
-    {
-      label: 'Answer',
-      title: answerTitle,
-      body: answerBody,
+    })
+  } else {
+    findings.push({
+      label: 'Readout',
+      title: `${fmtNumber(userLabel)} users loaded for this report`,
+      body: `${dashboard.preset.label} has KPI data for ${dashboard.dateRange.label}, but the selected preset did not return a ranked segment row to explain where the result is coming from.`,
+      icon: BarChart3,
+      color: '#4f8ef7',
+    })
+  }
+
+  if (topOutcome?.keyEvents) {
+    findings.push({
+      label: 'Outcome leader',
+      title: `${topOutcome.label} is producing the strongest tracked outcomes`,
+      body: `${topOutcome.label} generated ${fmtNumber(topOutcome.keyEvents)} key events from ${fmtNumber(topOutcome.sessions)} sessions${topOutcome.revenue ? ` and ${fmtCurrency(topOutcome.revenue)} revenue` : ''}. Use this segment as the benchmark before scaling weaker pages, channels, or campaigns.`,
       icon: CheckCircle2,
       color: '#18c7b6',
-    },
-    {
-      label: 'Impact',
-      title: impactTitle,
-      body: impactBody,
+    })
+  } else if (keyEvents > 0) {
+    findings.push({
+      label: 'Outcome signal',
+      title: `${fmtNumber(keyEvents)} key events are being tracked`,
+      body: `The report shows ${outcomeDensityLabel(keyEvents, sessions)} across ${fmtNumber(sessions)} sessions. Because GA4 key events can fire multiple times per session, use this as outcome density rather than a literal conversion rate.`,
       icon: Target,
+      color: '#18c7b6',
+    })
+  }
+
+  if (weakSegment) {
+    findings.push({
+      label: 'Needs attention',
+      title: `${weakSegment.label} has enough traffic to justify a focused fix`,
+      body: `${weakSegment.label} has ${fmtNumber(weakSegment.sessions)} sessions with ${fmtPercent(weakSegment.engagementRate)} engagement and ${fmtNumber(weakSegment.keyEvents)} key events. This is a meaningful repair target because it passes the minimum volume threshold for the selected report.`,
+      icon: AlertTriangle,
+      color: weakSegment.engagementRate < 0.35 ? '#ff7f7f' : '#f4c84f',
+    })
+  } else if (engagementRate > 0) {
+    findings.push({
+      label: engagementRate >= 0.55 ? 'Healthy engagement' : 'Engagement watch',
+      title: engagementRate >= 0.55 ? `Engagement looks healthy at ${fmtPercent(engagementRate)}` : `Engagement needs review at ${fmtPercent(engagementRate)}`,
+      body: engagementRate >= 0.55
+        ? 'The dashboard-level engagement rate is above the working health threshold. Focus optimization on outcome quality and the segments that already create key events.'
+        : 'The dashboard-level engagement rate is below the working health threshold. Review the top landing page and top source together for message mismatch, slow first screen, or unclear next step.',
+      icon: engagementRate >= 0.55 ? CheckCircle2 : AlertTriangle,
+      color: engagementRate >= 0.55 ? '#18c7b6' : '#f4c84f',
+    })
+  }
+
+  if (kpiMovement) {
+    findings.push({
+      label: 'Trend',
+      title: `${kpiMovement.label} ${kpiMovement.change >= 0 ? 'improved' : 'declined'} ${Math.abs(kpiMovement.change).toFixed(1)}%`,
+      body: `${kpiMovement.label} moved from ${formatMetric(kpiMovement.previous, undefined, kpiMovement.metric)} to ${formatMetric(kpiMovement.current, undefined, kpiMovement.metric)} versus the previous comparable period. Use the segment tables below to locate which channel, page, or campaign explains the change.`,
+      icon: kpiMovement.change >= 0 ? TrendingUp : TrendingDown,
+      color: kpiMovement.change >= 0 ? '#18c7b6' : '#ff7f7f',
+    })
+  }
+
+  if (revenue > 0) {
+    findings.push({
+      label: 'Revenue',
+      title: `${fmtCurrency(revenue)} revenue is visible in this report`,
+      body: 'Revenue is connected to the selected GA4 view, so sales-related decisions can use revenue alongside key events rather than relying on engagement alone.',
+      icon: MousePointerClick,
       color: '#8f72ff',
-    },
-  ]
+    })
+  }
+
+  return findings.slice(0, 5)
 }
 
 function buildActionInsights(dashboard: DashboardPayload | null): ActionInsight[] {
@@ -396,7 +410,7 @@ function buildActionInsights(dashboard: DashboardPayload | null): ActionInsight[
   const keyEvents = metricFromWidgets(dashboard, 'keyEvents')
   const revenue = metricFromWidgets(dashboard, 'totalRevenue')
   const engagementRate = metricFromWidgets(dashboard, 'engagementRate')
-  const conversionRate = sessions > 0 ? keyEvents / sessions : 0
+  const outcomeDensity = sessions > 0 ? keyEvents / sessions : 0
 
   const channelWidget = widgetWithDimension(dashboard, 'sessionDefaultChannelGroup')
   const sourceWidget = widgetWithDimension(dashboard, 'sessionSourceMedium')
@@ -521,10 +535,10 @@ function buildActionInsights(dashboard: DashboardPayload | null): ActionInsight[
     })
   } else if (sessions > 0 && keyEvents > 0) {
     insights.push({
-      severity: conversionRate >= 0.03 ? 'medium' : 'low',
-      title: `Current key-event rate is ${(conversionRate * 100).toFixed(2)}%`,
+      severity: outcomeDensity >= 0.03 ? 'medium' : 'low',
+      title: `${fmtNumber(keyEvents)} key events define the current outcome baseline`,
       evidence: `${fmtNumber(keyEvents)} key events came from ${fmtNumber(sessions)} sessions${revenue ? ` with ${fmtCurrency(revenue)} tracked revenue` : ''}.`,
-      action: `Use ${(conversionRate * 100).toFixed(2)}% as the current benchmark. Segments below this rate need CTA/message fixes; segments above it deserve more traffic.`,
+      action: `Use ${outcomeDensityLabel(keyEvents, sessions)} as the current outcome-density benchmark. Compare channels, pages, and campaigns against this before deciding what to scale or repair.`,
     })
   }
 
@@ -819,7 +833,7 @@ function WidgetCard({ widget }: { widget: any }) {
 }
 
 function InsightRail({ dashboard, accountEmail, loading }: { dashboard: DashboardPayload | null; accountEmail: string; loading: boolean }) {
-  const panels = buildStoryPanels(dashboard)
+  const findings = buildKeyFindings(dashboard)
   const insights = buildActionInsights(dashboard)
   return (
     <aside className="space-y-4 lg:sticky lg:top-5 lg:self-start">
@@ -830,7 +844,7 @@ function InsightRail({ dashboard, accountEmail, loading }: { dashboard: Dashboar
           </span>
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-dim">AI powered analysis</p>
-            <h2 className="text-base font-semibold text-text-primary">Storyline</h2>
+            <h2 className="text-base font-semibold text-text-primary">Decision readout</h2>
           </div>
         </div>
         <p className="mt-3 text-xs leading-relaxed text-text-secondary">
@@ -844,6 +858,10 @@ function InsightRail({ dashboard, accountEmail, loading }: { dashboard: Dashboar
       </div>
 
       <div className="rounded-lg border border-border bg-card p-3 shadow-[var(--shadow-soft)]">
+        <div className="mb-3 flex items-center justify-between gap-3 px-1">
+          <h3 className="text-sm font-semibold text-text-primary">Key findings</h3>
+          <Badge color="#4f8ef7" variant="outline">{findings.length || 0}</Badge>
+        </div>
         {loading ? (
           <div className="flex items-center gap-3 rounded-md border border-border bg-base/50 p-4 text-sm text-text-secondary">
             <Loader2 size={16} className="animate-spin text-accent-blue" />
@@ -851,18 +869,21 @@ function InsightRail({ dashboard, accountEmail, loading }: { dashboard: Dashboar
           </div>
         ) : dashboard ? (
           <div className="space-y-2">
-            {panels.map((panel) => {
-            const Icon = panel.icon
-            return (
-              <div key={panel.label} className="rounded-md border border-border bg-base/50 p-3">
-                <div className="mb-2 flex items-center gap-2">
-                  <Icon size={14} style={{ color: panel.color }} />
-                  <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">{panel.label}</p>
+            {findings.map((finding) => {
+              const Icon = finding.icon
+              return (
+                <div key={`${finding.label}-${finding.title}`} className="rounded-md border border-border bg-base/50 p-3">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Icon size={14} style={{ color: finding.color }} />
+                      <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">{finding.label}</p>
+                    </div>
+                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: finding.color }} />
+                  </div>
+                  <p className="text-sm font-semibold leading-snug text-text-primary">{finding.title}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-text-secondary">{finding.body}</p>
                 </div>
-                <p className="text-sm font-semibold leading-snug text-text-primary">{panel.title}</p>
-                <p className="mt-1 text-xs leading-relaxed text-text-secondary">{panel.body}</p>
-              </div>
-            )
+              )
             })}
           </div>
         ) : (
@@ -874,7 +895,7 @@ function InsightRail({ dashboard, accountEmail, loading }: { dashboard: Dashboar
 
       <div className="rounded-lg border border-border bg-card p-4 shadow-[var(--shadow-soft)]">
         <div className="mb-3 flex items-center justify-between gap-3">
-          <h3 className="text-sm font-semibold text-text-primary">Recommendations</h3>
+          <h3 className="text-sm font-semibold text-text-primary">Recommended actions</h3>
           <Badge color="#8f72ff" variant="outline">{insights.length || 0}</Badge>
         </div>
         <div className="space-y-3">
@@ -884,8 +905,8 @@ function InsightRail({ dashboard, accountEmail, loading }: { dashboard: Dashboar
                 <p className="text-sm font-semibold text-text-primary">{insight.title}</p>
                 <span className="font-mono text-[10px] uppercase tracking-wider text-text-dim">{insight.severity}</span>
               </div>
-              <p className="text-xs leading-relaxed text-text-secondary">{insight.evidence}</p>
-              <p className="mt-1 text-xs leading-relaxed text-accent-cyan">{insight.action}</p>
+              <p className="text-xs leading-relaxed text-accent-cyan">{insight.action}</p>
+              <p className="mt-1 text-xs leading-relaxed text-text-secondary">{insight.evidence}</p>
             </div>
           )) : (
             <p className="text-xs leading-relaxed text-text-secondary">
@@ -1079,16 +1100,16 @@ export default function AnalyticsPage() {
                 <section className="rounded-lg border border-border bg-card p-4 shadow-[var(--shadow-soft)]">
                   <div className="mb-4 flex items-center justify-between gap-3">
                     <div>
-                      <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-dim">Narrative path</p>
-                      <h2 className="text-base font-semibold text-text-primary">From signal to decision</h2>
+                      <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-dim">Key findings</p>
+                      <h2 className="text-base font-semibold text-text-primary">What the report is saying</h2>
                     </div>
                     <Badge color="#4f8ef7" variant="outline">
                       <Clock size={11} />
                       {dashboard.dateRange.label}
                     </Badge>
                   </div>
-                  <div className="grid gap-3 md:grid-cols-4">
-                    {buildStoryPanels(dashboard).map((panel, index) => {
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    {buildKeyFindings(dashboard).slice(0, 4).map((panel) => {
                       const Icon = panel.icon
                       return (
                         <div key={panel.label} className="rounded-md border border-border bg-base/50 p-3">
@@ -1097,7 +1118,7 @@ export default function AnalyticsPage() {
                               <Icon size={14} style={{ color: panel.color }} />
                               <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">{panel.label}</p>
                             </div>
-                            {index < 3 ? <ArrowRight size={13} className="text-text-dim" /> : null}
+                            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: panel.color }} />
                           </div>
                           <p className="text-sm font-semibold leading-snug text-text-primary">{panel.title}</p>
                         </div>
