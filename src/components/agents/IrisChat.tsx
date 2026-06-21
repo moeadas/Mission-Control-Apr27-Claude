@@ -508,6 +508,60 @@ function expandBlogBriefFollowUp(message: string, conversation?: { messages?: Ch
   return `Write a blog post using this brief: ${message}`
 }
 
+function isMediaPlanRequest(message: string) {
+  return inferDeliverableFromPrompt(message) === 'media-plan' || /\b(media plan|media strategy|channel plan|channel strategy|budget allocation|media budget|media mix|paid media|organic media|ad spend|advertising plan|media allocation|media buying plan)\b/i.test(message)
+}
+
+function hasMediaPlanObjective(message: string) {
+  return /\b(awareness|brand awareness|reach|engagement|traffic|website visits|leads?|lead generation|sales|conversions?|purchases?|revenue|app installs?|video views?|messages?|whatsapp|retention|launch|education|consideration)\b/i.test(message)
+}
+
+function hasMediaPlanBudget(message: string) {
+  return /\b(budget|spend|investment|allocate|allocation)\b/i.test(message) || /(?:[$€£]|aed|sar|qar|kwd|bhd|jod|egp|usd|eur|gbp)\s?\d[\d,.kKmM]*|\d[\d,.kKmM]*\s?(?:[$€£]|aed|sar|qar|kwd|bhd|jod|egp|usd|eur|gbp)/i.test(message)
+}
+
+function hasMediaPlanTimeframe(message: string) {
+  return /\b(today|tomorrow|yesterday|this week|next week|this month|next month|this quarter|next quarter|month of|weekly|monthly|quarterly|always on|always-on|\d+\s*(?:days?|weeks?|months?|quarters?)|q[1-4]|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/i.test(message)
+}
+
+function hasMediaPlanAudienceOrMarket(message: string) {
+  return /\b(audience|target audience|targeting|market|country|region|city|demographic|persona|segment|customers?|buyers?|users?|prospects?|parents?|owners?|breeders?|veterinarians?|ksa|saudi|uae|dubai|abu dhabi|qatar|kuwait|bahrain|oman|jordan|egypt|mena|gcc|europe|usa|uk)\b/i.test(message)
+}
+
+function buildMissingMediaPlanPrompt(message: string, hasClientContext = false) {
+  const missing = [
+    !hasMediaPlanObjective(message) ? 'campaign objective' : '',
+    !hasMediaPlanBudget(message) ? 'budget or budget range' : '',
+    !hasMediaPlanTimeframe(message) ? 'campaign timeframe / flight dates' : '',
+    !hasClientContext && !hasMediaPlanAudienceOrMarket(message) ? 'target audience or market' : '',
+    !hasClientContext && !hasBlogBrandName(message) ? 'brand/company or client name' : '',
+  ].filter(Boolean)
+
+  if (!missing.length) return ''
+  return `Before I build the media plan, please send the missing details: ${missing.join(', ')}. Optional but useful: product/service, channels to include or exclude, target country, KPI priority, and any must-use formats. Once I have this, I can create the strategy plus an Excel-ready media plan table.`
+}
+
+function isAwaitingMediaPlanBrief(conversation?: { messages?: ChatMessage[]; briefing?: IrisConversationBriefing | null } | null) {
+  const recentMessages = (conversation?.messages || []).slice(-8)
+  return recentMessages.some((message) => {
+    const content = String(message.content || '')
+    return message.role === 'assistant' && /Before I build the media plan|Excel-ready media plan table|budget or budget range|campaign timeframe/i.test(content)
+  }) || conversation?.briefing?.deliverableType === 'media-plan'
+}
+
+function expandMediaPlanBriefFollowUp(message: string, conversation?: { messages?: ChatMessage[]; briefing?: IrisConversationBriefing | null } | null) {
+  if (isMediaPlanRequest(message) || !isAwaitingMediaPlanBrief(conversation)) return message
+  if (
+    !hasMediaPlanObjective(message) &&
+    !hasMediaPlanBudget(message) &&
+    !hasMediaPlanTimeframe(message) &&
+    !hasMediaPlanAudienceOrMarket(message)
+  ) {
+    return message
+  }
+  return `Create a media plan using this brief: ${message}`
+}
+
 // Stub kept for the legacy structure of the function body that still references
 // `bestId` for downstream early-return safety. The real return path is above.
 function _legacy_inferDeliverableFromPrompt_unused(message: string) {
@@ -1641,9 +1695,11 @@ export function IrisChat() {
       Boolean(followUpAuditUrl) &&
       isUrlOnlyMessage(finalPrompt) &&
       isAwaitingWebsiteAuditUrl(liveConversationForPreflight)
-    const executionPrompt = isAuditUrlFollowUp && followUpAuditUrl
+    const promptAfterAuditFollowUp = isAuditUrlFollowUp && followUpAuditUrl
       ? buildWebsiteAuditPromptFromUrl(followUpAuditUrl)
-      : expandBlogBriefFollowUp(finalPrompt, liveConversationForPreflight)
+      : finalPrompt
+    const promptAfterBlogFollowUp = expandBlogBriefFollowUp(promptAfterAuditFollowUp, liveConversationForPreflight)
+    const executionPrompt = expandMediaPlanBriefFollowUp(promptAfterBlogFollowUp, liveConversationForPreflight)
 
     if (isWebsiteAuditRequest(executionPrompt) && !extractWebsiteAuditUrl(executionPrompt)) {
       addAssistantMessage(conversationId, buildMissingWebsiteUrlPrompt(), 'iris', {
@@ -1676,6 +1732,27 @@ export function IrisChat() {
         fields: {},
         awaitingField: 'objective' as any,
       })
+      setActivePipelineInfo(null)
+      setChatStatus('idle')
+      return
+    }
+
+    const hasMediaClientContext = Boolean(
+      activeMission?.clientId ||
+      findClientMentionInPrompt(executionPrompt, clients) ||
+      (Array.isArray(clients) && clients.length === 1)
+    )
+    const missingMediaPlanPrompt = isMediaPlanRequest(executionPrompt)
+      ? buildMissingMediaPlanPrompt(executionPrompt, hasMediaClientContext)
+      : ''
+    if (missingMediaPlanPrompt) {
+      addAssistantMessage(conversationId, missingMediaPlanPrompt, 'iris', {
+        deliverableType: 'media-plan' as any,
+        pipelineId: 'media-plan',
+        pipelineName: 'Media Plan',
+        handoffNotes: 'Waiting for required media planning inputs before starting the media planning pipeline.',
+      })
+      updateConversationBriefing(conversationId, null)
       setActivePipelineInfo(null)
       setChatStatus('idle')
       return

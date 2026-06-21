@@ -259,7 +259,23 @@ export function getDeliverableOutputSpec(deliverableType: DeliverableType, reque
     ].join('\n')
   }
 
-  if (deliverableType === 'media-plan' || deliverableType === 'budget-sheet' || deliverableType === 'kpi-forecast') {
+  if (deliverableType === 'media-plan') {
+    return [
+      formatRules,
+      'Produce the actual media plan, not a brief and not a routing note.',
+      'The output must have exactly these two major parts:',
+      '## Media Plan Strategy',
+      '## Excel-Ready Media Plan',
+      'In Media Plan Strategy, cover: objective, planning assumptions, audience definition, channel-selection rationale, funnel role, budget logic, flighting/pacing, KPI framework, risks/watchouts, and immediate next steps.',
+      'In Excel-Ready Media Plan, include one normal markdown pipe table that can be exported to XLSX. Do not split this table into multiple tables.',
+      'The media table must include these columns in this order: Channel, Funnel Role, Audience Segment, Targeting Notes, Format/Placement, KPI, KPI Target, Budget, Budget %, Flight Dates, Frequency/Pacing, Optimization Notes.',
+      'Every channel row must include a concrete KPI and budget allocation. If the user did not provide an exact budget or dates, state the assumption clearly in the Strategy section and mark the numbers as planning assumptions.',
+      'Include both paid and organic/supporting channels when useful, but prioritize the channels that best match the objective, audience, budget, and market context.',
+      'Use concrete numbers, forecast assumptions, and media planning logic. Avoid generic recommendations that could apply to any brand.',
+    ].join('\n')
+  }
+
+  if (deliverableType === 'budget-sheet' || deliverableType === 'kpi-forecast') {
     return [
       formatRules,
       'Produce the actual planning output, not a brief.',
@@ -543,7 +559,18 @@ function getDefaultQualityChecklist(deliverableType: DeliverableType, lowerReque
     ]
   }
 
-  if (deliverableType === 'media-plan' || deliverableType === 'budget-sheet' || deliverableType === 'kpi-forecast') {
+  if (deliverableType === 'media-plan') {
+    return [
+      '1. Confirm objective, budget, timing, audience, and client context',
+      '2. Define audience strategy and channel-selection logic',
+      '3. Build budget allocation, funnel roles, formats, and flighting',
+      '4. Add KPI framework, target assumptions, and optimization logic',
+      '5. Review planning risks, dependencies, and pacing guardrails',
+      '6. Prepare the final strategy narrative plus one Excel-ready media-plan table',
+    ]
+  }
+
+  if (deliverableType === 'budget-sheet' || deliverableType === 'kpi-forecast') {
     return [
       '1. Confirm objective and budget assumptions',
       '2. Define audience and channel strategy',

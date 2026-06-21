@@ -288,6 +288,86 @@ function expandBlogBriefFollowUp(content: string, messages: any[]) {
   return `Write a blog post using this brief: ${content}`
 }
 
+function isMediaPlanRequest(deliverableType: string, content: string) {
+  return deliverableType === 'media-plan' || /\b(media plan|media strategy|channel plan|channel strategy|budget allocation|media budget|media mix|paid media|organic media|ad spend|advertising plan|media allocation|media buying plan)\b/i.test(content)
+}
+
+function hasMediaPlanObjective(content: string) {
+  return /\b(awareness|brand awareness|reach|engagement|traffic|website visits|leads?|lead generation|sales|conversions?|purchases?|revenue|app installs?|video views?|messages?|whatsapp|retention|launch|education|consideration)\b/i.test(content)
+}
+
+function hasMediaPlanBudget(content: string) {
+  return /\b(budget|spend|investment|allocate|allocation)\b/i.test(content) || /(?:[$€£]|aed|sar|qar|kwd|bhd|jod|egp|usd|eur|gbp)\s?\d[\d,.kKmM]*|\d[\d,.kKmM]*\s?(?:[$€£]|aed|sar|qar|kwd|bhd|jod|egp|usd|eur|gbp)/i.test(content)
+}
+
+function hasMediaPlanTimeframe(content: string) {
+  return /\b(today|tomorrow|yesterday|this week|next week|this month|next month|this quarter|next quarter|month of|weekly|monthly|quarterly|always on|always-on|\d+\s*(?:days?|weeks?|months?|quarters?)|q[1-4]|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/i.test(content)
+}
+
+function hasMediaPlanAudienceOrMarket(content: string) {
+  return /\b(audience|target audience|targeting|market|country|region|city|demographic|persona|segment|customers?|buyers?|users?|prospects?|parents?|owners?|breeders?|veterinarians?|ksa|saudi|uae|dubai|abu dhabi|qatar|kuwait|bahrain|oman|jordan|egypt|mena|gcc|europe|usa|uk)\b/i.test(content)
+}
+
+function isAwaitingMediaPlanBrief(messages: any[]) {
+  return messages.slice(-8).some((message: any) => {
+    const role = String(message?.role || '')
+    const content = String(message?.content || '')
+    return role === 'assistant' && /Before I build the media plan|Excel-ready media plan table|budget or budget range|campaign timeframe/i.test(content)
+  })
+}
+
+function expandMediaPlanBriefFollowUp(content: string, messages: any[]) {
+  if (isMediaPlanRequest(inferDeliverableType(content), content) || !isAwaitingMediaPlanBrief(messages)) return content
+  if (
+    !hasMediaPlanObjective(content) &&
+    !hasMediaPlanBudget(content) &&
+    !hasMediaPlanTimeframe(content) &&
+    !hasMediaPlanAudienceOrMarket(content)
+  ) {
+    return content
+  }
+  return `Create a media plan using this brief: ${content}`
+}
+
+function getMissingMediaPlanDetails(content: string, hasClientContext: boolean) {
+  return [
+    !hasMediaPlanObjective(content) ? 'campaign objective' : '',
+    !hasMediaPlanBudget(content) ? 'budget or budget range' : '',
+    !hasMediaPlanTimeframe(content) ? 'campaign timeframe / flight dates' : '',
+    !hasClientContext && !hasMediaPlanAudienceOrMarket(content) ? 'target audience or market' : '',
+    !hasClientContext && !hasBlogBrandName(content) ? 'brand/company or client name' : '',
+  ].filter(Boolean)
+}
+
+function buildMissingMediaPlanBriefResponse(content: string, hasClientContext: boolean, provider = 'ollama', model = '') {
+  const missing = getMissingMediaPlanDetails(content, hasClientContext)
+  return NextResponse.json({
+    response: `Before I build the media plan, please send the missing details: ${missing.join(', ')}. Optional but useful: product/service, channels to include or exclude, target country, KPI priority, and any must-use formats. Once I have this, I can create the strategy plus an Excel-ready media plan table.`,
+    meta: {
+      intent: 'missing_media_plan_brief',
+      routedAgentId: 'iris',
+      leadAgentId: 'iris',
+      collaboratorAgentIds: [],
+      assignedAgentIds: ['iris'],
+      clientId: null,
+      campaignId: null,
+      deliverableType: 'media-plan',
+      pipelineId: 'media-plan',
+      pipelineName: 'Media Plan',
+      qualityChecklist: [],
+      handoffNotes: 'Waiting for required media planning inputs before starting the media planning pipeline.',
+      executionSteps: [],
+      quality: null,
+      executionPrompt: '',
+      renderedHtml: null,
+      provider,
+      model,
+      fallbackUsed: false,
+      conversational: true,
+    },
+  })
+}
+
 function buildMissingBlogBriefResponse(content: string, provider = 'ollama', model = '') {
   const missing = [
     !hasBlogPrimaryKeyword(content) ? 'primary focus keyword' : '',
@@ -519,8 +599,12 @@ export async function POST(req: NextRequest) {
       initialRawUserContent,
       Array.isArray(messages) ? messages : []
     )
-    const effectiveInitialUserContent = expandBlogBriefFollowUp(
+    const initialContentAfterBlog = expandBlogBriefFollowUp(
       initialUserContent,
+      Array.isArray(messages) ? messages : []
+    )
+    const effectiveInitialUserContent = expandMediaPlanBriefFollowUp(
+      initialContentAfterBlog,
       Array.isArray(messages) ? messages : []
     )
     const initialConversational = isConversationalMessage(effectiveInitialUserContent) || detectClientBriefIntent(effectiveInitialUserContent)
@@ -530,6 +614,18 @@ export async function POST(req: NextRequest) {
       return buildMissingWebsiteUrlResponse(initialDeliverableType, provider, model)
     }
     const inferredInitialClientFromRequest = findClientMentionInPrompt(effectiveInitialUserContent, clients)
+    const hasInitialMediaClientContext = Boolean(
+      currentClientId ||
+      inferredInitialClientFromRequest ||
+      (Array.isArray(clients) && clients.length === 1)
+    )
+    if (
+      !initialConversational &&
+      isMediaPlanRequest(initialDeliverableType, effectiveInitialUserContent) &&
+      getMissingMediaPlanDetails(effectiveInitialUserContent, hasInitialMediaClientContext).length
+    ) {
+      return buildMissingMediaPlanBriefResponse(effectiveInitialUserContent, hasInitialMediaClientContext, provider, model)
+    }
     if (
       !initialConversational &&
       isBlogPostRequest(initialDeliverableType, effectiveInitialUserContent) &&
@@ -619,6 +715,19 @@ export async function POST(req: NextRequest) {
 
     if (!conversational && isWebsiteAuditRequest(deliverableType, userContent) && !auditWebsiteUrl) {
       return buildMissingWebsiteUrlResponse(deliverableType, actualProvider, actualModel)
+    }
+
+    const hasMediaClientContext = Boolean(
+      currentClientId ||
+      findClientMentionInPrompt(userContent, clients) ||
+      (Array.isArray(clients) && clients.length === 1)
+    )
+    if (
+      !conversational &&
+      isMediaPlanRequest(deliverableType, userContent) &&
+      getMissingMediaPlanDetails(userContent, hasMediaClientContext).length
+    ) {
+      return buildMissingMediaPlanBriefResponse(userContent, hasMediaClientContext, actualProvider, actualModel)
     }
 
     if (

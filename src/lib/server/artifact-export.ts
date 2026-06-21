@@ -331,17 +331,93 @@ function getBulletLines(content?: string) {
     .filter(Boolean)
 }
 
+function splitMarkdownTableRow(line: string) {
+  return line
+    .trim()
+    .replace(/^\|/, '')
+    .replace(/\|$/, '')
+    .split('|')
+    .map((cell) => cell.trim().replace(/<br\s*\/?>/gi, '\n'))
+}
+
+function isMarkdownDividerRow(line: string) {
+  const cells = splitMarkdownTableRow(line)
+  return cells.length > 1 && cells.every((cell) => /^:?-{3,}:?$/.test(cell.replace(/\s/g, '')))
+}
+
+function extractMarkdownTables(content?: string) {
+  const lines = String(content || '').replace(/\r/g, '').split('\n')
+  const tables: string[][][] = []
+  let current: string[] = []
+
+  const flush = () => {
+    if (current.length >= 2) {
+      const rows = current
+        .filter((line) => !isMarkdownDividerRow(line))
+        .map(splitMarkdownTableRow)
+        .filter((row) => row.length > 1)
+      if (rows.length >= 2) tables.push(rows)
+    }
+    current = []
+  }
+
+  for (const line of lines) {
+    if (line.includes('|')) current.push(line)
+    else flush()
+  }
+  flush()
+
+  return tables
+}
+
+function getTableCell(headers: string[], row: string[], aliases: string[]) {
+  const index = headers.findIndex((header) => aliases.some((alias) => header.includes(alias)))
+  return index >= 0 ? row[index] || '' : ''
+}
+
+function extractMediaTableRows(content?: string) {
+  const tables = extractMarkdownTables(content)
+  for (const table of tables) {
+    const headers = table[0].map((header) => header.toLowerCase().replace(/[^a-z0-9%]+/g, ' ').trim())
+    const headerText = headers.join(' ')
+    if (!headerText.includes('channel') || !headerText.includes('budget')) continue
+    if (!headerText.includes('kpi') && !headerText.includes('funnel')) continue
+
+    return table.slice(1).map((row) => ({
+      channel: getTableCell(headers, row, ['channel']),
+      funnelRole: getTableCell(headers, row, ['funnel role', 'role']),
+      audience: getTableCell(headers, row, ['audience segment', 'audience']),
+      targeting: getTableCell(headers, row, ['targeting notes', 'targeting']),
+      format: getTableCell(headers, row, ['format placement', 'placement', 'format']),
+      kpi: getTableCell(headers, row, ['kpi']),
+      target: getTableCell(headers, row, ['kpi target', 'target']),
+      budget: getTableCell(headers, row, ['budget']),
+      budgetPercent: getTableCell(headers, row, ['budget %', 'budget percent']),
+      flightDates: getTableCell(headers, row, ['flight dates', 'dates', 'schedule']),
+      pacing: getTableCell(headers, row, ['frequency pacing', 'pacing', 'frequency']),
+      notes: getTableCell(headers, row, ['optimization notes', 'notes']),
+    })).filter((row) => row.channel || row.budget || row.kpi)
+  }
+  return []
+}
+
 function inferMediaRows(content?: string) {
+  const tableRows = extractMediaTableRows(content)
+  if (tableRows.length) return tableRows
+
   const bullets = getBulletLines(content)
   const defaults = ['Meta / Instagram', 'Google Search', 'YouTube', 'Email / CRM']
 
   return (bullets.length ? bullets : defaults).slice(0, 6).map((line, index) => ({
     channel: defaults[index] || `Channel ${index + 1}`,
+    funnelRole: '',
     audience: '',
-    objective: '',
+    targeting: '',
+    format: '',
     budget: index === 0 ? 5000 : index === 1 ? 3000 : 1500,
-    start: '',
-    end: '',
+    budgetPercent: '',
+    flightDates: '',
+    pacing: '',
     kpi: '',
     target: '',
     notes: line,
@@ -392,59 +468,72 @@ async function createXlsxBuffer(input: ExportArtifactInput) {
   ]
 
   const plan = workbook.addWorksheet('Plan')
-  const headers = ['Channel', 'Audience', 'Objective', 'Budget', 'Start', 'End', 'KPI', 'Target', 'Notes']
+  const headers = ['Channel', 'Funnel Role', 'Audience Segment', 'Targeting Notes', 'Format / Placement', 'KPI', 'KPI Target', 'Budget', 'Budget %', 'Flight Dates', 'Frequency / Pacing', 'Optimization Notes']
   plan.addRow(headers)
   plan.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } }
   plan.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1D4ED8' } }
   plan.views = [{ state: 'frozen', ySplit: 1 }]
 
   inferMediaRows(input.artifact.content).forEach((row) => {
-    plan.addRow([row.channel, row.audience, row.objective, row.budget, row.start, row.end, row.kpi, row.target, row.notes])
-  })
-  plan.addRow(['Total', '', '', { formula: 'SUM(D2:D7)' }, '', '', '', '', ''])
-
-  plan.columns = [
-    { width: 20 },
-    { width: 20 },
-    { width: 22 },
-    { width: 14, style: { numFmt: '$#,##0' } },
-    { width: 12 },
-    { width: 12 },
-    { width: 16 },
-    { width: 16 },
-    { width: 42 },
-  ]
-
-  const kpi = workbook.addWorksheet('KPI Forecast')
-  kpi.addRow(['Channel', 'Spend', 'Impressions', 'Clicks', 'CTR', 'Leads', 'CPL', 'Notes'])
-  kpi.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } }
-  kpi.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F766E' } }
-  kpi.views = [{ state: 'frozen', ySplit: 1 }]
-
-  inferMediaRows(input.artifact.content).forEach((row, index) => {
-    const sheetRow = index + 2
-    kpi.addRow([
+    plan.addRow([
       row.channel,
+      row.funnelRole,
+      row.audience,
+      row.targeting,
+      row.format,
+      row.kpi,
+      row.target,
       row.budget,
-      '',
-      '',
-      { formula: `IF(C${sheetRow}=0,0,D${sheetRow}/C${sheetRow})` },
-      '',
-      { formula: `IF(F${sheetRow}=0,0,B${sheetRow}/F${sheetRow})` },
+      row.budgetPercent,
+      row.flightDates,
+      row.pacing,
       row.notes,
     ])
   })
 
-  kpi.columns = [
+  plan.columns = [
     { width: 20 },
-    { width: 14, style: { numFmt: '$#,##0' } },
-    { width: 14 },
-    { width: 14 },
-    { width: 12, style: { numFmt: '0.00%' } },
+    { width: 16 },
+    { width: 24 },
+    { width: 34 },
+    { width: 24 },
+    { width: 18 },
+    { width: 18 },
+    { width: 16 },
     { width: 12 },
-    { width: 14, style: { numFmt: '$#,##0.00' } },
+    { width: 18 },
+    { width: 22 },
     { width: 42 },
   ]
+  plan.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return
+    row.alignment = { wrapText: true, vertical: 'top' }
+  })
+
+  const kpi = workbook.addWorksheet('KPI Forecast')
+  kpi.addRow(['Channel', 'Spend', 'Primary KPI', 'KPI Target', 'Budget %', 'Flight Dates', 'Pacing', 'Notes'])
+  kpi.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } }
+  kpi.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F766E' } }
+  kpi.views = [{ state: 'frozen', ySplit: 1 }]
+
+  inferMediaRows(input.artifact.content).forEach((row) => {
+    kpi.addRow([row.channel, row.budget, row.kpi, row.target, row.budgetPercent, row.flightDates, row.pacing, row.notes])
+  })
+
+  kpi.columns = [
+    { width: 20 },
+    { width: 14 },
+    { width: 16 },
+    { width: 16 },
+    { width: 12 },
+    { width: 18 },
+    { width: 22 },
+    { width: 42 },
+  ]
+  kpi.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return
+    row.alignment = { wrapText: true, vertical: 'top' }
+  })
 
   return workbook.xlsx.writeBuffer()
 }
