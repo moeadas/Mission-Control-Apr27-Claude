@@ -432,6 +432,29 @@ function resolveAgentRuntime(agent: RuntimeAgent, fallback: { provider: AIProvid
   return { provider, model }
 }
 
+function isTimeoutError(error: unknown) {
+  if (!error || typeof error !== 'object') return false
+  const anyError = error as { status?: number; message?: string; name?: string }
+  const message = String(anyError.message || '').toLowerCase()
+  return anyError.status === 504 || anyError.name === 'TimeoutError' || message.includes('timed out') || message.includes('aborted')
+}
+
+function getGenerationTimeoutMs(deliverableType: DeliverableType | undefined, provider: AIProvider) {
+  const heavyDeliverables = new Set<DeliverableType>([
+    'media-plan',
+    'budget-sheet',
+    'kpi-forecast',
+    'blog-article',
+    'content-calendar',
+    'presentation',
+    'pr-comms',
+    'campaign-strategy',
+    'strategy-brief',
+  ])
+  if (!deliverableType || !heavyDeliverables.has(deliverableType)) return 120000
+  return provider === 'ollama' ? 300000 : 180000
+}
+
 async function generateContentFirstText(input: {
   deliverableType?: DeliverableType
   provider: AIProvider
@@ -463,6 +486,8 @@ async function generateContentFirstText(input: {
   const effectiveMaxTokens =
     input.deliverableType === 'blog-article'
       ? Math.max(Number(input.maxTokens || 0), 14000)
+      : input.deliverableType === 'media-plan'
+        ? Math.max(Number(input.maxTokens || 0), 8000)
       : input.maxTokens
 
   // For content tasks we resolve the preferred provider+model through the
@@ -484,13 +509,12 @@ async function generateContentFirstText(input: {
       maxTokens: effectiveMaxTokens,
       messages: input.messages,
       ...providerKeys,
-      // Content chunks (especially calendar posts at 4k tokens) regularly
-      // exceed 30s on Ollama. Allow up to 120s before giving up and trying
-      // the fallback runtime.
-      timeoutMs: isContentTask && primaryRuntime.provider === 'ollama' ? 120000 : undefined,
+      // Heavy planning/content tasks regularly exceed 120s on slower Ollama
+      // runtimes. Give those tasks enough room before trying a fallback.
+      timeoutMs: getGenerationTimeoutMs(input.deliverableType, primaryRuntime.provider),
     })
   } catch (error) {
-    if (!isContentTask) throw error
+    if (!isContentTask && !isTimeoutError(error)) throw error
 
     // Fallback path: ask the canonical resolver for the *other* provider's
     // user-preferred content-task model. No string literals here.
@@ -498,7 +522,7 @@ async function generateContentFirstText(input: {
     const fallbackRuntime = resolveFallbackRuntime({
       settings: normalizedSettings,
       currentProvider: primaryRuntime.provider,
-      requestedModel: resolveContentTaskModel(normalizedSettings, fallbackProvider),
+      requestedModel: isContentTask ? resolveContentTaskModel(normalizedSettings, fallbackProvider) : input.model,
     })
 
     if (!fallbackRuntime) throw error
@@ -510,10 +534,7 @@ async function generateContentFirstText(input: {
       maxTokens: effectiveMaxTokens,
       messages: input.messages,
       ...providerKeys,
-      // Fallback path has the same headroom as the primary call. The
-      // generic generateText default is 120s for both providers — we
-      // pin it explicitly here for clarity.
-      timeoutMs: 120000,
+      timeoutMs: getGenerationTimeoutMs(input.deliverableType, fallbackRuntime.provider),
     })
   }
 }
@@ -1215,7 +1236,11 @@ export async function executeAutonomousTask(input: {
     ],
     ollamaBaseUrl: input.ollamaBaseUrl,
     ollamaContextWindow: input.ollamaContextWindow,
+    ollamaApiKey: input.ollamaApiKey,
     geminiApiKey: input.geminiApiKey,
+    anthropicApiKey: input.anthropicApiKey,
+    openAiApiKey: input.openAiApiKey,
+    openAiBaseUrl: input.openAiBaseUrl,
     providerSettings: input.providerSettings,
   })
 
@@ -1253,7 +1278,11 @@ export async function executeAutonomousTask(input: {
       ],
       ollamaBaseUrl: input.ollamaBaseUrl,
       ollamaContextWindow: input.ollamaContextWindow,
+      ollamaApiKey: input.ollamaApiKey,
       geminiApiKey: input.geminiApiKey,
+      anthropicApiKey: input.anthropicApiKey,
+      openAiApiKey: input.openAiApiKey,
+      openAiBaseUrl: input.openAiBaseUrl,
       providerSettings: input.providerSettings,
     })
   }
@@ -1346,7 +1375,11 @@ export async function executeAutonomousTask(input: {
       ],
       ollamaBaseUrl: input.ollamaBaseUrl,
       ollamaContextWindow: input.ollamaContextWindow,
+      ollamaApiKey: input.ollamaApiKey,
       geminiApiKey: input.geminiApiKey,
+      anthropicApiKey: input.anthropicApiKey,
+      openAiApiKey: input.openAiApiKey,
+      openAiBaseUrl: input.openAiBaseUrl,
       providerSettings: input.providerSettings,
     })
 
