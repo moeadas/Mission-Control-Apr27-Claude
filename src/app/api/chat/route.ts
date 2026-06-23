@@ -301,7 +301,7 @@ function hasMediaPlanBudget(content: string) {
 }
 
 function hasMediaPlanTimeframe(content: string) {
-  return /\b(today|tomorrow|yesterday|this week|next week|this month|next month|this quarter|next quarter|month of|weekly|monthly|quarterly|always on|always-on|\d+\s*(?:days?|weeks?|months?|quarters?)|q[1-4]|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/i.test(content)
+  return /\b(timeframe|flight dates?|duration|today|tomorrow|yesterday|this week|next week|this month|next month|this quarter|next quarter|month of|weekly|monthly|quarterly|always on|always-on|\d+\s*(?:days?|weeks?|months?|quarters?)|q[1-4]|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/i.test(content)
 }
 
 const MEDIA_PLAN_MARKET_PATTERN =
@@ -327,8 +327,61 @@ function isAwaitingMediaPlanBrief(messages: any[]) {
   })
 }
 
+function buildAccumulatedMediaPlanBrief(latestContent: string, messages: any[]) {
+  let seed = ''
+  let seedIndex = -1
+  let lastMissingPromptIndex = -1
+
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const role = String(messages[index]?.role || '')
+    const content = String(messages[index]?.content || '')
+    if (role === 'assistant' && /Before I build the media plan|Excel-ready media plan table|budget or budget range|campaign timeframe/i.test(content)) {
+      lastMissingPromptIndex = index
+      break
+    }
+  }
+
+  if (lastMissingPromptIndex >= 0) {
+    for (let index = lastMissingPromptIndex - 1; index >= 0; index -= 1) {
+      const role = String(messages[index]?.role || '')
+      const content = String(messages[index]?.content || '').trim()
+      if (role === 'user' && isMediaPlanRequest(inferDeliverableType(content), content)) {
+        seed = content
+        seedIndex = index
+        break
+      }
+    }
+  }
+
+  if (!seed && isMediaPlanRequest(inferDeliverableType(latestContent), latestContent)) return latestContent
+  if (!seed) return latestContent
+
+  const additions = messages
+    .slice(Math.max(seedIndex + 1, 0))
+    .filter((message: any) => String(message?.role || '') === 'user')
+    .map((message: any) => String(message?.content || '').trim())
+    .filter((content: string) => content && content !== seed)
+
+  const latestTrimmed = latestContent.trim()
+  if (latestTrimmed && latestTrimmed !== seed && !additions.includes(latestTrimmed)) {
+    additions.push(latestTrimmed)
+  }
+
+  if (!additions.length) return seed
+
+  return [
+    seed,
+    '',
+    'Additional confirmed media plan details. If any detail conflicts with the original request, use the latest confirmed detail.',
+    ...additions.map((detail: string) => `- ${detail}`),
+  ].join('\n')
+}
+
 function expandMediaPlanBriefFollowUp(content: string, messages: any[]) {
-  if (isMediaPlanRequest(inferDeliverableType(content), content) || !isAwaitingMediaPlanBrief(messages)) return content
+  if (!isAwaitingMediaPlanBrief(messages)) return content
+  const accumulatedBrief = buildAccumulatedMediaPlanBrief(content, messages)
+  if (accumulatedBrief !== content) return accumulatedBrief
+  if (isMediaPlanRequest(inferDeliverableType(content), content)) return content
   if (
     !hasMediaPlanObjective(content) &&
     !hasMediaPlanBudget(content) &&

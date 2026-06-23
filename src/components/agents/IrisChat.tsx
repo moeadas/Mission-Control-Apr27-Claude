@@ -63,6 +63,8 @@ const TIMEFRAME_OPTIONS = [
   { label: '30 Days', value: '30-day calendar' },
   { label: 'This Month', value: 'this month' },
   { label: 'This Quarter', value: 'this quarter' },
+  { label: '3 Months', value: '3 months' },
+  { label: '6 Months', value: '6 months' },
   { label: 'Custom', value: 'custom' },
 ]
 
@@ -521,7 +523,7 @@ function hasMediaPlanBudget(message: string) {
 }
 
 function hasMediaPlanTimeframe(message: string) {
-  return /\b(today|tomorrow|yesterday|this week|next week|this month|next month|this quarter|next quarter|month of|weekly|monthly|quarterly|always on|always-on|\d+\s*(?:days?|weeks?|months?|quarters?)|q[1-4]|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/i.test(message)
+  return /\b(timeframe|flight dates?|duration|today|tomorrow|yesterday|this week|next week|this month|next month|this quarter|next quarter|month of|weekly|monthly|quarterly|always on|always-on|\d+\s*(?:days?|weeks?|months?|quarters?)|q[1-4]|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/i.test(message)
 }
 
 const MEDIA_PLAN_MARKET_PATTERN =
@@ -561,8 +563,68 @@ function isAwaitingMediaPlanBrief(conversation?: { messages?: ChatMessage[]; bri
   }) || conversation?.briefing?.deliverableType === 'media-plan'
 }
 
+function buildAccumulatedMediaPlanBrief(
+  latestMessage: string,
+  conversation?: { messages?: ChatMessage[]; briefing?: IrisConversationBriefing | null } | null
+) {
+  const briefingRequest = conversation?.briefing?.deliverableType === 'media-plan'
+    ? conversation.briefing.originalRequest
+    : ''
+  const messages = conversation?.messages || []
+  let seed = briefingRequest
+  let seedIndex = -1
+  let lastMissingPromptIndex = -1
+
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index]
+    const content = String(message.content || '')
+    if (message.role === 'assistant' && /Before I build the media plan|Excel-ready media plan table|budget or budget range|campaign timeframe/i.test(content)) {
+      lastMissingPromptIndex = index
+      break
+    }
+  }
+
+  if (!seed && lastMissingPromptIndex >= 0) {
+    for (let index = lastMissingPromptIndex - 1; index >= 0; index -= 1) {
+      const message = messages[index]
+      const content = String(message.content || '').trim()
+      if (message.role === 'user' && isMediaPlanRequest(content)) {
+        seed = content
+        seedIndex = index
+        break
+      }
+    }
+  }
+
+  if (!seed && isMediaPlanRequest(latestMessage)) return latestMessage
+  if (!seed) return latestMessage
+
+  const additions = messages
+    .slice(Math.max(seedIndex + 1, 0))
+    .filter((message) => message.role === 'user')
+    .map((message) => String(message.content || '').trim())
+    .filter((content) => content && content !== seed)
+
+  const latestTrimmed = latestMessage.trim()
+  if (latestTrimmed && latestTrimmed !== seed && !additions.includes(latestTrimmed)) {
+    additions.push(latestTrimmed)
+  }
+
+  if (!additions.length) return seed
+
+  return [
+    seed,
+    '',
+    'Additional confirmed media plan details. If any detail conflicts with the original request, use the latest confirmed detail.',
+    ...additions.map((detail) => `- ${detail}`),
+  ].join('\n')
+}
+
 function expandMediaPlanBriefFollowUp(message: string, conversation?: { messages?: ChatMessage[]; briefing?: IrisConversationBriefing | null } | null) {
-  if (isMediaPlanRequest(message) || !isAwaitingMediaPlanBrief(conversation)) return message
+  if (!isAwaitingMediaPlanBrief(conversation)) return message
+  const accumulatedBrief = buildAccumulatedMediaPlanBrief(message, conversation)
+  if (accumulatedBrief !== message) return accumulatedBrief
+  if (isMediaPlanRequest(message)) return message
   if (
     !hasMediaPlanObjective(message) &&
     !hasMediaPlanBudget(message) &&
@@ -647,7 +709,7 @@ function extractBriefFields(text: string) {
   else if (/\b(presentation|deck|slides)\b/.test(lower)) fields.format = 'presentation'
   else if (/\b(report|document|white-?paper)\b/.test(lower)) fields.format = 'report'
 
-  const timeframeMatch = text.match(/(?:month of\s+[A-Za-z]+|[A-Za-z]+\s+calendar|30-day calendar|14-day calendar|7-day calendar|this month|this week|this quarter|next quarter|next month|next week|\d+\s*-?\s*day calendar)/i)
+  const timeframeMatch = text.match(/(?:\d+\s*(?:days?|weeks?|months?|quarters?)(?:\s+(?:starting|from|beginning)\s+[A-Za-z]+(?:\s+\d{4})?)?|(?:starting|from|beginning)\s+[A-Za-z]+(?:\s+\d{4})?|month of\s+[A-Za-z]+|[A-Za-z]+\s+calendar|30-day calendar|14-day calendar|7-day calendar|this month|this week|this quarter|next quarter|next month|next week|\d+\s*-?\s*day calendar)/i)
   if (timeframeMatch && !/^[A-Za-z]+\s+calendar$/i.test(timeframeMatch[0])) fields.timeframe = timeframeMatch[0]
 
   const cadenceMatch = text.match(/(\d+\s+posts?\s+(?:per\s+(?:channel|platform)|for each platform|per platform)|daily posting cadence|daily|\d+x?\s*(?:per|times?\s+per)\s*week)/i)
@@ -689,6 +751,9 @@ function getRequiredBriefFields(briefing: IrisConversationBriefing) {
   }
   if (deliverableType === 'email-campaign') {
     return ['objective'] as IrisBriefField[]
+  }
+  if (deliverableType === 'media-plan') {
+    return ['objective', 'timeframe'] as IrisBriefField[]
   }
   if (deliverableType === 'blog-article' || deliverableType === 'website-copy' || deliverableType === 'video-script' || deliverableType === 'presentation') {
     return ['objective'] as IrisBriefField[]
@@ -792,9 +857,18 @@ function buildConversationBriefing(request: string, existing?: IrisConversationB
     ...(existing?.fields || {}),
     ...extractBriefFields(request),
   }
+  const originalRequest =
+    existing?.originalRequest && deliverableType === 'media-plan'
+      ? [
+          existing.originalRequest.trim(),
+          '',
+          'Additional confirmed media plan details. If any detail conflicts with the original request, use the latest confirmed detail.',
+          `- ${request.trim()}`,
+        ].join('\n')
+      : existing?.originalRequest || request
   const briefing: IrisConversationBriefing = {
     active: true,
-    originalRequest: existing?.originalRequest || request,
+    originalRequest,
     deliverableType,
     fields: mergedFields,
     awaitingField: null,
