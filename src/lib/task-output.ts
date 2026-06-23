@@ -262,16 +262,20 @@ export function getDeliverableOutputSpec(deliverableType: DeliverableType, reque
   if (deliverableType === 'media-plan') {
     return [
       formatRules,
-      'Produce the actual media plan, not a brief and not a routing note.',
-      'The output must have exactly these two major parts:',
+      'Produce the actual client-ready media plan, not a brief, routing note, or generic channel list.',
+      'The output must have exactly these two major sections and no other H2-level sections:',
       '## Media Plan Strategy',
       '## Excel-Ready Media Plan',
-      'In Media Plan Strategy, cover: objective, planning assumptions, audience definition, channel-selection rationale, funnel role, budget logic, flighting/pacing, KPI framework, risks/watchouts, and immediate next steps.',
+      'In Media Plan Strategy, cover these subsections in prose or bullets: Campaign Overview, Confirmed Inputs & Assumptions, Objective-to-Funnel Logic, Audience Strategy, Channel Selection Rationale, Budget Allocation Logic, KPI Forecast Summary, Scheduling & Pacing, Measurement Setup, Optimization Rules, Risks & Watchouts, Immediate Next Steps.',
+      'Use the methodology: extract/validate brief, map objective to funnel/KPI hierarchy, separate prospecting vs retargeting, score channels by objective/audience/cost/creative/measurement fit, select platform objectives/formats/buying types, allocate budget by country/funnel/channel, forecast outcomes from CPM/CPC/CPL assumptions, choose flighting/pacing, then run QA.',
+      'Support multiple countries. If more than one country is mentioned, keep countries separate in the strategy and table; do not collapse them into MENA/GCC unless the user asked for a regional total.',
+      'Use objective-sensitive KPI logic: awareness = reach/impressions/CPM/frequency/video views; engagement = engagements/engagement rate/CPE/video views; traffic = clicks/landing-page views/CTR/CPC; lead generation = leads/CPL/CVR/lead quality; app = installs/CPI/in-app events/retention; sales = purchases/CPA/ROAS/conversion value/AOV; retention = repeat purchase/LTV/reactivation/ROAS.',
       'In Excel-Ready Media Plan, include one normal markdown pipe table that can be exported to XLSX. Do not split this table into multiple tables.',
-      'The media table must include these columns in this order: Channel, Funnel Role, Audience Segment, Targeting Notes, Format/Placement, KPI, KPI Target, Budget, Budget %, Flight Dates, Frequency/Pacing, Optimization Notes.',
-      'Every channel row must include a concrete KPI and budget allocation. If the user did not provide an exact budget or dates, state the assumption clearly in the Strategy section and mark the numbers as planning assumptions.',
-      'Include both paid and organic/supporting channels when useful, but prioritize the channels that best match the objective, audience, budget, and market context.',
-      'Use concrete numbers, forecast assumptions, and media planning logic. Avoid generic recommendations that could apply to any brand.',
+      'The media table must include these columns in this order: Country, Industry, Campaign Objective, Funnel Stage, Channel, Platform Objective, Format/Placement, Buying Type, Flight Start, Flight End, Duration, Scheduling Model, Budget, Budget %, Benchmark Cost Type, Benchmark Cost, Est. Impressions, Est. Clicks, Est. Outcomes, Primary KPI, Secondary KPIs, Frequency Cap, Tracking Requirement, Notes/Rationale, Source/Assumption.',
+      'Every row must include a concrete KPI, budget amount, budget percent, forecasted delivery/outcome assumptions, and tracking requirement. If the user did not provide exact budget or dates, state the planning assumption clearly and mark the numbers as assumptions.',
+      'Budget percentages must add up to 100%. If exact totals are impossible from the brief, show a clearly labeled planning allocation that still sums to 100%.',
+      'Include paid, organic/supporting, CRM, or retargeting channels only when useful, and prioritize channels that match the objective, country, industry, audience, budget, creative readiness, and measurement readiness.',
+      'Use concrete numbers, forecast formulas, benchmark confidence notes, and media planning logic. Avoid generic recommendations that could apply to any brand.',
     ].join('\n')
   }
 
@@ -561,12 +565,16 @@ function getDefaultQualityChecklist(deliverableType: DeliverableType, lowerReque
 
   if (deliverableType === 'media-plan') {
     return [
-      '1. Confirm objective, budget, timing, audience, and client context',
-      '2. Define audience strategy and channel-selection logic',
-      '3. Build budget allocation, funnel roles, formats, and flighting',
-      '4. Add KPI framework, target assumptions, and optimization logic',
-      '5. Review planning risks, dependencies, and pacing guardrails',
-      '6. Prepare the final strategy narrative plus one Excel-ready media-plan table',
+      '1. Extract and validate brand, countries, objective, budget, timing, audience, product/service, constraints, and tracking readiness',
+      '2. Map objective to funnel stage, platform objectives, primary KPI, and secondary KPIs',
+      '3. Build audience architecture with prospecting, retargeting, exclusions, and country-specific considerations',
+      '4. Score channels by objective fit, audience fit, cost efficiency, creative fit, and measurement fit',
+      '5. Select formats, placements, buying types, and platform campaign objectives for each chosen channel',
+      '6. Allocate budget by country, funnel, channel, and testing buffer; make percentages sum to 100%',
+      '7. Forecast impressions, clicks, outcomes, cost per result, and confidence using benchmark assumptions',
+      '8. Define scheduling model, flighting, pacing, frequency caps, and optimization windows',
+      '9. Add measurement setup, UTM/conversion-event requirements, and post-launch optimization rules',
+      '10. Run QA, then deliver Media Plan Strategy plus one Excel-ready media-plan table',
     ]
   }
 

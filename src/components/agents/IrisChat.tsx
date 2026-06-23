@@ -524,8 +524,19 @@ function hasMediaPlanTimeframe(message: string) {
   return /\b(today|tomorrow|yesterday|this week|next week|this month|next month|this quarter|next quarter|month of|weekly|monthly|quarterly|always on|always-on|\d+\s*(?:days?|weeks?|months?|quarters?)|q[1-4]|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/i.test(message)
 }
 
+const MEDIA_PLAN_MARKET_PATTERN =
+  /\b(countries?|markets?|regions?|cities?|mena|gcc|middle east|north africa|europe|usa|united states|uk|united kingdom|ksa|saudi|saudi arabia|uae|dubai|abu dhabi|qatar|kuwait|bahrain|oman|jordan|egypt|iraq|lebanon|morocco|tunisia|turkey|france|germany|spain|italy|canada|australia)\b/i
+
+function hasMediaPlanMarket(message: string) {
+  return MEDIA_PLAN_MARKET_PATTERN.test(message)
+}
+
+function hasMediaPlanAudience(message: string) {
+  return /\b(audience|target audience|targeting|demographic|persona|segment|customers?|buyers?|users?|prospects?|parents?|owners?|breeders?|veterinarians?|students?|patients?|investors?|travelers?|shoppers?|founders?|decision makers?)\b/i.test(message)
+}
+
 function hasMediaPlanAudienceOrMarket(message: string) {
-  return /\b(audience|target audience|targeting|market|country|region|city|demographic|persona|segment|customers?|buyers?|users?|prospects?|parents?|owners?|breeders?|veterinarians?|ksa|saudi|uae|dubai|abu dhabi|qatar|kuwait|bahrain|oman|jordan|egypt|mena|gcc|europe|usa|uk)\b/i.test(message)
+  return hasMediaPlanAudience(message) || hasMediaPlanMarket(message)
 }
 
 function buildMissingMediaPlanPrompt(message: string, hasClientContext = false) {
@@ -533,12 +544,13 @@ function buildMissingMediaPlanPrompt(message: string, hasClientContext = false) 
     !hasMediaPlanObjective(message) ? 'campaign objective' : '',
     !hasMediaPlanBudget(message) ? 'budget or budget range' : '',
     !hasMediaPlanTimeframe(message) ? 'campaign timeframe / flight dates' : '',
-    !hasClientContext && !hasMediaPlanAudienceOrMarket(message) ? 'target audience or market' : '',
+    !hasClientContext && !hasMediaPlanAudience(message) ? 'target audience' : '',
+    !hasClientContext && !hasMediaPlanMarket(message) ? 'target country or countries' : '',
     !hasClientContext && !hasBlogBrandName(message) ? 'brand/company or client name' : '',
   ].filter(Boolean)
 
   if (!missing.length) return ''
-  return `Before I build the media plan, please send the missing details: ${missing.join(', ')}. Optional but useful: product/service, channels to include or exclude, target country, KPI priority, and any must-use formats. Once I have this, I can create the strategy plus an Excel-ready media plan table.`
+  return `Before I build the media plan, please send the missing details: ${missing.join(', ')}. Optional but useful: product/service, channels to include or exclude, KPI priority, tracking readiness, creative assets, and any must-use formats. If this is for multiple countries, list them all and I will plan each country separately. Once I have this, I can create the strategy plus an Excel-ready media plan table.`
 }
 
 function isAwaitingMediaPlanBrief(conversation?: { messages?: ChatMessage[]; briefing?: IrisConversationBriefing | null } | null) {
@@ -1037,15 +1049,16 @@ function buildProvisionalMissionRouting(
       nova: findSkills('nova', agents, [/channel|media|budget|forecast|paid|organic|calendar/], 3),
       maya: findSkills('maya', agents, [/strategy|audience|campaign-planning|positioning|messaging/], 2),
       atlas: findSkills('atlas', agents, [/research|market|competitive|data|insight/], 2),
+      dex: findSkills('dex', agents, [/analytics|performance|measurement|forecast|kpi|reporting/], 2),
     }
 
     return {
       deliverableType,
       leadAgentId: deliverableType === 'media-plan' ? 'nova' : 'maya',
-      collaboratorAgentIds: deliverableType === 'media-plan' ? ['maya', 'atlas'] : ['nova', 'atlas'],
+      collaboratorAgentIds: deliverableType === 'media-plan' ? ['maya', 'dex', 'atlas'] : ['nova', 'atlas'],
       assignedAgentIds:
         deliverableType === 'media-plan'
-          ? ['iris', 'nova', 'maya', 'atlas']
+          ? ['iris', 'nova', 'maya', 'dex', 'atlas']
           : ['iris', 'maya', 'nova', 'atlas'],
       pipelineName: deliverableType === 'media-plan' ? 'Media Plan' : 'Campaign Strategy',
       skillAssignments,
@@ -1055,6 +1068,7 @@ function buildProvisionalMissionRouting(
               'Iris recognized this as media planning work.',
               'Nova is leading the channel mix and budget allocation.',
               'Maya is aligning the plan to strategic objectives.',
+              'Dex is validating measurement, KPIs, and forecast assumptions.',
               'Atlas is adding research and market context.',
             ]
           : [

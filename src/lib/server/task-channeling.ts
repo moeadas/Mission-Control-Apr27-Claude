@@ -169,8 +169,8 @@ const CHANNELING_SPECS: Record<DeliverableType, ChannelingDeliverableSpec> = {
   'media-plan': {
     id: 'media-plan',
     defaultLead: 'nova',
-    defaultCollaborators: ['dex', 'maya'],
-    skillBoostPatterns: [/media|channel|budget|reach|frequency|kpi|paid|organic|allocation|forecast|performance/],
+    defaultCollaborators: ['maya', 'dex', 'atlas'],
+    skillBoostPatterns: [/media|channel|budget|reach|frequency|kpi|paid|organic|allocation|forecast|performance|benchmark|market|audience|measurement/],
     skillPenaltyPatterns: [/operations|documentation|calendar|copywriting|visual|design/],
     complexity: 'high',
   },

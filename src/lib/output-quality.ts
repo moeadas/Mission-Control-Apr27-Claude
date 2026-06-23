@@ -68,6 +68,49 @@ function extractBlogPrimaryKeyword(request?: string) {
   return ''
 }
 
+function extractMarkdownTables(text: string) {
+  const tables: string[][][] = []
+  const lines = text.split('\n')
+  let current: string[] = []
+  const flush = () => {
+    if (current.length >= 2) {
+      const rows = current
+        .filter((line) => line.includes('|'))
+        .map((line) =>
+          line
+            .trim()
+            .replace(/^\|/, '')
+            .replace(/\|$/, '')
+            .split('|')
+            .map((cell) => cell.trim())
+        )
+        .filter((row) => row.length >= 2)
+      const bodyRows = rows.filter((row) => !row.every((cell) => /^:?-{3,}:?$/.test(cell)))
+      if (bodyRows.length >= 2) tables.push(bodyRows)
+    }
+    current = []
+  }
+
+  for (const line of lines) {
+    if (line.includes('|')) current.push(line)
+    else flush()
+  }
+  flush()
+  return tables
+}
+
+function normalizeHeader(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9%]+/g, ' ').trim()
+}
+
+function getMediaPlanTable(text: string) {
+  return extractMarkdownTables(text).find((table) => {
+    const headers = table[0].map(normalizeHeader)
+    const headerText = headers.join(' ')
+    return headerText.includes('country') && headerText.includes('channel') && headerText.includes('budget') && headerText.includes('primary kpi')
+  }) || null
+}
+
 function getKeywordRegex(keyword: string) {
   return new RegExp(keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
 }
@@ -128,7 +171,7 @@ export function validateDeliverableQuality(
         ? ['Objective', 'Final Copy']
         : ['Objective', 'Core Message'],
     'content-calendar': ['Strategy Summary', 'Content Pillars', 'Calendar'],
-    'media-plan': ['Objective', 'Channel Mix', 'Budget Allocation', 'KPI Framework'],
+    'media-plan': ['Media Plan Strategy', 'Excel-Ready Media Plan'],
     'budget-sheet': ['Objective', 'Budget Allocation'],
     'kpi-forecast': ['Objective', 'KPI Framework'],
     'strategy-brief': ['Objective', 'Situation / Context', 'Recommendations'],
@@ -163,6 +206,87 @@ export function validateDeliverableQuality(
 
   if (deliverableType === 'content-calendar' && !/\|.+\|.+\|/.test(trimmed)) {
     issues.push('Content calendar is missing a table layout.')
+  }
+
+  if (deliverableType === 'media-plan') {
+    const mediaStrategy = getSectionContent(trimmed, 'Media Plan Strategy')
+    const mediaTableSection = getSectionContent(trimmed, 'Excel-Ready Media Plan')
+    const mediaTable = getMediaPlanTable(mediaTableSection || trimmed)
+    const requiredStrategyTerms = [
+      ['Objective', /\bobjective|funnel/i],
+      ['Audience Strategy', /\baudience|prospecting|retargeting/i],
+      ['Channel Selection Rationale', /\bchannel|fit score|rationale/i],
+      ['Budget Allocation Logic', /\bbudget|allocation/i],
+      ['KPI Forecast Summary', /\bforecast|impressions|clicks|outcomes?|kpi/i],
+      ['Scheduling & Pacing', /\bflight|schedule|pacing|frequency/i],
+      ['Measurement Setup', /\btracking|pixel|utm|conversion|crm|ga4/i],
+      ['Optimization Rules', /\boptimi[sz]ation|pacing|fatigue|shift budget/i],
+      ['Risks & Watchouts', /\brisk|watchout|assumption|confidence/i],
+    ] as const
+
+    for (const [label, pattern] of requiredStrategyTerms) {
+      if (!pattern.test(mediaStrategy)) issues.push(`Media Plan Strategy missing: ${label}.`)
+    }
+
+    if (!mediaTable) {
+      issues.push('Excel-Ready Media Plan is missing the required markdown table.')
+    } else {
+      const headers = mediaTable[0].map(normalizeHeader)
+      const requiredHeaders = [
+        'country',
+        'industry',
+        'campaign objective',
+        'funnel stage',
+        'channel',
+        'platform objective',
+        'format placement',
+        'buying type',
+        'flight start',
+        'flight end',
+        'duration',
+        'scheduling model',
+        'budget',
+        'budget %',
+        'benchmark cost type',
+        'benchmark cost',
+        'est impressions',
+        'est clicks',
+        'est outcomes',
+        'primary kpi',
+        'secondary kpis',
+        'frequency cap',
+        'tracking requirement',
+        'notes rationale',
+        'source assumption',
+      ]
+      for (const requiredHeader of requiredHeaders) {
+        if (!headers.some((header) => header.includes(requiredHeader))) {
+          issues.push(`Media plan table missing column: ${requiredHeader}.`)
+        }
+      }
+
+      if (mediaTable.length < 3) {
+        issues.push('Media plan table needs at least two line items.')
+      }
+
+      const budgetIndex = headers.findIndex((header) => header.includes('budget %'))
+      if (budgetIndex >= 0) {
+        const percentages = mediaTable.slice(1).map((row) => {
+          const value = String(row[budgetIndex] || '').match(/-?\d+(?:\.\d+)?/)
+          return value ? Number(value[0]) : 0
+        })
+        const sum = percentages.reduce((total, value) => total + value, 0)
+        if (percentages.length && (sum < 99 || sum > 101)) {
+          issues.push(`Media plan budget percentages must sum to 100% (currently ${sum.toFixed(1)}%).`)
+        }
+      }
+    }
+
+    if (/multi|multiple|countries|country|ksa|saudi|uae|qatar|oman|jordan|egypt|iraq|usa|gcc|mena/i.test(request || '')) {
+      if (!/\bCountry\b/i.test(mediaTableSection)) {
+        issues.push('Media plan must preserve country-level rows for multi-country planning.')
+      }
+    }
   }
 
   if (deliverableType === 'blog-article') {

@@ -304,8 +304,19 @@ function hasMediaPlanTimeframe(content: string) {
   return /\b(today|tomorrow|yesterday|this week|next week|this month|next month|this quarter|next quarter|month of|weekly|monthly|quarterly|always on|always-on|\d+\s*(?:days?|weeks?|months?|quarters?)|q[1-4]|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/i.test(content)
 }
 
+const MEDIA_PLAN_MARKET_PATTERN =
+  /\b(countries?|markets?|regions?|cities?|mena|gcc|middle east|north africa|europe|usa|united states|uk|united kingdom|ksa|saudi|saudi arabia|uae|dubai|abu dhabi|qatar|kuwait|bahrain|oman|jordan|egypt|iraq|lebanon|morocco|tunisia|turkey|france|germany|spain|italy|canada|australia)\b/i
+
+function hasMediaPlanMarket(content: string) {
+  return MEDIA_PLAN_MARKET_PATTERN.test(content)
+}
+
+function hasMediaPlanAudience(content: string) {
+  return /\b(audience|target audience|targeting|demographic|persona|segment|customers?|buyers?|users?|prospects?|parents?|owners?|breeders?|veterinarians?|students?|patients?|investors?|travelers?|shoppers?|founders?|decision makers?)\b/i.test(content)
+}
+
 function hasMediaPlanAudienceOrMarket(content: string) {
-  return /\b(audience|target audience|targeting|market|country|region|city|demographic|persona|segment|customers?|buyers?|users?|prospects?|parents?|owners?|breeders?|veterinarians?|ksa|saudi|uae|dubai|abu dhabi|qatar|kuwait|bahrain|oman|jordan|egypt|mena|gcc|europe|usa|uk)\b/i.test(content)
+  return hasMediaPlanAudience(content) || hasMediaPlanMarket(content)
 }
 
 function isAwaitingMediaPlanBrief(messages: any[]) {
@@ -334,7 +345,8 @@ function getMissingMediaPlanDetails(content: string, hasClientContext: boolean) 
     !hasMediaPlanObjective(content) ? 'campaign objective' : '',
     !hasMediaPlanBudget(content) ? 'budget or budget range' : '',
     !hasMediaPlanTimeframe(content) ? 'campaign timeframe / flight dates' : '',
-    !hasClientContext && !hasMediaPlanAudienceOrMarket(content) ? 'target audience or market' : '',
+    !hasClientContext && !hasMediaPlanAudience(content) ? 'target audience' : '',
+    !hasClientContext && !hasMediaPlanMarket(content) ? 'target country or countries' : '',
     !hasClientContext && !hasBlogBrandName(content) ? 'brand/company or client name' : '',
   ].filter(Boolean)
 }
@@ -342,7 +354,7 @@ function getMissingMediaPlanDetails(content: string, hasClientContext: boolean) 
 function buildMissingMediaPlanBriefResponse(content: string, hasClientContext: boolean, provider = 'ollama', model = '') {
   const missing = getMissingMediaPlanDetails(content, hasClientContext)
   return NextResponse.json({
-    response: `Before I build the media plan, please send the missing details: ${missing.join(', ')}. Optional but useful: product/service, channels to include or exclude, target country, KPI priority, and any must-use formats. Once I have this, I can create the strategy plus an Excel-ready media plan table.`,
+    response: `Before I build the media plan, please send the missing details: ${missing.join(', ')}. Optional but useful: product/service, channels to include or exclude, KPI priority, tracking readiness, creative assets, and any must-use formats. If this is for multiple countries, list them all and I will plan each country separately. Once I have this, I can create the strategy plus an Excel-ready media plan table.`,
     meta: {
       intent: 'missing_media_plan_brief',
       routedAgentId: 'iris',

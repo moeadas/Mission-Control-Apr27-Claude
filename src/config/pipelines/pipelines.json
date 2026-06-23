@@ -1464,159 +1464,448 @@
     },
     {
       "id": "media-plan",
-      "name": "Media Plan Development",
-      "description": "Create comprehensive media strategy and execution plan",
-      "version": "1.0",
+      "name": "AI Media Planning Methodology",
+      "description": "Create an objective-sensitive, country-aware media strategy and Excel-ready media plan with benchmark forecasts, measurement logic, and optimization rules.",
+      "version": "2.0",
       "isDefault": true,
-      "estimatedDuration": "7 days",
+      "estimatedDuration": "2-4 hours",
       "clientProfileFields": [
-        { "id": "brand_name", "label": "Brand Name", "type": "text", "required": true },
-        { "id": "campaign_objective", "label": "Campaign Objective", "type": "select", "options": ["awareness", "consideration", "conversion", "retention"], "required": true },
-        { "id": "target_audience", "label": "Target Audience", "type": "textarea", "required": true },
-        { "id": "budget", "label": "Total Media Budget", "type": "text", "required": true },
-        { "id": "campaign_duration", "label": "Campaign Duration", "type": "text", "required": true },
-        { "id": "key_dates", "label": "Key Dates/Events", "type": "textarea", "required": false },
-        { "id": "previous_campaigns", "label": "Previous Campaign Data (URLs or notes)", "type": "textarea", "required": false }
+        {
+          "id": "brand_name",
+          "label": "Brand / Company Name",
+          "type": "text",
+          "required": true
+        },
+        {
+          "id": "industry",
+          "label": "Industry / Vertical",
+          "type": "text",
+          "required": false
+        },
+        {
+          "id": "countries",
+          "label": "Target Country or Countries",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "id": "campaign_objective",
+          "label": "Campaign Objective",
+          "type": "select",
+          "options": [
+            "awareness",
+            "traffic",
+            "engagement",
+            "lead generation",
+            "app downloads",
+            "sales / conversions",
+            "retention"
+          ],
+          "required": true
+        },
+        {
+          "id": "target_audience",
+          "label": "Target Audience",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "id": "budget",
+          "label": "Total Media Budget or Budget Range",
+          "type": "text",
+          "required": true
+        },
+        {
+          "id": "campaign_duration",
+          "label": "Campaign Duration / Flight Dates",
+          "type": "text",
+          "required": true
+        },
+        {
+          "id": "product_service",
+          "label": "Product / Service Being Promoted",
+          "type": "textarea",
+          "required": false
+        },
+        {
+          "id": "tracking_readiness",
+          "label": "Tracking Readiness",
+          "type": "textarea",
+          "required": false
+        },
+        {
+          "id": "mandatory_channels",
+          "label": "Mandatory Channels",
+          "type": "textarea",
+          "required": false
+        },
+        {
+          "id": "excluded_channels",
+          "label": "Excluded Channels",
+          "type": "textarea",
+          "required": false
+        },
+        {
+          "id": "kpi_targets",
+          "label": "Existing KPI Targets",
+          "type": "textarea",
+          "required": false
+        }
       ],
       "phases": [
         {
-          "id": "briefing",
-          "name": "Media Briefing",
+          "id": "brief-intake",
+          "name": "Structured Brief Intake",
           "color": "#4f8ef7",
           "activities": [
             {
-              "id": "briefing-1",
-              "name": "Objectives & Budget Analysis",
-              "description": "Define media objectives and budget parameters",
+              "id": "intake-1",
+              "name": "Campaign Brief Extraction",
+              "description": "Convert the user request and client profile into a structured media brief before planning starts.",
               "assignedRole": "media-planner",
-              "inputs": ["campaign-brief", "historical-data"],
-              "outputs": ["media-objectives", "budget-parameters"],
+              "inputs": [
+                "user-request",
+                "client-profile",
+                "knowledge-assets"
+              ],
+              "outputs": [
+                "structured-media-brief",
+                "missing-or-assumed-inputs"
+              ],
               "checklist": [
-                "Campaign objectives clarified",
-                "Budget range confirmed",
-                "Target metrics defined",
-                "Timeline established",
-                "KPIs agreed"
+                "Brand, industry, countries, product/service, objective, budget, timing, and audience are extracted when present",
+                "Multiple countries are preserved as separate planning markets",
+                "Mandatory channels, excluded channels, constraints, KPI targets, and tracking readiness are captured",
+                "No field is requested again if it is already present in the user prompt or client profile",
+                "Assumptions are explicit and separated from confirmed facts"
               ],
               "prompts": {
-                "en": "Analyze briefing and define media objectives. Inject {{campaign_objective}}, {{budget}}, {{campaign_duration}}. Clarify KPIs and timeline.",
-                "ar": "تحليل الموجز وتحديد الأهداف الإعلامية. توضيح مؤشرات الأداء والجدول الزمني."
+                "en": "You are a senior media planning intake specialist. Extract a structured media brief from the confirmed user request and client context. Capture: brand, industry, countries[], primary objective, secondary objectives, product/service, landing destination, audience, budget, currency, duration or flight dates, mandatory channels, excluded channels, KPI targets, creative assets, tracking readiness, and constraints. Preserve multiple countries as an array and do not collapse them into a single region. If a value is missing but inferable from client context, mark it as an assumption. Do not create the plan yet; output a clean structured brief plus the assumptions list.",
+                "ar": "استخرج موجزًا إعلاميًا منظمًا من طلب المستخدم وسياق العميل، مع الحفاظ على تعدد الدول وتوضيح الافتراضات دون إنشاء الخطة بعد."
               }
             }
           ]
         },
         {
-          "id": "strategy",
-          "name": "Media Strategy",
-          "color": "#9b6dff",
+          "id": "objective-mapping",
+          "name": "Objective & Funnel Mapping",
+          "color": "#7c5cff",
           "activities": [
             {
-              "id": "strategy-1",
-              "name": "Audience Definition",
-              "description": "Define precise target audiences",
+              "id": "mapping-1",
+              "name": "Objective, Funnel & KPI Hierarchy",
+              "description": "Map the campaign objective to funnel stages, platform objectives, and KPI hierarchy.",
               "assignedRole": "media-planner",
-              "inputs": ["media-objectives", "customer-data"],
-              "outputs": ["audience-personas", "targeting-spec"],
+              "inputs": [
+                "structured-media-brief"
+              ],
+              "outputs": [
+                "objective-funnel-map",
+                "kpi-hierarchy"
+              ],
               "checklist": [
-                "Primary audience defined",
-                "Secondary audiences identified",
-                "Audience size estimated",
-                "Media habits analyzed",
-                "Custom audience parameters set"
+                "Awareness maps to TOFU with reach, impressions, CPM, frequency, and video views",
+                "Traffic and engagement map to MOFU with clicks, landing-page views, engagement rate, CPC, CPE, and view metrics",
+                "Lead generation, app downloads, and sales map to BOFU with CPL, CPI, CPA, ROAS, CVR, and qualified outcomes",
+                "Retention maps to post-purchase with CRM reach, repeat purchase, reactivation, LTV, and ROAS",
+                "Primary KPI and 2-4 secondary KPIs are defined for the stated objective"
               ],
               "prompts": {
-                "en": "Define precise target audiences. Inject {{target_audience}}. Analyze media habits, set custom audience parameters.",
-                "ar": "تحديد الجماهير المستهدفة بدقة. تحليل عادات الوسائط، تحديد معايير الجمهور المخصص."
-              }
-            },
-            {
-              "id": "strategy-2",
-              "name": "Channel Strategy",
-              "description": "Develop channel mix and strategy",
-              "assignedRole": "media-planner",
-              "inputs": ["audience-personas", "budget-parameters"],
-              "outputs": ["channel-strategy", "channel-mix"],
-              "checklist": [
-                "Channel selection justified",
-                "Budget split by channel",
-                "Allocation rationale documented",
-                "Cross-channel strategy defined",
-                "Attribution approach selected"
-              ],
-              "prompts": {
-                "en": "Develop channel strategy. Inject {{target_audience}}, {{budget}}. Justify channel selection, define budget split, cross-channel strategy.",
-                "ar": "تطوير استراتيجية القنوات. تبرير اختيار القنوات، تحديد تقسيم الميزانية."
+                "en": "Map the confirmed objective to funnel stage, recommended platform objectives, primary KPI, secondary KPIs, and success definition. Use this logic: Awareness/Reach = TOFU and buys reach, impressions, CPM, frequency, video views; Engagement = TOFU-MOFU and buys post engagement, video views, CPE; Traffic = MOFU and buys clicks, landing-page views, CPC; Lead Generation = MOFU-BOFU and buys leads, CPL, instant forms or website leads; App Downloads = BOFU and buys installs, CPI, in-app events; Sales/Conversions = BOFU and buys purchases, ROAS, CPA, conversion value; Retention = post-purchase and buys CRM reach, reactivation, repeat purchase, LTV. Explain how this objective changes the media mix.",
+                "ar": "اربط الهدف بمرحلة القمع، أهداف المنصات، مؤشرات الأداء الأساسية والثانوية، وتعريف النجاح."
               }
             }
           ]
         },
         {
-          "id": "planning",
-          "name": "Detailed Planning",
-          "color": "#00d4aa",
+          "id": "audience-strategy",
+          "name": "Audience Strategy",
+          "color": "#22c55e",
           "activities": [
             {
-              "id": "planning-1",
-              "name": "Campaign Calendar",
-              "description": "Create detailed campaign timeline",
-              "assignedRole": "media-planner",
-              "inputs": ["channel-strategy", "timeline"],
-              "outputs": ["campaign-calendar", "flight-schedule"],
+              "id": "audience-1",
+              "name": "Prospecting, Retargeting & Exclusions",
+              "description": "Define the audience architecture by market and funnel stage.",
+              "assignedRole": "strategy",
+              "inputs": [
+                "structured-media-brief",
+                "objective-funnel-map"
+              ],
+              "outputs": [
+                "audience-architecture",
+                "targeting-segments"
+              ],
               "checklist": [
-                "Campaign dates confirmed",
-                "Flight schedule defined",
-                "Pacing strategy set",
-                "Key dates noted",
-                "Contingency time built"
+                "Core audience is defined by country, language, demographics, interests, intent, and behavior",
+                "Prospecting and retargeting audiences are separated",
+                "Exclusions are added to prevent waste and audience overlap",
+                "B2B plans prioritize job title, company, industry, ABM, and LinkedIn where viable",
+                "B2C plans prioritize behavior, interest, lookalike, intent, creator, and platform-native signals"
               ],
               "prompts": {
-                "en": "Create campaign calendar. Inject {{campaign_duration}}, {{key_dates}}. Define flight schedule, pacing, contingency.",
-                "ar": "إنشاء تقويم الحملة. تحديد جدول الرحلة، استراتيجية الإيقاع."
+                "en": "Create the target audience strategy for each country and objective. Include core audience, prospecting segments, retargeting segments, exclusions, CRM/lookalike opportunities, platform audience signals, language and local considerations, and any culturally relevant media behaviors. Keep audience logic tied to the client context and the product/service being promoted.",
+                "ar": "أنشئ استراتيجية الجمهور لكل دولة وهدف، مع تقسيم الاستهداف، إعادة الاستهداف، الاستبعادات، والإشارات الخاصة بكل منصة."
+              }
+            }
+          ]
+        },
+        {
+          "id": "channel-eligibility",
+          "name": "Channel Eligibility Scoring",
+          "color": "#14b8a6",
+          "activities": [
+            {
+              "id": "channel-1",
+              "name": "Objective-Sensitive Channel Shortlist",
+              "description": "Score channels by objective, audience, cost, creative, measurement, market, and industry fit.",
+              "assignedRole": "media-planner",
+              "inputs": [
+                "structured-media-brief",
+                "objective-funnel-map",
+                "audience-architecture"
+              ],
+              "outputs": [
+                "channel-scorecard",
+                "recommended-channel-shortlist"
+              ],
+              "checklist": [
+                "Each channel receives 1-5 scores for objective fit, audience fit, cost efficiency, creative fit, and measurement fit",
+                "Channels scoring below 3 are excluded unless mandatory or strategically justified",
+                "Industry modifiers are applied for healthcare, FMCG, real estate, education, banking/fintech, ecommerce, B2B, travel, and apps",
+                "Country/media behavior is considered, including Snapchat/TikTok for youth-skewing GCC briefs and LinkedIn for B2B in UAE/KSA",
+                "Mandatory and excluded channels from the brief are respected"
+              ],
+              "prompts": {
+                "en": "Score these channels for the brief: Meta, TikTok, Snapchat, YouTube, Google Search, Google Display, LinkedIn, Programmatic Display/CTV, Amazon Ads, Influencers, CRM/Email/SMS/WhatsApp. Score objective fit, audience fit, cost efficiency, creative fit, and measurement fit from 1-5. Apply industry overlays: healthcare needs trust/compliance and often Search + Meta Leads + YouTube; FMCG/restaurants favor mass social/video/influencers; real estate tolerates higher CPL and needs Search + Meta Leads + YouTube + retargeting; education is seasonal and lead-driven; banking/fintech needs compliance and trust; ecommerce needs Shopping/PMax/Search/Meta/TikTok/retargeting; B2B needs Search + LinkedIn/ABM when budget supports it; travel needs Search + video/social/influencers. Recommend only channels with a clear objective-country-industry rationale.",
+                "ar": "قيّم القنوات حسب ملاءمة الهدف والجمهور والتكلفة والإبداع والقياس، ثم اختر القنوات ذات المبرر القوي."
+              }
+            }
+          ]
+        },
+        {
+          "id": "format-buying",
+          "name": "Format & Buying-Type Selection",
+          "color": "#06b6d4",
+          "activities": [
+            {
+              "id": "format-1",
+              "name": "Platform Objectives, Formats & Buying Models",
+              "description": "Choose ad formats, placements, platform objectives, and buying types for each shortlisted channel.",
+              "assignedRole": "media-planner",
+              "inputs": [
+                "recommended-channel-shortlist",
+                "audience-architecture"
+              ],
+              "outputs": [
+                "format-and-buying-plan"
+              ],
+              "checklist": [
+                "Awareness uses CPM, reach/frequency, reservation, CPV, or video reach where appropriate",
+                "Traffic uses CPC or CPM optimized for clicks/landing-page views",
+                "Engagement uses CPE, engagement optimization, video views, ThruPlay, or community interaction",
+                "Leads/sales/apps use conversion bidding only when tracking volume is sufficient",
+                "Creative asset requirements are stated for every channel"
+              ],
+              "prompts": {
+                "en": "For every recommended channel, choose the exact platform campaign objective, ad format, placement, and buying type. Use CPM/reach-frequency/reservation/CPV for awareness and video; CPC/landing-page views for traffic; CPE/video views/community interaction for engagement; CPL/conversion bidding for leads; CPI/in-app event bidding for apps; CPA/ROAS/value bidding for sales when tracking volume supports it. Include required creative assets and any tracking dependency for each channel.",
+                "ar": "حدد هدف المنصة، الصيغة الإعلانية، المواضع، ونوع الشراء لكل قناة حسب الهدف وحجم التتبع."
+              }
+            }
+          ]
+        },
+        {
+          "id": "budget-forecast",
+          "name": "Budget Allocation & Forecasting",
+          "color": "#f59e0b",
+          "activities": [
+            {
+              "id": "budget-1",
+              "name": "Funnel, Country & Channel Budget Allocation",
+              "description": "Allocate budget using objective weights, channel scores, country cost levels, industry modifiers, and testing buffer.",
+              "assignedRole": "media-planner",
+              "inputs": [
+                "format-and-buying-plan",
+                "channel-scorecard"
+              ],
+              "outputs": [
+                "budget-allocation",
+                "allocation-rationale"
+              ],
+              "checklist": [
+                "Budget is allocated across countries, funnel stages, channels, and flights",
+                "Balanced full-funnel plans use roughly 40-50% TOFU, 30-35% MOFU, 20-25% BOFU",
+                "Pure awareness briefs push roughly 70-80% into TOFU reach/video channels",
+                "Lead/sales/app briefs push roughly 60-70% into MOFU/BOFU with a small prospecting layer",
+                "A 10-20% testing/optimization buffer is reserved when the budget allows it",
+                "Line items below viable learning budget are flagged instead of hidden"
+              ],
+              "prompts": {
+                "en": "Allocate the confirmed budget across countries, funnel stages, channels, and flights. Start with objective-sensitive funnel weights, then adjust by country cost, channel score, industry competitiveness, market maturity, tracking readiness, and expected KPI. Reserve 10-20% for testing unless the budget is too small. Flag any fragmented or below-learning-budget line item. Ensure all budget percentages sum to 100%.",
+                "ar": "وزّع الميزانية حسب الدول، مراحل القمع، القنوات، وفترات الحملة مع ضمان أن النسب تساوي 100%."
               }
             },
             {
-              "id": "planning-2",
-              "name": "Budget Breakdown",
-              "description": "Detailed budget allocation",
-              "assignedRole": "media-planner",
-              "inputs": ["channel-mix", "pricing-data"],
-              "outputs": ["budget-breakdown", "bid-strategy"],
+              "id": "forecast-1",
+              "name": "Benchmark Cost & KPI Forecast",
+              "description": "Forecast delivery and outcomes using country-format benchmarks, industry modifiers, and explicit assumptions.",
+              "assignedRole": "performance",
+              "inputs": [
+                "budget-allocation",
+                "format-and-buying-plan"
+              ],
+              "outputs": [
+                "forecast-table",
+                "benchmark-assumptions"
+              ],
               "checklist": [
-                "Cost per channel calculated",
-                "Bid strategies defined",
-                "Expected CPM/CPA estimated",
-                "Total investment mapped",
-                "ROI projections made"
+                "Benchmarks use country-format planning estimates and confidence levels",
+                "Impressions = budget / CPM * 1000 where CPM applies",
+                "Clicks = impressions * CTR or budget / CPC where CPC applies",
+                "Leads/actions/conversions = clicks * CVR or budget / benchmark cost per result where applicable",
+                "Primary KPI, forecasted outcome, cost per result, and assumptions are shown for every row",
+                "Seasonality, Ramadan/Q4/national day pressure, and currency caveats are stated when relevant"
               ],
               "prompts": {
-                "en": "Create detailed budget breakdown. Inject {{channel_mix}}, {{budget}}. Calculate CPM/CPA, project ROI.",
-                "ar": "إنشاء تفصيل الميزانية. حساب CPM/CPA، توقع العائد على الاستثمار."
+                "en": "Forecast delivery for every media row using country and format benchmarks. Use these directional benchmark anchors unless better client/platform data is provided: Jordan social CPM 3.5, YouTube 4, display 2.3, short-video 2.8, search CPC 0.35 USD; Oman social CPM 6.5, YouTube 7.2, display 4.2, short-video 5.2, search CPC 0.65; Iraq social CPM 2.2, YouTube 2.7, display 1.5, short-video 1.9, search CPC 0.25; Saudi Arabia social CPM 12.01, YouTube 13.2, display 7.8, short-video 9.6, search CPC 1.2; Qatar social CPM 12.67, YouTube 14, display 8.2, short-video 10.1, search CPC 1.3; Egypt social CPM 1.81, YouTube 2.3, display 1.2, short-video 1.55, search CPC 0.18; USA social CPM 16.08, YouTube 18, display 10.4, short-video 12.9, search CPC 2.5. Apply industry modifiers where relevant: healthcare 1.20, FMCG/restaurants 0.95, real estate 1.25, education 1.15, banking/fintech 1.30, ecommerce/retail 1.10, B2B services 1.35, travel/tourism 1.10, apps/digital products 1.15. Calculate impressions, clicks, primary outcomes, CTR/CVR assumptions, cost per result, and confidence level. Mark estimates as planning benchmarks, not guarantees.",
+                "ar": "توقع التسليم والنتائج لكل بند باستخدام معايير تكلفة حسب الدولة والصيغة، مع توضيح المعادلات ومستوى الثقة."
+              }
+            }
+          ]
+        },
+        {
+          "id": "scheduling",
+          "name": "Scheduling & Flighting",
+          "color": "#fb7185",
+          "activities": [
+            {
+              "id": "scheduling-1",
+              "name": "Flighting, Pacing & Frequency",
+              "description": "Choose the scheduling model, pacing logic, and frequency guardrails.",
+              "assignedRole": "media-planner",
+              "inputs": [
+                "budget-allocation",
+                "forecast-table"
+              ],
+              "outputs": [
+                "flight-schedule",
+                "pacing-plan"
+              ],
+              "checklist": [
+                "Continuity is used for always-on or non-seasonal campaigns",
+                "Flighting is used for seasonal or limited campaigns",
+                "Pulsing is used for always-on campaigns with peak bursts",
+                "Seasonal/roadblock logic is used for launches and tentpole moments",
+                "Frequency caps are set in a safe 3-7 exposure band unless the format requires otherwise",
+                "Optimization windows avoid premature changes during learning"
+              ],
+              "prompts": {
+                "en": "Choose the scheduling model: continuity, flighting, pulsing, seasonal burst, roadblock, or launch burst. Define flight dates, daily/weekly pacing logic, frequency caps, campaign phases, learning windows, and optimization checkpoints. Explain why the schedule fits the objective, country mix, product/service, and budget.",
+                "ar": "اختر نموذج الجدولة، الإيقاع، حدود التكرار، ونوافذ التحسين بناءً على الهدف والدول والميزانية."
+              }
+            }
+          ]
+        },
+        {
+          "id": "measurement",
+          "name": "Measurement & Optimization Rules",
+          "color": "#6366f1",
+          "activities": [
+            {
+              "id": "measurement-1",
+              "name": "Tracking, Reporting & Optimization Playbook",
+              "description": "Define measurement requirements and post-launch optimization rules.",
+              "assignedRole": "performance",
+              "inputs": [
+                "objective-funnel-map",
+                "format-and-buying-plan",
+                "forecast-table"
+              ],
+              "outputs": [
+                "measurement-checklist",
+                "optimization-playbook"
+              ],
+              "checklist": [
+                "Pixel/tag/CAPI/GA4/app SDK/MMP/CRM needs are defined",
+                "UTM naming and conversion events are included",
+                "BOFU optimization is not recommended unless tracking exists or can be implemented",
+                "Pacing, frequency, CTR, CPC, CPM, CPL, CPA, ROAS, creative fatigue, and audience overlap rules are included",
+                "Rules explain when not to make changes because learning volume is insufficient"
+              ],
+              "prompts": {
+                "en": "Build the measurement and optimization plan. Include platform pixel/tag/CAPI/GA4/app SDK/MMP/CRM needs, conversion events, UTM taxonomy, attribution window, reporting cadence, lead handling or ecommerce event requirements, optimization triggers, pacing rules, creative fatigue rules, budget shift rules, audience overlap checks, and learning-phase guardrails. Be specific to the selected channels and objective.",
+                "ar": "أنشئ خطة القياس والتحسين مع متطلبات التتبع، الأحداث، UTMs، قواعد الإيقاع، وتبديل الميزانية."
+              }
+            }
+          ]
+        },
+        {
+          "id": "self-analysis",
+          "name": "Plan QA & Self-Analysis",
+          "color": "#a855f7",
+          "activities": [
+            {
+              "id": "qa-1",
+              "name": "Budget, KPI & Feasibility Validation",
+              "description": "Stress-test the plan before final output.",
+              "assignedRole": "media-planner",
+              "inputs": [
+                "budget-allocation",
+                "forecast-table",
+                "measurement-checklist"
+              ],
+              "outputs": [
+                "plan-qa",
+                "revision-notes"
+              ],
+              "checklist": [
+                "Budget percentages sum to 100%",
+                "Every row has country, funnel stage, channel, platform objective, format, buying type, budget, KPI, forecast, tracking requirement, and rationale",
+                "Forecast assumptions and benchmark confidence are stated",
+                "Low-confidence benchmarks, weak tracking, and underfunded channels are flagged",
+                "Plan is revised before final output if any major QA issue is found"
+              ],
+              "prompts": {
+                "en": "Run a strict media planning QA pass. Check budget totals, country coverage, objective-KPI fit, channel eligibility, benchmark confidence, tracking readiness, learning-phase feasibility, over-fragmented budgets, missing rationale, and forecast completeness. If a problem is found, revise the plan before final delivery. Output only the QA findings and required corrections.",
+                "ar": "راجع الخطة بدقة للتأكد من الميزانية، الملاءمة، التتبع، التوقعات، والمخاطر قبل التسليم."
               }
             }
           ]
         },
         {
           "id": "delivery",
-          "name": "Documentation & Handoff",
+          "name": "Final Strategy & Excel-Ready Plan",
           "color": "#ffd166",
           "activities": [
             {
               "id": "delivery-1",
-              "name": "Media Plan Document",
-              "description": "Compile final media plan",
+              "name": "Client-Ready Media Plan",
+              "description": "Compile the final strategy narrative and workbook-ready plan table.",
               "assignedRole": "media-planner",
-              "inputs": ["channel-strategy", "budget-breakdown", "campaign-calendar"],
-              "outputs": ["media-plan-document", "presentation-deck"],
+              "inputs": [
+                "structured-media-brief",
+                "objective-funnel-map",
+                "audience-architecture",
+                "channel-scorecard",
+                "budget-allocation",
+                "forecast-table",
+                "measurement-checklist",
+                "optimization-playbook",
+                "plan-qa"
+              ],
+              "outputs": [
+                "media-plan-strategy",
+                "excel-ready-media-plan"
+              ],
               "checklist": [
-                "Full media plan documented",
-                "Rationale clearly explained",
-                "Presentation prepared",
-                "Recommendations prioritized",
-                "Success metrics confirmed"
+                "Final output has exactly two major sections: Media Plan Strategy and Excel-Ready Media Plan",
+                "Strategy covers campaign overview, objective/funnel logic, audiences, channel rationale, budget, forecast, flighting, measurement, risks, and next steps",
+                "Excel-ready plan uses one complete markdown pipe table with the required workbook columns",
+                "Rows support multiple countries and show budget, benchmark, forecast, KPI, tracking requirement, and source/assumption",
+                "The plan is client-specific, concrete, and avoids generic channel advice"
               ],
               "prompts": {
-                "en": "Compile final media plan document. Inject all inputs. Clearly explain rationale, prepare presentation, confirm success metrics. Inject {{brand_name}}.",
-                "ar": "تجميع وثيقة الخطة الإعلامية النهائية. توضيح التبرير، تحضير العرض، تأكيد مقاييس النجاح."
+                "en": "Generate the final client-ready media plan. Use exactly two major sections: ## Media Plan Strategy and ## Excel-Ready Media Plan. The strategy must include campaign overview, objective-to-funnel logic, audience strategy, channel-selection rationale with fit scores, budget allocation by country/funnel/channel, forecasted headline KPIs, scheduling model, measurement setup, optimization rules, risks/assumptions, and immediate next steps. The Excel-ready section must contain one complete markdown table using the defined schema and no extra split tables. Make the output specific to the client, countries, objective, audience, industry, product/service, and budget.",
+                "ar": "أنشئ الخطة النهائية بقسمين فقط: استراتيجية الخطة الإعلامية وجدول إعلامي جاهز للتصدير إلى Excel."
               }
             }
           ]

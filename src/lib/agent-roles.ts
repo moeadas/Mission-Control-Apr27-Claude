@@ -63,7 +63,7 @@ export function getDeliverableAgentPlan(deliverableType: DeliverableType, reques
     case 'data-analysis':
       return { leadAgentId: 'atlas', collaboratorAgentIds: ['nova', 'maya'] }
     case 'media-plan':
-      return { leadAgentId: 'nova', collaboratorAgentIds: ['dex', 'maya'] }
+      return { leadAgentId: 'nova', collaboratorAgentIds: ['maya', 'dex', 'atlas'] }
     case 'event-plan':
       return { leadAgentId: 'nova', collaboratorAgentIds: ['maya', 'sage', 'echo'] }
     case 'budget-sheet':

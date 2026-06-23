@@ -384,19 +384,34 @@ function extractMediaTableRows(content?: string) {
     if (!headerText.includes('kpi') && !headerText.includes('funnel')) continue
 
     return table.slice(1).map((row) => ({
+      country: getTableCell(headers, row, ['country', 'market']),
+      industry: getTableCell(headers, row, ['industry', 'vertical']),
+      campaignObjective: getTableCell(headers, row, ['campaign objective', 'objective']),
+      funnelStage: getTableCell(headers, row, ['funnel stage', 'funnel role', 'role']),
       channel: getTableCell(headers, row, ['channel']),
-      funnelRole: getTableCell(headers, row, ['funnel role', 'role']),
+      platformObjective: getTableCell(headers, row, ['platform objective', 'platform campaign objective']),
       audience: getTableCell(headers, row, ['audience segment', 'audience']),
       targeting: getTableCell(headers, row, ['targeting notes', 'targeting']),
       format: getTableCell(headers, row, ['format placement', 'placement', 'format']),
-      kpi: getTableCell(headers, row, ['kpi']),
-      target: getTableCell(headers, row, ['kpi target', 'target']),
+      buyingType: getTableCell(headers, row, ['buying type', 'buying']),
+      flightStart: getTableCell(headers, row, ['flight start', 'start']),
+      flightEnd: getTableCell(headers, row, ['flight end', 'end']),
+      duration: getTableCell(headers, row, ['duration']),
+      schedulingModel: getTableCell(headers, row, ['scheduling model', 'schedule model']),
       budget: getTableCell(headers, row, ['budget']),
       budgetPercent: getTableCell(headers, row, ['budget %', 'budget percent']),
-      flightDates: getTableCell(headers, row, ['flight dates', 'dates', 'schedule']),
-      pacing: getTableCell(headers, row, ['frequency pacing', 'pacing', 'frequency']),
-      notes: getTableCell(headers, row, ['optimization notes', 'notes']),
-    })).filter((row) => row.channel || row.budget || row.kpi)
+      benchmarkCostType: getTableCell(headers, row, ['benchmark cost type', 'cost type']),
+      benchmarkCost: getTableCell(headers, row, ['benchmark cost']),
+      estimatedImpressions: getTableCell(headers, row, ['est impressions', 'estimated impressions', 'impressions']),
+      estimatedClicks: getTableCell(headers, row, ['est clicks', 'estimated clicks', 'clicks']),
+      estimatedOutcomes: getTableCell(headers, row, ['est outcomes', 'estimated outcomes', 'outcomes', 'actions']),
+      primaryKpi: getTableCell(headers, row, ['primary kpi', 'kpi']),
+      secondaryKpis: getTableCell(headers, row, ['secondary kpis', 'secondary kpi']),
+      frequencyCap: getTableCell(headers, row, ['frequency cap', 'frequency pacing', 'pacing', 'frequency']),
+      trackingRequirement: getTableCell(headers, row, ['tracking requirement', 'tracking']),
+      notes: getTableCell(headers, row, ['notes rationale', 'optimization notes', 'rationale', 'notes']),
+      sourceAssumption: getTableCell(headers, row, ['source assumption', 'source', 'assumption']),
+    })).filter((row) => row.channel || row.budget || row.primaryKpi)
   }
   return []
 }
@@ -409,18 +424,33 @@ function inferMediaRows(content?: string) {
   const defaults = ['Meta / Instagram', 'Google Search', 'YouTube', 'Email / CRM']
 
   return (bullets.length ? bullets : defaults).slice(0, 6).map((line, index) => ({
+    country: '',
+    industry: '',
+    campaignObjective: '',
+    funnelStage: '',
     channel: defaults[index] || `Channel ${index + 1}`,
-    funnelRole: '',
+    platformObjective: '',
     audience: '',
     targeting: '',
     format: '',
+    buyingType: '',
+    flightStart: '',
+    flightEnd: '',
+    duration: '',
+    schedulingModel: '',
     budget: index === 0 ? 5000 : index === 1 ? 3000 : 1500,
     budgetPercent: '',
-    flightDates: '',
-    pacing: '',
-    kpi: '',
-    target: '',
+    benchmarkCostType: '',
+    benchmarkCost: '',
+    estimatedImpressions: '',
+    estimatedClicks: '',
+    estimatedOutcomes: '',
+    primaryKpi: '',
+    secondaryKpis: '',
+    frequencyCap: '',
+    trackingRequirement: '',
     notes: line,
+    sourceAssumption: '',
   }))
 }
 
@@ -430,7 +460,9 @@ async function createXlsxBuffer(input: ExportArtifactInput) {
   workbook.created = new Date()
   workbook.modified = new Date()
 
-  const overview = workbook.addWorksheet('Overview', {
+  const mediaRows = inferMediaRows(input.artifact.content)
+
+  const overview = workbook.addWorksheet('Summary', {
     views: [{ state: 'frozen', ySplit: 5 }],
   })
 
@@ -467,70 +499,149 @@ async function createXlsxBuffer(input: ExportArtifactInput) {
     { width: 16 },
   ]
 
-  const plan = workbook.addWorksheet('Plan')
-  const headers = ['Channel', 'Funnel Role', 'Audience Segment', 'Targeting Notes', 'Format / Placement', 'KPI', 'KPI Target', 'Budget', 'Budget %', 'Flight Dates', 'Frequency / Pacing', 'Optimization Notes']
+  const countrySummary = new Map<string, { rows: number; budget: number }>()
+  for (const row of mediaRows) {
+    const country = row.country || 'Unspecified'
+    const numericBudget = Number(String(row.budget || '').replace(/[^0-9.-]+/g, '')) || 0
+    const existing = countrySummary.get(country) || { rows: 0, budget: 0 }
+    countrySummary.set(country, { rows: existing.rows + 1, budget: existing.budget + numericBudget })
+  }
+  let summaryRow = 20
+  overview.getCell(`A${summaryRow}`).value = 'Country Summary'
+  overview.getCell(`A${summaryRow}`).font = { bold: true, color: { argb: 'FF1F2937' } }
+  summaryRow += 1
+  overview.addRow([])
+  const summaryHeader = overview.getRow(summaryRow)
+  summaryHeader.values = ['Country', 'Line Items', 'Planned Budget']
+  summaryHeader.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+  summaryHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF334155' } }
+  for (const [country, summary] of countrySummary) {
+    summaryRow += 1
+    overview.getRow(summaryRow).values = [country, summary.rows, summary.budget || '']
+  }
+
+  const plan = workbook.addWorksheet('Media Plan')
+  const headers = [
+    'Country',
+    'Industry',
+    'Campaign Objective',
+    'Funnel Stage',
+    'Channel',
+    'Platform Objective',
+    'Format / Placement',
+    'Buying Type',
+    'Flight Start',
+    'Flight End',
+    'Duration',
+    'Scheduling Model',
+    'Budget',
+    'Budget %',
+    'Benchmark Cost Type',
+    'Benchmark Cost',
+    'Est. Impressions',
+    'Est. Clicks',
+    'Est. Outcomes',
+    'Primary KPI',
+    'Secondary KPIs',
+    'Frequency Cap',
+    'Tracking Requirement',
+    'Notes / Rationale',
+    'Source / Assumption',
+  ]
   plan.addRow(headers)
   plan.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } }
   plan.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1D4ED8' } }
   plan.views = [{ state: 'frozen', ySplit: 1 }]
 
-  inferMediaRows(input.artifact.content).forEach((row) => {
+  mediaRows.forEach((row) => {
     plan.addRow([
+      row.country,
+      row.industry,
+      row.campaignObjective,
+      row.funnelStage,
       row.channel,
-      row.funnelRole,
-      row.audience,
-      row.targeting,
+      row.platformObjective,
       row.format,
-      row.kpi,
-      row.target,
+      row.buyingType,
+      row.flightStart,
+      row.flightEnd,
+      row.duration,
+      row.schedulingModel,
       row.budget,
       row.budgetPercent,
-      row.flightDates,
-      row.pacing,
+      row.benchmarkCostType,
+      row.benchmarkCost,
+      row.estimatedImpressions,
+      row.estimatedClicks,
+      row.estimatedOutcomes,
+      row.primaryKpi,
+      row.secondaryKpis,
+      row.frequencyCap,
+      row.trackingRequirement,
       row.notes,
+      row.sourceAssumption,
     ])
   })
 
   plan.columns = [
+    { width: 16 },
+    { width: 22 },
+    { width: 22 },
+    { width: 16 },
     { width: 20 },
-    { width: 16 },
     { width: 24 },
-    { width: 34 },
-    { width: 24 },
-    { width: 18 },
-    { width: 18 },
+    { width: 26 },
     { width: 16 },
+    { width: 14 },
+    { width: 14 },
+    { width: 14 },
+    { width: 18 },
+    { width: 14 },
     { width: 12 },
     { width: 18 },
-    { width: 22 },
+    { width: 16 },
+    { width: 18 },
+    { width: 16 },
+    { width: 18 },
+    { width: 18 },
+    { width: 28 },
+    { width: 16 },
+    { width: 30 },
     { width: 42 },
+    { width: 30 },
   ]
   plan.eachRow((row, rowNumber) => {
     if (rowNumber === 1) return
     row.alignment = { wrapText: true, vertical: 'top' }
   })
 
-  const kpi = workbook.addWorksheet('KPI Forecast')
-  kpi.addRow(['Channel', 'Spend', 'Primary KPI', 'KPI Target', 'Budget %', 'Flight Dates', 'Pacing', 'Notes'])
-  kpi.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } }
-  kpi.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F766E' } }
-  kpi.views = [{ state: 'frozen', ySplit: 1 }]
+  const benchmarks = workbook.addWorksheet('Benchmarks')
+  benchmarks.addRow(['Country', 'Benchmark Cost Type', 'Benchmark Cost', 'Confidence / Source'])
+  benchmarks.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } }
+  benchmarks.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F766E' } }
+  mediaRows.forEach((row) => benchmarks.addRow([row.country, row.benchmarkCostType, row.benchmarkCost, row.sourceAssumption]))
+  benchmarks.columns = [{ width: 18 }, { width: 24 }, { width: 18 }, { width: 60 }]
 
-  inferMediaRows(input.artifact.content).forEach((row) => {
-    kpi.addRow([row.channel, row.budget, row.kpi, row.target, row.budgetPercent, row.flightDates, row.pacing, row.notes])
+  const assumptions = workbook.addWorksheet('Assumptions')
+  assumptions.addRow(['Area', 'Assumption / Note'])
+  assumptions.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } }
+  assumptions.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF7C3AED' } }
+  assumptions.addRow(['Planning basis', 'Benchmarks are planning estimates and should be validated in platform planners before final media buying.'])
+  assumptions.addRow(['Formula guidance', 'Impressions = budget / CPM * 1000. Clicks = impressions * CTR or budget / CPC. Outcomes = clicks * CVR or budget / benchmark cost per result.'])
+  assumptions.addRow(['Quality gate', 'Budget percentages should sum to 100%, and every row should have an objective, KPI, tracking requirement, and source/assumption.'])
+  assumptions.columns = [{ width: 24 }, { width: 90 }]
+  assumptions.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return
+    row.alignment = { wrapText: true, vertical: 'top' }
   })
 
-  kpi.columns = [
-    { width: 20 },
-    { width: 14 },
-    { width: 16 },
-    { width: 16 },
-    { width: 12 },
-    { width: 18 },
-    { width: 22 },
-    { width: 42 },
-  ]
-  kpi.eachRow((row, rowNumber) => {
+  const optimization = workbook.addWorksheet('Optimization Rules')
+  optimization.addRow(['Channel', 'Primary KPI', 'Tracking Requirement', 'Optimization Notes'])
+  optimization.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } }
+  optimization.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEA580C' } }
+  mediaRows.forEach((row) => optimization.addRow([row.channel, row.primaryKpi, row.trackingRequirement, row.notes]))
+  optimization.columns = [{ width: 22 }, { width: 22 }, { width: 36 }, { width: 70 }]
+  optimization.eachRow((row, rowNumber) => {
     if (rowNumber === 1) return
     row.alignment = { wrapText: true, vertical: 'top' }
   })
