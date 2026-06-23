@@ -345,29 +345,78 @@ function isMarkdownDividerRow(line: string) {
   return cells.length > 1 && cells.every((cell) => /^:?-{3,}:?$/.test(cell.replace(/\s/g, '')))
 }
 
+function stripHtml(value: string) {
+  return cleanText(
+    value
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;/gi, "'")
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+  )
+}
+
+function extractHtmlTables(content?: string) {
+  const html = String(content || '')
+  const tableMatches = html.match(/<table[\s\S]*?<\/table>/gi) || []
+  return tableMatches
+    .map((tableHtml) => {
+      const rowMatches = tableHtml.match(/<tr[\s\S]*?<\/tr>/gi) || []
+      return rowMatches
+        .map((rowHtml) => {
+          const cellMatches = rowHtml.match(/<t[hd][\s\S]*?<\/t[hd]>/gi) || []
+          return cellMatches.map(stripHtml).filter((cell) => cell.length > 0)
+        })
+        .filter((row) => row.length > 1)
+    })
+    .filter((table) => table.length >= 2)
+}
+
+function isPotentialMarkdownTableLine(line: string) {
+  const pipeCount = (line.match(/\|/g) || []).length
+  if (pipeCount < 2) return false
+  const cells = splitMarkdownTableRow(line)
+  return cells.length > 1
+}
+
+function hasLikelyTableHeader(row: string[]) {
+  const headerText = row.join(' ').toLowerCase()
+  return (
+    (headerText.includes('channel') && headerText.includes('budget')) ||
+    (headerText.includes('country') && headerText.includes('kpi')) ||
+    (headerText.includes('campaign') && headerText.includes('funnel'))
+  )
+}
+
 function extractMarkdownTables(content?: string) {
+  const htmlTables = extractHtmlTables(content)
   const lines = String(content || '').replace(/\r/g, '').split('\n')
   const tables: string[][][] = []
   let current: string[] = []
 
   const flush = () => {
     if (current.length >= 2) {
+      const hasDivider = current.some(isMarkdownDividerRow)
       const rows = current
         .filter((line) => !isMarkdownDividerRow(line))
         .map(splitMarkdownTableRow)
         .filter((row) => row.length > 1)
-      if (rows.length >= 2) tables.push(rows)
+      if (rows.length >= 2 && (hasDivider || hasLikelyTableHeader(rows[0]))) tables.push(rows)
     }
     current = []
   }
 
   for (const line of lines) {
-    if (line.includes('|')) current.push(line)
+    if (isPotentialMarkdownTableLine(line)) current.push(line)
     else flush()
   }
   flush()
 
-  return tables
+  return [...tables, ...htmlTables]
 }
 
 function getTableCell(headers: string[], row: string[], aliases: string[]) {
