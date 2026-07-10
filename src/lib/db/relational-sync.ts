@@ -328,6 +328,22 @@ function buildPipelineRows(agencyId: string) {
   }))
 }
 
+/**
+ * Keep relational pipeline rows in sync with the bundled catalogue. This is
+ * intentionally additive: tenant-created or edited pipelines are untouched,
+ * while new bundled IDs become available before any task can reference them.
+ */
+export async function ensureBundledPipelines(agencyId: string) {
+  const db = getDb()
+  const pipelineRows = dedupeByKey(buildPipelineRows(agencyId), (row) => row.id)
+  if (!pipelineRows.length) return
+
+  const existing = await db`SELECT id FROM pipelines WHERE agency_id = ${agencyId}::uuid`
+  const existingIds = new Set(existing.map((row: any) => row.id))
+  const missing = pipelineRows.filter((row) => !existingIds.has(row.id))
+  if (missing.length) await upsert('pipelines', missing)
+}
+
 function buildKnowledgeAssetRows(clients: AppPersistenceSnapshot['clients'], agencyId: string) {
   return clients.flatMap((client) =>
     (Array.isArray(client.knowledgeAssets) ? client.knowledgeAssets : []).map((asset) => ({
@@ -433,17 +449,7 @@ export async function syncSnapshotToRelationalTables(state: AppPersistenceSnapsh
     if (missing.length) await upsert('skills', missing)
   }
 
-  // Pipelines — seed every missing bundled definition, not just a brand-new
-  // workspace. Tasks carry a pipeline_id foreign key, so an older tenant that
-  // predates a newly bundled pipeline must receive that row before task sync.
-  // Existing tenant/app pipeline edits remain untouched.
-  const pipelineRows = dedupeByKey(buildPipelineRows(agencyId), (r) => r.id)
-  if (pipelineRows.length) {
-    const existing = await db`SELECT id FROM pipelines WHERE agency_id = ${agencyId}::uuid`
-    const existingIds = new Set(existing.map((row: any) => row.id))
-    const missing = pipelineRows.filter((row) => !existingIds.has(row.id))
-    if (missing.length) await upsert('pipelines', missing)
-  }
+  await ensureBundledPipelines(agencyId)
 
   if (tasks.length)   await upsert('tasks', tasks)
   if (outputs.length) await upsert('outputs', outputs)
@@ -757,6 +763,7 @@ export async function loadRelationalAppState(userId?: string, isSuperAdmin = fal
   if (!agency?.id) return null
 
   const agencyId = agency.id
+  await ensureBundledPipelines(agencyId)
 
   const [agentsRows, clientsRows, tasksRows, outputsRows, conversationsRows, messagesRows, knowledgeRows] = await Promise.all([
     db`SELECT * FROM agents WHERE agency_id = ${agencyId}::uuid ORDER BY name ASC`,

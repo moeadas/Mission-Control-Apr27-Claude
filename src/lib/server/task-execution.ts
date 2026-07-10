@@ -10,6 +10,7 @@ import { getFriendlyProviderError, inferPipeline, getServerDeliverableSpec } fro
 import { normalizeProviderSettings, resolveFallbackRuntime, resolveTaskRuntime, shouldRunCompareMode } from '@/lib/provider-settings'
 import { sanitizePromptProfile, sanitizePromptValue } from '@/lib/server/prompt-safety'
 import { getDb } from '@/lib/db/client'
+import { ensureBundledPipelines } from '@/lib/db/relational-sync'
 import type { AuthContext } from '@/lib/auth/server'
 import { loadConfigSkillCategories, mergeDbSkillsWithConfig } from '@/lib/server/skills-catalog'
 import {
@@ -408,6 +409,7 @@ async function loadPipelines(agencyId: string) {
   }
 
   try {
+    await ensureBundledPipelines(agencyId)
     const db = getDb()
     const rows = await db`
       SELECT definition, source FROM pipelines
