@@ -91,12 +91,6 @@ export async function getDefaultAgency() {
   return created[0] ?? null
 }
 
-async function tableHasRows(table: 'skills' | 'pipelines', agencyId: string): Promise<boolean> {
-  const db = getDb()
-  const res = await db`SELECT 1 FROM ${db(table)} WHERE agency_id = ${agencyId}::uuid LIMIT 1`
-  return res.length > 0
-}
-
 // ─── Row builders ───────────────────────────────────────────────────────────
 
 function toAgentRow(agent: Agent, agencyId: string) {
@@ -439,10 +433,16 @@ export async function syncSnapshotToRelationalTables(state: AppPersistenceSnapsh
     if (missing.length) await upsert('skills', missing)
   }
 
-  // Pipelines — only seed once
-  if (!(await tableHasRows('pipelines', agencyId))) {
-    const pipelineRows = dedupeByKey(buildPipelineRows(agencyId), (r) => r.id)
-    if (pipelineRows.length) await upsert('pipelines', pipelineRows)
+  // Pipelines — seed every missing bundled definition, not just a brand-new
+  // workspace. Tasks carry a pipeline_id foreign key, so an older tenant that
+  // predates a newly bundled pipeline must receive that row before task sync.
+  // Existing tenant/app pipeline edits remain untouched.
+  const pipelineRows = dedupeByKey(buildPipelineRows(agencyId), (r) => r.id)
+  if (pipelineRows.length) {
+    const existing = await db`SELECT id FROM pipelines WHERE agency_id = ${agencyId}::uuid`
+    const existingIds = new Set(existing.map((row: any) => row.id))
+    const missing = pipelineRows.filter((row) => !existingIds.has(row.id))
+    if (missing.length) await upsert('pipelines', missing)
   }
 
   if (tasks.length)   await upsert('tasks', tasks)
