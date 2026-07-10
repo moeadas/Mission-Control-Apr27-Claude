@@ -185,6 +185,12 @@ export function validateDeliverableQuality(
     'pr-comms': ['Objective', 'Key Message', 'Draft'],
     'client-brief': ['Objective', 'Situation / Context'],
     'event-plan': ['Objective', 'Event Concept', 'Logistics', 'Promotion Plan'],
+    'financial-operations': ['Objective', 'Process Scope', 'Operating Workflow', 'Controls and Exceptions'],
+    'financial-report': ['Executive Summary', 'Key Financial Metrics', 'Variance Analysis', 'Decisions and Recommended Actions'],
+    'people-operations': ['Objective', 'Employee and Manager Experience', 'Operating Process', 'Risks, Escalations, and Required Review'],
+    'talent-acquisition': ['Hiring Objective', 'Role Outcomes and Competencies', 'Interview Scorecard and Process', 'Decision Governance'],
+    'business-development': ['Growth Objective', 'Ideal Customer Profile', 'Target Account and Qualification Model', 'Pipeline Metrics and Assumptions'],
+    'partnership-strategy': ['Partnership Objective', 'Partner Landscape and Selection Criteria', 'Mutual Value Proposition', 'Activation and Governance'],
     'general-task': [],
     'status-report': [],
   }

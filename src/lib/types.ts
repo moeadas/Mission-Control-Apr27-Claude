@@ -12,6 +12,15 @@ export type AgencyDivision =
   | 'analytics'
   | 'communications'
   | 'production'
+  | 'finance'
+  | 'people'
+  | 'business-development'
+
+export type AgentDepartment =
+  | 'marketing'
+  | 'accounting-finance'
+  | 'human-resources'
+  | 'business-development'
 
 export type AgentSpecialty =
   | 'strategy'
@@ -32,6 +41,14 @@ export type AgentSpecialty =
   | 'operations'
   | 'ux-design'
   | 'brand'
+  | 'accounting'
+  | 'finance'
+  | 'human-resources'
+  | 'talent-acquisition'
+  | 'learning-development'
+  | 'employee-relations'
+  | 'business-development'
+  | 'partnerships'
 
 export type AIProvider = 'ollama' | 'gemini' | 'anthropic' | 'openai'
 export type ProviderFallback = AIProvider | 'none'
@@ -89,6 +106,12 @@ export type DeliverableType =
   | 'kpi-forecast'
   | 'general-task'
   | 'status-report'
+  | 'financial-operations'
+  | 'financial-report'
+  | 'people-operations'
+  | 'talent-acquisition'
+  | 'business-development'
+  | 'partnership-strategy'
 
 export type DeliverableCategory =
   | 'content'
@@ -109,6 +132,7 @@ export interface Agent {
   role: string
   photoUrl?: string
   division: AgencyDivision
+  department?: AgentDepartment
   specialty: AgentSpecialty
   unit: AgencyDivision
   color: string
@@ -139,6 +163,7 @@ export interface Agent {
   }
   bio: string
   methodology: string
+  metadata?: Record<string, unknown>
 }
 
 export interface ActivityEntry {
@@ -169,6 +194,7 @@ export interface AgentTemplate {
   role: string
   photoUrl?: string
   division: AgencyDivision
+  department?: AgentDepartment
   specialty: AgentSpecialty
   unit: AgencyDivision
   color: string

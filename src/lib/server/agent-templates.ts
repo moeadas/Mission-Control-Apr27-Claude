@@ -197,6 +197,7 @@ export async function cloneAgentTemplates(
       templateId,
       clonedFrom: 'config-template',
       clonedAt: new Date().toISOString(),
+      department: template.department || 'marketing',
     }
 
     await db`

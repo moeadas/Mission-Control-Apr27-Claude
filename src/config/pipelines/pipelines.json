@@ -2032,6 +2032,238 @@
       ]
     },
     {
+      "id": "finance-operations",
+      "name": "Finance Operations & Reporting",
+      "description": "Evidence-led finance operations, financial reporting, forecasting, and control workflows",
+      "version": "1.0",
+      "isDefault": true,
+      "estimatedDuration": "3 days",
+      "clientProfileFields": [
+        { "id": "brand_name", "label": "Business Name", "type": "text", "required": true },
+        { "id": "business_objectives", "label": "Finance Objective", "type": "textarea", "required": true },
+        { "id": "financial_period", "label": "Reporting Period", "type": "text", "required": false },
+        { "id": "financial_inputs", "label": "Financial Inputs and Assumptions", "type": "textarea", "required": false }
+      ],
+      "phases": [
+        {
+          "id": "scope",
+          "name": "Scope & Evidence",
+          "color": "#4f8ef7",
+          "activities": [
+            {
+              "id": "scope-1",
+              "name": "Define Finance Scope",
+              "description": "Define the decision, period, data available, owners, and material evidence gaps",
+              "assignedRole": "financial-controller",
+              "inputs": ["financial-inputs"],
+              "outputs": ["finance-scope"],
+              "checklist": ["Decision and period are explicit", "Currency and sources stated", "Missing evidence identified", "Human review boundaries noted"],
+              "prompts": { "en": "Define the finance scope for {{brand_name}}. State the decision, period, data sources, assumptions, missing evidence, and required human review. Use {{business_objectives}} and {{financial_inputs}}.", "ar": "تحديد نطاق العمل المالي ومصادر البيانات والافتراضات." }
+            }
+          ]
+        },
+        {
+          "id": "analysis",
+          "name": "Operations & Analysis",
+          "color": "#9b6dff",
+          "activities": [
+            {
+              "id": "analysis-1",
+              "name": "Build Operating Finance View",
+              "description": "Create the necessary workflow, reconciliation, forecast, or variance analysis",
+              "assignedRole": "accounting-operations",
+              "inputs": ["finance-scope"],
+              "outputs": ["finance-analysis"],
+              "checklist": ["Process owner and timing stated", "Totals reconcile or gaps visible", "Exceptions logged", "No unsupported accounting treatment"],
+              "prompts": { "en": "Build a practical finance operations view for {{brand_name}} using the agreed scope. Include owners, timing, controls, reconciliation or forecast logic, exceptions, and spreadsheet-ready fields where relevant.", "ar": "إنشاء عرض عملي للعمليات والتحليل المالي." }
+            },
+            {
+              "id": "analysis-2",
+              "name": "Plan Financial Actions",
+              "description": "Model drivers, cash impact, and decision trade-offs",
+              "assignedRole": "finance-planning",
+              "inputs": ["finance-analysis"],
+              "outputs": ["finance-recommendations"],
+              "checklist": ["Drivers identified", "Assumptions labelled", "Risks quantified", "Actions are decision-ready"],
+              "prompts": { "en": "Turn the finance analysis into a decision-ready plan for {{brand_name}}. Separate actual facts from assumptions, quantify material risks where possible, and recommend owner-led actions.", "ar": "تحويل التحليل المالي إلى خطة قرار واضحة." }
+            }
+          ]
+        },
+        {
+          "id": "controls",
+          "name": "Control Review & Delivery",
+          "color": "#00d4aa",
+          "activities": [
+            {
+              "id": "controls-1",
+              "name": "Review Controls and Deliver",
+              "description": "Validate evidence, controls, escalation needs, and final management-ready output",
+              "assignedRole": "finance-compliance",
+              "inputs": ["finance-analysis", "finance-recommendations"],
+              "outputs": ["final-finance-deliverable"],
+              "checklist": ["Controls have owners and evidence", "High-risk gaps prioritised", "Legal and tax boundaries noted", "Final output is decision-ready"],
+              "prompts": { "en": "Review the proposed finance deliverable for evidence, control ownership, escalation requirements, and decision readiness. Do not provide legal, tax, audit, or regulatory conclusions.", "ar": "مراجعة الضوابط والمخاطر وحدود المراجعة البشرية." }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "people-operations",
+      "name": "People & HR Operations",
+      "description": "Structured workflows for people operations, talent acquisition, employee relations, and learning",
+      "version": "1.0",
+      "isDefault": true,
+      "estimatedDuration": "3 days",
+      "clientProfileFields": [
+        { "id": "brand_name", "label": "Company Name", "type": "text", "required": true },
+        { "id": "business_objectives", "label": "People Objective", "type": "textarea", "required": true },
+        { "id": "target_audience", "label": "Employee or Candidate Audience", "type": "textarea", "required": false },
+        { "id": "people_context", "label": "People Context and Constraints", "type": "textarea", "required": false }
+      ],
+      "phases": [
+        {
+          "id": "intake",
+          "name": "People Context & Safeguards",
+          "color": "#9b6dff",
+          "activities": [
+            {
+              "id": "intake-1",
+              "name": "Frame the People Need",
+              "description": "Clarify audience, desired outcome, confidentiality boundaries, and human review needs",
+              "assignedRole": "people-operations",
+              "inputs": ["people-context"],
+              "outputs": ["people-brief"],
+              "checklist": ["Audience and outcome stated", "Sensitive data minimised", "Manager and employee roles clear", "Legal review points flagged"],
+              "prompts": { "en": "Frame the people objective for {{brand_name}}. Define the audience, desired outcome, operating constraints, confidentiality boundaries, and questions requiring local HR or legal review. Use {{business_objectives}} and {{people_context}}.", "ar": "تحديد هدف الموارد البشرية والحدود والإجراءات المطلوبة." }
+            }
+          ]
+        },
+        {
+          "id": "design",
+          "name": "Process & Enablement Design",
+          "color": "#00d4aa",
+          "activities": [
+            {
+              "id": "design-1",
+              "name": "Build Employee Operations",
+              "description": "Create a fair, manager-ready people process and operating toolkit",
+              "assignedRole": "people-operations",
+              "inputs": ["people-brief"],
+              "outputs": ["people-process"],
+              "checklist": ["Employee journey clear", "Owners and timing assigned", "Templates are usable", "Escalations included"],
+              "prompts": { "en": "Design a practical people operations process for {{brand_name}} from the brief. Include employee and manager actions, ownership, timing, templates, escalation, and required review.", "ar": "تصميم عملية تشغيلية عملية للموارد البشرية." }
+            },
+            {
+              "id": "design-2",
+              "name": "Build Capability Support",
+              "description": "Create learning or manager enablement where the process needs behaviour change",
+              "assignedRole": "learning-development",
+              "inputs": ["people-process"],
+              "outputs": ["enablement-plan"],
+              "checklist": ["Behavioural outcome defined", "Practice included", "Manager reinforcement planned", "Success measure stated"],
+              "prompts": { "en": "Create the learning and manager enablement needed to make the people process work. Define behaviours, practice, reinforcement, and measurement for {{brand_name}}.", "ar": "إنشاء خطة تعلم وتمكين للمديرين." }
+            }
+          ]
+        },
+        {
+          "id": "review",
+          "name": "Fairness & Escalation Review",
+          "color": "#ff5fa0",
+          "activities": [
+            {
+              "id": "review-1",
+              "name": "Review Employee Relations Risk",
+              "description": "Check language, documentation, fairness, confidentiality, and escalation boundaries",
+              "assignedRole": "employee-relations",
+              "inputs": ["people-process", "enablement-plan"],
+              "outputs": ["final-people-deliverable"],
+              "checklist": ["Language is neutral", "Confidentiality is protected", "Human review is explicit", "No employment decision is automated"],
+              "prompts": { "en": "Review the people deliverable for neutral language, confidentiality, fair process, documentation needs, and escalation to qualified HR or legal review. Do not make employment decisions.", "ar": "مراجعة الحياد والسرية وحدود التصعيد البشري." }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "business-development",
+      "name": "Business Development & Partnerships",
+      "description": "ICP-led business development, account planning, and partnership strategy workflow",
+      "version": "1.0",
+      "isDefault": true,
+      "estimatedDuration": "4 days",
+      "clientProfileFields": [
+        { "id": "brand_name", "label": "Company Name", "type": "text", "required": true },
+        { "id": "product_service", "label": "Offer", "type": "textarea", "required": true },
+        { "id": "target_audience", "label": "Target Market", "type": "textarea", "required": true },
+        { "id": "business_objectives", "label": "Commercial Objective", "type": "textarea", "required": true },
+        { "id": "competitive_landscape", "label": "Market Context", "type": "textarea", "required": false }
+      ],
+      "phases": [
+        {
+          "id": "market",
+          "name": "Commercial Context",
+          "color": "#38bdf8",
+          "activities": [
+            {
+              "id": "market-1",
+              "name": "Map Opportunity Context",
+              "description": "Clarify offer, buying context, market signals, and evidence gaps",
+              "assignedRole": "research",
+              "inputs": ["market-context"],
+              "outputs": ["opportunity-context"],
+              "checklist": ["Offer and market stated", "Evidence separated from hypotheses", "Buying context identified", "Research gaps logged"],
+              "prompts": { "en": "Map the commercial context for {{brand_name}} using {{product_service}}, {{target_audience}}, {{business_objectives}}, and {{competitive_landscape}}. Separate observed evidence from hypotheses.", "ar": "رسم سياق السوق والفرصة التجارية." }
+            }
+          ]
+        },
+        {
+          "id": "pursuit",
+          "name": "Pursuit Strategy",
+          "color": "#ff7c42",
+          "activities": [
+            {
+              "id": "pursuit-1",
+              "name": "Build Business Development Plan",
+              "description": "Define ICP, target account tiers, qualification, outreach, and pipeline metrics",
+              "assignedRole": "business-development",
+              "inputs": ["opportunity-context"],
+              "outputs": ["bd-plan"],
+              "checklist": ["ICP is specific", "Qualification logic defined", "Pipeline stages have owners", "Revenue assumptions labelled"],
+              "prompts": { "en": "Create a business development plan for {{brand_name}}. Define ICP, target account criteria, qualification, outreach, nurture, stages, owners, and metrics. Do not invent prospect relationships or revenue.", "ar": "إنشاء خطة تطوير أعمال وعملاء مستهدفين." }
+            },
+            {
+              "id": "pursuit-2",
+              "name": "Design Partnership Strategy",
+              "description": "Identify partner types, mutual value, activation model, and governance",
+              "assignedRole": "partnerships-growth",
+              "inputs": ["opportunity-context", "bd-plan"],
+              "outputs": ["partnership-plan"],
+              "checklist": ["Mutual value is concrete", "Selection criteria stated", "Governance included", "No unsupported partnership claim"],
+              "prompts": { "en": "Design a partnership strategy for {{brand_name}}. Define partner types, selection criteria, mutual value, activation, governance, and metrics. Do not claim a partnership exists without confirmation.", "ar": "تصميم استراتيجية شراكات وقيمة متبادلة." }
+            }
+          ]
+        },
+        {
+          "id": "delivery",
+          "name": "Commercial Readiness",
+          "color": "#00d4aa",
+          "activities": [
+            {
+              "id": "delivery-1",
+              "name": "Package Commercial Action Plan",
+              "description": "Compile priorities, owners, metrics, assumptions, and next evidence to gather",
+              "assignedRole": "business-development",
+              "inputs": ["bd-plan", "partnership-plan"],
+              "outputs": ["final-bd-deliverable"],
+              "checklist": ["Priorities are ranked", "Actions have owners", "Metrics are defined", "Assumptions and evidence gaps are visible"],
+              "prompts": { "en": "Package the business development and partnership work into a commercial action plan for {{brand_name}} with priorities, owners, metrics, assumptions, and next evidence to gather.", "ar": "تجميع خطة عمل تجارية واضحة بالأولويات والمؤشرات." }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "client-brief",
       "name": "Client Brief",
       "description": "Structured intake workflow for turning client information into a usable agency brief with strategy-ready context",

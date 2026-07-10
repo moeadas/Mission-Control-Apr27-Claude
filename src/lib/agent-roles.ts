@@ -16,6 +16,17 @@ export const ROLE_AGENT_MAP: Record<string, string[]> = {
   'traffic-manager': ['piper'],
   'creative-director': ['finn'],
   'seo-specialist': ['atlas'],
+  'financial-controller': ['ledger'],
+  'finance-planning': ['nora'],
+  'accounting-operations': ['aria'],
+  'treasury-analyst': ['cash'],
+  'finance-compliance': ['vera'],
+  'people-operations': ['harper'],
+  'talent-acquisition': ['remy'],
+  'learning-development': ['devon'],
+  'employee-relations': ['ellis'],
+  'business-development': ['orion'],
+  'partnerships-growth': ['mira'],
 }
 
 export function getAgentIdsForRole(role?: string) {
@@ -69,6 +80,18 @@ export function getDeliverableAgentPlan(deliverableType: DeliverableType, reques
     case 'budget-sheet':
     case 'kpi-forecast':
       return { leadAgentId: 'dex', collaboratorAgentIds: ['nova'] }
+    case 'financial-operations':
+      return { leadAgentId: 'aria', collaboratorAgentIds: ['ledger', 'vera'] }
+    case 'financial-report':
+      return { leadAgentId: 'ledger', collaboratorAgentIds: ['nora', 'cash'] }
+    case 'people-operations':
+      return { leadAgentId: 'harper', collaboratorAgentIds: ['ellis', 'devon'] }
+    case 'talent-acquisition':
+      return { leadAgentId: 'remy', collaboratorAgentIds: ['harper'] }
+    case 'business-development':
+      return { leadAgentId: 'orion', collaboratorAgentIds: ['mira', 'atlas'] }
+    case 'partnership-strategy':
+      return { leadAgentId: 'mira', collaboratorAgentIds: ['orion', 'atlas'] }
     case 'seo-audit':
     case 'research-brief':
       return { leadAgentId: 'atlas', collaboratorAgentIds: ['maya'] }

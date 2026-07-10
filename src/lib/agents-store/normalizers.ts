@@ -12,7 +12,7 @@
 
 import { v4 as uuidv4 } from 'uuid'
 
-import type { Agent, AIProvider, Artifact, Mission } from '@/lib/types'
+import type { Agent, AgentDepartment, AIProvider, Artifact, Mission } from '@/lib/types'
 import type { Client } from '@/lib/client-data'
 import { DEFAULT_CLIENTS } from '@/lib/client-data'
 import { mergeAgentMemories } from '@/lib/agent-memory'
@@ -76,6 +76,11 @@ export function normalizeAgent(agent: Partial<Agent> & Record<string, any>): Age
     ? (agent.provider as AIProvider)
     : template?.provider || (String(agent.model || '').startsWith('gemini') ? 'gemini' : 'ollama')
   const model = (agent.model || template?.model || DEFAULT_PROVIDER_MODEL[provider]) as Agent['model']
+  const department = (['marketing', 'accounting-finance', 'human-resources', 'business-development'] as AgentDepartment[]).includes(
+    agent.department as AgentDepartment
+  )
+    ? (agent.department as AgentDepartment)
+    : template?.department || 'marketing'
 
   return {
     ...(template || {
@@ -84,6 +89,7 @@ export function normalizeAgent(agent: Partial<Agent> & Record<string, any>): Age
       role: 'Specialist',
       photoUrl: undefined,
       division,
+      department,
       specialty: 'creative',
       unit: division,
       color: '#4f8ef7',
@@ -104,6 +110,7 @@ export function normalizeAgent(agent: Partial<Agent> & Record<string, any>): Age
       position: { x: 300, y: 220, room: division },
     }),
     ...agent,
+    department,
     division,
     unit: division,
     specialty: VALID_SPECIALTIES.has(agent.specialty as Agent['specialty'])
@@ -148,9 +155,14 @@ export function normalizeAgent(agent: Partial<Agent> & Record<string, any>): Age
  */
 export function normalizePersistedState(persistedState: any) {
   if (!persistedState) return persistedState
-  const agents = Array.isArray(persistedState.agents)
-    ? persistedState.agents.map(normalizeAgent)
-    : ALL_DEFAULT_AGENTS
+  const persistedAgents = Array.isArray(persistedState.agents) ? persistedState.agents : []
+  const persistedAgentIds = new Set(persistedAgents.map((agent: Partial<Agent>) => agent.id).filter(Boolean))
+  // New bundled specialists must appear for established workspaces too. Preserve
+  // any tenant edits first, then append only templates the workspace does not own.
+  const agents = [
+    ...persistedAgents.map(normalizeAgent),
+    ...ALL_DEFAULT_AGENTS.filter((agent) => !persistedAgentIds.has(agent.id)).map(normalizeAgent),
+  ]
   const clients = Array.isArray(persistedState.clients)
     ? persistedState.clients.map((client: Client) => ({
         ...client,

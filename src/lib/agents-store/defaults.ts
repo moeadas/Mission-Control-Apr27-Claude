@@ -32,6 +32,9 @@ export const VALID_DIVISIONS = new Set<Agent['division']>([
   'analytics',
   'communications',
   'production',
+  'finance',
+  'people',
+  'business-development',
 ])
 
 export const VALID_SPECIALTIES = new Set<Agent['specialty']>([
@@ -53,6 +56,14 @@ export const VALID_SPECIALTIES = new Set<Agent['specialty']>([
   'operations',
   'ux-design',
   'brand',
+  'accounting',
+  'finance',
+  'human-resources',
+  'talent-acquisition',
+  'learning-development',
+  'employee-relations',
+  'business-development',
+  'partnerships',
 ])
 
 export const VALID_STATUSES = new Set<Agent['status']>(['active', 'idle', 'paused'])

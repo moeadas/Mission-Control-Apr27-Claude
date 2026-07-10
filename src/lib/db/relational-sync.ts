@@ -127,7 +127,10 @@ function toAgentRow(agent: Agent, agencyId: string) {
     responsibilities: agent.responsibilities || [],
     primary_outputs: agent.primaryOutputs || [],
     position: agent.position || {},
-    metadata: {},
+    metadata: {
+      ...(agent.metadata || {}),
+      department: agent.department || 'marketing',
+    },
   }
 }
 
@@ -551,12 +554,14 @@ export async function syncEntityDeltaToRelationalTables(
 // ─── Map helpers (DB rows → domain types) ───────────────────────────────────
 
 function mapAgentRow(row: any): Agent {
+  const metadata = parseJsonMaybe<Record<string, unknown>>(row.metadata, {})
   return {
     id: row.id,
     name: row.name,
     role: row.role,
     photoUrl: normalizeAgentPhotoUrl(row.photo_url) || undefined,
     division: row.division,
+    department: (metadata.department as Agent['department']) || 'marketing',
     specialty: row.specialty,
     unit: row.unit,
     color: row.color,
@@ -578,6 +583,7 @@ function mapAgentRow(row: any): Agent {
     position: row.position || { x: 300, y: 220, room: row.division },
     bio: row.bio || '',
     methodology: row.methodology || '',
+    metadata,
   }
 }
 

@@ -124,7 +124,7 @@ export async function persistDraftedAgent(
       ${draft.avatar || 'bot-blue'},
       ${JSON.stringify(Array.isArray(draft.tools) ? draft.tools : [])}::jsonb,
       ${JSON.stringify(Array.isArray(draft.skills) ? draft.skills : [])}::jsonb,
-      ${JSON.stringify({ createdByUserId: authorUserId, source: 'iris-authoring', createdAt: new Date().toISOString() })}::jsonb
+      ${JSON.stringify({ createdByUserId: authorUserId, source: 'iris-authoring', createdAt: new Date().toISOString(), department: draft.department || 'marketing' })}::jsonb
     )
   `
   return { id }

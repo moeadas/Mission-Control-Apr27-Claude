@@ -6,6 +6,7 @@ import { getDb } from '@/lib/db/client'
 import { queueTaskExecution } from '@/lib/server/execution-queue'
 import { inferDeliverableType } from '@/lib/intents/intent-classifier'
 import { getDeliverableSpec } from '@/lib/intents/deliverable-registry'
+import type { DeliverableType } from '@/lib/types'
 
 /**
  * POST /api/pipelines/run
@@ -35,6 +36,23 @@ import { getDeliverableSpec } from '@/lib/intents/deliverable-registry'
 function getBearerToken(request: NextRequest) {
   // Batch P.2: cookie OR bearer. Local wrapper kept so call sites don't change.
   return getAuthTokenFromRequest(request)
+}
+
+// The pipeline runner is an explicit user choice. Prefer that choice over a
+// vague request classifier so a run cannot silently fall back to General Task.
+const PIPELINE_DELIVERABLE_TYPES: Record<string, DeliverableType> = {
+  'content-calendar': 'content-calendar',
+  'blog-post-writing': 'blog-article',
+  'campaign-brief': 'campaign-strategy',
+  'ad-creative': 'creative-asset',
+  'seo-audit': 'seo-audit',
+  'competitor-research': 'research-brief',
+  'media-plan': 'media-plan',
+  'strategy-brief': 'strategy-brief',
+  'client-brief': 'client-brief',
+  'finance-operations': 'financial-report',
+  'people-operations': 'people-operations',
+  'business-development': 'business-development',
 }
 
 export async function POST(request: NextRequest) {
@@ -107,7 +125,7 @@ export async function POST(request: NextRequest) {
 
     // Choose the deliverable type via the canonical classifier so the
     // autonomous task runner picks the right channeling/quality settings.
-    const deliverableType = inferDeliverableType(body.request)
+    const deliverableType = PIPELINE_DELIVERABLE_TYPES[body.pipelineId] || inferDeliverableType(body.request)
     const spec = getDeliverableSpec(deliverableType)
 
     // Create the task row.

@@ -6,7 +6,7 @@ import { AgentCard } from '@/components/agents/AgentCard'
 import { AgentEditor } from '@/components/agents/AgentEditor'
 import { AgentBot } from '@/components/agents/AgentBot'
 import { useAgentsStore } from '@/lib/agents-store'
-import { Plus, Search, Bot, LayoutGrid, GitBranch } from 'lucide-react'
+import { Plus, Search, Bot, LayoutGrid, GitBranch, BriefcaseBusiness, Landmark, UsersRound, Handshake } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { getStoredToken } from '@/lib/auth/browser'
 
@@ -18,7 +18,7 @@ interface AgentUsage {
 
 // ─── Org Chart Component ───────────────────────────────────────────────────
 
-const DIVISION_ORDER = ['orchestration', 'strategy', 'client-services', 'creative', 'media', 'research']
+const DIVISION_ORDER = ['orchestration', 'strategy', 'client-services', 'creative', 'media', 'research', 'finance', 'people', 'business-development']
 const DIVISION_COLORS: Record<string, string> = {
   orchestration: '#a78bfa',
   'client-services': '#4f8ef7',
@@ -26,7 +26,17 @@ const DIVISION_COLORS: Record<string, string> = {
   media: '#ff5fa0',
   research: '#38bdf8',
   strategy: '#9b6dff',
+  finance: '#4f8ef7',
+  people: '#00d4aa',
+  'business-development': '#ff7c42',
 }
+
+const DEPARTMENTS = [
+  { id: 'marketing', name: 'Marketing', description: 'Strategy, creative, media, research, and client delivery.', color: '#9b6dff', icon: BriefcaseBusiness },
+  { id: 'accounting-finance', name: 'Accounting & Finance', description: 'Controls, reporting, planning, cash flow, and finance operations.', color: '#4f8ef7', icon: Landmark },
+  { id: 'human-resources', name: 'People & HR', description: 'People operations, hiring, learning, and employee relations.', color: '#00d4aa', icon: UsersRound },
+  { id: 'business-development', name: 'Business Development', description: 'Opportunity pipeline, account planning, partnerships, and growth.', color: '#ff7c42', icon: Handshake },
+] as const
 
 function OrgChart({ agents }: { agents: ReturnType<typeof useAgentsStore.getState>['agents'] }) {
   // Group agents by division
@@ -217,7 +227,7 @@ export default function AgentsPage() {
       !search ||
       a.name.toLowerCase().includes(search.toLowerCase()) ||
       a.role.toLowerCase().includes(search.toLowerCase())
-    const matchFilter = filter === 'all' || a.specialty === filter || a.status === filter || a.division === filter
+    const matchFilter = filter === 'all' || a.specialty === filter || a.status === filter || a.division === filter || (a.department || 'marketing') === filter
     return matchSearch && matchFilter
   })
 
@@ -226,13 +236,7 @@ export default function AgentsPage() {
     { value: 'active', label: 'Active' },
     { value: 'idle', label: 'Idle' },
     { value: 'paused', label: 'Paused' },
-    { value: 'creative', label: 'Creative' },
-    { value: 'client-services', label: 'Client Services' },
-    { value: 'media', label: 'Media' },
-    { value: 'research', label: 'Research' },
-    { value: 'strategy', label: 'Strategy' },
-    { value: 'copy', label: 'Copy' },
-    { value: 'design', label: 'Design' },
+    ...DEPARTMENTS.map((department) => ({ value: department.id, label: department.name })),
   ]
 
   return (
@@ -323,15 +327,42 @@ export default function AgentsPage() {
         <div className="flex-1 overflow-y-auto p-6">
           {viewMode === 'grid' ? (
             filtered.length > 0 ? (
-              <div className="grid max-w-6xl grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-                {filtered.map((agent) => (
-                  <AgentCard
-                    key={agent.id}
-                    agent={agent}
-                    onEdit={() => openEditor(agent.id)}
-                    tokenUsage={agentUsageMap[agent.id]}
-                  />
-                ))}
+              <div className="space-y-10">
+                {DEPARTMENTS.map((department) => {
+                  const departmentAgents = filtered.filter((agent) => (agent.department || 'marketing') === department.id)
+                  if (!departmentAgents.length) return null
+                  const Icon = department.icon
+                  const activeCount = departmentAgents.filter((agent) => agent.status === 'active').length
+
+                  return (
+                    <section key={department.id} aria-labelledby={`${department.id}-heading`}>
+                      <div className="mb-4 flex flex-wrap items-end justify-between gap-3 border-b border-border pb-4">
+                        <div className="flex items-start gap-3">
+                          <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: `${department.color}18`, color: department.color }}>
+                            <Icon size={19} />
+                          </span>
+                          <div>
+                            <h2 id={`${department.id}-heading`} className="text-lg font-black tracking-[-0.02em] text-text-primary">{department.name}</h2>
+                            <p className="mt-1 text-sm text-text-secondary">{department.description}</p>
+                          </div>
+                        </div>
+                        <div className="rounded-full border px-3 py-1 text-xs font-mono" style={{ borderColor: `${department.color}50`, color: department.color }}>
+                          {departmentAgents.length} specialists · {activeCount} active
+                        </div>
+                      </div>
+                      <div className="grid max-w-[1680px] grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                        {departmentAgents.map((agent) => (
+                          <AgentCard
+                            key={agent.id}
+                            agent={agent}
+                            onEdit={() => openEditor(agent.id)}
+                            tokenUsage={agentUsageMap[agent.id]}
+                          />
+                        ))}
+                      </div>
+                    </section>
+                  )
+                })}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-20">

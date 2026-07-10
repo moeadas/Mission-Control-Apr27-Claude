@@ -10,7 +10,7 @@ export function slugifyFilePart(value: string) {
 
 export function getArtifactFamily(deliverableType: DeliverableType) {
   if (deliverableType === 'creative-asset') return 'creative'
-  if (['media-plan', 'budget-sheet', 'kpi-forecast'].includes(deliverableType)) return 'media'
+  if (['media-plan', 'budget-sheet', 'kpi-forecast', 'financial-report', 'financial-operations'].includes(deliverableType)) return 'media'
   return 'document'
 }
 

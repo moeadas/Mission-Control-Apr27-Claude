@@ -5,18 +5,7 @@ const root = process.cwd()
 const agentsRoot = path.join(root, 'src/config/agents')
 const generatedPath = path.join(agentsRoot, 'generated.ts')
 
-const REQUIRED_FILES = [
-  'agent.json',
-  'SOUL.md',
-  'IDENTITY.md',
-  'STYLE.md',
-  'RULES.md',
-  'CONTEXT.md',
-  'SKILL_SELECTION.md',
-  'HANDOFFS.md',
-  'MEMORY.md',
-  'HEARTBEAT.md',
-]
+const REQUIRED_FILES = ['agent.json']
 
 const RUNTIME_META = {
   iris: { specialty: 'project-management', unit: 'orchestration', accentColor: 'purple', primaryOutputs: ['status-report', 'client-brief'], position: { x: 470, y: 70, room: 'orchestration' } },
@@ -29,6 +18,17 @@ const RUNTIME_META = {
   nova: { specialty: 'media-planning', unit: 'media', accentColor: 'pink', primaryOutputs: ['media-plan', 'budget-sheet', 'kpi-forecast'], position: { x: 720, y: 260, room: 'media' } },
   dex: { specialty: 'performance', unit: 'media', accentColor: 'pink', primaryOutputs: ['status-report', 'kpi-forecast'], position: { x: 820, y: 260, room: 'media' } },
   atlas: { specialty: 'research', unit: 'research', accentColor: 'sky', primaryOutputs: ['research-brief', 'strategy-brief'], position: { x: 380, y: 440, room: 'research' } },
+  ledger: { specialty: 'accounting', unit: 'finance', accentColor: 'blue', primaryOutputs: ['financial-operations', 'financial-report'], position: { x: 130, y: 520, room: 'finance' } },
+  nora: { specialty: 'finance', unit: 'finance', accentColor: 'purple', primaryOutputs: ['financial-report', 'kpi-forecast'], position: { x: 200, y: 520, room: 'finance' } },
+  aria: { specialty: 'accounting', unit: 'finance', accentColor: 'cyan', primaryOutputs: ['financial-operations'], position: { x: 270, y: 520, room: 'finance' } },
+  cash: { specialty: 'finance', unit: 'finance', accentColor: 'yellow', primaryOutputs: ['financial-report', 'kpi-forecast'], position: { x: 340, y: 520, room: 'finance' } },
+  vera: { specialty: 'finance', unit: 'finance', accentColor: 'orange', primaryOutputs: ['financial-report', 'financial-operations'], position: { x: 410, y: 520, room: 'finance' } },
+  harper: { specialty: 'human-resources', unit: 'people', accentColor: 'purple', primaryOutputs: ['people-operations', 'status-report'], position: { x: 540, y: 520, room: 'people' } },
+  remy: { specialty: 'talent-acquisition', unit: 'people', accentColor: 'blue', primaryOutputs: ['talent-acquisition'], position: { x: 610, y: 520, room: 'people' } },
+  devon: { specialty: 'learning-development', unit: 'people', accentColor: 'green', primaryOutputs: ['people-operations'], position: { x: 680, y: 520, room: 'people' } },
+  ellis: { specialty: 'employee-relations', unit: 'people', accentColor: 'pink', primaryOutputs: ['people-operations'], position: { x: 750, y: 520, room: 'people' } },
+  orion: { specialty: 'business-development', unit: 'business-development', accentColor: 'orange', primaryOutputs: ['business-development'], position: { x: 830, y: 520, room: 'business-development' } },
+  mira: { specialty: 'partnerships', unit: 'business-development', accentColor: 'sky', primaryOutputs: ['partnership-strategy', 'business-development'], position: { x: 900, y: 520, room: 'business-development' } },
 }
 
 function toLiteral(value) {
@@ -37,6 +37,10 @@ function toLiteral(value) {
 
 function readText(filePath) {
   return fs.readFileSync(filePath, 'utf8').trim()
+}
+
+function readTextIfExists(filePath) {
+  return fs.existsSync(filePath) ? readText(filePath) : ''
 }
 
 function firstContentLine(markdown) {
@@ -70,20 +74,20 @@ function loadAgentBundle(agentId) {
 
   const agentDir = ensureAgentFolder(agentId)
   const agentJson = JSON.parse(readText(path.join(agentDir, 'agent.json')))
-  const soul = readText(path.join(agentDir, 'SOUL.md'))
-  const identity = readText(path.join(agentDir, 'IDENTITY.md'))
-  const style = readText(path.join(agentDir, 'STYLE.md'))
-  const rules = readText(path.join(agentDir, 'RULES.md'))
-  const context = readText(path.join(agentDir, 'CONTEXT.md'))
-  const skillSelection = readText(path.join(agentDir, 'SKILL_SELECTION.md'))
-  const handoffsDoc = readText(path.join(agentDir, 'HANDOFFS.md'))
-  const memoryDoc = readText(path.join(agentDir, 'MEMORY.md'))
-  const heartbeat = readText(path.join(agentDir, 'HEARTBEAT.md'))
+  const soul = readTextIfExists(path.join(agentDir, 'SOUL.md'))
+  const identity = readTextIfExists(path.join(agentDir, 'IDENTITY.md'))
+  const style = readTextIfExists(path.join(agentDir, 'STYLE.md'))
+  const rules = readTextIfExists(path.join(agentDir, 'RULES.md'))
+  const context = readTextIfExists(path.join(agentDir, 'CONTEXT.md'))
+  const skillSelection = readTextIfExists(path.join(agentDir, 'SKILL_SELECTION.md'))
+  const handoffsDoc = readTextIfExists(path.join(agentDir, 'HANDOFFS.md'))
+  const memoryDoc = readTextIfExists(path.join(agentDir, 'MEMORY.md'))
+  const heartbeat = readTextIfExists(path.join(agentDir, 'HEARTBEAT.md'))
   const playbooksPath = path.join(agentDir, 'PLAYBOOKS.md')
   const playbooks = fs.existsSync(playbooksPath) ? readText(playbooksPath) : ''
 
-  const soulSummary = firstContentLine(soul)
-  const methodologySummary = firstSection(identity, 'What')
+  const soulSummary = firstContentLine(soul) || agentJson.bio || ''
+  const methodologySummary = firstSection(identity, 'What') || agentJson.methodology || ''
 
   const agent = {
     id: agentJson.id,
@@ -91,6 +95,7 @@ function loadAgentBundle(agentId) {
     role: agentJson.role,
     photoUrl: undefined,
     division: agentJson.division,
+    department: agentJson.department || 'marketing',
     specialty: meta.specialty,
     unit: meta.unit,
     color: agentJson.color,
@@ -98,6 +103,7 @@ function loadAgentBundle(agentId) {
     avatar: agentJson.avatar || `bot-${meta.accentColor}`,
     systemPrompt: [
       `You are ${agentJson.name}, ${agentJson.role}.`,
+      agentJson.systemPrompt || '',
       soul,
       identity,
       style,

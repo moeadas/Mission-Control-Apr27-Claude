@@ -46,7 +46,7 @@ function cleanValue(value: string) {
 function extractLabeledValue(text: string, labels: string[]) {
   for (const label of labels) {
     const escaped = escapeRegExp(label)
-    const match = text.match(new RegExp(`(?:^|\\n)\\s*(?:[-*]\\s*)?(?:\\*\\*)?${escaped}(?:\\*\\*)?\\s*[:\\-–]\\s*([^\\n]+)`, 'i'))
+    const match = text.match(new RegExp(`(?:^|\\n)\\s*(?:(?:[-*]|\\d+[.)])\\s*)?(?:\\*\\*)?${escaped}(?:\\*\\*)?\\s*[:\\-–]\\s*([^\\n]+)`, 'i'))
     if (match?.[1]) return cleanValue(match[1])
   }
   return ''
@@ -54,7 +54,7 @@ function extractLabeledValue(text: string, labels: string[]) {
 
 function extractTitle(seoPackage: string) {
   return (
-    extractLabeledValue(seoPackage, ['Meta Title', 'SEO Title', 'Recommended Title', 'Final Title', 'Title']) ||
+    extractLabeledValue(seoPackage, ['Suggested SEO Title Tag', 'Meta Title', 'SEO Title', 'Recommended Title', 'Final Title', 'Title']) ||
     extractLabeledValue(seoPackage, ['Title Option 1', 'Option 1']) ||
     cleanValue(seoPackage.split('\n').find((line) => /title/i.test(line)) || '')
   )

@@ -15,6 +15,13 @@ const STATUS_CONFIG = {
   paused: { label: 'Paused', color: '#555b73' },
 }
 
+const DEPARTMENT_LABELS: Record<string, string> = {
+  marketing: 'Marketing',
+  'accounting-finance': 'Accounting & Finance',
+  'human-resources': 'People & HR',
+  'business-development': 'Business Development',
+}
+
 interface AgentUsage {
   totalTokens: number
   totalCostUsd: number
@@ -104,7 +111,7 @@ export function AgentCard({ agent, onEdit, tokenUsage }: AgentCardProps) {
           <div className="mt-auto px-5 pb-5 pt-3 text-center">
             <h3 className="truncate text-2xl font-black tracking-[-0.03em] text-white">{agent.name}</h3>
             <p className="mt-1 line-clamp-2 text-sm italic leading-6 text-white">{agent.role}</p>
-            <p className="mt-1 text-sm font-semibold text-white">{divisionLabel}</p>
+            <p className="mt-1 text-sm font-semibold text-white">{DEPARTMENT_LABELS[agent.department || 'marketing'] || divisionLabel}</p>
             {agent.model && (
               <p className="mt-1 text-[10px] text-white/60 font-mono">{agent.model}</p>
             )}

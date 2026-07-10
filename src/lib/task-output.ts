@@ -44,6 +44,12 @@ export function buildTaskTitleFromRequest(request: string, deliverableType: Deli
     'research-brief': 'Research Task',
     'general-task': 'Task',
     'status-report': 'Task',
+    'financial-operations': 'Finance Operations',
+    'financial-report': 'Financial Report',
+    'people-operations': 'People Operations',
+    'talent-acquisition': 'Talent Acquisition',
+    'business-development': 'Business Development',
+    'partnership-strategy': 'Partnership Strategy',
   }[deliverableType]
 
   return cleaned.length > 72 ? `${prefix}: ${cleaned.slice(0, 69)}...` : `${prefix}: ${cleaned}`
@@ -256,6 +262,95 @@ export function getDeliverableOutputSpec(deliverableType: DeliverableType, reque
       'The Calendar section must be a pipe table with at least 10 content entries.',
       'Each row must include: Week/Date, Channel, Theme, Post Idea, Hook, CTA, Asset Type, Objective.',
       'Make the calendar realistic for the client industry and buying cycle.',
+    ].join('\n')
+  }
+
+  if (deliverableType === 'financial-operations') {
+    return [
+      formatRules,
+      'Produce a practical finance operations deliverable from supplied information only.',
+      'State the operating period, process owner, required evidence, approval points, exceptions, and human-review boundaries.',
+      'Output sections in this exact order:',
+      '## Objective',
+      '## Process Scope',
+      '## Operating Workflow',
+      '## Tracker or Checklist',
+      '## Controls and Exceptions',
+      '## Actions and Owners',
+      'Do not provide tax, legal, audit, or investment advice.',
+    ].join('\n')
+  }
+
+  if (deliverableType === 'financial-report') {
+    return [
+      formatRules,
+      'Produce a decision-ready management finance report using only the supplied data and clearly labelled assumptions.',
+      'Output sections in this exact order:',
+      '## Executive Summary',
+      '## Key Financial Metrics',
+      '## Variance Analysis',
+      '## Cash Flow or Forecast View',
+      '## Risks and Assumptions',
+      '## Decisions and Recommended Actions',
+      'Do not present estimates as audited results or provide tax, legal, or investment advice.',
+    ].join('\n')
+  }
+
+  if (deliverableType === 'people-operations') {
+    return [
+      formatRules,
+      'Produce a practical people-operations deliverable with inclusive language and clear responsibilities.',
+      'Output sections in this exact order:',
+      '## Objective',
+      '## Employee and Manager Experience',
+      '## Operating Process',
+      '## Templates and Tracker Fields',
+      '## Risks, Escalations, and Required Review',
+      'Do not make employment decisions or give legal advice.',
+    ].join('\n')
+  }
+
+  if (deliverableType === 'talent-acquisition') {
+    return [
+      formatRules,
+      'Produce a structured, competency-based hiring deliverable rather than generic recruitment advice.',
+      'Output sections in this exact order:',
+      '## Hiring Objective',
+      '## Role Outcomes and Competencies',
+      '## Candidate Profile and Sourcing',
+      '## Interview Scorecard and Process',
+      '## Candidate Communications',
+      '## Decision Governance',
+      'Do not infer protected characteristics or make final hiring decisions.',
+    ].join('\n')
+  }
+
+  if (deliverableType === 'business-development') {
+    return [
+      formatRules,
+      'Produce a client-specific commercial pursuit plan based on the offer, target market, and supplied evidence.',
+      'Output sections in this exact order:',
+      '## Growth Objective',
+      '## Ideal Customer Profile',
+      '## Target Account and Qualification Model',
+      '## Outreach and Nurture Plan',
+      '## Pipeline Metrics and Assumptions',
+      '## Recommended Actions',
+      'Do not invent prospect relationships, opportunities, or revenue outcomes.',
+    ].join('\n')
+  }
+
+  if (deliverableType === 'partnership-strategy') {
+    return [
+      formatRules,
+      'Produce an evidence-based partnership plan with a concrete two-sided value exchange.',
+      'Output sections in this exact order:',
+      '## Partnership Objective',
+      '## Partner Landscape and Selection Criteria',
+      '## Mutual Value Proposition',
+      '## Activation and Governance',
+      '## Metrics, Risks, and Next Steps',
+      'Do not claim a partnership exists or provide contract advice.',
     ].join('\n')
   }
 

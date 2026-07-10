@@ -6,7 +6,7 @@ import { AgentBot } from '@/components/agents/AgentBot'
 import { SkillPicker } from '@/components/ui/SkillPicker'
 import { toast } from '@/components/ui/Toast'
 import { X, Save, ChevronRight, ChevronLeft, Check, User, Brain, Wrench, Cpu, Trash2, AlertTriangle } from 'lucide-react'
-import type { AgencyDivision, AgentSpecialty } from '@/lib/types'
+import type { AgencyDivision, AgentDepartment, AgentSpecialty } from '@/lib/types'
 import { getStoredToken } from '@/lib/auth/browser'
 import { getAgentArchitectureBundle, getAgentMemoryNote, getAgentSourceOfTruthPath, getProviderRoutingNote } from '@/lib/agent-architecture'
 import { v4 as uuidv4 } from 'uuid'
@@ -17,7 +17,13 @@ interface AgentEditorProps {
   onClose: () => void
 }
 
-const DIVISIONS: AgencyDivision[] = ['orchestration', 'client-services', 'creative', 'media', 'research', 'strategy']
+const DIVISIONS: AgencyDivision[] = ['orchestration', 'client-services', 'creative', 'media', 'research', 'strategy', 'finance', 'people', 'business-development']
+const DEPARTMENTS: Array<{ value: AgentDepartment; label: string }> = [
+  { value: 'marketing', label: 'Marketing' },
+  { value: 'accounting-finance', label: 'Accounting & Finance' },
+  { value: 'human-resources', label: 'People & HR' },
+  { value: 'business-development', label: 'Business Development' },
+]
 
 const PROVIDERS = [
   { id: 'anthropic' as const, label: 'Anthropic', color: '#cc785c' },
@@ -53,6 +59,7 @@ type FormData = {
   responsibilities: string[]
   tools: string[]
   division: AgencyDivision
+  department: AgentDepartment
   color: string
   systemPrompt: string
   temperature: number
@@ -71,6 +78,7 @@ const DEFAULT_FORM: FormData = {
   responsibilities: [],
   tools: [],
   division: 'creative',
+  department: 'marketing',
   color: '#00d4aa',
   systemPrompt: '',
   temperature: 0.7,
@@ -142,6 +150,7 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
         responsibilities: agent.responsibilities || [],
         tools: agent.tools || [],
         division: agent.division,
+        department: agent.department || 'marketing',
         color: agent.color,
         systemPrompt: agent.systemPrompt || '',
         temperature: agent.temperature || 0.7,
@@ -195,6 +204,7 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
           responsibilities: formData.responsibilities,
           tools: formData.tools,
           division: formData.division,
+          department: formData.department,
           unit: formData.division,
           specialty: (formData.division as AgentSpecialty) || 'creative',
           color: formData.color,
@@ -228,6 +238,7 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
           responsibilities: formData.responsibilities,
           tools: formData.tools,
           division: formData.division,
+          department: formData.department,
           color: formData.color,
           systemPrompt: formData.systemPrompt,
           temperature: formData.temperature,
@@ -470,6 +481,31 @@ export function AgentEditor({ agentId, onClose }: AgentEditorProps) {
                       {div}
                     </button>
                   ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="form-label mb-2">Department</label>
+                <p className="form-hint">Departments organise the roster without changing this agent's execution role.</p>
+                <div className="flex flex-wrap gap-2">
+                  {DEPARTMENTS.map((department) => {
+                    const isSelected = formData.department === department.value
+                    return (
+                      <button
+                        key={department.value}
+                        type="button"
+                        onClick={() => setFormData((prev) => ({ ...prev, department: department.value }))}
+                        className="rounded-xl px-3 py-2 text-xs font-semibold transition-all"
+                        style={{
+                          background: isSelected ? `${formData.color}1f` : 'var(--bg-elevated)',
+                          border: `1px solid ${isSelected ? formData.color : 'var(--border)'}`,
+                          color: isSelected ? formData.color : 'var(--text-secondary)',
+                        }}
+                      >
+                        {department.label}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
 

@@ -30,6 +30,14 @@ export const SPECIALTY_LABELS: Record<string, string> = {
   performance: 'Performance Ops',
   seo: 'SEO & Search',
   research: 'Research',
+  accounting: 'Accounting Operations',
+  finance: 'Financial Planning',
+  'human-resources': 'People Operations',
+  'talent-acquisition': 'Talent Acquisition',
+  'learning-development': 'Learning & Development',
+  'employee-relations': 'Employee Relations',
+  'business-development': 'Business Development',
+  partnerships: 'Partnerships',
 }
 
 export const DIVISION_LABELS: Record<string, string> = {
@@ -39,6 +47,9 @@ export const DIVISION_LABELS: Record<string, string> = {
   media: 'Media',
   research: 'Research',
   strategy: 'Strategy',
+  finance: 'Accounting & Finance',
+  people: 'People & HR',
+  'business-development': 'Business Development',
 }
 
 export const DELIVERABLE_LABELS: Record<string, string> = {
