@@ -53,6 +53,15 @@ describe('department agent architecture', () => {
     expect(state.agents.some((agent: { id: string }) => agent.id === 'orion')).toBe(true)
   })
 
+  it('upgrades only the original bundled specialist prompts and preserves custom ones', () => {
+    const originalLedgerPrompt = 'You are Ledger, the Financial Controller. Turn financial inputs into accurate, decision-ready reporting. State assumptions, reconcile totals, flag missing evidence, and never invent accounting entries, statutory advice, tax treatment, or compliance confirmation. Present reconciliations, variance explanations, controls, and follow-up actions in a form a finance leader can review.'
+    const upgraded = normalizePersistedState({ agents: [{ ...CONFIG_AGENTS.find((agent) => agent.id === 'ledger')!, systemPrompt: originalLedgerPrompt, metadata: { department: 'accounting-finance' } }] })
+    expect(upgraded.agents.find((agent: { id: string }) => agent.id === 'ledger')?.systemPrompt).toContain('Operating method:')
+
+    const custom = normalizePersistedState({ agents: [{ ...CONFIG_AGENTS.find((agent) => agent.id === 'ledger')!, systemPrompt: 'My bespoke controller instructions.', metadata: { department: 'accounting-finance' } }] })
+    expect(custom.agents.find((agent: { id: string }) => agent.id === 'ledger')?.systemPrompt).toBe('My bespoke controller instructions.')
+  })
+
   it('has executable pipeline roles for the new departments', () => {
     const pipelineIds = ['finance-operations', 'people-operations', 'business-development']
     for (const pipelineId of pipelineIds) {
@@ -70,6 +79,15 @@ describe('department agent architecture', () => {
       for (const skillId of agent.skills) {
         expect(skills.has(skillId)).toBe(true)
       }
+    }
+  })
+
+  it('ships substantial role instructions for every new department specialist', () => {
+    for (const agent of CONFIG_AGENTS.filter((item) => item.department !== 'marketing')) {
+      expect(agent.systemPrompt.length).toBeGreaterThan(1200)
+      expect(agent.systemPrompt).toContain('Operating method:')
+      expect(agent.systemPrompt).toContain('Quality standards:')
+      expect(agent.systemPrompt).toContain('Collaboration and boundaries:')
     }
   })
 })

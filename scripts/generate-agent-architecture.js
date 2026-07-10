@@ -128,6 +128,7 @@ function loadAgentBundle(agentId) {
     position: meta.position,
     bio: soulSummary,
     methodology: methodologySummary,
+    metadata: agentJson.metadata || {},
     handoffs: agentJson.handoffs || { receivesFrom: [], sendsTo: [] },
     qualityCheckpoints: agentJson.qualityCheckpoints || [],
   }

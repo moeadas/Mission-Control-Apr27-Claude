@@ -636,6 +636,34 @@ const ARABIC_CONTENT_SIGNAL_AGENTS: Array<{ pattern: RegExp; agentId: string }> 
   { pattern: ARABIC_CONCEPT_RE, agentId: 'finn' },
 ]
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/**
+ * A user can deliberately select a specialist in chat without needing an
+ * extra UI control. We intentionally require an explicit address form so a
+ * natural mention such as "cash flow" cannot accidentally assign Cash.
+ */
+function findExplicitlyRequestedAgent(
+  content: string,
+  agents: Array<{ id: string; name: string }>
+) {
+  const text = content || ''
+  for (const agent of agents) {
+    const names = [agent.name, agent.id].filter(Boolean).map(escapeRegExp)
+    for (const name of names) {
+      const explicitAddress = new RegExp(
+        `(?:^|\\s)(?:@${name}|(?:ask|assign(?:\\s+(?:this|it))?\\s+to|have|let)\\s+(?:the\\s+)?${name})(?=\\s|:|,|$)`,
+        'i'
+      )
+      const leadingAddress = new RegExp(`^\\s*${name}\\s*[:,—-]`, 'i')
+      if (explicitAddress.test(text) || leadingAddress.test(text)) return agent.id
+    }
+  }
+  return null
+}
+
 /**
  * Same shape as the prior server/ai.ts inferRoutingContext but powered by
  * the canonical registry. Both server and client can call this safely.
@@ -654,7 +682,10 @@ export function inferRoutingContext(input: {
     ) || null
 
   const availableAgentIds = new Set((input.agents || []).map((agent) => agent.id))
-  const routedAgentId = availableAgentIds.has(spec.defaultLead)
+  const explicitAgentId = findExplicitlyRequestedAgent(input.content, input.agents || [])
+  const routedAgentId = explicitAgentId && availableAgentIds.has(explicitAgentId)
+    ? explicitAgentId
+    : availableAgentIds.has(spec.defaultLead)
     ? spec.defaultLead
     : spec.defaultCollaborators.find((id) => availableAgentIds.has(id)) || 'iris'
 
@@ -715,7 +746,9 @@ export function inferRoutingContext(input: {
 
   let routingReason = 'Iris handled this request directly.'
   if (routedAgent && deliverableType !== 'status-report') {
-    routingReason = `Iris identified this as ${spec.label.toLowerCase()} work and routed it to ${routedAgent.name} (${routedAgent.role || routedAgent.specialty || 'specialist'}) as lead.`
+    routingReason = explicitAgentId
+      ? `Iris assigned this directly to ${routedAgent.name} (${routedAgent.role || routedAgent.specialty || 'specialist'}) as requested.`
+      : `Iris identified this as ${spec.label.toLowerCase()} work and routed it to ${routedAgent.name} (${routedAgent.role || routedAgent.specialty || 'specialist'}) as lead.`
     if (collaborators.size > 0) {
       routingReason += ` Supporting: ${collaboratorNames}.`
     }
