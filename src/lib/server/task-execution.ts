@@ -11,6 +11,7 @@ import { normalizeProviderSettings, resolveFallbackRuntime, resolveTaskRuntime, 
 import { sanitizePromptProfile, sanitizePromptValue } from '@/lib/server/prompt-safety'
 import { getDb } from '@/lib/db/client'
 import { ensureBundledPipelines } from '@/lib/db/relational-sync'
+import { normalizeAgent } from '@/lib/agents-store/normalizers'
 import type { AuthContext } from '@/lib/auth/server'
 import { loadConfigSkillCategories, mergeDbSkillsWithConfig } from '@/lib/server/skills-catalog'
 import {
@@ -708,17 +709,31 @@ export async function runTaskExecution(
     routedAgentId: task.lead_agent_id || undefined,
     pipelinePhases: pipeline?.phases?.map((phase: any) => phase.name),
   })
-  const runtimeAgents = (agents || []).map((agent: any) => ({
-    id: agent.id,
-    name: agent.name,
-    role: agent.role,
-    specialty: agent.specialty,
-    skills: Array.isArray(agent.skills) ? agent.skills : [],
-    tools: Array.isArray(agent.tools) ? agent.tools : [],
-    provider: agent.provider,
-    model: agent.model,
-    systemPrompt: agent.system_prompt || '',
-  }))
+  // Keep task execution on the same effective agent definition shown in the
+  // editor. This applies safe bundled-prompt migrations before any model call.
+  const runtimeAgents = (agents || []).map((row: any) => {
+    const agent = normalizeAgent({
+      ...row,
+      photoUrl: row.photo_url || undefined,
+      accentColor: row.accent_color,
+      systemPrompt: row.system_prompt || '',
+      maxTokens: row.max_tokens,
+      currentTask: row.current_task || undefined,
+      lastActive: row.last_active || undefined,
+      primaryOutputs: row.primary_outputs,
+    })
+    return {
+      id: agent.id,
+      name: agent.name,
+      role: agent.role,
+      specialty: agent.specialty,
+      skills: agent.skills,
+      tools: agent.tools,
+      provider: agent.provider,
+      model: agent.model,
+      systemPrompt: agent.systemPrompt,
+    }
+  })
   const channelingPlan = buildTaskChannelingPlan({
     request: task.summary || task.title,
     deliverableType: task.deliverable_type,

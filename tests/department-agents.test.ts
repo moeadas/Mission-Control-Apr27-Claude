@@ -58,6 +58,10 @@ describe('department agent architecture', () => {
     const upgraded = normalizePersistedState({ agents: [{ ...CONFIG_AGENTS.find((agent) => agent.id === 'ledger')!, systemPrompt: originalLedgerPrompt, metadata: { department: 'accounting-finance' } }] })
     expect(upgraded.agents.find((agent: { id: string }) => agent.id === 'ledger')?.systemPrompt).toContain('Operating method:')
 
+    const originalVeraPrompt = 'You are Vera, Financial Controls & Compliance Specialist.\n\nYou are Vera, Financial Controls and Compliance Specialist. Build practical control matrices, evidence checklists, segregation-of-duty reviews, and compliance-readiness plans. Clearly distinguish operational guidance from legal, tax, audit, or regulatory advice and require qualified human review for the latter.'
+    const prefixedUpgrade = normalizePersistedState({ agents: [{ ...CONFIG_AGENTS.find((agent) => agent.id === 'vera')!, systemPrompt: originalVeraPrompt, metadata: { department: 'accounting-finance' } }] })
+    expect(prefixedUpgrade.agents.find((agent: { id: string }) => agent.id === 'vera')?.systemPrompt).toContain('Operating method:')
+
     const custom = normalizePersistedState({ agents: [{ ...CONFIG_AGENTS.find((agent) => agent.id === 'ledger')!, systemPrompt: 'My bespoke controller instructions.', metadata: { department: 'accounting-finance' } }] })
     expect(custom.agents.find((agent: { id: string }) => agent.id === 'ledger')?.systemPrompt).toBe('My bespoke controller instructions.')
   })

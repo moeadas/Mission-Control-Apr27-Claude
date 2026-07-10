@@ -91,11 +91,16 @@ export function normalizeAgent(agent: Partial<Agent> & Record<string, any>): Age
   const storedMetadata = agent.metadata && typeof agent.metadata === 'object' ? agent.metadata as Record<string, unknown> : {}
   const templatePromptVersion = Number(template?.metadata?.systemPromptTemplateVersion || 0)
   const storedPromptVersion = Number(storedMetadata.systemPromptTemplateVersion || 0)
+  const legacyPrompt = agent.id ? LEGACY_DEPARTMENT_SYSTEM_PROMPTS[agent.id] : undefined
+  const legacyPromptVariants = legacyPrompt
+    ? [
+        legacyPrompt,
+        ...(template ? [`You are ${template.name}, ${template.role}.\n\n${legacyPrompt}`] : []),
+      ]
+    : []
   const shouldRefreshBundledPrompt = Boolean(
     templatePromptVersion > storedPromptVersion &&
-      agent.id &&
-      LEGACY_DEPARTMENT_SYSTEM_PROMPTS[agent.id] &&
-      agent.systemPrompt === LEGACY_DEPARTMENT_SYSTEM_PROMPTS[agent.id]
+      legacyPromptVariants.includes(agent.systemPrompt || '')
   )
   const division = inferDivision({ ...template, ...agent })
   const provider = VALID_PROVIDERS.has(agent.provider as AIProvider)
