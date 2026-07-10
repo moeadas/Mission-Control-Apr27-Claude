@@ -6,6 +6,7 @@ import { getDb } from '@/lib/db/client'
 import { mergeAgentMemories } from '@/lib/agent-memory'
 import { normalizeAgentPhotoUrl } from '@/lib/server/agent-photos'
 import { loadConfigSkillCategories } from '@/lib/server/skills-catalog'
+import { normalizeAgent } from '@/lib/agents-store/normalizers'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -555,7 +556,10 @@ export async function syncEntityDeltaToRelationalTables(
 
 function mapAgentRow(row: any): Agent {
   const metadata = parseJsonMaybe<Record<string, unknown>>(row.metadata, {})
-  return {
+  // Keep server execution in step with the browser's bundled-agent migrations.
+  // Otherwise the editor could show an upgraded prompt while a task uses the
+  // older database prompt in the background.
+  return normalizeAgent({
     id: row.id,
     name: row.name,
     role: row.role,
@@ -584,7 +588,7 @@ function mapAgentRow(row: any): Agent {
     bio: row.bio || '',
     methodology: row.methodology || '',
     metadata,
-  }
+  })
 }
 
 function mapClientRows(rows: any[], knowledgeRows: any[]): Client[] {
