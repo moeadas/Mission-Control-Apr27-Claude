@@ -3,7 +3,9 @@ import { v4 as uuidv4 } from 'uuid'
 
 import { resolveAuthContextFromToken, getAuthTokenFromRequest } from '@/lib/auth/server'
 import { getDb } from '@/lib/db/client'
+import { ensureBundledPipelines } from '@/lib/db/relational-sync'
 import { queueTaskExecution } from '@/lib/server/execution-queue'
+import { matchesAgentTemplate } from '@/lib/agent-roles'
 import { inferDeliverableType } from '@/lib/intents/intent-classifier'
 import { getDeliverableSpec } from '@/lib/intents/deliverable-registry'
 import type { DeliverableType } from '@/lib/types'
@@ -17,8 +19,8 @@ import type { DeliverableType } from '@/lib/types'
  *   client posts { pipelineId, clientId, request, language? }
  *     →  this endpoint creates a task row in the workspace DB (matching the
  *        same shape /api/chat creates for chat-driven tasks)
- *     →  this endpoint queues `runTaskExecution` via the existing
- *        execution-queue module — that function uses
+ *     →  this endpoint queues `runTaskExecution` via the durable PostgreSQL
+ *        execution queue — that function uses
  *        `executeAutonomousTask`, which is the single canonical orchestrator
  *     →  client navigates to /tasks/<id> and watches the live workflow_runs
  *        + task_runs feed
@@ -50,7 +52,7 @@ const PIPELINE_DELIVERABLE_TYPES: Record<string, DeliverableType> = {
   'media-plan': 'media-plan',
   'strategy-brief': 'strategy-brief',
   'client-brief': 'client-brief',
-  'finance-operations': 'financial-report',
+  'finance-operations': 'financial-operations',
   'people-operations': 'people-operations',
   'business-development': 'business-development',
 }
@@ -81,6 +83,7 @@ export async function POST(request: NextRequest) {
     }
 
     const db = getDb()
+    await ensureBundledPipelines(agencyId)
 
     // If a clientId is provided, enforce ownership for non-admins.
     if (body.clientId) {
@@ -127,6 +130,13 @@ export async function POST(request: NextRequest) {
     // autonomous task runner picks the right channeling/quality settings.
     const deliverableType = PIPELINE_DELIVERABLE_TYPES[body.pipelineId] || inferDeliverableType(body.request)
     const spec = getDeliverableSpec(deliverableType)
+    const agentRows = await db`
+      SELECT id, metadata FROM agents
+      WHERE agency_id = ${agencyId}::uuid
+    `
+    const resolvedLeadAgentId = agentRows.find((agent: any) =>
+      matchesAgentTemplate(agent, spec.defaultLead || 'iris')
+    )?.id || null
 
     // Create the task row.
     const taskId = uuidv4()
@@ -147,7 +157,7 @@ export async function POST(request: NextRequest) {
         'queued',
         'medium',
         ${body.pipelineId},
-        ${spec.defaultLead || null},
+        ${resolvedLeadAgentId},
         ${0},
         ${db.json({ source: 'pipeline-runner', pipelineName, runtimeMode: body.runtimeMode || 'fast' })},
         ${now},
@@ -155,10 +165,10 @@ export async function POST(request: NextRequest) {
       )
     `
 
-    // Queue execution through the existing in-process queue. Uses
+    // Queue execution through the durable database queue. Uses
     // runTaskExecution → executeAutonomousTask under the hood, so pipeline
     // runs go through the same orchestration as chat-driven tasks.
-    const job = queueTaskExecution(taskId, auth, 'retry', {
+    const job = await queueTaskExecution(taskId, auth, 'retry', {
       runtimeMode: body.runtimeMode,
     })
 

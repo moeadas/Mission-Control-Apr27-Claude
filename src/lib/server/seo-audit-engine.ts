@@ -1436,12 +1436,15 @@ export async function executeSeoAuditTask(input: {
   request: string
   clientProfile?: ClientProfileMap
   hooks?: RuntimeHooks
+  agent?: { id: string; name: string; role: string }
+  skillsUsed?: string[]
+  pipelineName?: string
 }) {
   const url = extractWebsiteAuditUrl(input.request, input.clientProfile)
   if (!url) throw new Error('Please send the website URL before starting the website audit.')
 
   const phase = { id: 'website-audit', name: 'Website Audit' }
-  const agent = { id: 'atlas', name: 'Atlas', role: 'Research & Insights Lead' }
+  const agent = input.agent || { id: 'atlas', name: 'Atlas', role: 'Research & Insights Lead' }
   const runtime = { provider: 'ollama' as const, model: 'deterministic-audit-engine' }
   const executionSteps: ArtifactExecutionStep[] = []
 
@@ -1515,7 +1518,7 @@ export async function executeSeoAuditTask(input: {
       status: evidence.fetched ? 'completed' : 'warning',
       provider: runtime.provider,
       model: runtime.model,
-      skillsUsed: ['seo-audit', 'technical-seo', 'ux-audit'],
+      skillsUsed: input.skillsUsed?.length ? input.skillsUsed : ['seo-audit', 'technical-seo', 'ux-audit'],
     },
     {
       id: `seo-report-${Date.now()}`,
@@ -1527,7 +1530,7 @@ export async function executeSeoAuditTask(input: {
       status: 'completed',
       provider: runtime.provider,
       model: runtime.model,
-      skillsUsed: ['seo-audit', 'performance-analysis', 'accessibility-audit'],
+      skillsUsed: input.skillsUsed?.length ? input.skillsUsed : ['seo-audit', 'performance-analysis', 'accessibility-audit'],
     }
   )
 

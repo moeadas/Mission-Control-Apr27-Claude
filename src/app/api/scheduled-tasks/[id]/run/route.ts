@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db/client'
 import { resolveAuthContextFromToken, getAuthTokenFromRequest } from '@/lib/auth/server'
-import { generateTextWithUsage } from '@/lib/server/ai'
-import { normalizeProviderSettings, resolveTaskRuntime } from '@/lib/provider-settings'
-import { logTokenUsage } from '@/lib/server/token-logger'
+import { executeScheduledTaskThroughOrchestrator } from '@/lib/server/scheduled-task-execution'
 // auth.providerSettings is already loaded from provider-secrets in resolveAuthContextFromToken
 
 function getBearerToken(req: NextRequest) {
@@ -50,35 +48,6 @@ function computeNextRunAt(task: {
   return null
 }
 
-/** Build a system prompt for an agent given its DB row */
-function buildAgentSystemPrompt(agent: any, taskType: string): string {
-  const role = agent?.role || 'AI assistant'
-  const specialty = agent?.specialty || ''
-  const name = agent?.name || 'Iris'
-
-  const taskContext: Record<string, string> = {
-    'competitor-research': 'You are conducting a competitor research analysis. Provide detailed, actionable insights about competitor positioning, messaging, content strategy, and gaps you identify.',
-    'seo-audit': 'You are conducting an SEO audit. Analyze on-page factors, content quality, keyword opportunities, technical issues, and provide specific recommendations.',
-    'content-calendar': 'You are creating a content calendar. Generate structured, platform-specific content ideas with hooks, formats, posting times, and engagement strategies.',
-    'performance-report': 'You are generating a performance report. Analyze metrics, identify trends, highlight wins and areas for improvement, provide actionable recommendations.',
-    'social-posts': 'You are generating a batch of social media posts. Each post should be platform-optimized, engaging, and include hooks, body copy, and calls to action.',
-    'campaign-brief': 'You are writing a campaign brief. Cover objectives, target audience, messaging pillars, channel strategy, success metrics, and budget considerations.',
-    'email-campaign': 'You are writing an email campaign. Include subject line variations, preview text, compelling body copy, and a clear call to action.',
-    'custom': '',
-  }
-
-  const taskInstruction = taskContext[taskType] || taskContext['custom']
-
-  return [
-    `You are ${name}, a ${role}${specialty ? ` specialising in ${specialty}` : ''}.`,
-    taskInstruction,
-    'Be thorough, professional, and output well-structured content. Use markdown formatting for headings and lists where appropriate.',
-    agent?.systemPrompt ? `\n---\nAdditional context:\n${agent.systemPrompt}` : '',
-  ]
-    .filter(Boolean)
-    .join('\n\n')
-}
-
 type RouteContext = { params: Promise<{ id: string }> }
 
 // ─── POST /api/scheduled-tasks/[id]/run ───────────────────────────────────────
@@ -105,52 +74,7 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
   `
 
   try {
-    // Load agent if assigned
-    let agent: any = null
-    if (task.agent_id) {
-      const [a] = await db`SELECT * FROM agents WHERE id = ${task.agent_id} LIMIT 1`
-      agent = a || null
-    }
-
-    // Resolve provider settings — agent's assigned provider/model takes priority
-    const settings = normalizeProviderSettings(auth.providerSettings)
-    const { provider, model } = resolveTaskRuntime({
-      settings,
-      deliverableType: task.task_type,
-      agentProvider: agent?.provider ?? null,
-      agentModel: agent?.model ?? null,
-    })
-
-    const systemPrompt = buildAgentSystemPrompt(agent, task.task_type)
-
-    const { text: output, usage } = await generateTextWithUsage({
-      provider,
-      model,
-      temperature: agent?.temperature ?? 0.7,
-      maxTokens: agent?.max_tokens ?? 4096,
-      ollamaBaseUrl: settings?.ollama?.baseUrl,
-      ollamaContextWindow: settings?.ollama?.contextWindow,
-      ollamaApiKey: settings?.ollama?.apiKey,
-      geminiApiKey: settings?.gemini?.apiKey,
-      anthropicApiKey: settings?.anthropic?.apiKey,
-      openAiApiKey: settings?.openai?.apiKey,
-      openAiBaseUrl: settings?.openai?.baseUrl,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: task.prompt },
-      ],
-    })
-
-    // Log token usage (fire-and-forget, never blocks)
-    logTokenUsage(db, {
-      tenantId: auth.tenantId,
-      agentId: task.agent_id ?? null,
-      sourceType: 'scheduled',
-      sourceId: task.id,
-      provider,
-      model,
-      usage,
-    })
+    const { output, taskId } = await executeScheduledTaskThroughOrchestrator({ task, auth })
 
     // Compute next run
     const nextRunAt = computeNextRunAt(task as any)
@@ -170,7 +94,7 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
       RETURNING *
     `
 
-    return NextResponse.json({ task: updated, output, usage })
+    return NextResponse.json({ task: updated, output, executionTaskId: taskId })
   } catch (err: any) {
     const errMsg = err?.message || 'Unknown execution error'
     console.error('[scheduled-tasks/run]', errMsg)

@@ -2,7 +2,7 @@
 
 Durable working memory for understanding this app. Keep this file current as code is reviewed or changed.
 
-Last updated: 2026-05-25
+Last updated: 2026-07-11
 
 ## Purpose
 
@@ -27,7 +27,19 @@ Legend:
 | `data/skill-packages` | Inventoried | Includes bundled skill packages and large Office XML schemas; many files are support assets. |
 | `public` assets | Pending | Need classify images/uploads/static assets. |
 | `scripts` | Reviewed | Migration/import/bootstrap utilities reviewed. |
-| `tests` | Pending | Need test coverage map. |
+| `tests` | Reviewed | Vitest suite mapped and run; runtime wiring coverage added, with optional live-DB schema checks. |
+
+## 2026-07-11 Runtime Wiring Audit and Repair (v1.0.77)
+
+- Tenant catalog identity: skills and pipelines are identified by `(agency_id, id)`. Pipeline foreign keys on tasks/workflow instances include `agency_id`; pipeline deletion nulls only `pipeline_id`.
+- Agent identity: bundled IDs such as `atlas` and `vera` are template identities, not reliable database IDs. Runtime selection uses `metadata.templateId`, clone prefixes, or legacy literal IDs through `matchesAgentTemplate` / `findAgentByTemplate`.
+- Roster availability: authentication idempotently backfills all bundled marketing, finance, HR, and business-development agents for existing tenants. New tenants receive the same roster.
+- Pipeline execution: activity roles are converted to real tenant agent rows. Unknown AI-authored roles are rejected before persistence. Specialized pipelines explicitly declare their dedicated engine.
+- Skills: `/api/skills`, `/api/skills/[id]`, and `/api/skills/import` are tenant scoped and invalidate the runtime skill registry after writes.
+- Queue: `execution_jobs` is the durable source of queue status. Workers claim with `FOR UPDATE SKIP LOCKED`, update heartbeats, recover abandoned jobs at startup, and persist terminal failures to both the queue and task.
+- Scheduled tasks: manual and cron runs create a normal task then call the canonical `runTaskExecution`; the schedule stores its creator so cron can load that user's encrypted provider settings.
+- Verification: clean-schema and legacy migration tests passed on PostgreSQL 16; 91 tests pass, TypeScript passes, ESLint exits with no errors, and the Next.js production build completes.
+- Known debt: ESLint reports 178 existing warnings, mainly unused declarations and React effect/hook guidance. Production dependency audit has four moderate advisories whose suggested automatic fixes are unsafe major downgrades/upgrades and were not forced.
 
 ## High-Level App Model
 

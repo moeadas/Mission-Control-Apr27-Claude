@@ -3,6 +3,8 @@
   "name": "Ad Creative Production",
   "description": "End-to-end workflow for producing high-performance ad creatives with A/B testing",
   "version": "1.0",
+  "executionMode": "dedicated-engine",
+  "runtimeEngine": "creative-asset-engine",
   "isDefault": true,
   "estimatedDuration": "7 days",
   "clientProfileFields": [

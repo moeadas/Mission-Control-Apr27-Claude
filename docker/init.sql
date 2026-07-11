@@ -184,7 +184,7 @@ CREATE INDEX IF NOT EXISTS idx_clients_assigned_user_ids ON clients USING GIN (a
 
 -- ─── Domain: skills ─────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS skills (
-  id          TEXT PRIMARY KEY,
+  id          TEXT NOT NULL,
   agency_id   UUID NOT NULL REFERENCES agencies(id) ON DELETE CASCADE,
   name        TEXT NOT NULL,
   category    TEXT,
@@ -195,12 +195,13 @@ CREATE TABLE IF NOT EXISTS skills (
   metadata    JSONB DEFAULT '{}',
   source      TEXT DEFAULT 'config',
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (agency_id, id)
 );
 
 -- ─── Domain: pipelines ──────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS pipelines (
-  id                 TEXT PRIMARY KEY,
+  id                 TEXT NOT NULL,
   agency_id          UUID NOT NULL REFERENCES agencies(id) ON DELETE CASCADE,
   name               TEXT NOT NULL,
   description        TEXT DEFAULT '',
@@ -210,7 +211,8 @@ CREATE TABLE IF NOT EXISTS pipelines (
   definition         JSONB DEFAULT '{}',
   source             TEXT DEFAULT 'config',
   created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+  updated_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (agency_id, id)
 );
 
 -- ─── Domain: tasks ──────────────────────────────────────────────────────────
@@ -227,7 +229,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   assigned_user_ids UUID[] NOT NULL DEFAULT '{}',
   assigned_by      TEXT,
   lead_agent_id    TEXT REFERENCES agents(id) ON DELETE SET NULL,
-  pipeline_id      TEXT REFERENCES pipelines(id) ON DELETE SET NULL,
+  pipeline_id      TEXT,
   progress         NUMERIC DEFAULT 0,
   due_date         TEXT,
   started_at       TIMESTAMPTZ,
@@ -235,7 +237,8 @@ CREATE TABLE IF NOT EXISTS tasks (
   execution_plan   JSONB DEFAULT '{}',
   metadata         JSONB DEFAULT '{}',
   created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+  updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  FOREIGN KEY (agency_id, pipeline_id) REFERENCES pipelines(agency_id, id) ON DELETE SET NULL (pipeline_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_tasks_assigned_user_ids ON tasks USING GIN (assigned_user_ids);
@@ -481,14 +484,15 @@ CREATE INDEX IF NOT EXISTS idx_task_events_tenant       ON task_events (tenant_i
 CREATE TABLE IF NOT EXISTS workflow_instances (
   id              TEXT PRIMARY KEY,
   agency_id       UUID NOT NULL REFERENCES agencies(id) ON DELETE CASCADE,
-  pipeline_id     TEXT REFERENCES pipelines(id) ON DELETE SET NULL,
+  pipeline_id     TEXT,
   task_id         TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
   status          TEXT NOT NULL,
   current_phase   TEXT,
   progress        NUMERIC DEFAULT 0,
   context         JSONB DEFAULT '{}'::jsonb,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  FOREIGN KEY (agency_id, pipeline_id) REFERENCES pipelines(agency_id, id) ON DELETE SET NULL (pipeline_id)
 );
 CREATE INDEX IF NOT EXISTS idx_workflow_instances_agency_id ON workflow_instances(agency_id);
 CREATE INDEX IF NOT EXISTS idx_workflow_instances_task_id   ON workflow_instances(task_id);
@@ -511,6 +515,26 @@ CREATE TABLE IF NOT EXISTS task_runs (
 CREATE INDEX IF NOT EXISTS idx_task_runs_agency_id    ON task_runs(agency_id);
 CREATE INDEX IF NOT EXISTS idx_task_runs_task_id      ON task_runs(task_id);
 CREATE INDEX IF NOT EXISTS idx_task_runs_task_created ON task_runs(task_id, created_at DESC);
+
+-- Durable execution queue. Jobs survive app restarts and are reclaimed by
+-- the queue worker when the application boots or receives a new enqueue.
+CREATE TABLE IF NOT EXISTS execution_jobs (
+  task_id          TEXT PRIMARY KEY REFERENCES tasks(id) ON DELETE CASCADE,
+  agency_id        UUID NOT NULL REFERENCES agencies(id) ON DELETE CASCADE,
+  started_by       UUID REFERENCES users(id) ON DELETE SET NULL,
+  action           TEXT NOT NULL DEFAULT 'retry',
+  status           TEXT NOT NULL DEFAULT 'queued',
+  options          JSONB NOT NULL DEFAULT '{}'::jsonb,
+  attempts         INT NOT NULL DEFAULT 0,
+  queued_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  started_at       TIMESTAMPTZ,
+  completed_at     TIMESTAMPTZ,
+  heartbeat_at     TIMESTAMPTZ,
+  error            TEXT,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_execution_jobs_status_queued ON execution_jobs(status, queued_at);
 
 -- ─── Audit log ──────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS audit_events (

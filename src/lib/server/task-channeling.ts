@@ -1,5 +1,5 @@
 import { ChannelingConfidence, DeliverableComplexity, DeliverableType } from '@/lib/types'
-import { getDeliverableAgentPlan } from '@/lib/agent-roles'
+import { getAgentIdsForRole, getDeliverableAgentPlan, matchesAgentTemplate } from '@/lib/agent-roles'
 import { getAuditExecutionProfile } from '@/lib/audit-capabilities'
 
 interface ChannelingDeliverableSpec {
@@ -266,11 +266,14 @@ type RuntimeAgent = {
   role: string
   specialty?: string
   skills?: string[]
+  metadata?: Record<string, unknown> | null
 }
 
 type PipelineLike = {
   id: string
   name: string
+  executionMode?: 'pipeline-activities' | 'dedicated-engine'
+  runtimeEngine?: string
   phases?: Array<{
     id: string
     name: string
@@ -302,6 +305,11 @@ type SkillCategory = {
   id: string
   name: string
   skills: EnrichedSkillDefinition[]
+}
+
+function resolveAgentReference(agents: RuntimeAgent[], reference: string | undefined) {
+  if (!reference) return undefined
+  return agents.find((agent) => matchesAgentTemplate(agent, reference))?.id
 }
 
 export interface TaskChannelingPlan {
@@ -382,13 +390,16 @@ function inferCollaborators(
 ): string[] {
   const spec = getChannelingSpec(deliverableType)
   const lower = request.toLowerCase()
-  const availableAgentIds = new Set(agents.map((agent) => agent.id))
   const collaborators = new Set(
-    spec.defaultCollaborators.filter((id) => id !== leadAgentId && availableAgentIds.has(id))
+    spec.defaultCollaborators
+      .map((id) => resolveAgentReference(agents, id))
+      .filter((id): id is string => Boolean(id) && id !== leadAgentId)
   )
 
   if (isSimpleVariant(request, spec)) {
-    const essential = spec.defaultCollaborators.find((id) => id !== leadAgentId && availableAgentIds.has(id))
+    const essential = spec.defaultCollaborators
+      .map((id) => resolveAgentReference(agents, id))
+      .find((id) => id && id !== leadAgentId)
     collaborators.clear()
     if (essential) collaborators.add(essential)
   }
@@ -406,8 +417,9 @@ function inferCollaborators(
   ]
 
   for (const signal of signalMap) {
-    if (signal.pattern.test(lower) && signal.agentId !== leadAgentId && availableAgentIds.has(signal.agentId)) {
-      collaborators.add(signal.agentId)
+    const resolvedId = resolveAgentReference(agents, signal.agentId)
+    if (signal.pattern.test(lower) && resolvedId && resolvedId !== leadAgentId) {
+      collaborators.add(resolvedId)
     }
   }
 
@@ -421,38 +433,41 @@ function resolveLeadAgent(
   agents: RuntimeAgent[]
 ): string {
   const spec = getChannelingSpec(deliverableType)
-  const availableAgentIds = new Set(agents.map((agent) => agent.id))
+  const resolvedRoutedAgentId = resolveAgentReference(agents, routedAgentId)
+  const resolvedInitialLead = resolveAgentReference(agents, initialLeadFromRoles)
+  const resolvedDefaultLead = resolveAgentReference(agents, spec.defaultLead)
 
   if (
-    routedAgentId &&
-    routedAgentId !== 'iris' &&
-    deliverableType !== 'status-report' &&
-    availableAgentIds.has(routedAgentId)
+    resolvedRoutedAgentId &&
+    !matchesAgentTemplate(agents.find((agent) => agent.id === resolvedRoutedAgentId)!, 'iris') &&
+    deliverableType !== 'status-report'
   ) {
-    return routedAgentId
+    return resolvedRoutedAgentId
   }
 
   if (
-    initialLeadFromRoles !== 'iris' &&
-    deliverableType !== 'status-report' &&
-    availableAgentIds.has(initialLeadFromRoles)
+    resolvedInitialLead &&
+    !matchesAgentTemplate(agents.find((agent) => agent.id === resolvedInitialLead)!, 'iris') &&
+    deliverableType !== 'status-report'
   ) {
-    return initialLeadFromRoles
+    return resolvedInitialLead
   }
 
-  if (deliverableType !== 'status-report' && spec.defaultLead !== 'iris' && availableAgentIds.has(spec.defaultLead)) {
-    return spec.defaultLead
+  if (deliverableType !== 'status-report' && resolvedDefaultLead && spec.defaultLead !== 'iris') {
+    return resolvedDefaultLead
   }
 
   if (deliverableType !== 'status-report') {
-    const fallback = spec.defaultCollaborators.find((id) => id !== 'iris' && availableAgentIds.has(id))
+    const fallback = spec.defaultCollaborators
+      .map((id) => resolveAgentReference(agents, id))
+      .find((id) => id && !matchesAgentTemplate(agents.find((agent) => agent.id === id)!, 'iris'))
     if (fallback) return fallback
   }
 
-  return initialLeadFromRoles
+  return resolvedInitialLead || resolveAgentReference(agents, 'iris') || initialLeadFromRoles
 }
 
-function getSkillCap(agentId: string, leadAgentId: string, complexity: DeliverableComplexity): number {
+function getSkillCap(agentId: string, leadAgentId: string, complexity: DeliverableComplexity, isIris: boolean): number {
   const capsByComplexity = {
     low: { lead: 2, collaborator: 1, iris: 1 },
     medium: { lead: 3, collaborator: 2, iris: 1 },
@@ -460,7 +475,7 @@ function getSkillCap(agentId: string, leadAgentId: string, complexity: Deliverab
   }
 
   const caps = capsByComplexity[complexity]
-  if (agentId === 'iris') return caps.iris
+  if (isIris) return caps.iris
   if (agentId === leadAgentId) return caps.lead
   return caps.collaborator
 }
@@ -508,23 +523,34 @@ export function buildTaskChannelingPlan(input: {
   const pipelineAgentIds = unique(
     (pipeline?.phases || [])
       .flatMap((phase) => phase.activities || [])
-      .flatMap((activity) =>
-        agents
-          .filter((agent) => {
-            const role = (activity.assignedRole || '').toLowerCase()
-            return role && (agent.role.toLowerCase().includes(role) || agent.specialty?.toLowerCase() === role)
-          })
+      .flatMap((activity) => {
+        const reference = String(activity.assignedRole || '').toLowerCase()
+        const templateIds = getAgentIdsForRole(reference)
+        const resolved = (templateIds.length ? templateIds : [reference])
+          .map((templateId) => resolveAgentReference(agents, templateId))
+          .filter((id): id is string => Boolean(id))
+        if (resolved.length) return resolved
+        return agents
+          .filter((agent) =>
+            reference && (agent.role.toLowerCase().includes(reference) || agent.specialty?.toLowerCase() === reference)
+          )
           .map((agent) => agent.id)
-      )
+      })
   )
 
   const collaboratorAgentIds = unique([
-    ...(initialBase.collaboratorAgentIds || []),
+    ...(initialBase.collaboratorAgentIds || [])
+      .map((id) => resolveAgentReference(agents, id))
+      .filter((id): id is string => Boolean(id)),
     ...inferCollaborators(request, deliverableType, leadAgentId, agents),
     ...pipelineAgentIds.filter((id) => id !== leadAgentId),
-  ]).filter((id) => id !== 'iris' && id !== leadAgentId)
+  ]).filter((id) => {
+    const agent = agents.find((entry) => entry.id === id)
+    return id !== leadAgentId && (!agent || !matchesAgentTemplate(agent, 'iris'))
+  })
 
-  const assignedAgentIds = unique(['iris', leadAgentId, ...collaboratorAgentIds])
+  const irisAgentId = resolveAgentReference(agents, 'iris') || 'iris'
+  const assignedAgentIds = unique([irisAgentId, leadAgentId, ...collaboratorAgentIds])
 
   const selectedSkillsByAgent: Record<string, string[]> = {}
   for (const agentId of assignedAgentIds) {
@@ -540,7 +566,7 @@ export function buildTaskChannelingPlan(input: {
       }))
       .sort((a, b) => b.score - a.score)
 
-    const skillCap = getSkillCap(agentId, leadAgentId, spec.complexity)
+    const skillCap = getSkillCap(agentId, leadAgentId, spec.complexity, matchesAgentTemplate(agent, 'iris'))
     const chosen = ranked
       .filter((entry) => entry.score > 0)
       .slice(0, skillCap)
@@ -571,9 +597,14 @@ export function buildTaskChannelingPlan(input: {
       : 'No supporting specialists were required.',
     `Confidence: ${confidence}.`,
   ]
+  if (pipeline?.executionMode === 'dedicated-engine') {
+    orchestrationTrace.push(
+      `Pipeline runtime: ${pipeline.runtimeEngine || 'dedicated engine'} (the displayed phases describe this engine's execution contract).`
+    )
+  }
 
   for (const agentId of assignedAgentIds) {
-    if (agentId === 'iris') continue
+    if (agentId === irisAgentId) continue
     const skills = selectedSkillsByAgent[agentId] || []
     const agent = agents.find((entry) => entry.id === agentId)
     const agentLabel = agent ? `${agent.name} (${agentId})` : agentId

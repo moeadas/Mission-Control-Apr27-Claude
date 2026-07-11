@@ -1,11 +1,10 @@
 /**
  * Agent templates registry (Batch D)
  *
- * The 10 agents under `src/config/agents/` are TEMPLATES, not the default
- * roster for every tenant. Each tenant builds their own virtual company:
- *   • New tenants are auto-seeded with Iris only (the orchestrator).
- *   • Users can clone any subset of templates into their tenant via
- *     `POST /api/agent-templates/clone`, or start blank.
+ * The agents under `src/config/agents/` are the canonical cross-department
+ * production templates. Every tenant receives the complete roster so bundled
+ * pipelines always have their required specialists. Users may then customize
+ * that roster or clone future optional templates through the templates API.
  *   • Users can also ask Iris to design a brand-new agent via
  *     `POST /api/iris/create-agent`.
  *
@@ -34,25 +33,14 @@ export interface AgentTemplate {
 }
 
 /**
- * All 10 production templates are seeded on tenant creation so the routing
+ * All bundled production templates are seeded on tenant creation so the routing
  * layer can assign work to specialists without requiring the user to manually
  * clone agents first. Users can still delete/edit any non-Iris agent later.
  * Iris is the only truly mandatory agent (orchestrator); the rest are seeded
  * for the same reason a CRM ships with pre-defined contact stages — they're
  * sensible defaults that the user can customize.
  */
-export const REQUIRED_TEMPLATE_IDS = [
-  'iris',
-  'echo',
-  'maya',
-  'atlas',
-  'nova',
-  'lyra',
-  'dex',
-  'finn',
-  'piper',
-  'sage',
-] as const
+export const REQUIRED_TEMPLATE_IDS = CONFIG_AGENTS.map((agent) => agent.id)
 
 /** Strictly mandatory — Iris must always exist (orchestrator). */
 export const STRICTLY_REQUIRED_TEMPLATE_IDS = ['iris'] as const
@@ -242,7 +230,7 @@ export async function cloneAgentTemplates(
   return { insertedIds, skipped }
 }
 
-/** Seed the mandatory agents (currently: just Iris) for a freshly-created tenant. */
+/** Seed the complete bundled specialist roster for a freshly-created tenant. */
 export async function seedTenantRequiredAgents(tenantId: string) {
   return cloneAgentTemplates(tenantId, [...REQUIRED_TEMPLATE_IDS])
 }

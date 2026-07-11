@@ -92,8 +92,7 @@ export async function POST(request: NextRequest) {
         ${db.json(pipeline)},
         'app'
       )
-      ON CONFLICT (id) DO UPDATE SET
-        agency_id = EXCLUDED.agency_id,
+      ON CONFLICT (agency_id, id) DO UPDATE SET
         name = EXCLUDED.name,
         description = EXCLUDED.description,
         version = EXCLUDED.version,

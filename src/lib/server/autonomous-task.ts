@@ -35,6 +35,7 @@ interface RuntimeAgent {
   provider?: AIProvider
   model?: string
   systemPrompt?: string
+  metadata?: Record<string, unknown> | null
 }
 
 interface PipelineActivity {
@@ -56,6 +57,8 @@ interface PipelinePhase {
 interface PipelineLike {
   id: string
   name: string
+  executionMode?: 'pipeline-activities' | 'dedicated-engine'
+  runtimeEngine?: string
   phases?: PipelinePhase[]
 }
 
@@ -954,7 +957,10 @@ export async function executeAutonomousTask(input: {
       agentsById: agentMap,
       selectedSkillsByAgent: input.selectedSkillsByAgent,
       generateStage: async ({ agentId, prompt, temperature, maxTokens }) => {
-        const agent = agentMap.get(agentId) || findAgentByTemplate(agentMap.values(), 'iris')
+        const agent =
+          agentMap.get(agentId) ||
+          findAgentByTemplate(agentMap.values(), agentId) ||
+          findAgentByTemplate(agentMap.values(), 'iris')
         if (!agent) throw new Error(`Agent ${agentId} is unavailable.`)
         const runtime = resolveAgentRuntime(agent, input)
         const text = await generateContentFirstText({
@@ -1008,7 +1014,10 @@ export async function executeAutonomousTask(input: {
       maxTokens: input.maxTokens,
       hooks: input.hooks,
       generateStage: async ({ agentId, prompt, temperature, maxTokens }) => {
-        const agent = agentMap.get(agentId) || findAgentByTemplate(agentMap.values(), 'iris')
+        const agent =
+          agentMap.get(agentId) ||
+          findAgentByTemplate(agentMap.values(), agentId) ||
+          findAgentByTemplate(agentMap.values(), 'iris')
         if (!agent) throw new Error(`Agent ${agentId} is unavailable.`)
         const runtime = resolveAgentRuntime(agent, input)
         const text = await generateContentFirstText({
@@ -1050,10 +1059,19 @@ export async function executeAutonomousTask(input: {
   }
 
   if (input.deliverableType === 'seo-audit' || input.deliverableType === 'ui-audit') {
+    const auditAgent =
+      findAgentByTemplate(agentMap.values(), 'atlas') ||
+      findAgentByTemplate(agentMap.values(), input.leadAgentId) ||
+      findAgentByTemplate(agentMap.values(), 'iris')
     return executeSeoAuditTask({
       request: input.request,
       clientProfile,
       hooks: input.hooks,
+      agent: auditAgent,
+      skillsUsed: auditAgent
+        ? input.selectedSkillsByAgent?.[auditAgent.id] || auditAgent.skills || []
+        : [],
+      pipelineName: input.pipeline?.name,
     })
   }
 
@@ -1103,7 +1121,7 @@ export async function executeAutonomousTask(input: {
     let agentsRunDone = 0
 
     for (const collaboratorId of input.collaboratorAgentIds) {
-      const agent = agentMap.get(collaboratorId)
+      const agent = agentMap.get(collaboratorId) || findAgentByTemplate(agentMap.values(), collaboratorId)
       if (!agent) continue
 
       const selectedSkills = input.selectedSkillsByAgent?.[agent.id] || agent.skills || []
@@ -1185,7 +1203,10 @@ export async function executeAutonomousTask(input: {
     }
   }
 
-  const leadAgent = agentMap.get(input.leadAgentId) || findAgentByTemplate(agentMap.values(), 'iris') || {
+  const leadAgent =
+    agentMap.get(input.leadAgentId) ||
+    findAgentByTemplate(agentMap.values(), input.leadAgentId) ||
+    findAgentByTemplate(agentMap.values(), 'iris') || {
     id: 'iris',
     name: 'Iris',
     role: 'Operations Lead',

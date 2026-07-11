@@ -8,7 +8,7 @@
 
 ## 1. What Mission Control is
 
-A multi-tenant AI agency SaaS. Each "agency" (tenant) gets a roster of 10 specialised AI agent personas (`atlas`, `dex`, `echo`, `finn`, `iris`, `lyra`, `maya`, `nova`, `piper`, `sage`) that collaborate on marketing deliverables: content calendars, creative assets, campaign copy, email sequences, etc. An orchestrator agent (`iris`) routes prompts to pipelines and stitches output.
+A multi-tenant AI operations SaaS. Each tenant gets the complete bundled cross-department roster from `src/config/agents/generated.ts`, spanning marketing, finance, HR, and business development. Iris is the orchestrator: it classifies work, selects a pipeline, resolves tenant-cloned specialists and skills, and delegates execution through the canonical task runner.
 
 Production runs on **one VPS** at `72.62.33.12` (Hostinger). Single-instance Docker Compose stack: `mc_app` (Next.js) + `mc_db` (Postgres 16). Host-level nginx terminates TLS and reverse-proxies. The system is pre-launch — Tier-1 hardening just completed (Batches AA through P).
 
@@ -350,7 +350,7 @@ Off by default: `STRIPE_*` (`STRIPE_ENABLED=false`).
 | 2 | Multi-pass iteration over `Iterable<T>` requires `Array.from` first | GG |
 | 3 | `agents.id` is global, may be legacy literal OR `<template>-<suffix>` — use `findAgentByTemplate` | — |
 | 4 | Engines require fixed template agents. Always go through `findAgentByTemplate`, never literal id checks | — |
-| 5 | `runtimeAgents` shape in `task-execution.ts:533` does NOT carry `metadata`. If you need `metadata.templateId`, fetch it from `agentRows` | — |
+| 5 | Runtime agent ids are tenant-specific clones. `runtimeAgents` carries `metadata.templateId`; resolve specialists with `matchesAgentTemplate` / `findAgentByTemplate`, never literal ids | 1.0.77 |
 | 6 | LLM-produced HTML MUST go through `sanitizeHtml` | CC |
 | 7 | `<img>` can't send Authorization — use `?token=` query fallback or rely on cookie | Y |
 | 8 | `provider_secrets` are AES-256-GCM envelopes. `PROVIDER_SECRETS_MASTER_KEY` loss = secrets loss | EE |
@@ -472,3 +472,18 @@ Listed in increasing depth / decreasing currency:
 ---
 
 *This document was assembled at the end of the May 2026 Tier-1 hardening sprint, immediately after Batch P.3 shipped. Update it when the next major batch lands or when any of the invariants in §14 change.*
+
+## 22. Runtime wiring repair (2026-07-11, v1.0.77)
+
+Eight structural repairs were completed and validated:
+
+1. `skills` and `pipelines` now use `(agency_id, id)` primary keys. Tasks and workflow instances reference the same tenant-scoped pipeline identity.
+2. Every tenant is idempotently seeded with the complete bundled department roster; template identity is preserved in agent metadata and subscription counts are synchronized after backfill.
+3. Skill CRUD/import APIs use `auth.tenantId`; no skill route resolves the legacy `default-agency` slug.
+4. Pipeline roles resolve to actual tenant-cloned agents. AI-authored pipelines reject unknown roles and require executable English activity prompts.
+5. Content calendar, ad creative, and SEO audit pipelines declare dedicated runtime engines so their visible phases describe the real execution contract.
+6. Scheduled tasks now create ordinary tasks and run through `runTaskExecution`, preserving client inference, specialist routing, skills, quality gates, outputs, and creator-specific provider settings.
+7. Task execution uses the durable Postgres `execution_jobs` queue with transactional claiming, heartbeats, restart recovery, retry state, and task failure persistence.
+8. ESLint is configured, Vitest was upgraded to remove high/critical development advisories, and runtime/database regression tests cover clone routing, role coverage, tenant keys, queue schema, and API tenancy.
+
+Migration: `docker/migrations/20260711_tenant_catalogs_and_execution_queue.sql`. It was tested against PostgreSQL 16 using both clean-install and simulated legacy schemas. Apply it before starting v1.0.77.

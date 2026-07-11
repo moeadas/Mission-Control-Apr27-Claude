@@ -9,16 +9,6 @@ function getBearerToken(request: NextRequest) {
   return getAuthTokenFromRequest(request)
 }
 
-async function getAgencyId(): Promise<string | null> {
-  try {
-    const db = getDb()
-    const rows = await db`SELECT id FROM agencies WHERE slug = 'default-agency' LIMIT 1`
-    return rows[0]?.id ?? null
-  } catch {
-    return null
-  }
-}
-
 async function buildFallbackSkills() {
   const categories = await loadConfigSkillCategories()
   return categories.flatMap((category) => category.skills)
@@ -32,7 +22,7 @@ export async function GET(request: NextRequest) {
     const query = (searchParams.get('q') || '').trim().toLowerCase()
     const categoryFilter = (searchParams.get('category') || '').trim().toLowerCase()
 
-    const agencyId = await getAgencyId()
+    const agencyId = auth.tenantId
     if (!agencyId) {
       const fallbackSkills = await buildFallbackSkills()
       const filteredFallback = fallbackSkills.filter((skill: any) => {
@@ -110,7 +100,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Skill id and name are required' }, { status: 400 })
     }
 
-    const agencyId = await getAgencyId()
+    const agencyId = auth.tenantId
     if (!agencyId) return NextResponse.json({ error: 'Database not available' }, { status: 503 })
 
     const metadata = JSON.stringify({
@@ -141,8 +131,7 @@ export async function POST(request: NextRequest) {
         ${metadata},
         'app'
       )
-      ON CONFLICT (id) DO UPDATE SET
-        agency_id = EXCLUDED.agency_id,
+      ON CONFLICT (agency_id, id) DO UPDATE SET
         name = EXCLUDED.name,
         category = EXCLUDED.category,
         description = EXCLUDED.description,

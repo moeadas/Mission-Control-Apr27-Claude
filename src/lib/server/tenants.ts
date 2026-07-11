@@ -60,12 +60,12 @@ export async function createTenant(opts: {
     ON CONFLICT (tenant_id) DO NOTHING
   `
 
-  // Auto-seed the orchestrator agent (Iris). Every tenant needs Iris to coordinate
-  // tasks; additional agents are opt-in via the agent-templates clone endpoint or
-  // Iris-assisted creation. Failure here is non-fatal — the tenant can clone Iris
-  // manually later if seeding hit a transient error.
+  // Auto-seed the complete bundled roster. Pipelines reference these specialists
+  // by template identity, so omitting a department would silently route its work
+  // back to Iris. Failure remains non-fatal so tenant creation is recoverable.
   try {
     await seedTenantRequiredAgents(tenant.id as string)
+    await syncAgentCount(tenant.id as string)
   } catch (err) {
     console.warn('[createTenant] Failed to auto-seed Iris for tenant', tenant.id, err)
   }

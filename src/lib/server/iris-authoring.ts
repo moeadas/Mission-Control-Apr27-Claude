@@ -18,6 +18,7 @@ import { sanitizePromptValue } from '@/lib/server/prompt-safety'
 import { normalizeProviderSettings, resolveTaskRuntime } from '@/lib/provider-settings'
 import type { ProviderSettings } from '@/lib/types'
 import { getDb } from '@/lib/db/client'
+import { getAgentIdsForRole, matchesAgentTemplate, ROLE_AGENT_MAP } from '@/lib/agent-roles'
 
 interface AuthoringInput {
   brief: string
@@ -152,7 +153,8 @@ export async function draftPipelineFromBrief(input: AuthoringInput): Promise<any
     '          "id": "activity-1",',
     '          "name": "Activity name",',
     '          "description": "What this activity does",',
-    '          "assignedRole": "role label or agent id who should run it",',
+    `          "assignedRole": "one of: ${Object.keys(ROLE_AGENT_MAP).join(', ')}",`,
+    '          "prompts": { "en": "Detailed execution prompt with {{client_variable}} placeholders where useful" },',
     '          "checklist": ["item 1", "item 2"],',
     '          "outputs": ["output-id-1"]',
     '        }',
@@ -185,6 +187,28 @@ export async function persistDraftedPipeline(
       source: 'iris-authoring',
       createdAt: new Date().toISOString(),
     },
+  }
+
+  const tenantAgents = await db`
+    SELECT id, metadata FROM agents WHERE agency_id = ${tenantId}::uuid
+  `
+  const invalidRoles: string[] = []
+  for (const phase of definition.phases || []) {
+    for (const activity of phase.activities || []) {
+      const role = String(activity.assignedRole || '').trim()
+      const roleIsKnown = getAgentIdsForRole(role).length > 0
+      const agentIsKnown = tenantAgents.some((agent: any) => matchesAgentTemplate(agent, role))
+      if (!role || (!roleIsKnown && !agentIsKnown)) invalidRoles.push(role || '(missing)')
+      if (!activity.prompts?.en?.trim()) {
+        activity.prompts = {
+          ...(activity.prompts || {}),
+          en: activity.description || `Complete ${activity.name || 'this pipeline activity'}.`,
+        }
+      }
+    }
+  }
+  if (invalidRoles.length) {
+    throw new Error(`Pipeline contains unknown assigned roles: ${Array.from(new Set(invalidRoles)).join(', ')}`)
   }
 
   await db`

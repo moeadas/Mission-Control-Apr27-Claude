@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 import { resolveAuthContextFromToken, getAuthTokenFromRequest } from '@/lib/auth/server'
-import { loadTaskExecutionState } from '@/lib/server/task-execution'
+import { ensureTaskExists, loadTaskExecutionState } from '@/lib/server/task-execution'
 import { getExecutionJobState, queueTaskExecution } from '@/lib/server/execution-queue'
 
 export const dynamic = 'force-dynamic'
@@ -52,7 +52,7 @@ export async function GET(
     return NextResponse.json(
       {
         ...state,
-        job: getExecutionJobState(id),
+        job: await getExecutionJobState(id),
       },
       { headers: { 'Cache-Control': 'no-store' } }
     )
@@ -99,7 +99,14 @@ export async function POST(
       )
     }
 
-    const job = queueTaskExecution(id, auth, action, {
+    if (body.bootstrap) {
+      const ensured = await ensureTaskExists(id, auth, body.bootstrap)
+      if (!ensured) {
+        return NextResponse.json({ error: 'Unable to persist the task before queueing.' }, { status: 503 })
+      }
+    }
+
+    const job = await queueTaskExecution(id, auth, action, {
       comment: body.comment?.trim() || undefined,
       runtimeMode: body.runtimeMode,
       bootstrap: body.bootstrap,

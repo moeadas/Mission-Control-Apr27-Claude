@@ -341,7 +341,7 @@ export async function ensureBundledPipelines(agencyId: string) {
   const existing = await db`SELECT id FROM pipelines WHERE agency_id = ${agencyId}::uuid`
   const existingIds = new Set(existing.map((row: any) => row.id))
   const missing = pipelineRows.filter((row) => !existingIds.has(row.id))
-  if (missing.length) await upsert('pipelines', missing)
+  if (missing.length) await upsert('pipelines', missing, ['agency_id', 'id'])
 }
 
 function buildKnowledgeAssetRows(clients: AppPersistenceSnapshot['clients'], agencyId: string) {
@@ -382,11 +382,12 @@ function buildKnowledgeAssetRows(clients: AppPersistenceSnapshot['clients'], age
  *   await sql`INSERT INTO ${sql(table)} ${sql(rows, ...cols)} ON CONFLICT ...`
  * The library handles parameterisation, jsonb coercion, and quoting safely.
  */
-async function upsert(table: string, rows: Record<string, any>[], conflictCol = 'id') {
+async function upsert(table: string, rows: Record<string, any>[], conflictColumns: string | string[] = 'id') {
   if (!rows.length) return
   const db = getDb()
   const cols = Object.keys(rows[0])
-  const setCols = cols.filter((c) => c !== conflictCol)
+  const conflictCols = Array.isArray(conflictColumns) ? conflictColumns : [conflictColumns]
+  const setCols = cols.filter((c) => !conflictCols.includes(c))
 
   // Per-row insert keeps the SQL identical to the postgres.js multi-row form
   // but sidesteps the unsafe-stringification bug. The performance hit is
@@ -396,7 +397,7 @@ async function upsert(table: string, rows: Record<string, any>[], conflictCol = 
     // hardcoded from Object.keys(rows[0]) so there's no injection surface.
     const setFragments = setCols.map((c) => `"${c}" = EXCLUDED."${c}"`).join(', ')
     await db.unsafe(
-      `INSERT INTO "${table}" (${cols.map((c) => `"${c}"`).join(', ')}) VALUES (${cols.map((_, i) => `$${i + 1}`).join(', ')}) ON CONFLICT ("${conflictCol}") DO UPDATE SET ${setFragments}`,
+      `INSERT INTO "${table}" (${cols.map((c) => `"${c}"`).join(', ')}) VALUES (${cols.map((_, i) => `$${i + 1}`).join(', ')}) ON CONFLICT (${conflictCols.map((c) => `"${c}"`).join(', ')}) DO UPDATE SET ${setFragments}`,
       cols.map((c) => {
         const val = (row as any)[c]
         // postgres.js + .unsafe needs jsonb values as JSON strings; otherwise
@@ -446,7 +447,7 @@ export async function syncSnapshotToRelationalTables(state: AppPersistenceSnapsh
     const existing = await db`SELECT id FROM skills WHERE agency_id = ${agencyId}::uuid`
     const existingIds = new Set(existing.map((r: any) => r.id))
     const missing = skillRows.filter((r) => !existingIds.has(r.id))
-    if (missing.length) await upsert('skills', missing)
+    if (missing.length) await upsert('skills', missing, ['agency_id', 'id'])
   }
 
   await ensureBundledPipelines(agencyId)

@@ -3,6 +3,8 @@
   "name": "Content Calendar",
   "description": "Generate a complete 30-day content calendar with posts, hooks, repurposed versions, hashtags, and visual briefs",
   "version": "1.0",
+  "executionMode": "dedicated-engine",
+  "runtimeEngine": "content-calendar-engine",
   "isDefault": true,
   "estimatedDuration": "7-10 days",
   "clientProfileFields": [

@@ -87,11 +87,12 @@ const LEGACY_DEPARTMENT_SYSTEM_PROMPTS: Record<string, string> = {
 }
 
 export function normalizeAgent(agent: Partial<Agent> & Record<string, any>): Agent {
-  const template = ALL_DEFAULT_AGENTS.find((item) => item.id === agent.id)
   const storedMetadata = agent.metadata && typeof agent.metadata === 'object' ? agent.metadata as Record<string, unknown> : {}
+  const templateId = typeof storedMetadata.templateId === 'string' ? storedMetadata.templateId : agent.id
+  const template = ALL_DEFAULT_AGENTS.find((item) => item.id === templateId)
   const templatePromptVersion = Number(template?.metadata?.systemPromptTemplateVersion || 0)
   const storedPromptVersion = Number(storedMetadata.systemPromptTemplateVersion || 0)
-  const legacyPrompt = agent.id ? LEGACY_DEPARTMENT_SYSTEM_PROMPTS[agent.id] : undefined
+  const legacyPrompt = templateId ? LEGACY_DEPARTMENT_SYSTEM_PROMPTS[templateId] : undefined
   const legacyPromptVariants = legacyPrompt
     ? [
         legacyPrompt,
@@ -111,7 +112,7 @@ export function normalizeAgent(agent: Partial<Agent> & Record<string, any>): Age
     agent.department as AgentDepartment
   )
     ? (agent.department as AgentDepartment)
-    : template?.department || 'marketing'
+    : (storedMetadata.department as AgentDepartment) || template?.department || 'marketing'
 
   return {
     ...(template || {

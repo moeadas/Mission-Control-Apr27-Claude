@@ -12,38 +12,11 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db/client'
-import { generateTextWithUsage } from '@/lib/server/ai'
-import { normalizeProviderSettings, resolveTaskRuntime } from '@/lib/provider-settings'
 import { loadPersistedProviderSettings } from '@/lib/server/provider-secrets'
-import { logTokenUsage } from '@/lib/server/token-logger'
+import { executeScheduledTaskThroughOrchestrator } from '@/lib/server/scheduled-task-execution'
+import type { AuthContext } from '@/lib/auth/server'
 
 export const dynamic = 'force-dynamic'
-
-function buildAgentSystemPrompt(agent: any, taskType: string): string {
-  const role = agent?.role || 'AI assistant'
-  const specialty = agent?.specialty || ''
-  const name = agent?.name || 'Iris'
-
-  const taskContext: Record<string, string> = {
-    'competitor-research': 'You are conducting a competitor research analysis. Provide detailed, actionable insights about competitor positioning, messaging, content strategy, and gaps.',
-    'seo-audit': 'You are conducting an SEO audit. Analyse on-page factors, content quality, keyword opportunities, and technical issues with specific recommendations.',
-    'content-calendar': 'You are creating a content calendar. Generate structured, platform-specific content ideas with hooks, formats, and posting schedules.',
-    'performance-report': 'You are generating a performance report. Analyse metrics, highlight wins and areas for improvement, provide actionable next steps.',
-    'social-posts': 'You are generating a batch of social media posts. Each post should be platform-optimised, engaging, with hooks, body copy, and calls to action.',
-    'campaign-brief': 'You are writing a campaign brief. Cover objectives, target audience, messaging pillars, channel strategy, and success metrics.',
-    'email-campaign': 'You are writing an email campaign with subject line variations, preview text, compelling body copy, and a clear call to action.',
-    'custom': '',
-  }
-
-  return [
-    `You are ${name}, a ${role}${specialty ? ` specialising in ${specialty}` : ''}.`,
-    taskContext[taskType] || '',
-    'Be thorough, professional, and output well-structured content. Use markdown formatting where appropriate.',
-    agent?.systemPrompt ? `\n---\nAdditional context:\n${agent.systemPrompt}` : '',
-  ]
-    .filter(Boolean)
-    .join('\n\n')
-}
 
 function computeNextRunAt(task: {
   frequency: string
@@ -88,64 +61,26 @@ async function runTask(db: any, task: any) {
   await db`UPDATE scheduled_tasks SET last_run_at = now(), updated_at = now() WHERE id = ${task.id}`
 
   try {
-    // Load agent if assigned
-    let agent: any = null
-    if (task.agent_id) {
-      const [a] = await db`SELECT * FROM agents WHERE id = ${task.agent_id} LIMIT 1`
-      agent = a || null
-    }
-
     // Load provider settings for the tenant's owner
     // profiles.id = users.id (no separate user_id column)
     const [ownerProfile] = await db`
-      SELECT u.id FROM profiles p
+      SELECT u.id, u.email, u.role FROM profiles p
       JOIN users u ON u.id = p.id
       WHERE p.tenant_id = ${task.tenant_id}
-      ORDER BY u.created_at ASC
+      ORDER BY CASE WHEN u.id = ${task.created_by_user_id || null}::uuid THEN 0 ELSE 1 END, u.created_at ASC
       LIMIT 1
     `
     const ownerUserId = ownerProfile?.id || null
     const savedSettings = ownerUserId ? await loadPersistedProviderSettings(ownerUserId) : null
-    const settings = normalizeProviderSettings(savedSettings || {})
-
-    // Agent's assigned provider/model is highest priority
-    const { provider, model } = resolveTaskRuntime({
-      settings,
-      deliverableType: task.task_type,
-      agentProvider: agent?.provider ?? null,
-      agentModel: agent?.model ?? null,
-    })
-
-    const systemPrompt = buildAgentSystemPrompt(agent, task.task_type)
-
-    const { text: output, usage } = await generateTextWithUsage({
-      provider,
-      model,
-      temperature: agent?.temperature ?? 0.7,
-      maxTokens: agent?.max_tokens ?? 4096,
-      ollamaBaseUrl: settings?.ollama?.baseUrl,
-      ollamaContextWindow: settings?.ollama?.contextWindow,
-      ollamaApiKey: settings?.ollama?.apiKey,
-      geminiApiKey: settings?.gemini?.apiKey,
-      anthropicApiKey: settings?.anthropic?.apiKey,
-      openAiApiKey: settings?.openai?.apiKey,
-      openAiBaseUrl: settings?.openai?.baseUrl,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: task.prompt },
-      ],
-    })
-
-    // Log token usage (swallows errors)
-    logTokenUsage(db, {
+    if (!ownerProfile) throw new Error('Scheduled task tenant has no active owner.')
+    const auth: AuthContext = {
+      userId: ownerProfile.id,
+      email: ownerProfile.email,
+      role: ownerProfile.role,
       tenantId: task.tenant_id,
-      agentId: task.agent_id ?? null,
-      sourceType: 'scheduled',
-      sourceId: task.id,
-      provider,
-      model,
-      usage,
-    })
+      providerSettings: savedSettings || ({} as AuthContext['providerSettings']),
+    }
+    const { output } = await executeScheduledTaskThroughOrchestrator({ task, auth })
 
     const nextRunAt = computeNextRunAt(task as any)
 

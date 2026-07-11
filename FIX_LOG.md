@@ -6,6 +6,17 @@
 
 ---
 
+## 2026-07-11 · Runtime wiring repair · v1.0.77
+
+- Made pipeline/skill IDs tenant scoped with composite keys and foreign keys.
+- Removed the legacy default-agency behavior from all skill APIs.
+- Made agent role routing clone-aware across every department and backfilled the complete roster.
+- Validated AI-authored pipeline roles/prompts and marked specialized pipelines with their real dedicated runtime engines.
+- Replaced the process-memory task queue with durable PostgreSQL jobs, locking, heartbeats, restart recovery, and visible failures.
+- Routed manual and cron scheduled tasks through the canonical task orchestrator.
+- Added runtime and optional database integration tests; upgraded Vitest; enabled ESLint.
+- Validation: PostgreSQL 16 clean install and legacy migration passed; 91 tests passed; typecheck, lint (0 errors), and production build passed.
+
 ## 🎯 Product reframe (per user direction, 2026-05-15)
 
 - App is for **any company doing AI-assisted workflows**, not just marketing agencies. Iris is the central knowledge agent who knows the company setup.

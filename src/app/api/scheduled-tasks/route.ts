@@ -98,11 +98,11 @@ export async function POST(req: NextRequest) {
     const db = getDb()
     const [row] = await db`
       INSERT INTO scheduled_tasks
-        (tenant_id, agent_id, name, description, task_type, prompt,
+        (tenant_id, agent_id, created_by_user_id, name, description, task_type, prompt,
          frequency, day_of_week, day_of_month, time_hour, time_minute,
          status, next_run_at)
       VALUES
-        (${auth.tenantId}, ${agent_id}, ${name.trim()}, ${description}, ${task_type}, ${prompt.trim()},
+        (${auth.tenantId}, ${agent_id}, ${auth.userId}::uuid, ${name.trim()}, ${description}, ${task_type}, ${prompt.trim()},
          ${frequency}, ${day_of_week}, ${day_of_month}, ${time_hour}, ${time_minute},
          'active', ${nextRunAt?.toISOString() ?? null})
       RETURNING *

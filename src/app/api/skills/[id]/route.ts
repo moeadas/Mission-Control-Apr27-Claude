@@ -9,16 +9,6 @@ function getBearerToken(request: NextRequest) {
   return getAuthTokenFromRequest(request)
 }
 
-async function getAgencyId(): Promise<string | null> {
-  try {
-    const db = getDb()
-    const rows = await db`SELECT id FROM agencies WHERE slug = 'default-agency' LIMIT 1`
-    return rows[0]?.id ?? null
-  } catch {
-    return null
-  }
-}
-
 function mapSkill(row: any) {
   return {
     id: row.id,
@@ -54,7 +44,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { id } = await params
-    const agencyId = await getAgencyId()
+    const agencyId = auth.tenantId
     const configSkillMap = await loadConfigSkillMap()
 
     if (!agencyId) {
@@ -107,7 +97,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     const { id } = await params
     const skill = await request.json()
-    const agencyId = await getAgencyId()
+    const agencyId = auth.tenantId
     if (!agencyId) return NextResponse.json({ error: 'Database not available' }, { status: 503 })
 
     const metadata = JSON.stringify({
@@ -138,8 +128,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         ${metadata},
         'app'
       )
-      ON CONFLICT (id) DO UPDATE SET
-        agency_id = EXCLUDED.agency_id,
+      ON CONFLICT (agency_id, id) DO UPDATE SET
         name = EXCLUDED.name,
         category = EXCLUDED.category,
         description = EXCLUDED.description,
@@ -163,7 +152,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     if (!auth || auth.role !== 'super_admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     const { id } = await params
-    const agencyId = await getAgencyId()
+    const agencyId = auth.tenantId
     if (!agencyId) return NextResponse.json({ error: 'Database not available' }, { status: 503 })
 
     const db = getDb()

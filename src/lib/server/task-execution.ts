@@ -186,7 +186,11 @@ export async function ensureTaskExists(
 
   let resolvedPipelineId: string | null = null
   if (bootstrap?.pipelineId) {
-    const pipeline = await db`SELECT id FROM pipelines WHERE id = ${bootstrap.pipelineId} LIMIT 1`
+    const pipeline = await db`
+      SELECT id FROM pipelines
+      WHERE agency_id = ${agencyId}::uuid AND id = ${bootstrap.pipelineId}
+      LIMIT 1
+    `
     resolvedPipelineId = pipeline[0]?.id || null
   }
 
@@ -311,7 +315,7 @@ export async function upsertWorkflowExecutionState(input: {
   if (input.pipelineId) {
     const pipelineRows = await db`
       SELECT id FROM pipelines
-      WHERE id = ${input.pipelineId}
+      WHERE agency_id = ${agencyId}::uuid AND id = ${input.pipelineId}
       LIMIT 1
     `
     resolvedPipelineId = pipelineRows[0]?.id || null
@@ -732,6 +736,7 @@ export async function runTaskExecution(
       provider: agent.provider,
       model: agent.model,
       systemPrompt: agent.systemPrompt,
+      metadata: agent.metadata,
     }
   })
   const channelingPlan = buildTaskChannelingPlan({

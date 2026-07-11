@@ -27,6 +27,9 @@ export const ROLE_AGENT_MAP: Record<string, string[]> = {
   'employee-relations': ['ellis'],
   'business-development': ['orion'],
   'partnerships-growth': ['mira'],
+  design: ['lyra', 'finn'],
+  technical: ['atlas', 'dex'],
+  analytics: ['dex', 'atlas'],
 }
 
 export function getAgentIdsForRole(role?: string) {
@@ -34,11 +37,31 @@ export function getAgentIdsForRole(role?: string) {
   return ROLE_AGENT_MAP[role] || []
 }
 
-export function pickAgentForRole<T extends { id: string }>(agents: T[], role?: string, fallbackAgentId?: string) {
+export function matchesAgentTemplate(
+  agent: { id: string; metadata?: Record<string, unknown> | null },
+  templateId: string
+) {
+  return (
+    agent.id === templateId ||
+    agent.id.startsWith(`${templateId}-`) ||
+    agent.metadata?.templateId === templateId
+  )
+}
+
+export function pickAgentForRole<T extends { id: string; metadata?: Record<string, unknown> | null }>(
+  agents: T[],
+  role?: string,
+  fallbackAgentId?: string
+) {
   const preferredIds = getAgentIdsForRole(role)
-  const preferredAgent = preferredIds.map((id) => agents.find((agent) => agent.id === id)).find(Boolean) || null
+  const candidates = preferredIds.length ? preferredIds : role ? [role] : []
+  const preferredAgent = candidates
+    .map((id) => agents.find((agent) => matchesAgentTemplate(agent, id)))
+    .find(Boolean) || null
   if (preferredAgent) return preferredAgent
-  return fallbackAgentId ? agents.find((agent) => agent.id === fallbackAgentId) || null : null
+  return fallbackAgentId
+    ? agents.find((agent) => matchesAgentTemplate(agent, fallbackAgentId)) || null
+    : null
 }
 
 export function getDeliverableAgentPlan(deliverableType: DeliverableType, request: string, routedAgentId?: string) {

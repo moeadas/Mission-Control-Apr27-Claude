@@ -1,6 +1,6 @@
 {
   "name": "agency-mission-control",
-  "version": "1.0.76",
+  "version": "1.0.77",
   "private": true,
   "engines": {
     "node": ">=20 <23"
@@ -9,9 +9,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:integration": "vitest run tests/database-runtime.integration.test.ts",
     "test:watch": "vitest"
   },
   "dependencies": {
@@ -52,9 +53,11 @@
     "@types/react-dom": "^19.2.3",
     "@types/uuid": "^10.0.0",
     "autoprefixer": "^10.4.19",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.2.10",
     "postcss": "^8.4.40",
     "tailwindcss": "^3.4.6",
     "typescript": "5.9.3",
-    "vitest": "^2.1.9"
+    "vitest": "^4.1.10"
   }
 }

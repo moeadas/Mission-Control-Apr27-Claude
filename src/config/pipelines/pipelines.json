@@ -5,6 +5,8 @@
       "name": "Content Calendar",
       "description": "Generate a complete 30-day content calendar with posts, hooks, repurposed versions, hashtags, and visual briefs",
       "version": "1.0",
+      "executionMode": "dedicated-engine",
+      "runtimeEngine": "content-calendar-engine",
       "isDefault": true,
       "estimatedDuration": "7-10 days",
       "clientProfileFields": [
@@ -765,6 +767,8 @@
       "name": "Ad Creative Production",
       "description": "End-to-end workflow for producing high-performance ad creatives with A/B testing",
       "version": "1.0",
+      "executionMode": "dedicated-engine",
+      "runtimeEngine": "creative-asset-engine",
       "isDefault": true,
       "estimatedDuration": "7 days",
       "clientProfileFields": [
@@ -927,6 +931,8 @@
       "name": "Full Website Audit & SEO Strategy",
       "description": "Pinpointer-style 10-point website audit covering SEO, UX, UI, CRO, accessibility, performance, content quality, security, mobile responsiveness, and competitive benchmarking.",
       "version": "2.0",
+      "executionMode": "dedicated-engine",
+      "runtimeEngine": "seo-audit-engine",
       "isDefault": true,
       "estimatedDuration": "10-20 minutes",
       "clientProfileFields": [

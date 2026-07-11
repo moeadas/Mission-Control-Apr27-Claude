@@ -3,6 +3,8 @@
   "name": "Full Website Audit & SEO Strategy",
   "description": "Pinpointer-style 10-point website audit covering SEO, UX, UI, CRO, accessibility, performance, content quality, security, mobile responsiveness, and competitive benchmarking.",
   "version": "2.0",
+  "executionMode": "dedicated-engine",
+  "runtimeEngine": "seo-audit-engine",
   "isDefault": true,
   "estimatedDuration": "10-20 minutes",
   "clientProfileFields": [

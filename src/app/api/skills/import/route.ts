@@ -12,16 +12,6 @@ function getBearerToken(request: NextRequest) {
   return getAuthTokenFromRequest(request)
 }
 
-async function getAgencyId(): Promise<string | null> {
-  try {
-    const db = getDb()
-    const rows = await db`SELECT id FROM agencies WHERE slug = 'default-agency' LIMIT 1`
-    return rows[0]?.id ?? null
-  } catch {
-    return null
-  }
-}
-
 export async function POST(request: NextRequest) {
   try {
     const auth = await resolveAuthContextFromToken(getBearerToken(request))
@@ -70,7 +60,7 @@ export async function POST(request: NextRequest) {
       } as any,
     }
 
-    const agencyId = await getAgencyId()
+    const agencyId = auth.tenantId
     if (!agencyId) {
       return NextResponse.json({ error: 'Database not available' }, { status: 503 })
     }
@@ -103,8 +93,7 @@ export async function POST(request: NextRequest) {
         ${metadata},
         'app'
       )
-      ON CONFLICT (id) DO UPDATE SET
-        agency_id = EXCLUDED.agency_id,
+      ON CONFLICT (agency_id, id) DO UPDATE SET
         name = EXCLUDED.name,
         category = EXCLUDED.category,
         description = EXCLUDED.description,
