@@ -2,7 +2,7 @@
 
 Durable working memory for understanding this app. Keep this file current as code is reviewed or changed.
 
-Last updated: 2026-07-11
+Last updated: 2026-07-12
 
 ## Purpose
 
@@ -780,3 +780,4 @@ Specialist engine gates:
 - The same migration removes the invalid legacy `skills_set_updated_at` trigger; `skills` has no `updated_at` column, so that trigger caused all skill updates to fail.
 - Regression coverage includes the exact Victory Genomics August/7-day/3-platform/5-post/copy-only scenario and a mocked full dedicated-engine run.
 - **2026-07-12 — v1.0.80 content-calendar runtime integrity:** channeling now recovers agent-owned canonical skills when persisted agent skill arrays are empty, and selected skill IDs are injected directly instead of being re-intersected with stale agent rows. The dedicated calendar engine executes/records profile review, post review, cross-platform adaptation, Atlas hashtag/SEO generation, export, and quality phases; copy-only runs still skip visuals. Calendar schedules globally de-duplicate post IDs and reject out-of-range days before deterministic fill. Output generation traces now live in `outputs.metadata`, round-trip through app state, and survive stale client synchronization. Terminal task progress/execution plans and non-empty output execution traces are protected from stale snapshot downgrades. Regression coverage reproduces the Victory Genomics August brief, duplicate scheduling, empty agent skills, approved factual evidence, and pipeline-activity enforcement.
+- Migration `docker/migrations/20260712_jsonb_runtime_integrity.sql` unwraps structured JSONB values stored as quoted strings by legacy sync code and restores completed task rows to 100% when their workflow is already complete.
