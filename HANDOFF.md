@@ -496,4 +496,6 @@ Quality validation now checks cadence totals, per-channel quotas, duration bound
 
 Relational snapshot writes now explicitly cast structured parameters to JSONB. Readers normalize legacy JSON strings/arrays before using `execution_plan` or task metadata; do not remove this compatibility layer until production rows have been fully normalized.
 
+Apply `docker/migrations/20260712_normalize_relational_jsonb.sql` once on existing databases. It safely unwraps legacy JSON strings while leaving correctly structured JSONB unchanged.
+
 Regression test: `tests/content-calendar-runtime.test.ts` covers the Victory Genomics August request with a seven-day window, Instagram + Facebook + Email, five posts per platform, and copy-only delivery.
