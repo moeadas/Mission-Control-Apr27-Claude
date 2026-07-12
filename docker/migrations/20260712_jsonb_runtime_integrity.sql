@@ -62,11 +62,8 @@ WHERE jsonb_typeof(brief) = 'string'
 UPDATE conversations SET metadata = pg_temp.unwrap_structured_jsonb(metadata)
 WHERE jsonb_typeof(metadata) = 'string';
 
-UPDATE messages SET
-  attachments = pg_temp.unwrap_structured_jsonb(attachments),
-  metadata = pg_temp.unwrap_structured_jsonb(metadata)
-WHERE jsonb_typeof(attachments) = 'string'
-   OR jsonb_typeof(metadata) = 'string';
+UPDATE messages SET metadata = pg_temp.unwrap_structured_jsonb(metadata)
+WHERE jsonb_typeof(metadata) = 'string';
 
 -- A completed workflow is authoritative. Repair task rows that an older
 -- browser snapshot downgraded after server-side completion.
