@@ -513,10 +513,15 @@ function buildClientProfile(client: any) {
     channel_strategy: client.brief?.strategicPriorities,
     pain_points: client.brief?.objectionHandling,
     key_dates: client.brief?.operationalDetails,
-    posting_frequency: '3-4 posts per week',
-    platforms: 'Instagram, LinkedIn',
-    content_goal: 'Awareness and lead generation',
-    campaign_duration: '30 days',
+    approved_facts: [
+      client.brief?.description,
+      client.brief?.missionStatement,
+      client.brief?.brandPromise,
+      client.brief?.productsAndServices,
+      client.brief?.usp,
+      client.brief?.keyMessages,
+      client.brief?.operationalDetails,
+    ].filter(Boolean).join('\n'),
   })
 }
 
@@ -903,6 +908,8 @@ export async function runTaskExecution(
       pipeline,
       skillCategories,
       officeContextByAgent,
+      tenantId: agencyId,
+      taskId,
       hooks: {
         onPhaseStart: async ({ phase, progress: reportedProgress }) => {
           const liveProgress = Math.max(
@@ -1056,6 +1063,8 @@ export async function runTaskExecution(
           qualityChecklist: executionPlan.qualityChecklist,
           pipeline,
           skillCategories,
+          tenantId: agencyId,
+          taskId,
         })
 
         const primaryScore = result.qualityResult?.score ?? 0
@@ -1113,7 +1122,7 @@ export async function runTaskExecution(
         ${result.creative?.assetUrl || null},
         ${result.creative?.assetPath || null},
         ${db.json((result.creative || {}) as any)},
-        ${db.json({})},
+        ${db.json({ generationTrace: result.generationTrace || [] } as any)},
         ${db.json({})},
         ${task.summary || task.title},
         ${result.qualityResult?.ok ? 'Generated via task execution runner.' : `Quality issues: ${(result.qualityResult?.issues || []).join(' | ')}`},
@@ -1127,6 +1136,7 @@ export async function runTaskExecution(
         public_url = EXCLUDED.public_url,
         storage_path = EXCLUDED.storage_path,
         creative = EXCLUDED.creative,
+        metadata = EXCLUDED.metadata,
         notes = EXCLUDED.notes,
         execution_steps = EXCLUDED.execution_steps,
         updated_at = EXCLUDED.updated_at
@@ -1178,7 +1188,9 @@ export async function runTaskExecution(
       SET
         status = ${finalStatus},
         progress = ${finalProgress},
-        execution_plan = ${db.json(executionPlanUpdate)}
+        execution_plan = ${db.json(executionPlanUpdate)},
+        completed_at = NOW(),
+        updated_at = NOW()
       WHERE agency_id = ${agencyId} AND id = ${taskId}
     `
 
@@ -1194,6 +1206,20 @@ export async function runTaskExecution(
         compareSummary: compareSummary || null,
       },
       startedAt: now,
+      completedAt: now,
+      agencyId,
+    })
+
+    await insertTaskRun({
+      taskId,
+      agentId: channelingPlan.leadAgentId || task.lead_agent_id || null,
+      stage: 'task-execution',
+      status: 'completed',
+      outputPayload: {
+        artifactId,
+        qualityScore: result.qualityResult?.score,
+        generationCalls: Array.isArray(result.generationTrace) ? result.generationTrace.length : 0,
+      },
       completedAt: now,
       agencyId,
     })
@@ -1237,7 +1263,7 @@ export async function runTaskExecution(
 
     await insertTaskRun({
       taskId,
-      agentId: task.lead_agent_id || null,
+      agentId: channelingPlan.leadAgentId || task.lead_agent_id || null,
       stage: 'task-execution',
       status: 'failed',
       errorMessage: message,

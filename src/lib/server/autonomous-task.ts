@@ -1,5 +1,7 @@
 import { ArtifactExecutionStep, AIProvider, DeliverableType, ProviderSettings } from '@/lib/types'
-import { generateText } from '@/lib/server/ai'
+import { generateTextWithUsage, type TokenUsage } from '@/lib/server/ai'
+import { getDb } from '@/lib/db/client'
+import { logTokenUsage } from '@/lib/server/token-logger'
 import { pickAgentForRole } from '@/lib/agent-roles'
 import { sanitizePromptProfile, sanitizePromptValue } from '@/lib/server/prompt-safety'
 import { validateDeliverableQuality } from '@/lib/output-quality'
@@ -473,6 +475,7 @@ async function generateContentFirstText(input: {
   openAiApiKey?: string
   openAiBaseUrl?: string
   providerSettings?: ProviderSettings
+  onGeneration?: (result: { provider: AIProvider; model: string; usage: TokenUsage }) => Promise<void> | void
 }) {
   const isContentTask = input.deliverableType && CONTENT_GENERATION_DELIVERABLE_TYPES.has(input.deliverableType)
   const normalizedSettings = normalizeProviderSettings(input.providerSettings)
@@ -505,7 +508,7 @@ async function generateContentFirstText(input: {
     : { provider: input.provider, model: input.model }
 
   try {
-    return await generateText({
+    const generated = await generateTextWithUsage({
       provider: primaryRuntime.provider,
       model: primaryRuntime.model,
       temperature: input.temperature,
@@ -516,6 +519,8 @@ async function generateContentFirstText(input: {
       // runtimes. Give those tasks enough room before trying a fallback.
       timeoutMs: getGenerationTimeoutMs(input.deliverableType, primaryRuntime.provider),
     })
+    await input.onGeneration?.({ provider: primaryRuntime.provider, model: primaryRuntime.model, usage: generated.usage })
+    return generated.text
   } catch (error) {
     if (!isContentTask && !isTimeoutError(error)) throw error
 
@@ -530,7 +535,7 @@ async function generateContentFirstText(input: {
 
     if (!fallbackRuntime) throw error
 
-    return await generateText({
+    const generated = await generateTextWithUsage({
       provider: fallbackRuntime.provider,
       model: fallbackRuntime.model,
       temperature: input.temperature,
@@ -539,6 +544,8 @@ async function generateContentFirstText(input: {
       ...providerKeys,
       timeoutMs: getGenerationTimeoutMs(input.deliverableType, fallbackRuntime.provider),
     })
+    await input.onGeneration?.({ provider: fallbackRuntime.provider, model: fallbackRuntime.model, usage: generated.usage })
+    return generated.text
   }
 }
 
@@ -934,6 +941,8 @@ export async function executeAutonomousTask(input: {
     budgetRange: string
     timeline: string
   }
+  tenantId?: string | null
+  taskId?: string | null
 }) {
   const skillLookup = buildSkillLookup(input.skillCategories)
   const agentMap = new Map(input.agents.map((agent) => [agent.id, agent]))
@@ -1006,46 +1015,95 @@ export async function executeAutonomousTask(input: {
   }
 
   if (input.deliverableType === 'content-calendar') {
+    const generationTrace: Array<Record<string, unknown>> = []
+    const skillGuidanceByAgent = Object.fromEntries(
+      input.agents.map((agent) => [
+        agent.id,
+        agentSkillsContextFromIds(
+          agent,
+          skillLookup,
+          input.selectedSkillsByAgent?.[agent.id] || agent.skills || []
+        ),
+      ])
+    )
+    const selectedCalendarSkillIds = uniqueIds(Object.values(input.selectedSkillsByAgent || {}).flat())
+    const skillChecklists = selectedCalendarSkillIds
+      .map((id) => skillLookup.get(id))
+      .filter((skill): skill is SkillRef => Boolean(skill))
+      .map((skill) => ({ id: skill.id, name: skill.name, checklist: skill.checklist || [] }))
     const calendarResult = await executeAutomatedContentCalendar({
       request: input.request,
       clientProfile,
       agentsById: agentMap,
       selectedSkillsByAgent: input.selectedSkillsByAgent,
+      skillGuidanceByAgent,
+      skillChecklists,
+      pipeline: input.pipeline,
       maxTokens: input.maxTokens,
       hooks: input.hooks,
-      generateStage: async ({ agentId, prompt, temperature, maxTokens }) => {
+      generateStage: async ({ agentId, prompt, temperature, maxTokens, stage, attempt }) => {
         const agent =
           agentMap.get(agentId) ||
           findAgentByTemplate(agentMap.values(), agentId) ||
           findAgentByTemplate(agentMap.values(), 'iris')
         if (!agent) throw new Error(`Agent ${agentId} is unavailable.`)
         const runtime = resolveAgentRuntime(agent, input)
-        const text = await generateContentFirstText({
-          deliverableType: input.deliverableType,
-          provider: runtime.provider,
-          model: runtime.model,
-          temperature,
-          maxTokens,
-          messages: [
-            {
-              role: 'system',
-              content: agent.systemPrompt || `You are ${agent.name}, ${agent.role}.`,
+        const systemPrompt = agent.systemPrompt || `You are ${agent.name}, ${agent.role}.`
+        const startedAt = new Date().toISOString()
+        let actualRuntime = runtime
+        let usage: TokenUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
+        try {
+          const text = await generateContentFirstText({
+            deliverableType: input.deliverableType,
+            provider: runtime.provider,
+            model: runtime.model,
+            temperature,
+            maxTokens,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: prompt },
+            ],
+            ollamaBaseUrl: input.ollamaBaseUrl,
+            ollamaContextWindow: input.ollamaContextWindow,
+            ollamaApiKey: input.ollamaApiKey,
+            geminiApiKey: input.geminiApiKey,
+            anthropicApiKey: input.anthropicApiKey,
+            openAiApiKey: input.openAiApiKey,
+            openAiBaseUrl: input.openAiBaseUrl,
+            providerSettings: input.providerSettings,
+            onGeneration: async (generated) => {
+              actualRuntime = { provider: generated.provider, model: generated.model }
+              usage = generated.usage
+              if (input.tenantId) {
+                await logTokenUsage(getDb(), {
+                  tenantId: input.tenantId,
+                  agentId: agent.id,
+                  sourceType: 'pipeline',
+                  sourceId: input.taskId || null,
+                  provider: generated.provider,
+                  model: generated.model,
+                  usage: generated.usage,
+                })
+              }
             },
-            {
-              role: 'user',
-              content: prompt,
-            },
-          ],
-          ollamaBaseUrl: input.ollamaBaseUrl,
-          ollamaContextWindow: input.ollamaContextWindow,
-          ollamaApiKey: input.ollamaApiKey,
-          geminiApiKey: input.geminiApiKey,
-          anthropicApiKey: input.anthropicApiKey,
-          openAiApiKey: input.openAiApiKey,
-          openAiBaseUrl: input.openAiBaseUrl,
-          providerSettings: input.providerSettings,
-        })
-        return { text, provider: runtime.provider, model: runtime.model }
+          })
+          generationTrace.push({
+            stage, attempt, agentId: agent.id, agentName: agent.name,
+            provider: actualRuntime.provider, model: actualRuntime.model,
+            temperature, maxTokens: maxTokens || null, systemPrompt, userPrompt: prompt,
+            usage, status: 'completed', startedAt, completedAt: new Date().toISOString(),
+          })
+          return { text, provider: actualRuntime.provider, model: actualRuntime.model }
+        } catch (error) {
+          generationTrace.push({
+            stage, attempt, agentId: agent.id, agentName: agent.name,
+            provider: actualRuntime.provider, model: actualRuntime.model,
+            temperature, maxTokens: maxTokens || null, systemPrompt, userPrompt: prompt,
+            usage, status: 'failed', error: error instanceof Error ? error.message : String(error),
+            startedAt, completedAt: new Date().toISOString(),
+          })
+          throw error
+        }
       },
     })
 
@@ -1054,6 +1112,7 @@ export async function executeAutonomousTask(input: {
       renderedHtml: calendarResult.renderedHtml,
       executionSteps: calendarResult.executionSteps,
       qualityResult: calendarResult.qualityResult,
+      generationTrace,
       creative: undefined,
     }
   }

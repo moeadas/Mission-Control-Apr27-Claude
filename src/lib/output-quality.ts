@@ -1,4 +1,5 @@
 import type { DeliverableType } from '@/lib/types'
+import { resolveContentCalendarBrief } from '@/lib/server/content-calendar-brief'
 
 export interface DeliverableQualityResult {
   ok: boolean
@@ -212,6 +213,65 @@ export function validateDeliverableQuality(
 
   if (deliverableType === 'content-calendar' && !/\|.+\|.+\|/.test(trimmed)) {
     issues.push('Content calendar is missing a table layout.')
+  }
+
+  if (deliverableType === 'content-calendar' && request) {
+    const brief = resolveContentCalendarBrief(request, {})
+    const calendarTable = extractMarkdownTables(trimmed).find((table) => {
+      const headers = table[0].map(normalizeHeader)
+      return headers.includes('day') && headers.includes('platform') && headers.includes('post idea')
+    })
+
+    if (!calendarTable) {
+      issues.push('Content calendar is missing a parseable publishing schedule.')
+    } else {
+      const headers = calendarTable[0].map(normalizeHeader)
+      const dayIndex = headers.indexOf('day')
+      const platformIndex = headers.indexOf('platform')
+      const rows = calendarTable.slice(1)
+      const days = rows.map((row) => Number(String(row[dayIndex] || '').match(/\d+/)?.[0] || 0))
+      const outOfRangeDay = days.find((day) => day < 1 || day > brief.timeframeDays)
+      if (outOfRangeDay) {
+        issues.push(`Calendar day ${outOfRangeDay} falls outside the confirmed ${brief.timeframeDays}-day timeframe.`)
+      }
+      if (rows.length !== brief.totalPosts) {
+        issues.push(`Calendar has ${rows.length} scheduled posts; the confirmed cadence requires ${brief.totalPosts}.`)
+      }
+      const actualPlatforms = rows.map((row) => String(row[platformIndex] || '').trim())
+      for (const platform of brief.platforms) {
+        const actualCount = actualPlatforms.filter((value) => value.toLowerCase() === platform.toLowerCase()).length
+        const expectedCount = brief.postsPerPlatform || Math.floor(brief.totalPosts / brief.platforms.length)
+        if (actualCount !== expectedCount) {
+          issues.push(`${platform} has ${actualCount} scheduled posts; the confirmed cadence requires ${expectedCount}.`)
+        }
+      }
+      const unexpected = actualPlatforms.filter(
+        (platform) => !brief.platforms.some((expected) => expected.toLowerCase() === platform.toLowerCase())
+      )
+      if (unexpected.length) {
+        issues.push(`Calendar contains unconfirmed platforms: ${Array.from(new Set(unexpected)).join(', ')}.`)
+      }
+    }
+
+    if (!trimmed.toLowerCase().includes(brief.objective.toLowerCase())) {
+      issues.push(`Calendar does not preserve the confirmed objective: ${brief.objective}.`)
+    }
+    if (!brief.includeArtwork && /\bvisual (?:brief|mood|format|direction)|image direction|copy overlay\b/i.test(trimmed)) {
+      issues.push('Calendar includes visual direction even though the confirmed brief requested copy only.')
+    }
+
+    const unsupportedHighRiskClaims = [
+      /\b99(?:\.9+)?%\b/i,
+      /\bguaranteed\b/i,
+      /\bwithin (?:one|1) week\b/i,
+      /\bprenatal\b/i,
+    ]
+    for (const pattern of unsupportedHighRiskClaims) {
+      const claim = trimmed.match(pattern)?.[0]
+      if (claim && !pattern.test(request)) {
+        issues.push(`Potentially unsupported factual claim requires client evidence: ${claim}.`)
+      }
+    }
   }
 
   if (deliverableType === 'media-plan') {

@@ -2,6 +2,8 @@ import { ArtifactExecutionStep, AIProvider } from '@/lib/types'
 import { validateDeliverableQuality } from '@/lib/output-quality'
 import { findAgentByTemplate } from '@/lib/server/agent-templates'
 import { escapeHtml } from '@/lib/server/text-utils'
+import { applyContentCalendarBrief, resolveContentCalendarBrief } from '@/lib/server/content-calendar-brief'
+import { formatChecklistFailures, validateSkillChecklists } from '@/lib/skills/checklist-validator'
 
 type RuntimeAgent = {
   id: string
@@ -64,6 +66,8 @@ type GenerateStage = (input: {
   prompt: string
   temperature: number
   maxTokens?: number
+  stage: string
+  attempt: number
 }) => Promise<{ text: string; provider: AIProvider; model: string }>
 
 type StageRuntime = {
@@ -73,6 +77,21 @@ type StageRuntime = {
 
 type PipelinePhaseRef = { id: string; name: string }
 type PipelineActivityRef = { id: string; name: string; outputs?: string[] }
+type PipelineDefinition = {
+  id: string
+  name: string
+  phases?: Array<{
+    id: string
+    name: string
+    activities?: Array<{
+      id: string
+      name: string
+      description?: string
+      checklist?: string[]
+      prompts?: { en?: string }
+    }>
+  }>
+}
 type RuntimeHooks = {
   onPhaseStart?: (input: { phase: PipelinePhaseRef; progress: number }) => Promise<void> | void
   onActivityStart?: (input: {
@@ -230,6 +249,8 @@ async function generateJsonStage<T>(input: {
       prompt,
       temperature: attempt === 0 ? input.temperature : Math.max(0.2, input.temperature - 0.2),
       maxTokens: input.maxTokens,
+      stage: input.stage,
+      attempt: attempt + 1,
     })
 
     lastText = result.text
@@ -313,9 +334,47 @@ function inferRequestedPostCount(profile: ClientProfileMap, request: string) {
 function getIdeaTarget(profile: ClientProfileMap, request: string) {
   const requestedPosts = inferRequestedPostCount(profile, request)
   const timeframeDays = inferCalendarTimeframeDays(profile, request)
-  if (timeframeDays <= 7) return Math.max(8, Math.min(12, requestedPosts + 3))
-  if (timeframeDays <= 14) return Math.max(12, Math.min(16, requestedPosts + 4))
-  return 20
+  const buffer = timeframeDays <= 7 ? 3 : timeframeDays <= 14 ? 4 : 5
+  return Math.max(10, Math.min(40, requestedPosts + buffer))
+}
+
+function interpolateGuidance(template: string, profile: ClientProfileMap) {
+  return template.replace(/\{\{([^}]+)\}\}/g, (_match, key) => profile[key.trim()] || 'Not specified')
+}
+
+function pipelineGuidance(pipeline: PipelineDefinition | null | undefined, activityId: string, profile: ClientProfileMap) {
+  for (const phase of pipeline?.phases || []) {
+    const activity = (phase.activities || []).find((entry) => entry.id === activityId)
+    if (!activity) continue
+    return [
+      `PIPELINE CONTRACT: ${pipeline?.name} > ${phase.name} > ${activity.name}`,
+      'Precedence rule: confirmed user brief values are authoritative. Adapt any fixed counts, durations, channels, or optional phases in the reusable pipeline template to the confirmed brief; never overwrite the brief with template defaults.',
+      activity.description ? `Activity goal: ${activity.description}` : '',
+      activity.prompts?.en ? `Pipeline prompt (execute it): ${interpolateGuidance(activity.prompts.en, profile)}` : '',
+      activity.checklist?.length ? `Pipeline checklist (all applicable items are mandatory):\n- ${activity.checklist.join('\n- ')}` : '',
+    ].filter(Boolean).join('\n\n')
+  }
+  return ''
+}
+
+function withExecutionGuidance(input: {
+  prompt: string
+  pipeline?: PipelineDefinition | null
+  activityId: string
+  profile: ClientProfileMap
+  skillGuidance?: string
+}) {
+  const blocks = [
+    pipelineGuidance(input.pipeline, input.activityId, input.profile),
+    input.skillGuidance ? `SKILLS IN FORCE (execute these instructions, not merely cite them):\n${input.skillGuidance}` : '',
+    input.prompt,
+  ].filter(Boolean)
+  return blocks.join('\n\n---\n\n')
+}
+
+function lockPlatforms(ideas: CalendarIdea[], platforms: string[]) {
+  if (!platforms.length) return ideas
+  return ideas.map((idea, index) => ({ ...idea, primaryPlatform: platforms[index % platforms.length] }))
 }
 
 function inferBrandName(profile: ClientProfileMap, request: string) {
@@ -354,8 +413,10 @@ function buildClientBlock(profile: ClientProfileMap, request: string) {
     `Topics to avoid: ${profile.topics_to_avoid || 'None specified'}`,
     `Client request: ${request}`,
     `Month / period: ${getMonthLabel(profile)}`,
+    `Approved factual evidence: ${profile.approved_facts || 'Only the client request and profile fields above are approved evidence.'}`,
     '',
     `IMPORTANT: every idea, hook, post, and visual you produce MUST be specifically about ${brandName}'s ${industry} business. Do not drift to unrelated industries, generic motivational content, or topics outside this brand's category. Every output must be testably grounded in this brand's actual product, audience, and category.`,
+    'FACTUAL GROUNDING RULE: do not invent accuracy rates, turnaround times, guarantees, certifications, product capabilities, sample methods, prices, research findings, testimonials, or statistics. Use a factual claim only when it appears in the approved evidence or the user request. Otherwise omit it or clearly label it as an assumption requiring client verification.',
   ].join('\n')
 }
 
@@ -622,7 +683,6 @@ function normalizeCalendarPost(
   const body = normalizeTextValue(raw?.body || raw?.caption || raw?.post || raw?.content)
   const cta = normalizeTextValue(raw?.cta || raw?.callToAction || raw?.call_to_action)
   const hook = normalizeTextValue(raw?.hook || source.hook)
-  const platform = normalizeTextValue(raw?.platform || source.platform)
   const ideaId = normalizeTextValue(raw?.ideaId || raw?.idea_id || source.ideaId)
   if (!body || !ideaId) return null
 
@@ -645,7 +705,7 @@ function normalizeCalendarPost(
 
   return {
     ideaId,
-    platform: platform || source.platform,
+    platform: source.platform,
     hook: hook || source.hook,
     body,
     cta,
@@ -1029,11 +1089,16 @@ export async function executeAutomatedContentCalendar(input: {
   clientProfile: ClientProfileMap
   agentsById: Map<string, RuntimeAgent>
   selectedSkillsByAgent?: Record<string, string[]>
+  skillGuidanceByAgent?: Record<string, string>
+  skillChecklists?: Array<{ id: string; name?: string; checklist?: string[] }>
+  pipeline?: PipelineDefinition | null
   generateStage: GenerateStage
   maxTokens?: number
   hooks?: RuntimeHooks
 }) {
   const executionSteps: ArtifactExecutionStep[] = []
+  const confirmedBrief = resolveContentCalendarBrief(input.request, input.clientProfile)
+  input.clientProfile = applyContentCalendarBrief(input.clientProfile, confirmedBrief)
   // Template-aware lookup so this engine works for both legacy single-tenant
   // rows (id='maya') and new tenant clones (id='maya-<suffix>').
   const byTemplate = (templateId: string) =>
@@ -1151,9 +1216,21 @@ export async function executeAutomatedContentCalendar(input: {
   const requestPillarIdeas = async (pillar: string, attempt: number, existingCount: number) => {
     const tighter =
       attempt === 0
-        ? buildIdeasPrompt(input.clientProfile, input.request, pillar)
+        ? withExecutionGuidance({
+            prompt: buildIdeasPrompt(input.clientProfile, input.request, pillar),
+            pipeline: input.pipeline,
+            activityId: 'generate-ideas',
+            profile: input.clientProfile,
+            skillGuidance: input.skillGuidanceByAgent?.[maya.id],
+          })
         : [
-            buildIdeasPrompt(input.clientProfile, input.request, pillar),
+            withExecutionGuidance({
+              prompt: buildIdeasPrompt(input.clientProfile, input.request, pillar),
+              pipeline: input.pipeline,
+              activityId: 'generate-ideas',
+              profile: input.clientProfile,
+              skillGuidance: input.skillGuidanceByAgent?.[maya.id],
+            }),
             '',
             `IMPORTANT: your previous attempt returned too few ideas. You MUST return ${perPillarTarget} ideas in this response.`,
             `Each idea must be a distinct angle on the brand's actual product/service. If you are running out of angles, vary the format (carousel vs. reel vs. static), the funnel stage (top vs. middle vs. bottom of funnel), or the audience segment.`,
@@ -1283,7 +1360,13 @@ export async function executeAutomatedContentCalendar(input: {
       selectionSummary?: string
     }>({
       agentId: maya.id,
-      prompt: buildIdeaSelectionPrompt(input.clientProfile, input.request, generatedIdeas, selectedIdeaTarget),
+      prompt: withExecutionGuidance({
+        prompt: buildIdeaSelectionPrompt(input.clientProfile, input.request, generatedIdeas, selectedIdeaTarget),
+        pipeline: input.pipeline,
+        activityId: 'select-ideas',
+        profile: input.clientProfile,
+        skillGuidance: input.skillGuidanceByAgent?.[maya.id],
+      }),
       temperature: 0.35,
       maxTokens: input.maxTokens,
       generateStage: input.generateStage,
@@ -1314,6 +1397,8 @@ export async function executeAutomatedContentCalendar(input: {
     )
     selectedIdeas = [...selectedIdeas, ...remainder].slice(0, selectedIdeaTarget)
   }
+
+  selectedIdeas = lockPlatforms(selectedIdeas, confirmedBrief.platforms)
 
   if (!selectionSummary) {
     selectionSummary = `Maya selected ${selectedIdeas.length} ideas balanced across pillars and platforms for the month.`
@@ -1385,7 +1470,13 @@ export async function executeAutomatedContentCalendar(input: {
   for (const chunk of hookChunks) {
     const hookResult = await generateJsonStage<any>({
       agentId: echo.id,
-      prompt: buildHooksPrompt(input.clientProfile, input.request, chunk),
+      prompt: withExecutionGuidance({
+        prompt: buildHooksPrompt(input.clientProfile, input.request, chunk),
+        pipeline: input.pipeline,
+        activityId: 'generate-hooks',
+        profile: input.clientProfile,
+        skillGuidance: input.skillGuidanceByAgent?.[echo.id],
+      }),
       temperature: 0.55,
       maxTokens: input.maxTokens,
       generateStage: input.generateStage,
@@ -1404,7 +1495,13 @@ export async function executeAutomatedContentCalendar(input: {
     for (const chunk of chunkItems(stillMissing, 2)) {
       const repairResult = await generateJsonStage<any>({
         agentId: echo.id,
-        prompt: buildHooksPrompt(input.clientProfile, input.request, chunk),
+        prompt: withExecutionGuidance({
+          prompt: buildHooksPrompt(input.clientProfile, input.request, chunk),
+          pipeline: input.pipeline,
+          activityId: 'generate-hooks',
+          profile: input.clientProfile,
+          skillGuidance: input.skillGuidanceByAgent?.[echo.id],
+        }),
         temperature: 0.35,
         maxTokens: input.maxTokens,
         generateStage: input.generateStage,
@@ -1462,7 +1559,13 @@ export async function executeAutomatedContentCalendar(input: {
       }>
     }>({
       agentId: echo.id,
-      prompt: buildHookSelectionPrompt(input.clientProfile, input.request, selectedIdeas, hooks),
+      prompt: withExecutionGuidance({
+        prompt: buildHookSelectionPrompt(input.clientProfile, input.request, selectedIdeas, hooks),
+        pipeline: input.pipeline,
+        activityId: 'generate-hooks',
+        profile: input.clientProfile,
+        skillGuidance: input.skillGuidanceByAgent?.[echo.id],
+      }),
       temperature: 0.35,
       maxTokens: input.maxTokens,
       generateStage: input.generateStage,
@@ -1483,7 +1586,7 @@ export async function executeAutomatedContentCalendar(input: {
         ideaTitle: normalizeTextValue(raw?.ideaTitle) || idea.title,
         hook: hookText,
         formula: normalizeTextValue(raw?.formula) || 'Question',
-        platform: normalizeTextValue(raw?.platform) || idea.primaryPlatform,
+        platform: idea.primaryPlatform,
         pillar: normalizeTextValue(raw?.pillar) || idea.pillar,
       })
     }
@@ -1556,7 +1659,13 @@ export async function executeAutomatedContentCalendar(input: {
   for (const chunk of postChunks) {
     const postResult = await generateJsonStage<{ posts: any[] }>({
       agentId: echo.id,
-      prompt: buildPostsPrompt(input.clientProfile, input.request, chunk),
+      prompt: withExecutionGuidance({
+        prompt: buildPostsPrompt(input.clientProfile, input.request, chunk),
+        pipeline: input.pipeline,
+        activityId: 'draft-posts',
+        profile: input.clientProfile,
+        skillGuidance: input.skillGuidanceByAgent?.[echo.id],
+      }),
       temperature: 0.55,
       maxTokens: input.maxTokens,
       generateStage: input.generateStage,
@@ -1581,7 +1690,13 @@ export async function executeAutomatedContentCalendar(input: {
     for (const chunk of chunkItems(missingPosts, 1)) {
       const repairResult = await generateJsonStage<{ posts: any[] }>({
         agentId: echo.id,
-        prompt: buildPostsPrompt(input.clientProfile, input.request, chunk),
+        prompt: withExecutionGuidance({
+          prompt: buildPostsPrompt(input.clientProfile, input.request, chunk),
+          pipeline: input.pipeline,
+          activityId: 'draft-posts',
+          profile: input.clientProfile,
+          skillGuidance: input.skillGuidanceByAgent?.[echo.id],
+        }),
         temperature: 0.35,
         maxTokens: input.maxTokens,
         generateStage: input.generateStage,
@@ -1651,7 +1766,13 @@ export async function executeAutomatedContentCalendar(input: {
       calendarSummary?: string
     }>({
       agentId: nova.id,
-      prompt: buildCalendarPrompt(input.clientProfile, input.request, posts),
+      prompt: withExecutionGuidance({
+        prompt: buildCalendarPrompt(input.clientProfile, input.request, posts),
+        pipeline: input.pipeline,
+        activityId: 'assemble-calendar',
+        profile: input.clientProfile,
+        skillGuidance: input.skillGuidanceByAgent?.[nova.id],
+      }),
       temperature: 0.35,
       maxTokens: input.maxTokens,
       generateStage: input.generateStage,
@@ -1713,86 +1834,110 @@ export async function executeAutomatedContentCalendar(input: {
   // ─── Phase 6: visuals (AI-only) ──────────────────────────────────────────
   await startPhase(phaseRefs.visuals, 84)
   let visualsRuntime: StageRuntime = calendarRuntime
-  await startActivity(phaseRefs.visuals, activityRefs.createVisuals, lyra, visualsRuntime, 86)
-
   const visualMap = new Map<string, CalendarVisual>()
+  let visuals: CalendarVisual[] = []
 
-  for (const chunk of chunkItems(selectedHooks, 3)) {
-    const visualResult = await generateJsonStage<{ visuals: any[] }>({
-      agentId: lyra.id,
-      prompt: buildVisualsPrompt(input.clientProfile, input.request, chunk),
-      temperature: 0.45,
-      maxTokens: input.maxTokens,
-      generateStage: input.generateStage,
-      stage: 'visuals',
-      repairHint:
-        'Return JSON with a top-level "visuals" array. Each item must include postNumber (1-based), platform, format, mood, imageDirection, copyOverlay, and designNotes.',
-      salvageArrayKey: 'visuals',
-    })
-    for (const rawVisual of visualResult.data.visuals || []) {
-      const normalized = normalizeVisual(rawVisual, chunk)
-      if (!normalized) continue
-      visualMap.set(normalized.postId, normalized)
-    }
-    visualsRuntime = { provider: visualResult.provider, model: visualResult.model }
-  }
+  if (confirmedBrief.includeArtwork) {
+    await startActivity(phaseRefs.visuals, activityRefs.createVisuals, lyra, visualsRuntime, 86)
 
-  const missingVisuals = selectedHooks.filter((item) => !visualMap.has(item.ideaId))
-  if (missingVisuals.length) {
-    for (const chunk of chunkItems(missingVisuals, 2)) {
-      const repairResult = await generateJsonStage<{ visuals: any[] }>({
+    for (const chunk of chunkItems(selectedHooks, 3)) {
+      const visualResult = await generateJsonStage<{ visuals: any[] }>({
         agentId: lyra.id,
-        prompt: buildVisualsPrompt(input.clientProfile, input.request, chunk),
-        temperature: 0.3,
+        prompt: withExecutionGuidance({
+          prompt: buildVisualsPrompt(input.clientProfile, input.request, chunk),
+          pipeline: input.pipeline,
+          activityId: 'create-visual-briefs',
+          profile: input.clientProfile,
+          skillGuidance: input.skillGuidanceByAgent?.[lyra.id],
+        }),
+        temperature: 0.45,
         maxTokens: input.maxTokens,
         generateStage: input.generateStage,
-        stage: 'visuals-repair',
+        stage: 'visuals',
         repairHint:
-          'Return JSON with a top-level "visuals" array. Each entry must have postNumber (1-based), platform, format, mood, imageDirection, copyOverlay, and designNotes.',
+          'Return JSON with a top-level "visuals" array. Each item must include postNumber (1-based), platform, format, mood, imageDirection, copyOverlay, and designNotes.',
         salvageArrayKey: 'visuals',
       })
-      for (const rawVisual of repairResult.data.visuals || []) {
+      for (const rawVisual of visualResult.data.visuals || []) {
         const normalized = normalizeVisual(rawVisual, chunk)
         if (!normalized) continue
         visualMap.set(normalized.postId, normalized)
       }
-      visualsRuntime = { provider: repairResult.provider, model: repairResult.model }
+      visualsRuntime = { provider: visualResult.provider, model: visualResult.model }
     }
-  }
 
-  for (const item of selectedHooks) {
-    if (!visualMap.has(item.ideaId)) {
-      throw new ContentCalendarGenerationError(
-        'visuals',
-        `model failed to produce a visual brief for "${item.ideaTitle}" after retry. Retry the calendar request.`
-      )
+    const missingVisuals = selectedHooks.filter((item) => !visualMap.has(item.ideaId))
+    if (missingVisuals.length) {
+      for (const chunk of chunkItems(missingVisuals, 2)) {
+        const repairResult = await generateJsonStage<{ visuals: any[] }>({
+          agentId: lyra.id,
+          prompt: withExecutionGuidance({
+            prompt: buildVisualsPrompt(input.clientProfile, input.request, chunk),
+            pipeline: input.pipeline,
+            activityId: 'create-visual-briefs',
+            profile: input.clientProfile,
+            skillGuidance: input.skillGuidanceByAgent?.[lyra.id],
+          }),
+          temperature: 0.3,
+          maxTokens: input.maxTokens,
+          generateStage: input.generateStage,
+          stage: 'visuals-repair',
+          repairHint:
+            'Return JSON with a top-level "visuals" array. Each entry must have postNumber (1-based), platform, format, mood, imageDirection, copyOverlay, and designNotes.',
+          salvageArrayKey: 'visuals',
+        })
+        for (const rawVisual of repairResult.data.visuals || []) {
+          const normalized = normalizeVisual(rawVisual, chunk)
+          if (!normalized) continue
+          visualMap.set(normalized.postId, normalized)
+        }
+        visualsRuntime = { provider: repairResult.provider, model: repairResult.model }
+      }
     }
+
+    for (const item of selectedHooks) {
+      if (!visualMap.has(item.ideaId)) {
+        throw new ContentCalendarGenerationError(
+          'visuals',
+          `model failed to produce a visual brief for "${item.ideaTitle}" after retry. Retry the calendar request.`
+        )
+      }
+    }
+
+    visuals = selectedHooks
+      .map((item) => visualMap.get(item.ideaId))
+      .filter(Boolean) as CalendarVisual[]
+
+    executionSteps.push(
+      createStep({
+        id: `calendar-visuals-${Date.now()}`,
+        agent: lyra,
+        role: 'support',
+        title: 'Visual briefs prepared',
+        summary: `Prepared ${visuals.length} visual briefs to pair with the drafted posts.`,
+        provider: visualsRuntime.provider,
+        model: visualsRuntime.model,
+        skillsUsed: input.selectedSkillsByAgent?.[lyra.id] || ['visual-storytelling', 'design-systems'],
+      })
+    )
+    await completeActivity(
+      phaseRefs.visuals,
+      activityRefs.createVisuals,
+      lyra,
+      visualsRuntime,
+      `Prepared ${visuals.length} visual briefs for the drafted posts.`,
+      92
+    )
+  } else {
+    await completeActivity(
+      phaseRefs.visuals,
+      activityRefs.createVisuals,
+      lyra,
+      visualsRuntime,
+      'Visual briefs skipped because the confirmed brief requested copy only.',
+      92
+    )
   }
-
-  const visuals: CalendarVisual[] = selectedHooks
-    .map((item) => visualMap.get(item.ideaId))
-    .filter(Boolean) as CalendarVisual[]
-
-  executionSteps.push(
-    createStep({
-      id: `calendar-visuals-${Date.now()}`,
-      agent: lyra,
-      role: 'support',
-      title: 'Visual briefs prepared',
-      summary: `Prepared ${visuals.length} visual briefs to pair with the drafted posts.`,
-      provider: visualsRuntime.provider,
-      model: visualsRuntime.model,
-      skillsUsed: input.selectedSkillsByAgent?.[lyra.id] || ['visual-storytelling', 'design-systems'],
-    })
-  )
-  await completeActivity(
-    phaseRefs.visuals,
-    activityRefs.createVisuals,
-    lyra,
-    visualsRuntime,
-    `Prepared ${visuals.length} visual briefs for the drafted posts.`,
-    92
-  )
 
   // ─── Phase 7: assembly + quality review ─────────────────────────────────
   const markdown = buildCalendarMarkdown({
@@ -1816,7 +1961,15 @@ export async function executeAutomatedContentCalendar(input: {
     posts,
     visuals,
   })
-  const qualityResult = validateDeliverableQuality('content-calendar', markdown, input.request)
+  const structuralQuality = validateDeliverableQuality('content-calendar', markdown, input.request)
+  const skillQuality = validateSkillChecklists(input.skillChecklists || [], markdown)
+  const skillIssues = formatChecklistFailures(skillQuality.failed)
+  const qualityIssues = Array.from(new Set([...structuralQuality.issues, ...skillIssues]))
+  const qualityResult = {
+    ok: qualityIssues.length === 0,
+    score: Math.max(0, 100 - qualityIssues.length * 10),
+    issues: qualityIssues,
+  }
 
   executionSteps.push(
     createStep({

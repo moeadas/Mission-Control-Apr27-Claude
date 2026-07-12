@@ -395,7 +395,17 @@ async function upsert(table: string, rows: Record<string, any>[], conflictColumn
   for (const row of rows) {
     // Build the SET clause as raw SQL fragments — column identifiers are
     // hardcoded from Object.keys(rows[0]) so there's no injection surface.
-    const setFragments = setCols.map((c) => `"${c}" = EXCLUDED."${c}"`).join(', ')
+    const setFragments = setCols.map((c) => {
+      if (table !== 'tasks') return `"${c}" = EXCLUDED."${c}"`
+      const terminalGuard = `"tasks"."status" IN ('completed','completed_with_warnings','failed','cancelled') AND EXCLUDED."status" NOT IN ('completed','completed_with_warnings','failed','cancelled')`
+      if (c === 'status' || c === 'execution_plan' || c === 'completed_at' || c === 'lead_agent_id') {
+        return `"${c}" = CASE WHEN ${terminalGuard} THEN "tasks"."${c}" ELSE EXCLUDED."${c}" END`
+      }
+      if (c === 'progress') {
+        return `"progress" = CASE WHEN ${terminalGuard} THEN GREATEST(COALESCE("tasks"."progress", 0), COALESCE(EXCLUDED."progress", 0)) ELSE EXCLUDED."progress" END`
+      }
+      return `"${c}" = EXCLUDED."${c}"`
+    }).join(', ')
     await db.unsafe(
       `INSERT INTO "${table}" (${cols.map((c) => `"${c}"`).join(', ')}) VALUES (${cols.map((_, i) => `$${i + 1}`).join(', ')}) ON CONFLICT (${conflictCols.map((c) => `"${c}"`).join(', ')}) DO UPDATE SET ${setFragments}`,
       cols.map((c) => {

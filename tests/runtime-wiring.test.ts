@@ -64,6 +64,15 @@ describe('runtime wiring', () => {
     }
   })
 
+  it('forces pipeline and skill guidance into dedicated content-calendar model calls', () => {
+    const source = readFileSync('src/lib/server/content-calendar-engine.ts', 'utf8')
+    expect(source).toContain('PIPELINE CONTRACT:')
+    expect(source).toContain('SKILLS IN FORCE (execute these instructions, not merely cite them)')
+    expect(source).toContain("activityId: 'generate-ideas'")
+    expect(source).toContain("activityId: 'draft-posts'")
+    expect(source).toContain("activityId: 'assemble-calendar'")
+  })
+
   it('turns pipeline activity roles into tenant-cloned collaborators', () => {
     const pipeline = pipelinesConfig.pipelines.find((entry) => entry.id === 'blog-post-writing') as any
     const plan = buildTaskChannelingPlan({
