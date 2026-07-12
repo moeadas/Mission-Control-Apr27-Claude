@@ -222,8 +222,11 @@ function resolveAgentSkillRefs(
   skillLookup: Map<string, SkillRef>,
   selectedSkillIds: string[]
 ): SkillRef[] {
-  const allowed = new Set((selectedSkillIds || []).filter(Boolean))
-  const ids = (agent.skills || []).filter((skillId) => (allowed.size ? allowed.has(skillId) : true))
+  const selected = (selectedSkillIds || []).filter(Boolean)
+  // Channeling has already resolved the applicable skill IDs. Do not
+  // intersect them with a possibly stale/empty persisted agent.skills array;
+  // that was the reason dedicated engines received no skill instructions.
+  const ids = selected.length ? selected : (agent.skills || []).filter(Boolean)
   const refs: SkillRef[] = []
   for (const id of ids) {
     const ref = skillLookup.get(id)

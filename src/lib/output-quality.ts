@@ -128,7 +128,8 @@ const LIGHTWEIGHT_TYPES = new Set<DeliverableType>([
 export function validateDeliverableQuality(
   deliverableType: DeliverableType,
   content: string,
-  request?: string
+  request?: string,
+  options?: { approvedEvidence?: string }
 ): DeliverableQualityResult {
   const issues: string[] = []
   const trimmed = content.trim()
@@ -261,15 +262,18 @@ export function validateDeliverableQuality(
     }
 
     const unsupportedHighRiskClaims = [
-      /\b99(?:\.9+)?%\b/i,
-      /\bguaranteed\b/i,
-      /\bwithin (?:one|1) week\b/i,
-      /\bprenatal\b/i,
+      /\b\d+(?:\.\d+)?%\b/gi,
+      /\bguaranteed\b/gi,
+      /\bwithin\s+(?:\d+|one|two|three|fourteen|thirty)\s+(?:hours?|days?|weeks?)\b/gi,
+      /\bprenatal\b/gi,
+      /\b(?:iso|cap)[-\s]?certified\b/gi,
     ]
+    const approvedEvidence = `${request}\n${options?.approvedEvidence || ''}`.toLowerCase()
     for (const pattern of unsupportedHighRiskClaims) {
-      const claim = trimmed.match(pattern)?.[0]
-      if (claim && !pattern.test(request)) {
-        issues.push(`Potentially unsupported factual claim requires client evidence: ${claim}.`)
+      for (const claim of trimmed.match(pattern) || []) {
+        if (!approvedEvidence.includes(claim.toLowerCase())) {
+          issues.push(`Potentially unsupported factual claim requires client evidence: ${claim}.`)
+        }
       }
     }
   }

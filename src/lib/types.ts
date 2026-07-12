@@ -225,7 +225,7 @@ export interface OfficeRoom {
   agents: string[]
 }
 
-export type MissionStatus = 'queued' | 'in_progress' | 'blocked' | 'review' | 'paused' | 'cancelled' | 'completed'
+export type MissionStatus = 'queued' | 'in_progress' | 'blocked' | 'review' | 'paused' | 'cancelled' | 'completed' | 'completed_with_warnings' | 'failed'
 export type MissionPriority = 'low' | 'medium' | 'high'
 
 export interface MissionReviewComment {
@@ -364,6 +364,7 @@ export interface Artifact {
   exports?: ArtifactExport[]
   creative?: CreativeArtifactSpec
   executionSteps?: ArtifactExecutionStep[]
+  metadata?: Record<string, unknown>
   createdAt: string
   updatedAt: string
 }

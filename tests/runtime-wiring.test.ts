@@ -69,7 +69,7 @@ describe('runtime wiring', () => {
     expect(source).toContain('PIPELINE CONTRACT:')
     expect(source).toContain('SKILLS IN FORCE (execute these instructions, not merely cite them)')
     expect(source).toContain("activityId: 'generate-ideas'")
-    expect(source).toContain("activityId: 'draft-posts'")
+    expect(source).toContain("activityId: ['draft-posts', 'review-posts', 'adapt-posts']")
     expect(source).toContain("activityId: 'assemble-calendar'")
   })
 
@@ -88,6 +88,36 @@ describe('runtime wiring', () => {
     expect(plan.assignedAgentIds).not.toContain('atlas')
   })
 
+  it('resolves canonical agent-owned skills when a persisted agent skills array is empty', () => {
+    const agents = clonedAgents.map((agent) => ({ ...agent, skills: [] }))
+    const pipeline = pipelinesConfig.pipelines.find((entry) => entry.id === 'content-calendar') as any
+    const plan = buildTaskChannelingPlan({
+      request: 'Create an Instagram and Facebook content calendar with strong hooks',
+      deliverableType: 'content-calendar',
+      agents,
+      pipeline,
+      skillCategories: [{
+        id: 'content',
+        name: 'Content',
+        skills: [
+          { id: 'content-calendars', name: 'Content Calendar Management', agents: ['echo'], pipelines: ['content-calendar'] },
+          { id: 'headline-writing', name: 'Headline Writing', agents: ['echo'], pipelines: ['content-calendar'] },
+          { id: 'campaign-planning', name: 'Campaign Planning', agents: ['maya'], pipelines: ['content-calendar'] },
+          { id: 'organic-social-planning', name: 'Organic Social Planning', agents: ['nova'], pipelines: ['content-calendar'] },
+          { id: 'visual-storytelling', name: 'Visual Storytelling', agents: ['lyra'], pipelines: ['content-calendar'] },
+          { id: 'task-triaging', name: 'Task Triaging', agents: ['iris'], pipelines: ['content-calendar'] },
+        ],
+      } as any],
+    })
+
+    expect(plan.selectedSkillsByAgent['echo-tenant01']).toContain('content-calendars')
+    expect(plan.selectedSkillsByAgent['maya-tenant01']).toContain('campaign-planning')
+    expect(plan.selectedSkillsByAgent['nova-tenant01']).toContain('organic-social-planning')
+    expect(plan.orchestrationTrace.find((line) => line.startsWith('Echo '))).not.toContain('general specialist context')
+    expect(plan.orchestrationTrace.find((line) => line.startsWith('Maya '))).not.toContain('general specialist context')
+    expect(plan.orchestrationTrace.find((line) => line.startsWith('Nova '))).not.toContain('general specialist context')
+  })
+
   it('keeps tenant catalog keys and the execution queue in the boot schema', () => {
     const schema = readFileSync('docker/init.sql', 'utf8')
     expect(schema).toContain('PRIMARY KEY (agency_id, id)')
@@ -102,6 +132,9 @@ describe('runtime wiring', () => {
     expect(sync).toContain("jsonbColumns.has(c) ? '::jsonb' : ''")
     expect(sync).toContain("tasks\".\"status\" IN ('completed','completed_with_warnings','failed','cancelled')")
     expect(sync).toContain('const executionPlan = asJsonObject(row.execution_plan)')
+    expect(sync).toContain("NOT (EXCLUDED.\"execution_plan\" ? 'lastRunAt')")
+    expect(sync).toContain('jsonb_array_length("outputs"."${c}") > 0')
+    expect(sync).toContain('"outputs"."metadata" || EXCLUDED."metadata"')
   })
 
   it('does not hard-code the default agency in skill APIs', () => {

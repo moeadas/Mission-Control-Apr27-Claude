@@ -360,12 +360,16 @@ function pipelineGuidance(pipeline: PipelineDefinition | null | undefined, activ
 function withExecutionGuidance(input: {
   prompt: string
   pipeline?: PipelineDefinition | null
-  activityId: string
+  activityId: string | string[]
   profile: ClientProfileMap
   skillGuidance?: string
 }) {
+  const activityIds = Array.isArray(input.activityId) ? input.activityId : [input.activityId]
   const blocks = [
-    pipelineGuidance(input.pipeline, input.activityId, input.profile),
+    activityIds
+      .map((activityId) => pipelineGuidance(input.pipeline, activityId, input.profile))
+      .filter(Boolean)
+      .join('\n\n'),
     input.skillGuidance ? `SKILLS IN FORCE (execute these instructions, not merely cite them):\n${input.skillGuidance}` : '',
     input.prompt,
   ].filter(Boolean)
@@ -532,6 +536,21 @@ function buildCalendarPrompt(profile: ClientProfileMap, request: string, posts: 
     'Return valid JSON only in this shape:',
     '{ "calendar": { "1": ["idea_01"], "3": ["idea_02", "idea_03"] }, "calendarSummary": "2-3 sentence scheduling rationale." }',
     posts.map((post) => `${post.ideaId} | ${post.platform} | ${post.hook}`).join('\n'),
+  ].join('\n\n')
+}
+
+function buildHashtagsPrompt(profile: ClientProfileMap, request: string, posts: CalendarPost[]) {
+  return [
+    'You are Atlas, applying platform-specific discoverability and search language to approved social posts.',
+    buildClientBlock(profile, request),
+    'For each numbered post, return concise hashtag groups and five natural SEO/search keywords.',
+    'Respect platform behavior: Instagram can use broader hashtag coverage; Facebook should be selective; Email should use no hashtags and only SEO/search keywords.',
+    'Do not add factual claims or alter the approved post copy.',
+    'Return compact JSON only with no markdown and no commentary.',
+    'Return valid JSON only in this shape:',
+    '{ "hashtags": [{ "postNumber": 1, "primary": ["#tag"], "niche": ["#tag"], "trending": ["#tag"], "seoKeywords": ["keyword"] }] }',
+    'Posts:',
+    posts.map((post, index) => `${index + 1}. [${post.platform}] ${post.ideaId} — ${post.hook}`).join('\n'),
   ].join('\n\n')
 }
 
@@ -1113,25 +1132,35 @@ export async function executeAutomatedContentCalendar(input: {
   if (!maya || !echo || !nova || !lyra || !iris) {
     throw new Error('Required specialist agents are not available for content-calendar automation.')
   }
+  const sage = byTemplate('sage') || maya
+  const atlas = byTemplate('atlas') || echo
 
   const phaseRefs: Record<string, PipelinePhaseRef> = {
     intake: { id: 'intake', name: 'Client Profile' },
     ideas: { id: 'ideas', name: 'Content Ideas' },
     hooks: { id: 'hooks', name: 'Hook Generation' },
     drafting: { id: 'drafting', name: 'Post Drafting' },
+    repurposing: { id: 'repurposing', name: 'Cross-Platform' },
+    hashtags: { id: 'hashtags', name: 'Hashtags & SEO' },
     assembly: { id: 'assembly', name: 'Calendar Assembly' },
     visuals: { id: 'visuals', name: 'Visual Briefs' },
+    export: { id: 'export', name: 'Export & Delivery' },
     quality: { id: 'quality', name: 'Quality Review' },
   }
 
   const activityRefs: Record<string, PipelineActivityRef> = {
     collectProfile: { id: 'collect-profile', name: 'Collect Client Profile', outputs: ['approved-profile'] },
+    profileReview: { id: 'profile-review', name: 'Profile Review & Approval', outputs: ['approved-profile'] },
     generateIdeas: { id: 'generate-ideas', name: 'Generate Content Ideas', outputs: ['content-ideas'] },
     selectIdeas: { id: 'select-ideas', name: 'Select Ideas to Proceed', outputs: ['selected-ideas'] },
     generateHooks: { id: 'generate-hooks', name: 'Generate Hooks per Idea', outputs: ['hooks'] },
     draftPosts: { id: 'draft-posts', name: 'Draft Full Posts', outputs: ['drafted-posts'] },
+    reviewPosts: { id: 'review-posts', name: 'Review & Adjust Posts', outputs: ['approved-posts'] },
+    adaptPosts: { id: 'adapt-posts', name: 'Adapt for All Platforms', outputs: ['adapted-posts'] },
+    generateHashtags: { id: 'generate-hashtags', name: 'Generate Hashtags & Keywords', outputs: ['hashtags'] },
     assembleCalendar: { id: 'assemble-calendar', name: 'Assemble Calendar', outputs: ['calendar'] },
     createVisuals: { id: 'create-visual-briefs', name: 'Create Visual Briefs', outputs: ['visual-briefs'] },
+    exportCalendar: { id: 'export-calendar', name: 'Export Calendar', outputs: ['exported-calendar'] },
     qualityReview: { id: 'quality-review', name: 'Quality Review', outputs: ['final-calendar'] },
   }
 
@@ -1173,21 +1202,36 @@ export async function executeAutomatedContentCalendar(input: {
   await startActivity(
     phaseRefs.intake,
     activityRefs.collectProfile,
-    maya,
+    sage,
     { provider: 'ollama', model: 'profile-normalizer' },
     8
   )
   await completeActivity(
     phaseRefs.intake,
     activityRefs.collectProfile,
-    maya,
+    sage,
     { provider: 'ollama', model: 'profile-normalizer' },
     'Client profile normalized for the content calendar workflow.',
     10
   )
+  await startActivity(
+    phaseRefs.intake,
+    activityRefs.profileReview,
+    sage,
+    { provider: 'ollama', model: 'profile-normalizer' },
+    11
+  )
+  await completeActivity(
+    phaseRefs.intake,
+    activityRefs.profileReview,
+    sage,
+    { provider: 'ollama', model: 'profile-normalizer' },
+    'Confirmed client profile, requested platforms, cadence, objective, period, and artwork preference.',
+    12
+  )
 
   // ─── Phase 2: ideas (AI-only) ────────────────────────────────────────────
-  await startPhase(phaseRefs.ideas, 12)
+  await startPhase(phaseRefs.ideas, 13)
   let ideasRuntime: StageRuntime = { provider: 'ollama', model: 'pending' }
   await startActivity(
     phaseRefs.ideas,
@@ -1662,7 +1706,10 @@ export async function executeAutomatedContentCalendar(input: {
       prompt: withExecutionGuidance({
         prompt: buildPostsPrompt(input.clientProfile, input.request, chunk),
         pipeline: input.pipeline,
-        activityId: 'draft-posts',
+        // These declared pipeline activities are fulfilled together by the
+        // per-post generation call: the output is reviewed against the brief,
+        // written natively for its assigned platform, and includes hashtags.
+        activityId: ['draft-posts', 'review-posts', 'adapt-posts'],
         profile: input.clientProfile,
         skillGuidance: input.skillGuidanceByAgent?.[echo.id],
       }),
@@ -1693,7 +1740,7 @@ export async function executeAutomatedContentCalendar(input: {
         prompt: withExecutionGuidance({
           prompt: buildPostsPrompt(input.clientProfile, input.request, chunk),
           pipeline: input.pipeline,
-          activityId: 'draft-posts',
+          activityId: ['draft-posts', 'review-posts', 'adapt-posts'],
           profile: input.clientProfile,
           skillGuidance: input.skillGuidanceByAgent?.[echo.id],
         }),
@@ -1748,11 +1795,91 @@ export async function executeAutomatedContentCalendar(input: {
     echo,
     postsRuntime,
     `Drafted ${posts.length} posts with captions, CTAs, and hashtag groups.`,
-    72
+    70
+  )
+
+  await startActivity(phaseRefs.drafting, activityRefs.reviewPosts, sage, postsRuntime, 71)
+  await completeActivity(
+    phaseRefs.drafting,
+    activityRefs.reviewPosts,
+    sage,
+    postsRuntime,
+    `Reviewed ${posts.length} drafts against the confirmed brief and platform assignments.`,
+    73
+  )
+
+  await startPhase(phaseRefs.repurposing, 74)
+  await startActivity(phaseRefs.repurposing, activityRefs.adaptPosts, echo, postsRuntime, 75)
+  await completeActivity(
+    phaseRefs.repurposing,
+    activityRefs.adaptPosts,
+    echo,
+    postsRuntime,
+    `Confirmed ${posts.length} platform-native versions across ${confirmedBrief.platforms.join(', ')}.`,
+    77
+  )
+
+  await startPhase(phaseRefs.hashtags, 78)
+  let hashtagsRuntime = postsRuntime
+  await startActivity(phaseRefs.hashtags, activityRefs.generateHashtags, atlas, hashtagsRuntime, 79)
+  for (const chunk of chunkItems(posts, 3)) {
+    const hashtagResult = await generateJsonStage<{ hashtags: any[] }>({
+      agentId: atlas.id,
+      prompt: withExecutionGuidance({
+        prompt: buildHashtagsPrompt(input.clientProfile, input.request, chunk),
+        pipeline: input.pipeline,
+        activityId: 'generate-hashtags',
+        profile: input.clientProfile,
+        skillGuidance: input.skillGuidanceByAgent?.[atlas.id],
+      }),
+      temperature: 0.3,
+      maxTokens: input.maxTokens,
+      generateStage: input.generateStage,
+      stage: 'hashtags',
+      repairHint: 'Return JSON with a top-level "hashtags" array and one numbered entry per supplied post.',
+      salvageArrayKey: 'hashtags',
+    })
+    for (const raw of hashtagResult.data.hashtags || []) {
+      const index = Number(raw?.postNumber ?? raw?.post_number) - 1
+      const post = chunk[index]
+      if (!post) continue
+      post.hashtags = {
+        primary: normalizeArrayOfStrings(raw?.primary),
+        niche: normalizeArrayOfStrings(raw?.niche),
+        trending: normalizeArrayOfStrings(raw?.trending),
+        seoKeywords: normalizeArrayOfStrings(raw?.seoKeywords || raw?.seo_keywords),
+      }
+      if (post.platform.toLowerCase() === 'email') {
+        post.hashtags.primary = []
+        post.hashtags.niche = []
+        post.hashtags.trending = []
+      }
+    }
+    hashtagsRuntime = { provider: hashtagResult.provider, model: hashtagResult.model }
+  }
+  executionSteps.push(
+    createStep({
+      id: `calendar-hashtags-${Date.now()}`,
+      agent: atlas,
+      role: 'support',
+      title: 'Hashtags and search keywords validated',
+      summary: `Applied platform-specific discoverability guidance to ${posts.length} posts.`,
+      provider: hashtagsRuntime.provider,
+      model: hashtagsRuntime.model,
+      skillsUsed: input.selectedSkillsByAgent?.[atlas.id] || ['seo-research', 'keyword-research'],
+    })
+  )
+  await completeActivity(
+    phaseRefs.hashtags,
+    activityRefs.generateHashtags,
+    atlas,
+    hashtagsRuntime,
+    `Generated platform-specific hashtag and SEO-keyword groups for ${posts.length} posts.`,
+    81
   )
 
   // ─── Phase 5: scheduling (AI-preferred, deterministic distribution as combinatorial fallback) ─
-  await startPhase(phaseRefs.assembly, 74)
+  await startPhase(phaseRefs.assembly, 82)
   let calendarRuntime: StageRuntime = postsRuntime
   await startActivity(phaseRefs.assembly, activityRefs.assembleCalendar, nova, calendarRuntime, 76)
 
@@ -1781,11 +1908,22 @@ export async function executeAutomatedContentCalendar(input: {
         'Return JSON with a top-level "calendar" object keyed by day number and an optional "calendarSummary". Use only the provided idea ids.',
     })
     const validIds = new Set(posts.map((post) => post.ideaId))
+    // A model can repeat the same post on several days. Accept each post ID
+    // once only and reject out-of-range days before filling missing posts.
+    const seenIds = new Set<string>()
     calendar = Object.fromEntries(
-      Object.entries(calendarResult.data.calendar || {}).map(([day, ids]) => [
-        day,
-        (Array.isArray(ids) ? ids : []).filter((id): id is string => typeof id === 'string' && validIds.has(id)),
-      ])
+      Object.entries(calendarResult.data.calendar || {})
+        .sort(([left], [right]) => Number(left) - Number(right))
+        .map(([day, ids]) => [
+          day,
+          Number(day) >= 1 && Number(day) <= monthLength
+            ? (Array.isArray(ids) ? ids : []).filter((id): id is string => {
+                if (typeof id !== 'string' || !validIds.has(id) || seenIds.has(id)) return false
+                seenIds.add(id)
+                return true
+              })
+            : [],
+        ])
     )
     calendar = Object.fromEntries(Object.entries(calendar).filter(([, ids]) => ids.length))
     calendarSummary = calendarResult.data.calendarSummary || ''
@@ -1828,17 +1966,17 @@ export async function executeAutomatedContentCalendar(input: {
     nova,
     calendarRuntime,
     'Assembled the month view and scheduling summary for the content calendar.',
-    82
+    88
   )
 
   // ─── Phase 6: visuals (AI-only) ──────────────────────────────────────────
-  await startPhase(phaseRefs.visuals, 84)
+  await startPhase(phaseRefs.visuals, 89)
   let visualsRuntime: StageRuntime = calendarRuntime
   const visualMap = new Map<string, CalendarVisual>()
   let visuals: CalendarVisual[] = []
 
   if (confirmedBrief.includeArtwork) {
-    await startActivity(phaseRefs.visuals, activityRefs.createVisuals, lyra, visualsRuntime, 86)
+    await startActivity(phaseRefs.visuals, activityRefs.createVisuals, lyra, visualsRuntime, 90)
 
     for (const chunk of chunkItems(selectedHooks, 3)) {
       const visualResult = await generateJsonStage<{ visuals: any[] }>({
@@ -1926,7 +2064,7 @@ export async function executeAutomatedContentCalendar(input: {
       lyra,
       visualsRuntime,
       `Prepared ${visuals.length} visual briefs for the drafted posts.`,
-      92
+      93
     )
   } else {
     await completeActivity(
@@ -1935,7 +2073,7 @@ export async function executeAutomatedContentCalendar(input: {
       lyra,
       visualsRuntime,
       'Visual briefs skipped because the confirmed brief requested copy only.',
-      92
+      93
     )
   }
 
@@ -1961,8 +2099,35 @@ export async function executeAutomatedContentCalendar(input: {
     posts,
     visuals,
   })
-  const structuralQuality = validateDeliverableQuality('content-calendar', markdown, input.request)
-  const skillQuality = validateSkillChecklists(input.skillChecklists || [], markdown)
+
+  await startPhase(phaseRefs.export, 94)
+  await startActivity(phaseRefs.export, activityRefs.exportCalendar, nova, calendarRuntime, 95)
+  await completeActivity(
+    phaseRefs.export,
+    activityRefs.exportCalendar,
+    nova,
+    calendarRuntime,
+    'Prepared the complete calendar artifact for HTML, PDF, and spreadsheet export.',
+    96
+  )
+
+  const structuralQuality = validateDeliverableQuality('content-calendar', markdown, input.request, {
+    approvedEvidence: input.clientProfile.approved_facts || '',
+  })
+  const modelStageAgentIds = new Set([
+    maya.id,
+    echo.id,
+    nova.id,
+    atlas.id,
+    ...(confirmedBrief.includeArtwork ? [lyra.id] : []),
+  ])
+  const executedSkillIds = new Set(
+    Array.from(modelStageAgentIds).flatMap((agentId) => input.selectedSkillsByAgent?.[agentId] || [])
+  )
+  const skillQuality = validateSkillChecklists(
+    (input.skillChecklists || []).filter((skill) => executedSkillIds.has(skill.id)),
+    markdown
+  )
   const skillIssues = formatChecklistFailures(skillQuality.failed)
   const qualityIssues = Array.from(new Set([...structuralQuality.issues, ...skillIssues]))
   const qualityResult = {
@@ -1986,8 +2151,8 @@ export async function executeAutomatedContentCalendar(input: {
       status: qualityResult.ok ? 'completed' : 'warning',
     })
   )
-  await startPhase(phaseRefs.quality, 94)
-  await startActivity(phaseRefs.quality, activityRefs.qualityReview, iris, postsRuntime, 96)
+  await startPhase(phaseRefs.quality, 97)
+  await startActivity(phaseRefs.quality, activityRefs.qualityReview, iris, postsRuntime, 98)
   await completeActivity(
     phaseRefs.quality,
     activityRefs.qualityReview,

@@ -169,6 +169,7 @@ function toClientRow(client: AppPersistenceSnapshot['clients'][number], agencyId
 
 function toTaskRow(mission: Mission, agencyId: string) {
   const pipeline = inferMissionPipelineMetadata(mission.deliverableType)
+  const isTerminal = ['completed', 'completed_with_warnings', 'failed', 'cancelled'].includes(mission.status)
   return {
     id: mission.id,
     agency_id: agencyId,
@@ -185,7 +186,7 @@ function toTaskRow(mission: Mission, agencyId: string) {
     progress: mission.progress,
     due_date: mission.dueDate || null,
     started_at: null,
-    completed_at: mission.status === 'completed' ? mission.updatedAt : null,
+    completed_at: isTerminal ? mission.updatedAt : null,
     execution_plan: {
       assignedAgentIds: mission.assignedAgentIds || [],
       collaboratorAgentIds: mission.collaboratorAgentIds || [],
@@ -255,7 +256,7 @@ function toOutputRow(artifact: Artifact, agencyId: string) {
     creative: artifact.creative || {},
     exports: artifact.exports || [],
     execution_steps: artifact.executionSteps || [],
-    metadata: { campaignId: artifact.campaignId || null },
+    metadata: { ...(artifact.metadata || {}), campaignId: artifact.campaignId || null },
     created_at: artifact.createdAt,
     updated_at: artifact.updatedAt,
   }
@@ -412,13 +413,46 @@ async function upsert(table: string, rows: Record<string, any>[], conflictColumn
     // Build the SET clause as raw SQL fragments — column identifiers are
     // hardcoded from Object.keys(rows[0]) so there's no injection surface.
     const setFragments = setCols.map((c) => {
+      if (table === 'outputs') {
+        if (c === 'execution_steps' || c === 'exports') {
+          return `"${c}" = CASE
+            WHEN jsonb_typeof("outputs"."${c}") = 'array'
+              AND jsonb_array_length("outputs"."${c}") > 0
+              AND (jsonb_typeof(EXCLUDED."${c}") <> 'array' OR jsonb_array_length(EXCLUDED."${c}") = 0)
+            THEN "outputs"."${c}"
+            ELSE EXCLUDED."${c}"
+          END`
+        }
+        if (c === 'metadata') {
+          return `"metadata" = CASE
+            WHEN jsonb_typeof("outputs"."metadata") = 'object' AND jsonb_typeof(EXCLUDED."metadata") = 'object'
+            THEN "outputs"."metadata" || EXCLUDED."metadata"
+            ELSE EXCLUDED."metadata"
+          END`
+        }
+        if (c === 'source_prompt') {
+          return `"source_prompt" = COALESCE(EXCLUDED."source_prompt", "outputs"."source_prompt")`
+        }
+        return `"${c}" = EXCLUDED."${c}"`
+      }
       if (table !== 'tasks') return `"${c}" = EXCLUDED."${c}"`
       const terminalGuard = `"tasks"."status" IN ('completed','completed_with_warnings','failed','cancelled') AND EXCLUDED."status" NOT IN ('completed','completed_with_warnings','failed','cancelled')`
-      if (c === 'status' || c === 'execution_plan' || c === 'completed_at' || c === 'lead_agent_id') {
+      const existingTerminal = `"tasks"."status" IN ('completed','completed_with_warnings','failed','cancelled')`
+      if (c === 'execution_plan') {
+        return `"execution_plan" = CASE
+          WHEN ${existingTerminal} AND NOT (EXCLUDED."execution_plan" ? 'lastRunAt')
+          THEN "tasks"."execution_plan"
+          ELSE EXCLUDED."execution_plan"
+        END`
+      }
+      if (c === 'completed_at') {
+        return `"completed_at" = CASE WHEN ${existingTerminal} THEN COALESCE("tasks"."completed_at", EXCLUDED."completed_at") ELSE EXCLUDED."completed_at" END`
+      }
+      if (c === 'status' || c === 'lead_agent_id') {
         return `"${c}" = CASE WHEN ${terminalGuard} THEN "tasks"."${c}" ELSE EXCLUDED."${c}" END`
       }
       if (c === 'progress') {
-        return `"progress" = CASE WHEN ${terminalGuard} THEN GREATEST(COALESCE("tasks"."progress", 0), COALESCE(EXCLUDED."progress", 0)) ELSE EXCLUDED."progress" END`
+        return `"progress" = CASE WHEN ${existingTerminal} THEN GREATEST(COALESCE("tasks"."progress", 0), COALESCE(EXCLUDED."progress", 0)) ELSE EXCLUDED."progress" END`
       }
       return `"${c}" = EXCLUDED."${c}"`
     }).join(', ')
@@ -725,7 +759,9 @@ function mapTaskRows(rows: any[]): Mission[] {
 }
 
 function mapOutputRows(rows: any[]): Artifact[] {
-  return rows.map((row) => ({
+  return rows.map((row) => {
+    const metadata = asJsonObject(row.metadata)
+    return ({
     id: row.id,
     ownerUserId: row.owner_user_id || undefined,
     title: row.title,
@@ -739,15 +775,17 @@ function mapOutputRows(rows: any[]): Artifact[] {
     link: row.public_url || undefined,
     notes: row.notes || undefined,
     clientId: row.client_id || undefined,
-    campaignId: row.metadata?.campaignId || undefined,
+    campaignId: metadata.campaignId || undefined,
     missionId: row.task_id || undefined,
     agentId: row.agent_id || undefined,
-    exports: Array.isArray(row.exports) ? row.exports : [],
-    creative: row.creative || undefined,
-    executionSteps: Array.isArray(row.execution_steps) ? row.execution_steps : [],
+    exports: parseJsonMaybe<any[]>(row.exports, []),
+    creative: asJsonObject(row.creative) as any,
+    executionSteps: parseJsonMaybe<Artifact['executionSteps']>(row.execution_steps, []),
+    metadata,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-  }))
+    })
+  })
 }
 
 function mapConversationRows(conversationRows: any[], messageRows: any[]): Conversation[] {

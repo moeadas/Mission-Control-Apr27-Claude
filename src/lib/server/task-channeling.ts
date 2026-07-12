@@ -526,7 +526,11 @@ export function buildTaskChannelingPlan(input: {
       .flatMap((activity) => {
         const reference = String(activity.assignedRole || '').toLowerCase()
         const templateIds = getAgentIdsForRole(reference)
-        const resolved = (templateIds.length ? templateIds : [reference])
+        // assignedRole describes the owner of an activity, not every agent
+        // that could theoretically perform that role. Select the preferred
+        // mapped specialist so fallback role aliases do not become decorative
+        // collaborators on every task.
+        const resolved = (templateIds.length ? [templateIds[0]] : [reference])
           .map((templateId) => resolveAgentReference(agents, templateId))
           .filter((id): id is string => Boolean(id))
         if (resolved.length) return resolved
@@ -557,7 +561,17 @@ export function buildTaskChannelingPlan(input: {
     const agent = agents.find((entry) => entry.id === agentId)
     if (!agent) continue
 
-    const ranked = (agent.skills || [])
+    // A tenant's persisted agent row may temporarily have an empty skills
+    // array (for example after an older client snapshot is synced). The
+    // canonical skill catalog still records which agent template owns each
+    // skill, so use that relationship as the authoritative fallback instead
+    // of silently degrading to "general specialist context".
+    const catalogSkillIds = Array.from(skillIndex.values())
+      .filter((skill) => (skill.agents || []).some((reference) => matchesAgentTemplate(agent, reference)))
+      .map((skill) => skill.id)
+    const candidateSkillIds = unique([...(agent.skills || []), ...catalogSkillIds])
+
+    const ranked = candidateSkillIds
       .map((skillId) => ({ skillId, skill: skillIndex.get(skillId) }))
       .filter((entry) => entry.skill)
       .map((entry) => ({
@@ -572,7 +586,7 @@ export function buildTaskChannelingPlan(input: {
       .slice(0, skillCap)
       .map((entry) => entry.skillId)
 
-    selectedSkillsByAgent[agentId] = chosen.length ? chosen : (agent.skills || []).slice(0, skillCap)
+    selectedSkillsByAgent[agentId] = chosen.length ? chosen : candidateSkillIds.slice(0, skillCap)
   }
 
   const confidence = computeChannelingConfidence({

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import pipelinesConfig from '@/config/pipelines/pipelines.json'
 import { applyContentCalendarBrief, resolveContentCalendarBrief } from '@/lib/server/content-calendar-brief'
 import { validateDeliverableQuality } from '@/lib/output-quality'
 import { executeAutomatedContentCalendar } from '@/lib/server/content-calendar-engine'
@@ -66,6 +67,8 @@ Copy only.`
 
   it('runs the dedicated engine with the confirmed brief and skips visual generation', async () => {
     const stages: string[] = []
+    const prompts: string[] = []
+    const activities: string[] = []
     const agents = new Map(['maya', 'echo', 'nova', 'lyra', 'iris'].map((id) => [id, { id, name: id, role: id }]))
     const result = await executeAutomatedContentCalendar({
       request,
@@ -78,10 +81,11 @@ Copy only.`
         approved_facts: 'Victory Genomics provides equine genomics services.',
       },
       agentsById: agents,
-      pipeline: { id: 'content-calendar', name: 'Content Calendar', phases: [] },
+      pipeline: pipelinesConfig.pipelines.find((entry) => entry.id === 'content-calendar') as any,
       skillGuidanceByAgent: Object.fromEntries(Array.from(agents.keys()).map((id) => [id, `${id} skill instructions`])),
       generateStage: async ({ prompt, stage }) => {
         stages.push(stage)
+        prompts.push(prompt)
         if (stage.startsWith('ideas:')) {
           const pillar = stage.split(':')[1]
           return {
@@ -120,8 +124,32 @@ Copy only.`
             }] }),
           }
         }
-        if (stage === 'calendar') return { provider: 'ollama', model: 'test', text: '{"calendar":{}}' }
+        if (stage === 'hashtags') {
+          const count = (prompt.match(/^\d+\. \[/gm) || []).length
+          return {
+            provider: 'ollama', model: 'test',
+            text: JSON.stringify({ hashtags: Array.from({ length: count }, (_, index) => ({
+              postNumber: index + 1,
+              primary: ['#VictoryGenomics'],
+              niche: ['#EquineGenomics'],
+              trending: [],
+              seoKeywords: ['horse genetics'],
+            })) }),
+          }
+        }
+        if (stage === 'calendar') {
+          const ids = Array.from(prompt.matchAll(/^([^\s|]+) \| [^|]+ \|/gm)).map((match) => match[1])
+          return {
+            provider: 'ollama', model: 'test',
+            // Deliberately repeat the first post. The engine must retain each
+            // post exactly once and fill any missing IDs deterministically.
+            text: JSON.stringify({ calendar: { 1: [ids[0], ids[0]], 2: ids.slice(1) } }),
+          }
+        }
         throw new Error(`Unexpected generation stage: ${stage}`)
+      },
+      hooks: {
+        onActivityComplete: async ({ activity }) => { activities.push(activity.id) },
       },
     })
 
@@ -131,5 +159,33 @@ Copy only.`
     expect(result.response).toContain('Primary goal: awareness.')
     expect(result.response).not.toContain('LinkedIn')
     expect(result.response).not.toMatch(/Visual Mood|Visual Format/)
+    expect(prompts.some((prompt) => prompt.includes('maya skill instructions'))).toBe(true)
+    expect(prompts.some((prompt) => prompt.includes('Content Calendar > Post Drafting > Review & Adjust Posts'))).toBe(true)
+    expect(prompts.some((prompt) => prompt.includes('Content Calendar > Cross-Platform > Adapt for All Platforms'))).toBe(true)
+    expect(prompts.some((prompt) => prompt.includes('Content Calendar > Hashtags & SEO > Generate Hashtags & Keywords'))).toBe(true)
+    expect(activities).toEqual(expect.arrayContaining([
+      'profile-review', 'review-posts', 'adapt-posts', 'generate-hashtags', 'export-calendar',
+    ]))
+  })
+
+  it('accepts high-risk claims only when they exist in approved client evidence', () => {
+    const content = `# Victory Genomics Content Calendar
+## Strategy Summary
+Primary goal: awareness.
+## Content Pillars
+| Pillar | Purpose |
+| --- | --- |
+| Educational | Teach |
+## Calendar
+| Day | Platform | Pillar | Post Idea | Hook |
+| --- | --- | --- | --- | --- |
+${Array.from({ length: 15 }, (_, index) => `| Day ${index + 1} | ${['Instagram', 'Facebook', 'Email'][index % 3]} | Educational | Guaranteed insight ${index + 1} | Hook |`).join('\n')}
+## Post Details
+Victory Genomics offers guaranteed profile updates.`
+    expect(validateDeliverableQuality('content-calendar', content, request).issues)
+      .toContain('Potentially unsupported factual claim requires client evidence: Guaranteed.')
+    expect(validateDeliverableQuality('content-calendar', content, request, {
+      approvedEvidence: 'Victory Genomics provides guaranteed profile updates.',
+    }).issues.some((issue) => issue.includes('unsupported factual claim'))).toBe(false)
   })
 })
