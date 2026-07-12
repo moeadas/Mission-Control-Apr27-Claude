@@ -97,6 +97,13 @@ describe('runtime wiring', () => {
     expect(queue).toContain('id = ${taskId} AND agency_id = ${auth.tenantId}::uuid')
   })
 
+  it('writes relational structured fields as JSONB and protects terminal task state', () => {
+    const sync = readFileSync('src/lib/db/relational-sync.ts', 'utf8')
+    expect(sync).toContain("jsonbColumns.has(c) ? '::jsonb' : ''")
+    expect(sync).toContain("tasks\".\"status\" IN ('completed','completed_with_warnings','failed','cancelled')")
+    expect(sync).toContain('const executionPlan = asJsonObject(row.execution_plan)')
+  })
+
   it('does not hard-code the default agency in skill APIs', () => {
     for (const file of [
       'src/app/api/skills/route.ts',

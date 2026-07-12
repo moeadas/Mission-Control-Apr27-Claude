@@ -764,7 +764,7 @@ Specialist engine gates:
 2. Docker support files, especially `docker/init.sql` and nginx config.
 3. Scripts folder.
 4. Continue through `src/lib/server` in dependency order.
-## 2026-07-12 — Content calendar runtime integrity repair (v1.0.78)
+## 2026-07-12 — Content calendar runtime integrity repair (v1.0.79)
 
 - Added a canonical confirmed-brief resolver for content calendars. Runtime precedence is now: confirmed chat fields, explicit request facts, client profile, tenant defaults, generic fallback.
 - Month/period, duration, objective, channels, cadence, and artwork preference are applied once before generation. Channel quotas are locked deterministically after idea selection so models cannot introduce unconfirmed platforms.
@@ -775,4 +775,5 @@ Specialist engine gates:
 - Calendar quality now checks required row count, per-platform quotas, timeframe boundaries, objective preservation, unconfirmed channels, artwork preference, and suspicious factual claims. A structural table alone can no longer score 100.
 - Every successful calendar model call records its fully rendered system/user prompts, stage, attempt, actual provider/model, temperature, token limits, timestamps, status, and usage in output metadata. Token usage is also written to `token_usage` with the task id.
 - Task completion now closes the root `task-execution` run, records `completed_at`, persists output trace metadata on updates, and protects terminal task progress/execution plans from stale browser-state regressions.
+- Relational snapshot upserts now cast structured columns explicitly to JSONB and readers defensively unwrap legacy JSON strings/arrays. This prevents stale sync from turning `execution_plan` into a string and silently dropping assigned agents or skill assignments.
 - Regression coverage includes the exact Victory Genomics August/7-day/3-platform/5-post/copy-only scenario and a mocked full dedicated-engine run.

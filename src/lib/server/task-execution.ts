@@ -532,6 +532,17 @@ function sanitizeExecutionRequestText(value: string) {
     .trim()
 }
 
+function asJsonObject(value: unknown): Record<string, any> {
+  if (!value) return {}
+  if (typeof value === 'string') {
+    try { return asJsonObject(JSON.parse(value)) } catch { return {} }
+  }
+  if (Array.isArray(value)) {
+    return value.reduce<Record<string, any>>((merged, entry) => ({ ...merged, ...asJsonObject(entry) }), {})
+  }
+  return typeof value === 'object' ? value as Record<string, any> : {}
+}
+
 function extractWebsiteAuditUrl(message: string) {
   const match = message.match(/\bhttps?:\/\/[^\s<>)"']+|\bwww\.[^\s<>)"']+|\b(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/[^\s<>)"']*)?/i)
   if (!match) return null
@@ -628,6 +639,7 @@ export async function runTaskExecution(
   const agency = agencyRows[0]
 
   if (!task) throw new Error('Task not found.')
+  task.execution_plan = asJsonObject(task.execution_plan)
   if (auth.role !== 'super_admin' && task.owner_user_id && task.owner_user_id !== auth.userId) {
     throw new Error('Unauthorized')
   }

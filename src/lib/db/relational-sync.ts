@@ -209,6 +209,17 @@ function toTaskRow(mission: Mission, agencyId: string) {
   }
 }
 
+function asJsonObject(value: unknown): Record<string, any> {
+  if (!value) return {}
+  if (typeof value === 'string') {
+    try { return asJsonObject(JSON.parse(value)) } catch { return {} }
+  }
+  if (Array.isArray(value)) {
+    return value.reduce<Record<string, any>>((merged, entry) => ({ ...merged, ...asJsonObject(entry) }), {})
+  }
+  return typeof value === 'object' ? value as Record<string, any> : {}
+}
+
 function buildTaskAssignmentRows(missions: Mission[], agencyId: string) {
   return missions.flatMap((mission) => {
     const assignedAgentIds = Array.isArray(mission.assignedAgentIds) ? mission.assignedAgentIds : []
@@ -388,6 +399,11 @@ async function upsert(table: string, rows: Record<string, any>[], conflictColumn
   const cols = Object.keys(rows[0])
   const conflictCols = Array.isArray(conflictColumns) ? conflictColumns : [conflictColumns]
   const setCols = cols.filter((c) => !conflictCols.includes(c))
+  const jsonbColumns = new Set([
+    'settings', 'position', 'tools', 'skills', 'responsibilities', 'primary_outputs', 'metadata',
+    'brief', 'execution_plan', 'creative', 'exports', 'execution_steps', 'messages', 'attachments',
+    'prompts', 'checklist', 'examples', 'definition', 'context', 'input_payload', 'output_payload',
+  ])
 
   // Per-row insert keeps the SQL identical to the postgres.js multi-row form
   // but sidesteps the unsafe-stringification bug. The performance hit is
@@ -407,7 +423,7 @@ async function upsert(table: string, rows: Record<string, any>[], conflictColumn
       return `"${c}" = EXCLUDED."${c}"`
     }).join(', ')
     await db.unsafe(
-      `INSERT INTO "${table}" (${cols.map((c) => `"${c}"`).join(', ')}) VALUES (${cols.map((_, i) => `$${i + 1}`).join(', ')}) ON CONFLICT (${conflictCols.map((c) => `"${c}"`).join(', ')}) DO UPDATE SET ${setFragments}`,
+      `INSERT INTO "${table}" (${cols.map((c) => `"${c}"`).join(', ')}) VALUES (${cols.map((c, i) => `$${i + 1}${jsonbColumns.has(c) ? '::jsonb' : ''}`).join(', ')}) ON CONFLICT (${conflictCols.map((c) => `"${c}"`).join(', ')}) DO UPDATE SET ${setFragments}`,
       cols.map((c) => {
         const val = (row as any)[c]
         // postgres.js + .unsafe needs jsonb values as JSON strings; otherwise
@@ -673,7 +689,10 @@ function mapClientRows(rows: any[], knowledgeRows: any[]): Client[] {
 }
 
 function mapTaskRows(rows: any[]): Mission[] {
-  return rows.map((row) => ({
+  return rows.map((row) => {
+    const executionPlan = asJsonObject(row.execution_plan)
+    const metadata = asJsonObject(row.metadata)
+    return ({
     id: row.id,
     ownerUserId: row.owner_user_id || undefined,
     title: row.title,
@@ -681,27 +700,28 @@ function mapTaskRows(rows: any[]): Mission[] {
     deliverableType: row.deliverable_type,
     status: row.status,
     priority: row.priority,
-    campaignId: row.metadata?.campaignId || undefined,
+    campaignId: metadata.campaignId || undefined,
     clientId: row.client_id || undefined,
-    assignedAgentIds: Array.isArray(row.execution_plan?.assignedAgentIds) ? row.execution_plan.assignedAgentIds : [],
+    assignedAgentIds: Array.isArray(executionPlan.assignedAgentIds) ? executionPlan.assignedAgentIds : [],
     leadAgentId: row.lead_agent_id || undefined,
-    collaboratorAgentIds: Array.isArray(row.execution_plan?.collaboratorAgentIds) ? row.execution_plan.collaboratorAgentIds : [],
+    collaboratorAgentIds: Array.isArray(executionPlan.collaboratorAgentIds) ? executionPlan.collaboratorAgentIds : [],
     pipelineId: row.pipeline_id || undefined,
-    pipelineName: row.execution_plan?.pipelineName || undefined,
-    skillAssignments: row.execution_plan?.skillAssignments || {},
-    orchestrationTrace: Array.isArray(row.execution_plan?.orchestrationTrace) ? row.execution_plan.orchestrationTrace : [],
-    qualityChecklist: Array.isArray(row.execution_plan?.qualityChecklist) ? row.execution_plan.qualityChecklist : [],
-    handoffNotes: row.execution_plan?.handoffNotes || undefined,
-    reviewComments: Array.isArray(row.execution_plan?.reviewComments) ? row.execution_plan.reviewComments : [],
-    reviewStatus: row.execution_plan?.reviewStatus || 'pending',
-    runtimeMode: row.execution_plan?.runtimeMode || undefined,
-    compareSummary: row.execution_plan?.compareSummary || undefined,
+    pipelineName: executionPlan.pipelineName || undefined,
+    skillAssignments: executionPlan.skillAssignments || {},
+    orchestrationTrace: Array.isArray(executionPlan.orchestrationTrace) ? executionPlan.orchestrationTrace : [],
+    qualityChecklist: Array.isArray(executionPlan.qualityChecklist) ? executionPlan.qualityChecklist : [],
+    handoffNotes: executionPlan.handoffNotes || undefined,
+    reviewComments: Array.isArray(executionPlan.reviewComments) ? executionPlan.reviewComments : [],
+    reviewStatus: executionPlan.reviewStatus || 'pending',
+    runtimeMode: executionPlan.runtimeMode || undefined,
+    compareSummary: executionPlan.compareSummary || undefined,
     assignedBy: row.assigned_by || 'iris',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     dueDate: row.due_date || undefined,
     progress: typeof row.progress === 'number' ? row.progress : 0,
-  }))
+    })
+  })
 }
 
 function mapOutputRows(rows: any[]): Artifact[] {

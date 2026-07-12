@@ -488,10 +488,12 @@ Eight structural repairs were completed and validated:
 
 Migration: `docker/migrations/20260711_tenant_catalogs_and_execution_queue.sql`. It was tested against PostgreSQL 16 using both clean-install and simulated legacy schemas. Apply it before starting v1.0.77.
 
-## 23. Content calendar runtime integrity (2026-07-12, v1.0.78)
+## 23. Content calendar runtime integrity (2026-07-12, v1.0.79)
 
 The dedicated content-calendar engine now resolves a single confirmed brief and treats it as authoritative over client and tenant defaults. Platform allocations and cadence are deterministic; copy-only requests skip visuals; named months and selected durations are both preserved. Matching pipeline activity prompts and full selected-skill instructions are injected into model calls instead of being attribution-only.
 
 Quality validation now checks cadence totals, per-channel quotas, duration boundaries, objective, channel drift, artwork preference, selected skill checklists, and common unsupported high-risk claims. Successful calendar calls persist full prompt/runtime traces in `outputs.metadata.generationTrace` and write token usage by task. Completion closes the root task run and stale relational synchronization can no longer regress a terminal task to progress 0 or replace its execution plan.
+
+Relational snapshot writes now explicitly cast structured parameters to JSONB. Readers normalize legacy JSON strings/arrays before using `execution_plan` or task metadata; do not remove this compatibility layer until production rows have been fully normalized.
 
 Regression test: `tests/content-calendar-runtime.test.ts` covers the Victory Genomics August request with a seven-day window, Instagram + Facebook + Email, five posts per platform, and copy-only delivery.
