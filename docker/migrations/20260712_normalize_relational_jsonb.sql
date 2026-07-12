@@ -39,6 +39,11 @@ UPDATE outputs SET
 
 UPDATE conversations SET metadata = pg_temp.unwrap_jsonb(metadata);
 
+-- Some legacy databases attached the generic updated_at trigger to skills even
+-- though skills has no updated_at column. That trigger makes every skill edit
+-- fail, so remove it before normalizing the catalog.
+DROP TRIGGER IF EXISTS skills_set_updated_at ON skills;
+
 UPDATE skills SET
   prompts = pg_temp.unwrap_jsonb(prompts),
   checklist = pg_temp.unwrap_jsonb(checklist),

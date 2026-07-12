@@ -777,4 +777,5 @@ Specialist engine gates:
 - Task completion now closes the root `task-execution` run, records `completed_at`, persists output trace metadata on updates, and protects terminal task progress/execution plans from stale browser-state regressions.
 - Relational snapshot upserts now cast structured columns explicitly to JSONB and readers defensively unwrap legacy JSON strings/arrays. This prevents stale sync from turning `execution_plan` into a string and silently dropping assigned agents or skill assignments.
 - Migration `docker/migrations/20260712_normalize_relational_jsonb.sql` unwraps legacy JSON strings across agents, clients, tasks, outputs, conversations, skills, and pipelines.
+- The same migration removes the invalid legacy `skills_set_updated_at` trigger; `skills` has no `updated_at` column, so that trigger caused all skill updates to fail.
 - Regression coverage includes the exact Victory Genomics August/7-day/3-platform/5-post/copy-only scenario and a mocked full dedicated-engine run.
