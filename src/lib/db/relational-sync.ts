@@ -170,6 +170,7 @@ function toClientRow(client: AppPersistenceSnapshot['clients'][number], agencyId
 function toTaskRow(mission: Mission, agencyId: string) {
   const pipeline = inferMissionPipelineMetadata(mission.deliverableType)
   const isTerminal = ['completed', 'completed_with_warnings', 'failed', 'cancelled'].includes(mission.status)
+  const isSuccessfullyCompleted = ['completed', 'completed_with_warnings'].includes(mission.status)
   return {
     id: mission.id,
     agency_id: agencyId,
@@ -183,7 +184,7 @@ function toTaskRow(mission: Mission, agencyId: string) {
     assigned_by: mission.assignedBy || null,
     lead_agent_id: mission.leadAgentId || mission.assignedAgentIds?.[0] || null,
     pipeline_id: mission.pipelineId || pipeline.pipelineId || null,
-    progress: mission.progress,
+    progress: isSuccessfullyCompleted ? 100 : mission.progress,
     due_date: mission.dueDate || null,
     started_at: null,
     completed_at: isTerminal ? mission.updatedAt : null,

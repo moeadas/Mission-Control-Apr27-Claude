@@ -400,7 +400,7 @@ export default function OutputsPage() {
                     </div>
 
                     {openArtifactIds[artifact.id] && artifact.content ? (
-                      <div className="p-4 rounded-xl border border-border bg-base/60">
+                      <div className="rounded-lg border border-border bg-base/60 p-4 sm:p-6 lg:p-8">
                         <ArtifactOutputView artifact={artifact} />
                       </div>
                     ) : null}

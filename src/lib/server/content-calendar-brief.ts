@@ -38,12 +38,23 @@ function inferPeriodLabel(request: string) {
   return `${match[1][0].toUpperCase()}${match[1].slice(1).toLowerCase()} ${year}`
 }
 
+function daysInNamedMonth(value: string) {
+  const monthPattern = new RegExp(`\\b(${MONTHS.join('|')})\\b(?:\\s+(20\\d{2}))?`, 'i')
+  const match = value.match(monthPattern)
+  if (!match) return null
+  const monthIndex = MONTHS.findIndex((month) => month.toLowerCase() === match[1].toLowerCase())
+  const year = Number(match[2] || new Date().getFullYear())
+  return new Date(year, monthIndex + 1, 0).getDate()
+}
+
 function inferTimeframeDays(value: string) {
   const dayMatch = value.match(/(\d+)\s*-?\s*days?/i)
   if (dayMatch) return Math.max(1, Number(dayMatch[1]))
   const weekMatch = value.match(/(\d+)\s*-?\s*weeks?/i)
   if (weekMatch) return Math.max(1, Number(weekMatch[1]) * 7)
   if (/\bweek\b|7-day/i.test(value)) return 7
+  const namedMonthDays = daysInNamedMonth(value)
+  if (namedMonthDays) return namedMonthDays
   if (/\bmonth\b|monthly|30-day/i.test(value)) return 30
   return 30
 }
@@ -66,7 +77,8 @@ export function resolveContentCalendarBrief(request: string, profile: Record<str
   const platforms = normalizePlatforms(confirmedPlatforms || request)
   const fallbackPlatforms = normalizePlatforms(profile.platforms || '')
   const resolvedPlatforms = platforms.length ? platforms : fallbackPlatforms.length ? fallbackPlatforms : ['Instagram']
-  const timeframeSource = confirmedTimeframe || profile.timeline || profile.campaign_duration || request
+  const requestNamesMonth = new RegExp(`\\b(${MONTHS.join('|')})\\b`, 'i').test(request)
+  const timeframeSource = confirmedTimeframe || (requestNamesMonth ? request : '') || profile.timeline || profile.campaign_duration || request
   const timeframeDays = inferTimeframeDays(timeframeSource)
   const cadenceSource = confirmedCadence || profile.posting_frequency || request
   const postsPerPlatform = inferCadence(cadenceSource)

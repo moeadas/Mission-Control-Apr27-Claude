@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useMemo, useState } from 'react'
+import { Check, Copy } from 'lucide-react'
 
 import { Artifact } from '@/lib/types'
 import { buildArtifactHtml } from '@/lib/output-html'
@@ -198,6 +199,7 @@ function CreativeArtifactView({ artifact }: { artifact: Artifact }) {
 }
 
 export function ArtifactOutputView({ artifact }: { artifact: Artifact }) {
+  const [copied, setCopied] = useState(false)
   const html = useMemo(() => {
     const rendered = typeof artifact.renderedHtml === 'string' ? artifact.renderedHtml : ''
     const content = typeof artifact.content === 'string' ? artifact.content : ''
@@ -213,9 +215,30 @@ export function ArtifactOutputView({ artifact }: { artifact: Artifact }) {
   }
 
   return (
-    <div
-      className="artifact-render prose prose-invert max-w-none"
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
+    <div className="artifact-output-shell">
+      <div className="artifact-output-toolbar">
+        <span className="artifact-output-label">Final output</span>
+        <button
+          type="button"
+          className="artifact-copy-button"
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(String(artifact.content || ''))
+              setCopied(true)
+              window.setTimeout(() => setCopied(false), 1800)
+            } catch (error) {
+              console.error('[ArtifactOutputView] Unable to copy output', error)
+            }
+          }}
+        >
+          {copied ? <Check size={15} aria-hidden="true" /> : <Copy size={15} aria-hidden="true" />}
+          {copied ? 'Copied' : 'Copy output'}
+        </button>
+      </div>
+      <div
+        className="artifact-render prose prose-invert max-w-none"
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+    </div>
   )
 }

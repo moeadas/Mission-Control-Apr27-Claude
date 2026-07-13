@@ -4,6 +4,7 @@ import { findAgentByTemplate } from '@/lib/server/agent-templates'
 import { escapeHtml } from '@/lib/server/text-utils'
 import { applyContentCalendarBrief, resolveContentCalendarBrief } from '@/lib/server/content-calendar-brief'
 import { formatChecklistFailures, validateSkillChecklists } from '@/lib/skills/checklist-validator'
+import { scoreQualityIssues, selectApplicableQualitySkills } from '@/lib/quality-policy'
 
 type RuntimeAgent = {
   id: string
@@ -417,11 +418,35 @@ function buildClientBlock(profile: ClientProfileMap, request: string) {
     `Topics to avoid: ${profile.topics_to_avoid || 'None specified'}`,
     `Client request: ${request}`,
     `Month / period: ${getMonthLabel(profile)}`,
+    `Requested focus: ${inferRequestedFocus(request) || 'No narrower focus specified; balance the approved pillars.'}`,
     `Approved factual evidence: ${profile.approved_facts || 'Only the client request and profile fields above are approved evidence.'}`,
     '',
     `IMPORTANT: every idea, hook, post, and visual you produce MUST be specifically about ${brandName}'s ${industry} business. Do not drift to unrelated industries, generic motivational content, or topics outside this brand's category. Every output must be testably grounded in this brand's actual product, audience, and category.`,
     'FACTUAL GROUNDING RULE: do not invent accuracy rates, turnaround times, guarantees, certifications, product capabilities, sample methods, prices, research findings, testimonials, or statistics. Use a factual claim only when it appears in the approved evidence or the user request. Otherwise omit it or clearly label it as an assumption requiring client verification.',
   ].join('\n')
+}
+
+function inferRequestedFocus(request: string) {
+  const patterns = [
+    /\b(?:focus(?:ing)? on|with (?:a |some )?focus on|center(?:ed)? on)\s+([^\n.;]+)/i,
+    /\b(?:about|covering)\s+([^\n.;]+?)(?=\s+(?:for|using|across|on)\b|$)/i,
+  ]
+  for (const pattern of patterns) {
+    const match = request.match(pattern)
+    if (match?.[1]?.trim()) return match[1].trim()
+  }
+  return ''
+}
+
+function matchesRequestedFocus(idea: CalendarIdea, focus: string) {
+  const tokens = focus
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, ' ')
+    .split(/\s+/)
+    .filter((token) => token.length >= 4 && !['product', 'service', 'content', 'campaign'].includes(token))
+  if (!tokens.length) return true
+  const haystack = `${idea.title} ${idea.description}`.toLowerCase()
+  return tokens.filter((token) => haystack.includes(token)).length >= Math.max(1, Math.ceil(tokens.length / 2))
 }
 
 function buildIdeasPrompt(profile: ClientProfileMap, request: string, pillar?: string) {
@@ -513,29 +538,19 @@ function buildIdeaSelectionPrompt(
   ideas: CalendarIdea[],
   targetCount: number
 ) {
+  const requestedFocus = inferRequestedFocus(request)
   return [
     'You are Maya, selecting the strongest ideas to take forward into production.',
     buildClientBlock(profile, request),
     `From the candidate ideas below, select exactly ${targetCount} ideas that produce the strongest monthly calendar balance across funnel stages, pillars, and platforms.`,
+    requestedFocus
+      ? `FOCUS ALLOCATION: at least ${Math.ceil(targetCount * 0.4)} selected ideas must directly address "${requestedFocus}" while remaining varied in angle and format.`
+      : '',
     'Return valid JSON only in this shape:',
     '{ "selectedIds": ["idea_01"], "selectionSummary": "2-3 sentences on why this set is strong." }',
     ideas
       .map((idea) => `${idea.id} | ${idea.pillar} | ${idea.primaryPlatform} | ${idea.contentType} | ${idea.title} | ${idea.description}`)
       .join('\n'),
-  ].join('\n\n')
-}
-
-function buildCalendarPrompt(profile: ClientProfileMap, request: string, posts: CalendarPost[]) {
-  const daysInMonth = inferCalendarTimeframeDays(profile, request)
-  return [
-    'You are Nova, scheduling a strategic monthly content calendar.',
-    buildClientBlock(profile, request),
-    `Distribute the posts below across ${daysInMonth} days of ${getMonthLabel(profile)}.`,
-    'Space same-platform posts realistically. Avoid heavy clustering. Balance awareness, education, engagement, and conversion.',
-    'Return compact JSON only with no markdown and no commentary.',
-    'Return valid JSON only in this shape:',
-    '{ "calendar": { "1": ["idea_01"], "3": ["idea_02", "idea_03"] }, "calendarSummary": "2-3 sentence scheduling rationale." }',
-    posts.map((post) => `${post.ideaId} | ${post.platform} | ${post.hook}`).join('\n'),
   ].join('\n\n')
 }
 
@@ -1134,6 +1149,10 @@ export async function executeAutomatedContentCalendar(input: {
   }
   const sage = byTemplate('sage') || maya
   const atlas = byTemplate('atlas') || echo
+  const deterministicProfileRuntime: StageRuntime = { provider: 'ollama', model: 'deterministic-profile-validator' }
+  const deterministicReviewRuntime: StageRuntime = { provider: 'ollama', model: 'deterministic-brief-validator' }
+  const deterministicExportRuntime: StageRuntime = { provider: 'ollama', model: 'deterministic-artifact-renderer' }
+  const deterministicQualityRuntime: StageRuntime = { provider: 'ollama', model: 'deterministic-quality-gate' }
 
   const phaseRefs: Record<string, PipelinePhaseRef> = {
     intake: { id: 'intake', name: 'Client Profile' },
@@ -1203,14 +1222,14 @@ export async function executeAutomatedContentCalendar(input: {
     phaseRefs.intake,
     activityRefs.collectProfile,
     sage,
-    { provider: 'ollama', model: 'profile-normalizer' },
+    deterministicProfileRuntime,
     8
   )
   await completeActivity(
     phaseRefs.intake,
     activityRefs.collectProfile,
     sage,
-    { provider: 'ollama', model: 'profile-normalizer' },
+    deterministicProfileRuntime,
     'Client profile normalized for the content calendar workflow.',
     10
   )
@@ -1218,14 +1237,14 @@ export async function executeAutomatedContentCalendar(input: {
     phaseRefs.intake,
     activityRefs.profileReview,
     sage,
-    { provider: 'ollama', model: 'profile-normalizer' },
+    deterministicProfileRuntime,
     11
   )
   await completeActivity(
     phaseRefs.intake,
     activityRefs.profileReview,
     sage,
-    { provider: 'ollama', model: 'profile-normalizer' },
+    deterministicProfileRuntime,
     'Confirmed client profile, requested platforms, cadence, objective, period, and artwork preference.',
     12
   )
@@ -1442,6 +1461,32 @@ export async function executeAutomatedContentCalendar(input: {
     selectedIdeas = [...selectedIdeas, ...remainder].slice(0, selectedIdeaTarget)
   }
 
+  const requestedFocus = inferRequestedFocus(input.request)
+  if (requestedFocus) {
+    const minimumFocusedIdeas = Math.ceil(selectedIdeaTarget * 0.4)
+    const selectedFocusedCount = selectedIdeas.filter((idea) => matchesRequestedFocus(idea, requestedFocus)).length
+    if (selectedFocusedCount < minimumFocusedIdeas) {
+      const focusedCandidates = generatedIdeas.filter(
+        (idea) => matchesRequestedFocus(idea, requestedFocus) && !selectedIdeas.some((selected) => selected.id === idea.id)
+      )
+      const replaceableIndexes = selectedIdeas
+        .map((idea, index) => ({ idea, index }))
+        .filter(({ idea }) => !matchesRequestedFocus(idea, requestedFocus))
+        .map(({ index }) => index)
+      const replacements = Math.min(
+        minimumFocusedIdeas - selectedFocusedCount,
+        focusedCandidates.length,
+        replaceableIndexes.length
+      )
+      for (let index = 0; index < replacements; index += 1) {
+        selectedIdeas[replaceableIndexes[index]] = focusedCandidates[index]
+      }
+      if (replacements > 0) {
+        selectionSummary = `${selectionSummary} The final mix reserves at least 40% of available focused ideas for ${requestedFocus}.`.trim()
+      }
+    }
+  }
+
   selectedIdeas = lockPlatforms(selectedIdeas, confirmedBrief.platforms)
 
   if (!selectionSummary) {
@@ -1474,7 +1519,7 @@ export async function executeAutomatedContentCalendar(input: {
   let hooksRuntime: StageRuntime = ideasRuntime || { provider: 'ollama', model: 'unknown' }
   await startActivity(phaseRefs.hooks, activityRefs.generateHooks, echo, hooksRuntime, 42)
 
-  const hookChunks = chunkItems(selectedIdeas, 2)
+  const hookChunks = chunkItems(selectedIdeas, 4)
   const mergedHooks: Record<string, HookOption[]> = {}
 
   /**
@@ -1536,7 +1581,7 @@ export async function executeAutomatedContentCalendar(input: {
   // Repair pass for any ideas that came back empty — single retry, then fail loudly.
   const stillMissing = selectedIdeas.filter((idea) => !(mergedHooks[idea.id] || []).length)
   if (stillMissing.length) {
-    for (const chunk of chunkItems(stillMissing, 2)) {
+    for (const chunk of chunkItems(stillMissing, 4)) {
       const repairResult = await generateJsonStage<any>({
         agentId: echo.id,
         prompt: withExecutionGuidance({
@@ -1692,12 +1737,10 @@ export async function executeAutomatedContentCalendar(input: {
   let postsRuntime: StageRuntime = selectedHooksRuntime
   await startActivity(phaseRefs.drafting, activityRefs.draftPosts, echo, postsRuntime, 60)
 
-  // Posts are the longest stage output. Use chunks of 1 so each response
-  // stays small enough to fit cleanly within the model's token budget. The
-  // total round-trip count goes up but each one is far less likely to
-  // truncate mid-JSON. The salvage path ensures even truncated responses
-  // contribute whatever complete posts they did produce.
-  const postChunks = chunkItems(selectedHooks, 1)
+  // Three concise posts fit comfortably in the response budget and reduce
+  // the excessive per-post round trips. The salvage + targeted missing-item
+  // repair path still protects against a truncated batch.
+  const postChunks = chunkItems(selectedHooks, 3)
   const postMap = new Map<string, CalendarPost>()
 
   for (const chunk of postChunks) {
@@ -1734,7 +1777,7 @@ export async function executeAutomatedContentCalendar(input: {
   // Repair any missing posts via a single retry on the affected chunk.
   const missingPosts = selectedHooks.filter((item) => !postMap.has(item.ideaId))
   if (missingPosts.length) {
-    for (const chunk of chunkItems(missingPosts, 1)) {
+    for (const chunk of chunkItems(missingPosts, 3)) {
       const repairResult = await generateJsonStage<{ posts: any[] }>({
         agentId: echo.id,
         prompt: withExecutionGuidance({
@@ -1749,7 +1792,7 @@ export async function executeAutomatedContentCalendar(input: {
         generateStage: input.generateStage,
         stage: 'posts-repair',
         repairHint:
-          'Return JSON with a top-level "posts" array for the single provided idea. The post needs ideaNumber (1-based), platform, hook, body (under 600 chars), cta, characterCount, and hashtags.',
+          'Return JSON with a top-level "posts" array containing one entry for every provided idea. Each needs ideaNumber (1-based), platform, hook, body (under 600 chars), cta, characterCount, and hashtags.',
         salvageArrayKey: 'posts',
       })
       for (const rawPost of repairResult.data.posts || []) {
@@ -1798,13 +1841,13 @@ export async function executeAutomatedContentCalendar(input: {
     70
   )
 
-  await startActivity(phaseRefs.drafting, activityRefs.reviewPosts, sage, postsRuntime, 71)
+  await startActivity(phaseRefs.drafting, activityRefs.reviewPosts, sage, deterministicReviewRuntime, 71)
   await completeActivity(
     phaseRefs.drafting,
     activityRefs.reviewPosts,
     sage,
-    postsRuntime,
-    `Reviewed ${posts.length} drafts against the confirmed brief and platform assignments.`,
+    deterministicReviewRuntime,
+    `Automated brief validation checked ${posts.length} drafts against the confirmed platforms, cadence, objective, and factual guardrails. Human client approval is still required before publishing.`,
     73
   )
 
@@ -1822,7 +1865,7 @@ export async function executeAutomatedContentCalendar(input: {
   await startPhase(phaseRefs.hashtags, 78)
   let hashtagsRuntime = postsRuntime
   await startActivity(phaseRefs.hashtags, activityRefs.generateHashtags, atlas, hashtagsRuntime, 79)
-  for (const chunk of chunkItems(posts, 3)) {
+  for (const chunk of chunkItems(posts, 5)) {
     const hashtagResult = await generateJsonStage<{ hashtags: any[] }>({
       agentId: atlas.id,
       prompt: withExecutionGuidance({
@@ -1878,75 +1921,18 @@ export async function executeAutomatedContentCalendar(input: {
     81
   )
 
-  // ─── Phase 5: scheduling (AI-preferred, deterministic distribution as combinatorial fallback) ─
+  // ─── Phase 5: slot-first scheduling ────────────────────────────────────
+  // Scheduling is a deterministic constraint problem, not a creative task.
+  // Lock it to the confirmed month length and already-assigned platforms so a
+  // model cannot duplicate posts, change channels, or drift into the wrong
+  // month. This also removes one expensive model round trip.
   await startPhase(phaseRefs.assembly, 82)
-  let calendarRuntime: StageRuntime = postsRuntime
+  const calendarRuntime: StageRuntime = { provider: 'ollama', model: 'deterministic-slot-scheduler' }
   await startActivity(phaseRefs.assembly, activityRefs.assembleCalendar, nova, calendarRuntime, 76)
 
   const monthLength = inferCalendarTimeframeDays(input.clientProfile, input.request)
-  let calendar: CalendarSchedule = {}
-  let calendarSummary = ''
-
-  try {
-    const calendarResult = await generateJsonStage<{
-      calendar: Record<string, string[]>
-      calendarSummary?: string
-    }>({
-      agentId: nova.id,
-      prompt: withExecutionGuidance({
-        prompt: buildCalendarPrompt(input.clientProfile, input.request, posts),
-        pipeline: input.pipeline,
-        activityId: 'assemble-calendar',
-        profile: input.clientProfile,
-        skillGuidance: input.skillGuidanceByAgent?.[nova.id],
-      }),
-      temperature: 0.35,
-      maxTokens: input.maxTokens,
-      generateStage: input.generateStage,
-      stage: 'calendar',
-      repairHint:
-        'Return JSON with a top-level "calendar" object keyed by day number and an optional "calendarSummary". Use only the provided idea ids.',
-    })
-    const validIds = new Set(posts.map((post) => post.ideaId))
-    // A model can repeat the same post on several days. Accept each post ID
-    // once only and reject out-of-range days before filling missing posts.
-    const seenIds = new Set<string>()
-    calendar = Object.fromEntries(
-      Object.entries(calendarResult.data.calendar || {})
-        .sort(([left], [right]) => Number(left) - Number(right))
-        .map(([day, ids]) => [
-          day,
-          Number(day) >= 1 && Number(day) <= monthLength
-            ? (Array.isArray(ids) ? ids : []).filter((id): id is string => {
-                if (typeof id !== 'string' || !validIds.has(id) || seenIds.has(id)) return false
-                seenIds.add(id)
-                return true
-              })
-            : [],
-        ])
-    )
-    calendar = Object.fromEntries(Object.entries(calendar).filter(([, ids]) => ids.length))
-    calendarSummary = calendarResult.data.calendarSummary || ''
-    calendarRuntime = { provider: calendarResult.provider, model: calendarResult.model }
-  } catch {
-    calendar = {}
-  }
-
-  // If the AI didn't produce a usable schedule, distribute deterministically.
-  // This is purely combinatorial — it places existing AI posts on days, it does
-  // not invent any content.
-  const scheduledIds = new Set(Object.values(calendar).flat())
-  if (scheduledIds.size < posts.length) {
-    const missing = posts.filter((post) => !scheduledIds.has(post.ideaId))
-    const fallback = distributePostsAcrossDays(missing, monthLength)
-    for (const [day, ids] of Object.entries(fallback)) {
-      calendar[day] = [...(calendar[day] || []), ...ids]
-    }
-  }
-
-  if (!calendarSummary) {
-    calendarSummary = 'Posts are spaced to avoid clustering across the month and across platforms.'
-  }
+  const calendar = distributePostsAcrossDays(posts, monthLength)
+  const calendarSummary = `The ${posts.length} confirmed posts are spaced across ${monthLength} days using fixed, non-duplicating slots while preserving every assigned platform.`
 
   executionSteps.push(
     createStep({
@@ -2101,40 +2087,42 @@ export async function executeAutomatedContentCalendar(input: {
   })
 
   await startPhase(phaseRefs.export, 94)
-  await startActivity(phaseRefs.export, activityRefs.exportCalendar, nova, calendarRuntime, 95)
+  await startActivity(phaseRefs.export, activityRefs.exportCalendar, nova, deterministicExportRuntime, 95)
   await completeActivity(
     phaseRefs.export,
     activityRefs.exportCalendar,
     nova,
-    calendarRuntime,
+    deterministicExportRuntime,
     'Prepared the complete calendar artifact for HTML, PDF, and spreadsheet export.',
     96
   )
 
   const structuralQuality = validateDeliverableQuality('content-calendar', markdown, input.request, {
-    approvedEvidence: input.clientProfile.approved_facts || '',
+    approvedEvidence: Object.entries(input.clientProfile)
+      .map(([key, value]) => `${key}: ${value}`)
+      .join('\n'),
   })
-  const modelStageAgentIds = new Set([
-    maya.id,
-    echo.id,
-    nova.id,
-    atlas.id,
-    ...(confirmedBrief.includeArtwork ? [lyra.id] : []),
-  ])
-  const executedSkillIds = new Set(
-    Array.from(modelStageAgentIds).flatMap((agentId) => input.selectedSkillsByAgent?.[agentId] || [])
+  const preferredQualitySkillIds = [
+    ...(input.selectedSkillsByAgent?.[echo.id] || []),
+    ...(input.selectedSkillsByAgent?.[maya.id] || []),
+  ]
+  const executedQualitySkillIds = new Set(
+    [maya.id, echo.id, nova.id, atlas.id, ...(confirmedBrief.includeArtwork ? [lyra.id] : [])]
+      .flatMap((agentId) => input.selectedSkillsByAgent?.[agentId] || [])
   )
+  const applicableQualitySkills = selectApplicableQualitySkills({
+    deliverableType: 'content-calendar',
+    request: input.request,
+    skills: (input.skillChecklists || []).filter((skill) => executedQualitySkillIds.has(skill.id)),
+    preferredSkillIds: preferredQualitySkillIds,
+    maxSkills: 3,
+  })
   const skillQuality = validateSkillChecklists(
-    (input.skillChecklists || []).filter((skill) => executedSkillIds.has(skill.id)),
+    applicableQualitySkills,
     markdown
   )
   const skillIssues = formatChecklistFailures(skillQuality.failed)
-  const qualityIssues = Array.from(new Set([...structuralQuality.issues, ...skillIssues]))
-  const qualityResult = {
-    ok: qualityIssues.length === 0,
-    score: Math.max(0, 100 - qualityIssues.length * 10),
-    issues: qualityIssues,
-  }
+  const qualityResult = scoreQualityIssues([...structuralQuality.issues, ...skillIssues])
 
   executionSteps.push(
     createStep({
@@ -2145,19 +2133,19 @@ export async function executeAutomatedContentCalendar(input: {
       summary: qualityResult.ok
         ? 'The calendar passed the structural quality gate and is ready for review.'
         : `The calendar is usable but still has quality issues: ${qualityResult.issues.join(' | ')}`,
-      provider: postsRuntime.provider,
-      model: postsRuntime.model,
+      provider: deterministicQualityRuntime.provider,
+      model: deterministicQualityRuntime.model,
       skillsUsed: input.selectedSkillsByAgent?.[iris.id] || ['task-triaging'],
       status: qualityResult.ok ? 'completed' : 'warning',
     })
   )
   await startPhase(phaseRefs.quality, 97)
-  await startActivity(phaseRefs.quality, activityRefs.qualityReview, iris, postsRuntime, 98)
+  await startActivity(phaseRefs.quality, activityRefs.qualityReview, iris, deterministicQualityRuntime, 98)
   await completeActivity(
     phaseRefs.quality,
     activityRefs.qualityReview,
     iris,
-    postsRuntime,
+    deterministicQualityRuntime,
     qualityResult.ok
       ? 'The calendar passed the quality review.'
       : `The calendar completed with quality warnings: ${qualityResult.issues.join(' | ')}`,

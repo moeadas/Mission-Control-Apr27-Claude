@@ -43,6 +43,16 @@ describe('content-calendar confirmed brief', () => {
     })
   })
 
+  it('uses the real length of a named month before stale profile defaults', () => {
+    const brief = resolveContentCalendarBrief(
+      'Create a content calendar for Victory Genomics for August 2026.',
+      { campaign_duration: '30 days', timeline: '30 days' }
+    )
+
+    expect(brief.periodLabel).toBe('August 2026')
+    expect(brief.timeframeDays).toBe(31)
+  })
+
   it('rejects schedules that drift from confirmed duration, channels, or cadence', () => {
     const weak = `# Victory Genomics Content Calendar
 ## Strategy Summary
@@ -91,9 +101,9 @@ Copy only.`
           return {
             provider: 'ollama', model: 'test',
             text: JSON.stringify({ ideas: Array.from({ length: 4 }, (_, index) => ({
-              title: `${pillar} angle ${index + 1}`,
+              title: `${pillar} gender reveal angle ${index + 1}`,
               pillar,
-              description: `Victory Genomics ${pillar} idea ${index + 1}`,
+              description: `Victory Genomics gender reveal ${pillar} idea ${index + 1}`,
               primaryPlatform: 'LinkedIn',
               contentType: 'Static Post',
             })) }),
@@ -112,16 +122,17 @@ Copy only.`
         }
         if (stage === 'hook-selection') return { provider: 'ollama', model: 'test', text: '{"selectedHooks":[]}' }
         if (stage === 'posts') {
+          const count = (prompt.match(/^\d+\. \[/gm) || []).length
           return {
             provider: 'ollama', model: 'test',
-            text: JSON.stringify({ posts: [{
-              ideaNumber: 1,
+            text: JSON.stringify({ posts: Array.from({ length: count }, (_, index) => ({
+              ideaNumber: index + 1,
               platform: 'LinkedIn',
-              hook: 'Test hook',
+              hook: `Test hook ${index + 1}`,
               body: 'Victory Genomics helps horse owners understand equine genomics with clear educational content.',
               cta: 'Learn more from Victory Genomics.',
               hashtags: { primary: ['#VictoryGenomics'] },
-            }] }),
+            })) }),
           }
         }
         if (stage === 'hashtags') {
@@ -155,6 +166,8 @@ Copy only.`
 
     expect(result.qualityResult).toMatchObject({ ok: true, score: 100 })
     expect(stages.some((stage) => stage.startsWith('visuals'))).toBe(false)
+    expect(stages).not.toContain('calendar')
+    expect(stages.filter((stage) => stage === 'posts')).toHaveLength(5)
     expect((result.response.match(/^\| Day \d+/gm) || [])).toHaveLength(15)
     expect(result.response).toContain('Primary goal: awareness.')
     expect(result.response).not.toContain('LinkedIn')

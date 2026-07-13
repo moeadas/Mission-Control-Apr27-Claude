@@ -121,18 +121,18 @@
             {
               "id": "generate-hooks",
               "name": "Generate Hooks per Idea",
-              "description": "For each selected idea, generate 8 hooks using psychological formulas: Curiosity Gap, Bold Contrarian, Pain-Point Mirror, Surprising Stat, Direct 'You', Story Opener, 'What If' Reframe, Social Proof",
+              "description": "For each selected idea, generate 4 distinct hooks using relevant psychological formulas, then select the strongest evidence-safe option",
               "assignedRole": "copy",
               "inputs": ["selected-ideas"],
               "outputs": ["hooks"],
               "checklist": [
-                "8 hooks generated per idea",
+                "4 distinct hooks generated per idea",
                 "Each hook under 20 words",
                 "Brand voice match verified",
                 "1 hook selected per idea by user"
               ],
               "prompts": {
-                "en": "For each selected idea, generate 8 hooks using the 8 formulas from content-calendar-generator stage 2. Inject {{brand_name}}, {{niche}}, {{tone}}. Each hook must be under 20 words.",
+                "en": "For each selected idea, generate 4 distinct hooks using the most relevant formulas from content-calendar-generator stage 2. Inject {{brand_name}}, {{niche}}, {{tone}}. Each hook must be under 20 words and any statistic or proof claim must exist in approved client evidence.",
                 "ar": "لكل فكرة مختارة، إنشاء 8 خطافات باستخدام الـ 8 صيغ من المرحلة 2. حقن {{brand_name}}، {{niche}}، {{tone}}."
               },
               "batching": { "batchSize": 5, "parallel": false }

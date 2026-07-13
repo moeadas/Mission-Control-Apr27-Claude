@@ -70,7 +70,19 @@ describe('runtime wiring', () => {
     expect(source).toContain('SKILLS IN FORCE (execute these instructions, not merely cite them)')
     expect(source).toContain("activityId: 'generate-ideas'")
     expect(source).toContain("activityId: ['draft-posts', 'review-posts', 'adapt-posts']")
-    expect(source).toContain("activityId: 'assemble-calendar'")
+    expect(source).toContain("model: 'deterministic-slot-scheduler'")
+    expect(source).toContain('const calendar = distributePostsAcrossDays(posts, monthLength)')
+  })
+
+  it('captures prompts and token usage through one shared generation path', () => {
+    const source = readFileSync('src/lib/server/autonomous-task.ts', 'utf8')
+    expect(source).toContain('const generateTracked: TrackedGenerationRunner')
+    expect(source).toContain("stage: `pipeline:${phase.id}:${activity.id}`")
+    expect(source).toContain("stage: `handoff:${agent.id}`")
+    expect(source).toContain("stage: 'final-assembly'")
+    expect(source).toContain("stage: 'quality-repair'")
+    expect(source).toContain('generationTrace,')
+    expect(source).toContain('await logTokenUsage(getDb()')
   })
 
   it('turns pipeline activity roles into tenant-cloned collaborators', () => {
@@ -135,6 +147,9 @@ describe('runtime wiring', () => {
     expect(sync).toContain("NOT (EXCLUDED.\"execution_plan\" ? 'lastRunAt')")
     expect(sync).toContain('jsonb_array_length("outputs"."${c}") > 0')
     expect(sync).toContain('"outputs"."metadata" || EXCLUDED."metadata"')
+    const migration = readFileSync('docker/migrations/20260713_task_completion_invariants.sql', 'utf8')
+    expect(migration).toContain("NEW.status IN ('completed', 'completed_with_warnings')")
+    expect(migration).toContain("stage = 'task-execution'")
   })
 
   it('does not hard-code the default agency in skill APIs', () => {

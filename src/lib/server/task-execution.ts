@@ -954,10 +954,14 @@ export async function runTaskExecution(
             progressPlan.activities.find((a) => a.id === activity.id)?.id ||
             progressPlan.activities.find((a) => a.agentId === agent.id && a.status === 'pending')?.id ||
             'lead-draft'
+          const isDeterministic = runtime.model.startsWith('deterministic-')
+          const activityVerb = isDeterministic
+            ? `running automated ${activity.name.toLowerCase()}`
+            : describeAgentVerb(agent, task.deliverable_type)
           const planProgress = startActivity(
             progressPlan,
             planActivityId,
-            `${agent.name} ${describeAgentVerb(agent, task.deliverable_type)}`
+            isDeterministic ? `Automated ${activity.name}` : `${agent.name} ${activityVerb}`
           )
           const liveProgress = Math.max(planProgress, typeof reportedProgress === 'number' ? reportedProgress : 0)
           await insertTaskRun({
@@ -978,12 +982,12 @@ export async function runTaskExecution(
             activity: activity.name,
             agentId: agent.id,
             progress: liveProgress,
-            message: `${agent.name}: ${describeAgentVerb(agent, task.deliverable_type)}`,
+            message: isDeterministic ? `Automated check: ${activity.name}` : `${agent.name}: ${activityVerb}`,
           })
           await emitActivityMessage(
             taskId,
             tenantUuid,
-            `${agent.name} is ${describeAgentVerb(agent, task.deliverable_type)}…`,
+            isDeterministic ? `Automated check is ${activityVerb}…` : `${agent.name} is ${activityVerb}…`,
             { activityId: planActivityId, phase: phase.name, agentId: agent.id, progress: liveProgress }
           )
           await upsertWorkflowExecutionState({
@@ -1021,6 +1025,7 @@ export async function runTaskExecution(
             completedAt: new Date().toISOString(),
             agencyId,
           })
+          const isDeterministic = runtime.model.startsWith('deterministic-')
           await emitTaskEvent({
             taskId,
             tenantId: tenantUuid,
@@ -1029,7 +1034,7 @@ export async function runTaskExecution(
             activity: activity.name,
             agentId: agent.id,
             progress: liveProgress,
-            message: `${agent.name} delivered ${describeAgentDeliverable(agent, task.deliverable_type)}`,
+            message: isDeterministic ? summary : `${agent.name} delivered ${describeAgentDeliverable(agent, task.deliverable_type)}`,
           })
           await upsertWorkflowExecutionState({
             taskId,

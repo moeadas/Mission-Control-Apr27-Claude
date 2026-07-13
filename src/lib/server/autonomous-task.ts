@@ -5,6 +5,7 @@ import { logTokenUsage } from '@/lib/server/token-logger'
 import { pickAgentForRole } from '@/lib/agent-roles'
 import { sanitizePromptProfile, sanitizePromptValue } from '@/lib/server/prompt-safety'
 import { validateDeliverableQuality } from '@/lib/output-quality'
+import { scoreQualityIssues, selectApplicableQualitySkills } from '@/lib/quality-policy'
 import {
   formatChecklistFailures,
   validateSkillChecklists,
@@ -80,6 +81,22 @@ interface SkillRef {
   workflowSteps?: Array<{ step?: number; name?: string; action?: string; verify?: string }>
   tags?: string[]
 }
+
+interface TrackedGenerationInput {
+  stage: string
+  attempt?: number
+  agent: RuntimeAgent
+  runtime: { provider: AIProvider; model: string }
+  temperature: number
+  maxTokens?: number
+  messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>
+}
+
+type TrackedGenerationRunner = (input: TrackedGenerationInput) => Promise<{
+  text: string
+  provider: AIProvider
+  model: string
+}>
 
 interface ExecutionHooks {
   onPhaseStart?: (input: { phase: PipelinePhase; progress: number }) => Promise<void> | void
@@ -564,26 +581,6 @@ function summarizeOutputs(outputRegister: Record<string, string>) {
     .join('\n\n')
 }
 
-function buildAutonomousReviewSummary(input: {
-  phase: PipelinePhase
-  activity: PipelineActivity
-  request: string
-  previousOutputs: Record<string, string>
-}) {
-  const prior = summarizeOutputs(input.previousOutputs)
-  return [
-    `Autonomous review completed for ${input.phase.name} / ${input.activity.name}.`,
-    'No human approval pause was required.',
-    `Request: ${truncate(input.request, 220)}`,
-    `Decision: approved for automatic progression to the next stage.`,
-    `Available context:\n${truncate(prior, 900)}`,
-  ].join('\n\n')
-}
-
-function shouldAutoCompleteReviewActivity(activity: PipelineActivity) {
-  return ['profile-review', 'select-ideas', 'review-posts'].includes(activity.id)
-}
-
 function buildFallbackDeliverable(input: {
   request: string
   deliverableType: DeliverableType
@@ -666,7 +663,8 @@ function buildActivityPrompt(input: {
     `Activity: ${input.activity.name}`,
     input.activity.description ? `Activity goal: ${input.activity.description}` : '',
     `Original task request: ${truncate(input.request, 280)}`,
-    input.clientContext ? `Client context:\n${truncate(input.clientContext, 700)}` : '',
+    input.clientContext ? `Client context:\n${truncate(input.clientContext, 2500)}` : '',
+    'EVIDENCE RULE: treat the user request and client context as the approved evidence ledger. Do not invent statistics, certifications, guarantees, pricing, turnaround times, product capabilities, testimonials, or research findings. Label assumptions and data gaps explicitly.',
     `--- Skill activation ---\n${input.skillContext}\n--- end skill activation ---`,
     input.primarySkillId
       ? `When you start, explicitly follow the workflow and checklist of the primary skill above (${input.primarySkillId}). The output for this activity must satisfy that skill's checklist.`
@@ -706,7 +704,8 @@ function buildSupportPrompt(input: {
     `Your assigned role in this task: supporting specialist.`,
     `User request: ${truncate(input.request, 280)}`,
     `Deliverable type: ${input.deliverableType}`,
-    input.clientContext ? `Client context:\n${truncate(input.clientContext, 700)}` : '',
+    input.clientContext ? `Client context:\n${truncate(input.clientContext, 2500)}` : '',
+    'EVIDENCE RULE: separate approved client facts from assumptions. Never invent proof points, statistics, certifications, guarantees, prices, timings, product capabilities, or testimonials.',
     input.pipeline
       ? `Relevant pipeline: ${input.pipeline.name}\nPhases:\n${(input.pipeline.phases || []).slice(0, 5).map((phase) => `- ${phase.name}`).join('\n')}`
       : '',
@@ -750,7 +749,8 @@ function buildLeadPrompt(input: {
     input.primarySkillId
       ? `The primary skill for this final pass is "${input.primarySkillId}". Treat its workflow and checklist as the authoritative structure for the deliverable. The output template above (if present) is the structural backbone — mirror its sections.`
       : '',
-    input.clientContext ? `Client context:\n${truncate(input.clientContext, 700)}` : '',
+    input.clientContext ? `Client context:\n${truncate(input.clientContext, 5000)}` : '',
+    'EVIDENCE RULE: the user request and client context are the approved evidence ledger. Preserve their facts exactly; do not invent proof points, statistics, certifications, guarantees, prices, timings, product capabilities, or testimonials. Mark any necessary assumption clearly for human verification.',
     input.pipeline
       ? `Pipeline in use: ${input.pipeline.name}\nPhase sequence:\n${(input.pipeline.phases || []).slice(0, 5).map((phase) => `- ${phase.name}`).join('\n')}`
       : '',
@@ -792,6 +792,7 @@ async function runPipelineExecution(input: {
   maxTokens?: number
   providerSettings?: ProviderSettings
   hooks?: ExecutionHooks
+  generateTracked: TrackedGenerationRunner
 }) {
   const executionSteps: ArtifactExecutionStep[] = []
   const outputRegister: Record<string, string> = {}
@@ -825,46 +826,29 @@ async function runPipelineExecution(input: {
         runtime,
         progress: inFlightProgress,
       })
-      const summary = shouldAutoCompleteReviewActivity(activity)
-        ? buildAutonomousReviewSummary({
-            phase,
-            activity,
-            request: input.request,
-            previousOutputs: outputRegister,
-          })
-        : await generateContentFirstText({
-            deliverableType: input.deliverableType,
-            provider: runtime.provider,
-            model: runtime.model,
-            temperature: 0.45,
-            maxTokens: input.maxTokens,
-            messages: [
-              {
-                role: 'system',
-                content: buildActivityPrompt({
-                  agent: assignedAgent,
-                  request: input.request,
-                  clientContext: input.clientContext,
-                  clientProfile: input.clientProfile,
-                  primarySkillId,
-                  pipeline: input.pipeline,
-                  phase,
-                  activity,
-                  previousOutputs: outputRegister,
-                  qualityChecklist: input.qualityChecklist,
-                  skillContext,
-                }),
-              },
-            ],
-            ollamaBaseUrl: input.ollamaBaseUrl,
-            ollamaContextWindow: input.ollamaContextWindow,
-            ollamaApiKey: input.ollamaApiKey,
-            geminiApiKey: input.geminiApiKey,
-            anthropicApiKey: input.anthropicApiKey,
-            openAiApiKey: input.openAiApiKey,
-            openAiBaseUrl: input.openAiBaseUrl,
-            providerSettings: input.providerSettings,
-          })
+      const activityPrompt = buildActivityPrompt({
+        agent: assignedAgent,
+        request: input.request,
+        clientContext: input.clientContext,
+        clientProfile: input.clientProfile,
+        primarySkillId,
+        pipeline: input.pipeline,
+        phase,
+        activity,
+        previousOutputs: outputRegister,
+        qualityChecklist: input.qualityChecklist,
+        skillContext,
+      })
+      const summary = (
+        await input.generateTracked({
+          stage: `pipeline:${phase.id}:${activity.id}`,
+          agent: assignedAgent,
+          runtime,
+          temperature: 0.45,
+          maxTokens: input.maxTokens,
+          messages: [{ role: 'system', content: activityPrompt }],
+        })
+      ).text
 
       for (const outputId of activity.outputs || []) {
         outputRegister[outputId] = summary
@@ -952,6 +936,99 @@ export async function executeAutonomousTask(input: {
   const executionSteps: ArtifactExecutionStep[] = []
   const pipelineOutputs: Record<string, string> = {}
   const clientProfile = buildClientProfileMap(input.clientContext, input.clientProfile, input.tenantContentDefaults)
+  const generationTrace: Array<Record<string, unknown>> = []
+
+  const generateTracked: TrackedGenerationRunner = async ({
+    stage,
+    attempt = 1,
+    agent,
+    runtime,
+    temperature,
+    maxTokens,
+    messages,
+  }) => {
+    const startedAt = new Date().toISOString()
+    let actualRuntime = runtime
+    let usage: TokenUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
+    const systemPrompt = messages
+      .filter((message) => message.role === 'system')
+      .map((message) => message.content)
+      .join('\n\n')
+    const userPrompt = messages
+      .filter((message) => message.role !== 'system')
+      .map((message) => `${message.role.toUpperCase()}: ${message.content}`)
+      .join('\n\n')
+
+    try {
+      const text = await generateContentFirstText({
+        deliverableType: input.deliverableType,
+        provider: runtime.provider,
+        model: runtime.model,
+        temperature,
+        maxTokens,
+        messages,
+        ollamaBaseUrl: input.ollamaBaseUrl,
+        ollamaContextWindow: input.ollamaContextWindow,
+        ollamaApiKey: input.ollamaApiKey,
+        geminiApiKey: input.geminiApiKey,
+        anthropicApiKey: input.anthropicApiKey,
+        openAiApiKey: input.openAiApiKey,
+        openAiBaseUrl: input.openAiBaseUrl,
+        providerSettings: input.providerSettings,
+        onGeneration: async (generated) => {
+          actualRuntime = { provider: generated.provider, model: generated.model }
+          usage = generated.usage
+          if (input.tenantId) {
+            await logTokenUsage(getDb(), {
+              tenantId: input.tenantId,
+              agentId: agent.id,
+              sourceType: 'pipeline',
+              sourceId: input.taskId || null,
+              provider: generated.provider,
+              model: generated.model,
+              usage: generated.usage,
+            })
+          }
+        },
+      })
+      generationTrace.push({
+        stage,
+        attempt,
+        agentId: agent.id,
+        agentName: agent.name,
+        provider: actualRuntime.provider,
+        model: actualRuntime.model,
+        temperature,
+        maxTokens: maxTokens || null,
+        systemPrompt,
+        userPrompt,
+        usage,
+        status: 'completed',
+        startedAt,
+        completedAt: new Date().toISOString(),
+      })
+      return { text, provider: actualRuntime.provider, model: actualRuntime.model }
+    } catch (error) {
+      generationTrace.push({
+        stage,
+        attempt,
+        agentId: agent.id,
+        agentName: agent.name,
+        provider: actualRuntime.provider,
+        model: actualRuntime.model,
+        temperature,
+        maxTokens: maxTokens || null,
+        systemPrompt,
+        userPrompt,
+        usage,
+        status: 'failed',
+        error: error instanceof Error ? error.message : String(error),
+        startedAt,
+        completedAt: new Date().toISOString(),
+      })
+      throw error
+    }
+  }
 
   // Safety guard: if the request explicitly asks for a social post (instagram/
   // facebook/linkedin post, caption) with no image-generation intent, treat it
@@ -975,10 +1052,10 @@ export async function executeAutonomousTask(input: {
           findAgentByTemplate(agentMap.values(), 'iris')
         if (!agent) throw new Error(`Agent ${agentId} is unavailable.`)
         const runtime = resolveAgentRuntime(agent, input)
-        const text = await generateContentFirstText({
-          deliverableType: input.deliverableType,
-          provider: runtime.provider,
-          model: runtime.model,
+        const generated = await generateTracked({
+          stage: `creative:${agentId}`,
+          agent,
+          runtime,
           temperature,
           maxTokens,
           messages: [
@@ -991,16 +1068,8 @@ export async function executeAutonomousTask(input: {
               content: prompt,
             },
           ],
-          ollamaBaseUrl: input.ollamaBaseUrl,
-          ollamaContextWindow: input.ollamaContextWindow,
-          ollamaApiKey: input.ollamaApiKey,
-          geminiApiKey: input.geminiApiKey,
-          anthropicApiKey: input.anthropicApiKey,
-          openAiApiKey: input.openAiApiKey,
-          openAiBaseUrl: input.openAiBaseUrl,
-          providerSettings: input.providerSettings,
         })
-        return { text, provider: runtime.provider, model: runtime.model }
+        return generated
       },
       maxTokens: input.maxTokens,
       geminiApiKey: input.geminiApiKey,
@@ -1014,11 +1083,11 @@ export async function executeAutonomousTask(input: {
       executionSteps: creativeResult.executionSteps,
       qualityResult: creativeResult.qualityResult,
       creative: creativeResult.creative,
+      generationTrace,
     }
   }
 
   if (input.deliverableType === 'content-calendar') {
-    const generationTrace: Array<Record<string, unknown>> = []
     const skillGuidanceByAgent = Object.fromEntries(
       input.agents.map((agent) => [
         agent.id,
@@ -1051,62 +1120,18 @@ export async function executeAutonomousTask(input: {
           findAgentByTemplate(agentMap.values(), 'iris')
         if (!agent) throw new Error(`Agent ${agentId} is unavailable.`)
         const runtime = resolveAgentRuntime(agent, input)
-        const systemPrompt = agent.systemPrompt || `You are ${agent.name}, ${agent.role}.`
-        const startedAt = new Date().toISOString()
-        let actualRuntime = runtime
-        let usage: TokenUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
-        try {
-          const text = await generateContentFirstText({
-            deliverableType: input.deliverableType,
-            provider: runtime.provider,
-            model: runtime.model,
-            temperature,
-            maxTokens,
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: prompt },
-            ],
-            ollamaBaseUrl: input.ollamaBaseUrl,
-            ollamaContextWindow: input.ollamaContextWindow,
-            ollamaApiKey: input.ollamaApiKey,
-            geminiApiKey: input.geminiApiKey,
-            anthropicApiKey: input.anthropicApiKey,
-            openAiApiKey: input.openAiApiKey,
-            openAiBaseUrl: input.openAiBaseUrl,
-            providerSettings: input.providerSettings,
-            onGeneration: async (generated) => {
-              actualRuntime = { provider: generated.provider, model: generated.model }
-              usage = generated.usage
-              if (input.tenantId) {
-                await logTokenUsage(getDb(), {
-                  tenantId: input.tenantId,
-                  agentId: agent.id,
-                  sourceType: 'pipeline',
-                  sourceId: input.taskId || null,
-                  provider: generated.provider,
-                  model: generated.model,
-                  usage: generated.usage,
-                })
-              }
-            },
-          })
-          generationTrace.push({
-            stage, attempt, agentId: agent.id, agentName: agent.name,
-            provider: actualRuntime.provider, model: actualRuntime.model,
-            temperature, maxTokens: maxTokens || null, systemPrompt, userPrompt: prompt,
-            usage, status: 'completed', startedAt, completedAt: new Date().toISOString(),
-          })
-          return { text, provider: actualRuntime.provider, model: actualRuntime.model }
-        } catch (error) {
-          generationTrace.push({
-            stage, attempt, agentId: agent.id, agentName: agent.name,
-            provider: actualRuntime.provider, model: actualRuntime.model,
-            temperature, maxTokens: maxTokens || null, systemPrompt, userPrompt: prompt,
-            usage, status: 'failed', error: error instanceof Error ? error.message : String(error),
-            startedAt, completedAt: new Date().toISOString(),
-          })
-          throw error
-        }
+        return generateTracked({
+          stage,
+          attempt,
+          agent,
+          runtime,
+          temperature,
+          maxTokens,
+          messages: [
+            { role: 'system', content: agent.systemPrompt || `You are ${agent.name}, ${agent.role}.` },
+            { role: 'user', content: prompt },
+          ],
+        })
       },
     })
 
@@ -1125,7 +1150,7 @@ export async function executeAutonomousTask(input: {
       findAgentByTemplate(agentMap.values(), 'atlas') ||
       findAgentByTemplate(agentMap.values(), input.leadAgentId) ||
       findAgentByTemplate(agentMap.values(), 'iris')
-    return executeSeoAuditTask({
+    const auditResult = await executeSeoAuditTask({
       request: input.request,
       clientProfile,
       hooks: input.hooks,
@@ -1135,6 +1160,7 @@ export async function executeAutonomousTask(input: {
         : [],
       pipelineName: input.pipeline?.name,
     })
+    return { ...auditResult, generationTrace }
   }
 
   const blogResearchContext = input.deliverableType === 'blog-article'
@@ -1170,6 +1196,7 @@ export async function executeAutonomousTask(input: {
       maxTokens: input.maxTokens,
       providerSettings: input.providerSettings,
       hooks: input.hooks,
+      generateTracked,
     })
     executionSteps.push(...pipelineRun.executionSteps)
     Object.assign(pipelineOutputs, pipelineRun.outputRegister)
@@ -1209,37 +1236,31 @@ export async function executeAutonomousTask(input: {
         progress: startProgress,
       })
 
-      const summary = await generateContentFirstText({
-        deliverableType: input.deliverableType,
-        provider: runtime.provider,
-        model: runtime.model,
-        temperature: 0.45,
-        maxTokens: input.maxTokens,
-        messages: [
-          {
-            role: 'system',
-            content: buildSupportPrompt({
-              agent,
-              request: generationRequest,
-              clientContext: input.clientContext,
-              deliverableType: input.deliverableType,
-              pipeline: input.pipeline,
-              qualityChecklist: input.qualityChecklist,
-              skillContext,
-              primarySkillId: supportPrimarySkillId,
-              officeContext: input.officeContextByAgent?.[agent.id],
-            }),
-          },
-        ],
-        ollamaBaseUrl: input.ollamaBaseUrl,
-        ollamaContextWindow: input.ollamaContextWindow,
-        ollamaApiKey: input.ollamaApiKey,
-        geminiApiKey: input.geminiApiKey,
-        anthropicApiKey: input.anthropicApiKey,
-        openAiApiKey: input.openAiApiKey,
-        openAiBaseUrl: input.openAiBaseUrl,
-        providerSettings: input.providerSettings,
-      })
+      const summary = (
+        await generateTracked({
+          stage: `handoff:${agent.id}`,
+          agent,
+          runtime,
+          temperature: 0.45,
+          maxTokens: input.maxTokens,
+          messages: [
+            {
+              role: 'system',
+              content: buildSupportPrompt({
+                agent,
+                request: generationRequest,
+                clientContext: input.clientContext,
+                deliverableType: input.deliverableType,
+                pipeline: input.pipeline,
+                qualityChecklist: input.qualityChecklist,
+                skillContext,
+                primarySkillId: supportPrimarySkillId,
+                officeContext: input.officeContextByAgent?.[agent.id],
+              }),
+            },
+          ],
+        })
+      ).text
 
       agentsRunDone += 1
       const endProgress = Math.max(20, Math.round((agentsRunDone / totalAgentsRunning) * 75) + 15)
@@ -1291,83 +1312,72 @@ export async function executeAutonomousTask(input: {
     progress: 90,
   })
 
-  let response = await generateContentFirstText({
-    deliverableType: input.deliverableType,
-    provider: leadRuntime.provider,
-    model: leadRuntime.model,
-    temperature: input.temperature,
-    maxTokens: input.maxTokens,
-    messages: [
-      {
-        role: 'system',
-        content: buildLeadPrompt({
-          agent: leadAgent,
-          request: generationRequest,
-          clientContext: input.clientContext,
-          deliverableType: input.deliverableType,
-          executionPrompt: generationExecutionPrompt,
-          pipeline: input.pipeline,
-          qualityChecklist: input.qualityChecklist,
-          skillContext: leadSkillContext,
-          primarySkillId: leadPrimarySkillId,
-          primarySkillOutputTemplate: leadPrimarySkillOutputTemplate,
-          supportHandoffs: executionSteps,
-          pipelineOutputs,
-          officeContext: input.officeContextByAgent?.[leadAgent.id],
-        }),
-      },
-    ],
-    ollamaBaseUrl: input.ollamaBaseUrl,
-    ollamaContextWindow: input.ollamaContextWindow,
-    ollamaApiKey: input.ollamaApiKey,
-    geminiApiKey: input.geminiApiKey,
-    anthropicApiKey: input.anthropicApiKey,
-    openAiApiKey: input.openAiApiKey,
-    openAiBaseUrl: input.openAiBaseUrl,
-    providerSettings: input.providerSettings,
-  })
-
-  if (isInvalidFinalDeliverable(response)) {
-    response = await generateContentFirstText({
-      deliverableType: input.deliverableType,
-      provider: leadRuntime.provider,
-      model: leadRuntime.model,
-      temperature: Math.min(input.temperature, 0.45),
+  let response = (
+    await generateTracked({
+      stage: 'final-assembly',
+      agent: leadAgent,
+      runtime: leadRuntime,
+      temperature: input.temperature,
       maxTokens: input.maxTokens,
       messages: [
         {
           role: 'system',
-          content: [
-            buildLeadPrompt({
-              agent: leadAgent,
-              request: generationRequest,
-              clientContext: input.clientContext,
-              deliverableType: input.deliverableType,
-              executionPrompt: generationExecutionPrompt,
-              pipeline: input.pipeline,
-              qualityChecklist: input.qualityChecklist,
-              skillContext: leadSkillContext,
-          primarySkillId: leadPrimarySkillId,
-          primarySkillOutputTemplate: leadPrimarySkillOutputTemplate,
-              supportHandoffs: executionSteps,
-              pipelineOutputs,
-              officeContext: input.officeContextByAgent?.[leadAgent.id],
-            }),
-            'Your previous answer was invalid because it used coordination or status language instead of the actual deliverable.',
-            'Return only the final deliverable now.',
-            'Do not mention routing, lead agent, status, delivery timing, or next steps.',
-          ].join('\n\n'),
+          content: buildLeadPrompt({
+            agent: leadAgent,
+            request: generationRequest,
+            clientContext: input.clientContext,
+            deliverableType: input.deliverableType,
+            executionPrompt: generationExecutionPrompt,
+            pipeline: input.pipeline,
+            qualityChecklist: input.qualityChecklist,
+            skillContext: leadSkillContext,
+            primarySkillId: leadPrimarySkillId,
+            primarySkillOutputTemplate: leadPrimarySkillOutputTemplate,
+            supportHandoffs: executionSteps,
+            pipelineOutputs,
+            officeContext: input.officeContextByAgent?.[leadAgent.id],
+          }),
         },
       ],
-      ollamaBaseUrl: input.ollamaBaseUrl,
-      ollamaContextWindow: input.ollamaContextWindow,
-      ollamaApiKey: input.ollamaApiKey,
-      geminiApiKey: input.geminiApiKey,
-      anthropicApiKey: input.anthropicApiKey,
-      openAiApiKey: input.openAiApiKey,
-      openAiBaseUrl: input.openAiBaseUrl,
-      providerSettings: input.providerSettings,
     })
+  ).text
+
+  if (isInvalidFinalDeliverable(response)) {
+    response = (
+      await generateTracked({
+        stage: 'final-assembly-invalid-retry',
+        attempt: 2,
+        agent: leadAgent,
+        runtime: leadRuntime,
+        temperature: Math.min(input.temperature, 0.45),
+        maxTokens: input.maxTokens,
+        messages: [
+          {
+            role: 'system',
+            content: [
+              buildLeadPrompt({
+                agent: leadAgent,
+                request: generationRequest,
+                clientContext: input.clientContext,
+                deliverableType: input.deliverableType,
+                executionPrompt: generationExecutionPrompt,
+                pipeline: input.pipeline,
+                qualityChecklist: input.qualityChecklist,
+                skillContext: leadSkillContext,
+                primarySkillId: leadPrimarySkillId,
+                primarySkillOutputTemplate: leadPrimarySkillOutputTemplate,
+                supportHandoffs: executionSteps,
+                pipelineOutputs,
+                officeContext: input.officeContextByAgent?.[leadAgent.id],
+              }),
+              'Your previous answer was invalid because it used coordination or status language instead of the actual deliverable.',
+              'Return only the final deliverable now.',
+              'Do not mention routing, lead agent, status, delivery timing, or next steps.',
+            ].join('\n\n'),
+          },
+        ],
+      })
+    ).text
   }
 
   executionSteps.push({
@@ -1394,82 +1404,85 @@ export async function executeAutonomousTask(input: {
     progress: 95,
   })
 
-  let qualityResult = validateDeliverableQuality(input.deliverableType, response, input.request)
-
-  // Phase 3 — skill-checklist enforcement. The lead-skill checklist plus the
-  // primary collaborator-skill checklists are validated against the response.
-  // Any clear failures get merged into qualityResult.issues so the existing
-  // repair-pass loop kicks in automatically. Soft items are skipped to avoid
-  // false positives.
-  const checklistTargets = [
+  const selectedSkillIds = uniqueIds([
     leadPrimarySkillId,
-    ...Object.values(input.selectedSkillsByAgent || {}).flat().slice(0, 6),
-  ].filter(Boolean) as string[]
-  const checklistSkills = uniqueIds(checklistTargets)
-    .map((id) => skillLookup.get(id))
-    .filter(Boolean) as SkillRef[]
-  const checklistVerdict = validateSkillChecklists(
-    checklistSkills.map((skill) => ({ id: skill.id, name: skill.name, checklist: skill.checklist })),
-    response
-  )
-  if (checklistVerdict.failed.length) {
-    const checklistIssueMessages = formatChecklistFailures(checklistVerdict.failed)
-    qualityResult = {
-      ok: false,
-      score: Math.max(0, qualityResult.score - checklistVerdict.failed.length * 5),
-      issues: [...qualityResult.issues, ...checklistIssueMessages],
-    }
+    ...Object.values(input.selectedSkillsByAgent || {}).flat(),
+  ].filter(Boolean) as string[])
+  const checklistSkills = selectApplicableQualitySkills({
+    deliverableType: input.deliverableType,
+    request: input.request,
+    skills: selectedSkillIds.map((id) => skillLookup.get(id)).filter(Boolean) as SkillRef[],
+    preferredSkillIds: leadPrimarySkillId ? [leadPrimarySkillId] : [],
+    maxSkills: 3,
+  })
+
+  const evaluateQuality = (candidate: string) => {
+    const structural = validateDeliverableQuality(input.deliverableType, candidate, input.request, {
+      approvedEvidence: input.clientContext,
+    })
+    const checklistVerdict = validateSkillChecklists(
+      checklistSkills.map((skill) => ({ id: skill.id, name: skill.name || skill.id, checklist: skill.checklist })),
+      candidate
+    )
+    return scoreQualityIssues([
+      ...structural.issues,
+      ...formatChecklistFailures(checklistVerdict.failed),
+    ])
   }
 
-  if (!qualityResult.ok) {
-    const repaired = await generateContentFirstText({
-      deliverableType: input.deliverableType,
-      provider: leadRuntime.provider,
-      model: leadRuntime.model,
-      temperature: Math.min(input.temperature, 0.45),
-      maxTokens: input.maxTokens,
-      messages: [
-        {
-          role: 'system',
-          content: [
-            buildLeadPrompt({
-              agent: leadAgent,
-              request: generationRequest,
-              clientContext: input.clientContext,
-              deliverableType: input.deliverableType,
-              executionPrompt: generationExecutionPrompt,
-              pipeline: input.pipeline,
-              qualityChecklist: input.qualityChecklist,
-              skillContext: leadSkillContext,
-          primarySkillId: leadPrimarySkillId,
-          primarySkillOutputTemplate: leadPrimarySkillOutputTemplate,
-              supportHandoffs: executionSteps,
-              pipelineOutputs,
-              officeContext: input.officeContextByAgent?.[leadAgent.id],
-            }),
-            buildQualityRepairPrompt({
-              request: generationRequest,
-              deliverableType: input.deliverableType,
-              qualityIssues: qualityResult.issues,
-              previousResponse: response,
-            }),
-          ].join('\n\n'),
-        },
-      ],
-      ollamaBaseUrl: input.ollamaBaseUrl,
-      ollamaContextWindow: input.ollamaContextWindow,
-      ollamaApiKey: input.ollamaApiKey,
-      geminiApiKey: input.geminiApiKey,
-      anthropicApiKey: input.anthropicApiKey,
-      openAiApiKey: input.openAiApiKey,
-      openAiBaseUrl: input.openAiBaseUrl,
-      providerSettings: input.providerSettings,
-    })
+  let qualityResult = evaluateQuality(response)
 
-    const repairedQuality = validateDeliverableQuality(input.deliverableType, repaired, input.request)
+  // Run at most two focused repair passes. Every candidate is re-checked with
+  // the same structure, factual grounding, and applicable skill requirements;
+  // a repair can no longer appear to pass merely because checklist checks were
+  // omitted on the second pass.
+  for (let repairPass = 1; repairPass <= 2 && !qualityResult.ok; repairPass += 1) {
+    const repaired = (
+      await generateTracked({
+        stage: 'quality-repair',
+        attempt: repairPass,
+        agent: leadAgent,
+        runtime: leadRuntime,
+        temperature: Math.min(input.temperature, 0.45),
+        maxTokens: input.maxTokens,
+        messages: [
+          {
+            role: 'system',
+            content: [
+              buildLeadPrompt({
+                agent: leadAgent,
+                request: generationRequest,
+                clientContext: input.clientContext,
+                deliverableType: input.deliverableType,
+                executionPrompt: generationExecutionPrompt,
+                pipeline: input.pipeline,
+                qualityChecklist: input.qualityChecklist,
+                skillContext: leadSkillContext,
+                primarySkillId: leadPrimarySkillId,
+                primarySkillOutputTemplate: leadPrimarySkillOutputTemplate,
+                supportHandoffs: executionSteps,
+                pipelineOutputs,
+                officeContext: input.officeContextByAgent?.[leadAgent.id],
+              }),
+              buildQualityRepairPrompt({
+                request: generationRequest,
+                deliverableType: input.deliverableType,
+                qualityIssues: qualityResult.issues.slice(0, 12),
+                previousResponse: response,
+              }),
+              `Repair pass ${repairPass} of 2. Preserve every correct section and change only what the listed issues require. Do not add unsupported facts.`,
+            ].join('\n\n'),
+          },
+        ],
+      })
+    ).text
+
+    const repairedQuality = evaluateQuality(repaired)
     if (repairedQuality.score >= qualityResult.score && repaired.trim()) {
       response = repaired
       qualityResult = repairedQuality
+    } else {
+      break
     }
   }
 
@@ -1502,6 +1515,7 @@ export async function executeAutonomousTask(input: {
     renderedHtml: undefined,
     executionSteps,
     qualityResult,
+    generationTrace,
   }
 }
 

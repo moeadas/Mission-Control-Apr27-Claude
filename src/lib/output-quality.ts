@@ -1,5 +1,6 @@
 import type { DeliverableType } from '@/lib/types'
 import { resolveContentCalendarBrief } from '@/lib/server/content-calendar-brief'
+import { scoreQualityIssues } from '@/lib/quality-policy'
 
 export interface DeliverableQualityResult {
   ok: boolean
@@ -114,6 +115,22 @@ function getMediaPlanTable(text: string) {
 
 function getKeywordRegex(keyword: string) {
   return new RegExp(keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
+}
+
+function extractRequestedFocus(request: string) {
+  const match = request.match(/\b(?:focus(?:ing)? on|with (?:a |some )?focus on|center(?:ed)? on)\s+([^\n.;]+)/i)
+  return match?.[1]?.trim() || ''
+}
+
+function textMatchesFocus(text: string, focus: string) {
+  const tokens = focus
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, ' ')
+    .split(/\s+/)
+    .filter((token) => token.length >= 4 && !['product', 'service', 'content', 'campaign'].includes(token))
+  if (!tokens.length) return true
+  const lower = text.toLowerCase()
+  return tokens.filter((token) => lower.includes(token)).length >= Math.max(1, Math.ceil(tokens.length / 2))
 }
 
 // Deliverable types that are lightweight prose/copy — no H1 or H2 structure required
@@ -252,6 +269,15 @@ export function validateDeliverableQuality(
       if (unexpected.length) {
         issues.push(`Calendar contains unconfirmed platforms: ${Array.from(new Set(unexpected)).join(', ')}.`)
       }
+
+      const requestedFocus = extractRequestedFocus(request)
+      if (requestedFocus) {
+        const focusedRows = rows.filter((row) => textMatchesFocus(row.join(' '), requestedFocus)).length
+        const minimumFocusedRows = Math.ceil(rows.length * 0.4)
+        if (focusedRows < minimumFocusedRows) {
+          issues.push(`Calendar gives ${focusedRows} of ${rows.length} posts to the requested focus "${requestedFocus}"; at least ${minimumFocusedRows} are required.`)
+        }
+      }
     }
 
     if (!trimmed.toLowerCase().includes(brief.objective.toLowerCase())) {
@@ -261,11 +287,22 @@ export function validateDeliverableQuality(
       issues.push('Calendar includes visual direction even though the confirmed brief requested copy only.')
     }
 
+  }
+
+  // Shared factual-grounding gate for every client-facing content deliverable.
+  // Calculated reports and plans can legitimately contain derived percentages,
+  // so exact-rate checks are limited to copy/content where unsupported claims
+  // are most likely to be published as fact.
+  const evidenceSensitiveTypes = new Set<DeliverableType>([
+    'content-calendar', 'campaign-copy', 'short-form-copy', 'email-campaign',
+    'blog-article', 'website-copy', 'video-script', 'presentation', 'pr-comms',
+  ])
+  if (request && evidenceSensitiveTypes.has(deliverableType)) {
     const unsupportedHighRiskClaims = [
-      /\b\d+(?:\.\d+)?%\b/gi,
-      /\bguaranteed\b/gi,
+      /\b\d+(?:\.\d+)?%\s+(?:accuracy|accurate|precision|effective|success|guarantee)/gi,
+      /\b(?:guaranteed|guarantees|absolute certainty|zero risk|100% accurate)\b/gi,
       /\bwithin\s+(?:\d+|one|two|three|fourteen|thirty)\s+(?:hours?|days?|weeks?)\b/gi,
-      /\bprenatal\b/gi,
+      /\bprenatal(?:\s+testing)?\b/gi,
       /\b(?:iso|cap)[-\s]?certified\b/gi,
     ]
     const approvedEvidence = `${request}\n${options?.approvedEvidence || ''}`.toLowerCase()
@@ -442,10 +479,5 @@ export function validateDeliverableQuality(
     }
   }
 
-  const score = Math.max(0, 100 - issues.length * 15)
-  return {
-    ok: issues.length === 0,
-    score,
-    issues,
-  }
+  return scoreQualityIssues(issues)
 }
